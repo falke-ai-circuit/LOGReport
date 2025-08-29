@@ -1,0 +1,364 @@
+from dataclasses import dataclass
+from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
+from typing import List, Optional
+from .models import NodeToken
+from .session_manager import SessionConfig, SessionType
+from .services.threading_service import ThreadingService
+import logging
+import socket
+import time
+import traceback
+
+@dataclass
+class QueuedCommand:
+    command: str
+    token: NodeToken
+    telnet_client: object = None
+    status: str = 'pending'  # pending, processing, completed, failed
+
+class CommandWorkerSignals(QObject):
+    finished = pyqtSignal(object, str)  # worker, result
+    command_completed = pyqtSignal(str, str, bool, object)  # command, result, success, token
+
+class CommandWorker(QRunnable):
+    def __init__(self, command: str, token: NodeToken, telnet_session=None):
+        super().__init__()
+        self.command = command
+        self.token = token
+        self.telnet_session = telnet_session
+        self.result = None
+        self.success = False
+        self.signals = CommandWorkerSignals()
+        
+    def run(self):
+        """Execute the command and store the result"""
+        logging.debug(f"CommandWorker.run: Starting execution of command: {self.command}")
+        logging.debug(f"CommandWorker.run: Node: {self.token.name} ({self.token.ip_address})")
+        logging.debug(f"CommandWorker.run: Token: {self.token.token_id} ({self.token.token_type})")
+        
+        try:
+            # Enhanced session verification with socket-level checks
+            max_retries = 3
+            retry_delay = 0.5
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    if not self.telnet_session:
+                        logging.error("CommandWorker.run: No telnet session available")
+                        raise ConnectionError("No telnet session available")
+                        
+                    # Attempt to reconnect if session is disconnected
+                    if not self.telnet_session.is_connected:
+                        logging.debug("CommandWorker.run: Session disconnected, attempting to reconnect")
+                        try:
+                            self.telnet_session.connect()
+                        except Exception as e:
+                            logging.error(f"CommandWorker.run: Reconnect failed: {str(e)}")
+                            raise ConnectionError(f"Reconnect failed: {str(e)}")
+                            
+                    # Check both application-level and socket-level connection
+                    if not self.telnet_session.is_connected:
+                        logging.error("CommandWorker.run: Application reports disconnected after reconnect attempt")
+                        raise ConnectionError("Application reports disconnected after reconnect attempt")
+                        
+                    sock = self.telnet_session.connection.get_socket()
+                    if not sock:
+                        logging.error("CommandWorker.run: No socket available")
+                        raise ConnectionError("No socket available")
+                        
+                    # Skip socket test to prevent ConnectionAbortedError
+                    logging.debug("CommandWorker.run: Skipping socket test to prevent connection issues")
+                    break
+                    
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        logging.warning(
+                            f"Connection verification failed (attempt {attempt + 1}/{max_retries}): {str(e)}\n"
+                            f"Command: {self.command}\n"
+                            f"Node: {self.token.name} ({self.token.ip_address})"
+                        )
+                        time.sleep(retry_delay)
+                        continue
+                        
+                    # Final attempt failed
+                    error_msg = (
+                        f"Telnet connection verification failed after {max_retries} attempts\n"
+                        f"Command: {self.command}\n"
+                        f"Token: {self.token.token_id} ({self.token.token_type})\n"
+                        f"Node: {self.token.name} ({self.token.ip_address})\n"
+                        f"Last error: {str(last_error)}"
+                    )
+                    logging.error(error_msg)
+                    raise ConnectionError(error_msg)
+                
+            # Execute command via Telnet session
+            logging.debug(f"CommandWorker.run: Sending command to telnet session: {self.command}")
+            self.result = self.telnet_session.send_command(self.command)
+            logging.debug(f"CommandWorker.run: Raw response received (length={len(self.result)}): {self.result[:200]}{'...' if len(self.result) > 200 else ''}")
+            
+            # Verify command execution
+            if not self.result:
+                logging.warning("Empty response received from command execution")
+                # Consider empty response as successful but log warning
+                self.success = True
+            else:
+                # More precise error detection
+                lower_result = self.result.lower()
+                # Handle error responses without crashing
+                if "error" in lower_result or "invalid token" in lower_result or "unknown command" in lower_result:
+                    error_msg = f"Command returned error response: {self.result[:200]}"
+                    logging.error(error_msg)
+                    self.result = error_msg
+                    self.success = False
+                else:
+                    # Handle specific device response patterns
+                    if "int from fbc rupi counters" in lower_result:
+                        # This appears to be a valid device response format
+                        self.success = True
+                        if len(self.result) < 10:
+                            logging.warning(f"CommandWorker.run: Unexpectedly short response: {len(self.result)} chars")
+                    else:
+                        # Handle general case
+                        if len(self.result) < 10:  # Minimum expected response length
+                            logging.warning(f"CommandWorker.run: Unexpectedly short response: {len(self.result)} chars")
+                        self.success = True
+            logging.info(f"CommandWorker.run: Command executed successfully: {self.command}")
+            logging.debug(f"CommandWorker.run: Final processed response length: {len(self.result)}")
+            
+        except Exception as e:
+            import traceback
+            error_details = (
+                f"CommandWorker.run: Command failed: {self.command}\n"
+                f"Token: {self.token.token_id} ({self.token.token_type})\n"
+                f"Node: {self.token.name} ({self.token.ip_address})\n"
+                f"Error: {str(e)}\n"
+                f"Traceback:\n{traceback.format_exc()}"
+            )
+            logging.error(error_details)
+            self.result = f"Command failed: {str(e)}"
+            self.success = False
+            # Re-raise to ensure proper error propagation
+            raise
+        finally:
+            logging.debug(f"CommandWorker.run: Finished command: {self.command}, success={self.success}")
+            # Ensure result is a string for signal emission
+            result_str = str(self.result) if self.result is not None else ""
+            self.signals.finished.emit(self, result_str)
+            self.signals.command_completed.emit(self.command, result_str, self.success, self.token)
+
+class CommandQueue(QObject):
+    command_completed = pyqtSignal(str, str, bool, object)  # command, result, success, token
+    progress_updated = pyqtSignal(int, int)    # current, total
+    
+    @property
+    def is_processing(self) -> bool:
+        """Check if the command queue is currently processing commands.
+        
+        Returns:
+            bool: True if commands are being processed, False otherwise
+        """
+        with self._processing_lock:
+            return self._is_processing
+    
+    def __init__(self, session_manager=None, parent=None):
+        super().__init__(parent)
+        self.logger = logging.getLogger(__name__)
+        self.queue: List[QueuedCommand] = []
+        self.thread_pool = QThreadPool()
+        self.thread_pool.setMaxThreadCount(1)
+        self.completed_count = 0
+        self.session_manager = session_manager
+        self.threading_service = ThreadingService()
+        self._is_processing = False
+        self._processing_lock = self.threading_service.create_lock()
+        self._auto_cleanup = True  # Default behavior
+        
+    def add_command(self, command: str, token: NodeToken, telnet_client=None):
+        """Add a command to the queue with associated token"""
+        qc = QueuedCommand(
+            command=command,
+            token=token,
+            telnet_client=telnet_client
+        )
+        self.queue.append(qc)
+        logging.debug(f"CommandQueue.add_command: Added command '{command}' for token {token.token_id}")
+        logging.debug(f"CommandQueue.add_command: Token details - type: {token.token_type}, node: {token.name} ({token.ip_address})")
+        logging.debug(f"CommandQueue.add_command: Current queue size: {len(self.queue)}")
+        logging.debug(f"CommandQueue.add_command: QueuedCommand object created: {qc}")
+        
+        # Start processing if queue has commands
+        if len(self.queue) > 0:
+            self.start_processing()
+            
+    def start_processing(self):
+        """Start processing all commands in the queue"""
+        with self._processing_lock:
+            if self._is_processing:
+                logging.debug("CommandQueue.start_processing: Already processing commands, ignoring request")
+                return
+                
+            if not self.session_manager:
+                logging.error("CommandQueue.start_processing: No session_manager available - cannot process commands")
+                return
+                
+            self._is_processing = True
+            logging.info(f"CommandQueue.start_processing: Starting processing of {len(self.queue)} commands (state locked)")
+            
+        logging.debug(f"CommandQueue.start_processing: Queue contents: {[qc.command for qc in self.queue]}")
+        logging.debug(f"CommandQueue.start_processing: Thread pool status - active threads: {self.thread_pool.activeThreadCount()}, max threads: {self.thread_pool.maxThreadCount()}")
+        
+        self.completed_count = 0
+        # Only process pending commands
+        pending_commands = [cmd for cmd in self.queue if cmd.status == 'pending']
+        total = len(pending_commands)
+        if total == 0:
+            logging.info("CommandQueue.start_processing: No pending commands to process")
+            with self._processing_lock:
+                self._is_processing = False
+            return
+            
+        # Update all pending commands to processing status
+        for idx, item in enumerate(pending_commands):
+            item.status = 'processing'
+            logging.debug(f"CommandQueue.start_processing: Marked command {idx+1}/{total} as processing: {item.command}")
+            
+        # Create and start workers for each pending command
+        for idx, item in enumerate(pending_commands):
+            telnet_session = None
+            # Prioritize using the provided telnet_client if available
+            if item.telnet_client:
+                telnet_session = item.telnet_client
+                logging.debug(f"CommandQueue.start_processing: Using provided telnet client for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
+                # Add debug log about client reuse
+                if telnet_session == self.parent().active_telnet_client:
+                    logging.debug("CommandQueue.start_processing: Reusing active manual Telnet connection")
+            else:
+                # Check for active debugger session first
+                debugger_session = self.session_manager.get_debugger_session()
+                if debugger_session:
+                    telnet_session = debugger_session
+                    logging.debug(f"CommandQueue.start_processing: Using debugger session for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
+                else:
+                    session_key = f"{item.token.name}_{item.token.token_type}"
+                    config = SessionConfig(
+                        host=item.token.ip_address,
+                        port=23,
+                        session_type=SessionType.TELNET
+                    )
+                    
+                    try:
+                        # Get or create session from session manager
+                        telnet_session = self.session_manager.get_or_create_session(
+                            session_key,
+                            SessionType.TELNET,
+                            config
+                        )
+                        logging.debug(f"CommandQueue.start_processing: Using session for {session_key} (connected: {telnet_session.is_connected})")
+                        
+                        # Reconnect if session exists but is disconnected
+                        if not telnet_session.is_connected:
+                            logging.debug(f"CommandQueue.start_processing: Reconnecting session for {session_key}")
+                            telnet_session.connect()
+                            
+                        if not telnet_session.is_connected:
+                            raise ConnectionError(f"Failed to connect session {session_key}")
+                            
+                    except Exception as e:
+                        logging.error(f"CommandQueue.start_processing: Error getting session for {session_key}: {str(e)}")
+                        item.status = 'failed'
+                        continue
+
+            worker = CommandWorker(item.command, item.token, telnet_session)
+            logging.debug(f"CommandQueue.start_processing: Created worker for command {idx+1}/{total}: {item.command} (token {item.token.token_id})")
+            worker.setAutoDelete(True)
+            worker.signals.finished.connect(lambda w=worker: self._handle_worker_finished(w))
+            self.thread_pool.start(worker)
+            logging.debug(f"CommandQueue.start_processing: Started worker for command {idx+1}/{total}")
+        
+    def _handle_worker_finished(self, worker: CommandWorker):
+        """Handle completion of a worker thread"""
+        self.completed_count += 1
+        success = worker.success
+        command = worker.command
+        result = worker.result
+        
+        # Log command execution result with error details if failed
+        log_msg = (
+            f"Command {'completed' if success else 'failed'}: {command}\n"
+            f"Node: {getattr(worker.token, 'name', 'N/A')} "
+            f"({getattr(worker.token, 'ip_address', 'N/A')})\n"
+            f"Token: {worker.token.token_id} ({worker.token.token_type})\n"
+        )
+        if not success:
+            log_msg += f"ERROR DETAILS: {result}\n"
+        log_msg += f"Result: {result[:500]}{'...' if len(result) > 500 else ''}"
+        logging.info(log_msg)
+        
+        # Update command status
+        updated = False
+        for idx, item in enumerate(self.queue):
+            if item.command == command:
+                item.status = 'completed' if success else 'failed'
+                logging.debug(f"CommandQueue._handle_worker_finished: Updated status for command {idx+1}/{len(self.queue)}: {command} -> {item.status}")
+                updated = True
+                break
+        
+        if not updated:
+            logging.error(f"CommandQueue._handle_worker_finished: Could not find command in queue: {command}")
+        
+        # Clean up completed commands from queue
+        # Only clean up if auto_cleanup is enabled
+        if self._auto_cleanup:
+            original_queue_size = len(self.queue)
+            self.queue = [cmd for cmd in self.queue if cmd.status != 'completed']
+            cleaned_count = original_queue_size - len(self.queue)
+            if cleaned_count > 0:
+                logging.debug(f"CommandQueue._handle_worker_finished: Cleaned {cleaned_count} completed commands from queue")
+        
+        # Emit progress update
+        remaining = len(self.queue) - self.completed_count
+        logging.debug(f"CommandQueue._handle_worker_finished: Progress: {self.completed_count}/{len(self.queue)} completed, {remaining} remaining")
+        self.progress_updated.emit(self.completed_count, len(self.queue))
+        
+        # Emit command completion with result
+        # Ensure error details are properly propagated
+        self.command_completed.emit(command, result, success, worker.token)
+        logging.debug(f"CommandQueue._handle_worker_finished: Emitted completion signal for command: {command} (success={success})")
+        
+        # Check if all commands are completed (either successfully or failed) and reset processing state if so
+        active_commands = [cmd for cmd in self.queue if cmd.status in ['pending', 'processing']]
+        logging.debug(f"CommandQueue._handle_worker_finished: Checking processing state - active commands: {len(active_commands)}, total in queue: {len(self.queue)}")
+        if not active_commands:
+            logging.info("CommandQueue._handle_worker_finished: All commands processed")
+            # Reset processing state
+            with self._processing_lock:
+                self._is_processing = False
+                logging.info("CommandQueue._handle_worker_finished: Reset processing state to idle (state locked)")
+        else:
+            logging.debug(f"CommandQueue._handle_worker_finished: Still have {len(active_commands)} active commands, keeping processing state")
+        
+        # Auto-continue processing if pending commands remain - atomic check with state lock
+        with self._processing_lock:
+            pending_commands = [cmd for cmd in self.queue if cmd.status == 'pending']
+            if pending_commands and not self._is_processing:
+                logging.debug(f"CommandQueue._handle_worker_finished: Found {len(pending_commands)} pending commands, triggering processing")
+                self.start_processing()
+                
+    def validate_token(self, token: NodeToken) -> bool:
+        """Validate token has required fields"""
+        return bool(token and token.token_id and token.token_type)
+        
+    def set_auto_cleanup(self, enabled: bool):
+        """Enable/disable automatic cleanup of completed commands"""
+        self._auto_cleanup = enabled
+        
+    def manual_cleanup(self):
+        """Manually clean up completed commands from the queue"""
+        original_queue_size = len(self.queue)
+        self.queue = [cmd for cmd in self.queue if cmd.status != 'completed']
+        cleaned_count = original_queue_size - len(self.queue)
+        if cleaned_count > 0:
+            logging.debug(f"CommandQueue.manual_cleanup: Manually cleaned {cleaned_count} completed commands from queue")
+        return cleaned_count
