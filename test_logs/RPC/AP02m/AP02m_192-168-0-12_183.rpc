@@ -2,6 +2,15 @@
 Node: AP02m
 Token: 183
 Type: RPC
-Created: 2025-07-04 20:13:19
+Created: 2025-08-05 13:08:57
 ====================
 
+13:09:00 >> [RPC] print from fbc rupi counters 1830000
+Command returned error response: Unknown agent, replycode = c00d
+
+   440s% ?
+
+        THE ALTERNATIVES AT THIS POINT ARE:
+ clear          (Clearing commands)
+ search         (Searching commands)
+ watch          (Watch commands)

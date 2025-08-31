@@ -428,64 +428,97 @@ class NodeManager:
                 token = None
                 matching_strategy = "none"
                 
-                # Extract token ID from filename (last alphanumeric part)
+                # Extract token ID from filename based on file type pattern
                 parts = base_name.split('_')
-                token_id_candidate = parts[-2] if len(parts) >= 2 and parts[-1].upper() in token_types else (parts[-1] if parts else None)
+                token_id_candidate = None
                 
-                # Normalize token ID candidate:
-                # - Pad numeric IDs to 3 digits
-                # - Convert alphanumeric to uppercase for FBC tokens only
+                if token_type_dir == "FBC" and len(parts) >= 4:
+                    # FBC pattern: [node_name]_[token_id]_[ip]_[token_id].fbc
+                    # Use the last token_id part
+                    token_id_candidate = parts[-1]
+                elif token_type_dir == "RPC" and len(parts) >= 3:
+                    # RPC pattern: [node_name]_[ip]_[token_id].rpc
+                    # Use the last part as token_id
+                    token_id_candidate = parts[-1]
+                elif token_type_dir == "LIS" and len(parts) >= 5:
+                    # LIS pattern: [node_name]_[ip]_[exe_id]_[irb]_[orb].lis
+                    # Use the exe_id part as token_id
+                    token_id_candidate = parts[-3]
+                elif token_type_dir == "LOG":
+                    # LOG pattern: [node_name]_[ip].log
+                    # Use node_name as token_id for LOG files
+                    token_id_candidate = node_name
+                else:
+                    # Fallback: use the last part
+                    token_id_candidate = parts[-1] if parts else None
+                
+                # Normalize token ID candidate based on token type
                 if token_id_candidate:
                     if token_type_dir == "FBC":
+                        # For FBC tokens: pad numeric IDs with zeros, convert alphanumeric to uppercase
                         if token_id_candidate.isdigit():
                             token_id_candidate = token_id_candidate.zfill(3)
                         else:
                             token_id_candidate = token_id_candidate.upper()
                     else:
-                        # For non-FBC tokens, just strip whitespace
-                        token_id_candidate = token_id_candidate.strip()
+                        # For non-FBC tokens: strip whitespace and convert to lowercase
+                        token_id_candidate = token_id_candidate.strip().lower()
                 
-                # Strategy 1: Case-insensitive exact token ID match
+                # Strategy 1: Case-insensitive exact token ID and type match
                 if token_id_candidate:
                     token = next(
                         (t for t in matched_node.tokens.values()
-                         if t.token_id.lower() == token_id_candidate.lower()),
+                         if t.token_id.lower() == token_id_candidate.lower() and t.token_type.upper() == token_type_dir.upper()),
                         None
                     )
                     if token:
-                        matching_strategy = "extracted token ID match"
+                        matching_strategy = "extracted token ID and type match"
                 
-                # Strategy 2: Case-insensitive token ID substring match
-                if not token:
+                # Strategy 2: Case-insensitive token ID and type match (fallback)
+                if not token and token_id_candidate:
                     for t in matched_node.tokens.values():
-                        if token_id_candidate and token_id_candidate.lower() in t.token_id.lower():
+                        if (token_id_candidate.lower() in t.token_id.lower() and
+                            t.token_type.upper() == token_type_dir.upper()):
                             token = t
-                            matching_strategy = "token ID in filename"
+                            matching_strategy = "token ID and type match"
                             break
                 
-                # Strategy 3: Match by token type and closest alphanumeric match
-                if not token:
+                # Strategy 3: Case-insensitive exact token ID match (only if no token of this type exists)
+                if not token and token_id_candidate:
+                    # Check if there's already a token of this type
                     same_type_tokens = [t for t in matched_node.tokens.values()
-                                        if t.token_type == token_type_dir]
-                    if same_type_tokens and token_id_candidate:
-                        # DEBUG: Log alphanumeric matching attempt
-                        print(f"[DEBUG] Starting Strategy 3 for alphanumeric token: {token_id_candidate}")
-                        print(f"[DEBUG] Available {token_type_dir} tokens: {[t.token_id for t in same_type_tokens]}")
-                        
-                        # Try to find closest alphanumeric match
-                        token = min(
-                            same_type_tokens,
-                            key=lambda t: self._token_distance(t.token_id.lower(), token_id_candidate.lower())
+                                      if t.token_type.upper() == token_type_dir.upper()]
+                    if not same_type_tokens:
+                        token = next(
+                            (t for t in matched_node.tokens.values()
+                             if t.token_id.lower() == token_id_candidate.lower()),
+                            None
                         )
-                        
-                        # DEBUG: Log match result
-                        distance = self._token_distance(token.token_id.lower(), token_id_candidate.lower())
-                        print(f"[DEBUG] Closest match: {token.token_id} (distance: {distance})")
-                        matching_strategy = "closest alphanumeric token match"
+                        if token:
+                            matching_strategy = "exact token ID match (different type)"
                 
-                # For FBC files, create token representation and add to node
-                if token_type_dir == "FBC" and not token:
-                    # Preserve original token ID case for FBC files
+                # Strategy 4: Token ID contains match (only if no token of this type exists)
+                if not token and token_id_candidate:
+                    # Check if there's already a token of this type
+                    same_type_tokens = [t for t in matched_node.tokens.values()
+                                      if t.token_type.upper() == token_type_dir.upper()]
+                    if not same_type_tokens:
+                        for t in matched_node.tokens.values():
+                            if token_id_candidate.lower() in t.token_id.lower():
+                                token = t
+                                matching_strategy = "token ID contains match (different type)"
+                                break
+                
+                # For all token types, create token representation and add to node if not found
+                # or if there's no token of this specific type yet
+                same_type_token = next(
+                    (t for t in matched_node.tokens.values()
+                     if t.token_id.lower() == (token_id_candidate or "UNKNOWN").lower() and
+                        t.token_type.upper() == token_type_dir.upper()),
+                    None
+                )
+                
+                if not same_type_token and token_type_dir in token_types:
                     token = NodeToken(
                         name=f"{node_name} {token_type_dir}",
                         token_id=token_id_candidate or "UNKNOWN",
@@ -495,19 +528,7 @@ class NodeManager:
                     normalized_path = os.path.normpath(full_path)
                     token.log_path = normalized_path
                     matched_node.add_token(token)
-                    print(f"[DEBUG] ADDED FBC token to node: {token.token_id} | Path: {normalized_path}")
-                
-                # For other token types, maintain existing behavior
-                elif token_type_dir == "LOG" or (not token and token_type_dir in token_types):
-                    token = NodeToken(
-                        name=f"{node_name} {token_type_dir}",
-                        token_id=token_id_candidate or "UNKNOWN",
-                        token_type=token_type_dir,
-                        ip_address=matched_node.ip_address
-                    )
-                    normalized_path = os.path.normpath(full_path)
-                    token.log_path = normalized_path
-                    print(f"[DEBUG] Mapped {token_type_dir} file | Node: {node_name} | Path: {normalized_path}")
+                    print(f"[DEBUG] ADDED {token_type_dir} token to node: {token.token_id} | Path: {normalized_path}")
                 elif token:
                     normalized_path = os.path.normpath(full_path)
                     token.log_path = normalized_path

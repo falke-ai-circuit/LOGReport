@@ -1,0 +1,75 @@
+This is a log file for AP03m_192-168-0-13_2a2.fbc.
+Generated on 2025-07-13 16:35:01.12:45:43 >> [FBC] print from fbc io structure 2a20000
+13:04:49 >> [FBC] print from fbc io structure 2a20000
+Unknown agent, replycode = c00d
+
+   238s% ?
+
+        THE ALTERNATIVES AT THIS POINT ARE:
+ clear          (Clearing commands)
+ search         (Searching commands)
+ watch          (Watch commands)
+ kill           (Destroy Process)
+ logout         (Logout from Diagnostic Station)
+ modify         (Modifing commands)
+ print          (Prnting commands)
+ reset          (Reet station)
+ set            (Setting commands)
+ togglemode     (Switch to Application mode)
+ systemmode     (Switch to System mode)
+ applmode       (Switch to Application mode)
+ systemtest     (Misc system test commands)
+ disconnect     (Disconnect network connection)
+ lock           Lock session)
+ unlock         (Unlock sessio)
+ update         (Update commands)
+ user          (User commands)
+ capture        (Start/stop capture)
+ script         (Start/stop script)
+ sleep          (sleep)
+ echo           (control echo)
+ cmd            (menu control)
+ syscall        (OS system() command)
+ node           (Node related commands)
+ rem            (comment line for scripts)
+ <CR>
+   238s% ? print from fbc io structur 1630000
+
+        Getting FBC Utilization Rate from FBC agent 1630000
+13:06:09 >> [FBC] print from fbc io structure 2a20000
+Unknown agent, replycode = c00d
+
+   246s% ?
+
+        THE ALTERNATIVES AT THIS POINT ARE:
+ clear          (Clearing commands)
+ search         (Searching commands)
+ watch          (Watch commands)
+ kill           (Destroy Process)
+ logout         (Logout from Diagnostic Station)
+ modify         (Modifying command)
+ print          (Printing commands)
+ reset         (Reset station)
+ set            (Stting commands)
+ togglemode     (Switch to Application mode)
+ systemmode     (Switch to System mode)
+ applmode       (Switch to Application mode)
+ systemtest     (Misc system test commands)
+ disconnect     (Disconnect network connection)
+ lock           (Lock session)
+ unlock         (Unlock session)
+ updat         (Update commands)
+ user           (Uer commands)
+ capture        (Start/stop captue)
+ script         (Start/stop script)
+ sleep          (sleep)
+ echo           (control echo)
+ cmd            (menu control)
+ syscall        (OS system() command)
+ node           (Node related commands)
+ rem            (comment line for scripts)
+ <CR>
+
+   246s% ? print from fb io structure 1630000
+
+        Getting FBC Utilization Rate from FBC agent 1630000

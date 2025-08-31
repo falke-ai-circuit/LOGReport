@@ -2,6 +2,10 @@
 Node: AP01r
 Token: 363
 Type: RPC
-Created: 2025-07-04 19:55:03
+Created: 2025-08-05 13:01:42
 ====================
 
+13:01:45 >> [RPC] print from fbc rupi counters 3630000
+Command returned error response: int from fbc rupi counters 3630000
+
+        Getting FIELD BUS error counters from RUPI(8344) from FBC agent 3630000

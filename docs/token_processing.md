@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the implementation of sequential token processing for FBC/RPC services in the LOGReporter application. The implementation ensures that tokens are processed one at a time with proper completion-based chaining and safety mechanisms.
+This document describes the implementation of sequential token processing for FBC/RPC services in the LOGReporter application. The implementation ensures that all token types (FBC, RPC, LOG, LIS) are processed uniformly with proper completion-based chaining and safety mechanisms.
 
 ## Key Features
 
@@ -98,18 +98,19 @@ Processes subgroup tokens with circuit breaker:
   - Protocol
   - Batch ID
 
-## FBC Token Detection
+## Token Detection
 
 ### Overview
 
-The NodeManager.scan_log_files method is responsible for detecting and mapping log files to FBC tokens. Recent improvements have been made to correctly identify all FBC tokens in node-specific directories.
+The NodeManager.scan_log_files method is responsible for detecting and mapping log files to tokens. Recent improvements have been made to correctly identify all token types (FBC, RPC, LOG, LIS) in node-specific directories with a unified approach. The implementation ensures that all token types are processed uniformly.
 
 ### Key Improvements
 
-#### 1. Token Classification Logic
-- For .log files, the method now checks the filename content to determine the token type
-- Files with pattern `XXX_FBC.log`, `XXX_RPC.log`, etc. are correctly classified based on the suffix
-- This prevents misclassification of FBC files as LOG type
+#### 1. Uniform Token Classification Logic
+- For all file types (.log, .fbc, .rpc, .lis), the method now checks the filename content to determine the token type
+- Files are classified based on their filename patterns (e.g., `XXX_FBC.log`, `XXX_RPC.log`, `XXX.fbc`, `XXX.rpc`)
+- This ensures consistent handling of all token types regardless of file extension
+- All token types (FBC, RPC, LOG, LIS) are processed using the same logic
 
 #### 2. Node Name Extraction
 - For node-specific files in node directories, the directory name is used as the node name
@@ -120,31 +121,50 @@ The NodeManager.scan_log_files method is responsible for detecting and mapping l
 - Improved extraction of token IDs from filenames with multiple underscores
 - For files with pattern `XXX_FBC.log`, the token ID is correctly extracted as `XXX`
 - Proper normalization of numeric token IDs to 3-digit format for FBC tokens
+- Token ID extraction logic has been updated to properly handle each file type based on their specific filename patterns
+
+#### 4. Token ID Normalization
+- For FBC tokens, numeric IDs are padded to 3 digits (e.g., "162" remains "162", "16" becomes "016")
+- For FBC tokens, alphanumeric IDs are converted to uppercase (e.g., "163a" becomes "163A")
+- For non-FBC tokens, only whitespace is stripped
+
+#### 5. Dynamic IP Discovery
+- Scans log directory names and filenames for IP patterns using regex
+- Pattern: `(\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3})` (e.g., "192-168-0-11")
+- Updates token objects with discovered IP addresses when tokens don't already have a valid IP
 
 ### Implementation Details
 
 The scan_log_files method processes files in the following way:
 
-1. For .log files:
-   - Extract token type from filename pattern (e.g., `162_FBC.log` → FBC)
+1. For all file types:
+   - Extract token type from filename pattern or parent directory
    - Use directory name as node name when available
-   - Extract token ID from the first part of the filename
+   - Extract token ID using appropriate pattern matching for each token type
 
-2. For .fbc, .rpc, .lis files:
-   - Use existing directory structure logic
-   - Token type is determined by parent directory
-   - Node name is extracted from directory name
+2. Token matching strategies (in order of precedence):
+   - Case-insensitive exact token ID and type match
+   - Case-insensitive token ID and type match (substring)
+   - Case-insensitive exact token ID match (only if no token of this type exists)
+   - Token ID contains match (only if no token of this type exists)
 
-3. Token matching:
-   - First attempts exact token ID match
-   - Falls back to substring matching
-   - Uses alphanumeric similarity for closest match
+3. Token matching logic has been updated to be more specific about token types, ensuring tokens are matched by both token ID AND token type rather than just token ID
+
+3. Token creation for unmatched files:
+   - When a file is found but no matching token exists, a new token representation is created
+   - The token is added to the node automatically
+   - Original token ID case is preserved for FBC files
+
+4. Unified handling of all token types:
+   - All token types (FBC, RPC, LOG, LIS) are processed using the same logic
+   - Token type is always determined from the filename or directory structure
+   - Distance-based matching logic has been removed for improved accuracy
 
 ### Configuration Requirements
 
 #### Node Configuration (nodes_test.json)
 
-For proper FBC token detection, the node configuration file must include all expected tokens with their correct types. For example, the AP01m node configuration should include:
+For proper token detection, the node configuration file must include all expected tokens with their correct types. For example, the AP01m node configuration should include:
 
 ```json
 [
@@ -176,10 +196,12 @@ For proper FBC token detection, the node configuration file must include all exp
 ```
 
 Important notes:
-- All FBC tokens (162, 163, 164) must be explicitly listed with `token_type` set to "FBC"
+- All tokens (162, 163, 164) must be explicitly listed with their correct `token_type` (FBC, RPC, LOG, LIS)
 - The IP address must match the actual node IP address
 - Port and protocol should be set according to the node's configuration
 - Missing or incorrectly typed tokens may not be detected properly during scanning
+- The node configuration file must include all expected tokens with their correct types
+- The token type is always determined from the filename or directory structure
 
 ### Example
 
@@ -192,7 +214,7 @@ test_logs/
     └── 164_FBC.log
 ```
 
-All three FBC tokens (162, 163, 164) are correctly detected and mapped to the AP01m node.
+All three tokens (162, 163, 164) are correctly detected and mapped to the AP01m node.
 
 ## Usage Examples
 

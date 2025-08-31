@@ -1,0 +1,11 @@
+=== COMMANDER LOG ===
+Node: AP02m
+Token: 182
+Type: RPC
+Created: 2025-08-05 13:08:48
+====================
+
+13:08:51 >> [RPC] print from fbc rupi counters 1820000
+Command returned error response: int from fbc rupi counters 1820000
+
+        Getting FIELD BUS error counters from RUPI(8344) from FBC agent 1820000

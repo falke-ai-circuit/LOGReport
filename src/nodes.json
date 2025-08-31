@@ -11,22 +11,16 @@
             },
             {
                 "token_id": "163",
-                "token_type": "VNC",
+                "token_type": "FBC",
                 "port": 5901,
-                "protocol": "vnc"
+                "protocol": "telnet"
             },
             {
                 "token_id": "164",
-                "token_type": "RPC",
+                "token_type": "FBC",
                 "port": 2077,
                 "protocol": "telnet"
             },
-            {
-                "token_id": "162",
-                "token_type": "RPC",
-                "port": 2077,
-                "protocol": "telnet"
-            }
         ]
     },
     {

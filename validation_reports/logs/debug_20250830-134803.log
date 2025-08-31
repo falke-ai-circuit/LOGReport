@@ -1,0 +1,3 @@
+Usage:
+  GUI Mode: python main.py [--gui]  (--gui optional for GUI mode)
+  CLI Mode: python main.py <input_dir> <output.pdf>

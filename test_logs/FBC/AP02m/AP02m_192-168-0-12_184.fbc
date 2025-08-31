@@ -1,0 +1,11 @@
+=== COMMANDER LOG ===
+Node: AP02m
+Token: 184
+Type: FBC
+Created: 2025-08-05 13:09:36
+====================
+
+13:09:39 >> [FBC] print from fbc io structure 1840000
+int from fbc io structure 1840000
+
+        Getting FBC Utilization Rate from FBC agent 1840000
