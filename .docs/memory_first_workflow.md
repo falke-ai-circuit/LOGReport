@@ -1,53 +1,51 @@
-# Dual Memory Consolidation Workflow
+# MCP Session Process Workflow
 
-This document outlines the standardized process for managing and consolidating knowledge within both project-specific and global memory systems. This workflow ensures that insights are properly captured, validated, and shared across contexts.
+This document outlines the standardized session process for managing and consolidating knowledge within both project-specific and global memory systems. This workflow ensures that insights are properly captured, validated, and shared across contexts following the SESSION PROCESS structure.
 
 ## Overview
 
-The Dual Memory Consolidation Workflow is a structured approach to knowledge management that leverages both local project memory and global cross-project memory. This system enables teams to maintain project-specific details while promoting reusable patterns and best practices across the organization.
+The MCP Session Process Workflow is a structured approach to knowledge management that leverages both local project memory and global cross-project memory. This system enables teams to maintain project-specific details while promoting reusable patterns and best practices across the organization.
 
-## Workflow Steps
+## Session Process Steps
 
-### 1. Context Recall
-Begin every task by loading relevant memory contexts:
-- Use `project_memory` tools to load project-local knowledge
-- Use `global_memory` tools to load cross-project insights
-- Scope all operations under the current mode's user identity (e.g., `document_user` for Document mode)
+### 0. SESSION_START
+Begin every session by loading memory systems:
+- Use `project_memory` tools to load project-local knowledge and previous patterns
+- Use `global_memory` tools to load cross-project insights and solutions
+- Initialize task tracking and workflow state using `meta-mind`
+- Scope all operations under the current mode's user identity
 
-### 2. Knowledge Tracking
-During task execution, record new insights:
-- Document structural inferences, behaviors, and naming decisions
-- Use `project_memory` for project-specific knowledge
-- Use `global_memory` for reusable abstractions and cross-project patterns
+### 1. CONTEXT_PHASE
+Understand current environment and read documentation:
+- Assess work environment internally using `sequential_thinking` | `meta-mind`
+- Read project documentation for comprehensive context using `deepwiki`
+- Load project context and understand current state
+- Create initial CEPH structure for analysis delegation
 
-### 3. Dependency Resolution
-Trace upstream/downstream implications:
-- Use `code-graph-mcp` server tools to generate formal code dependency and call graphs
-- Respect modular boundaries and interface contracts
-- Validate architectural assumptions against existing patterns
+### 2. RESEARCH_PHASE (when needed)
+Investigate external sources for additional information:
+- Use `firecrawl_mcp` to explore community-backed solutions and external sources
+- Search GitHub, Reddit, and technical forums for similar implementations
+- Use `deepwiki` for pattern comparison and knowledge validation
+- Access authoritative documentation using external research tools
+- Validate proposed solutions against industry norms
 
-### 4. Sequential Reasoning
-Plan complex tasks using structured thinking:
-- Use `sequential_thinking` MCP server to break down steps
+### 3. PLANNING_PHASE
+Create systematic strategy informed by context and research:
+- Use `sequential_thinking` MCP server to break down steps systematically
+- Design coordination strategy using `meta-mind`
+- Plan complex tasks using structured thinking approaches
 - Forecast risks and identify potential failure points
 - Validate assumptions before implementation
 
-### 5. External Validation
-Leverage community knowledge:
-- Use `firecrawl_mcp` to explore community-backed solutions
-- Search GitHub, Reddit, and technical forums for similar implementations
-- Validate proposed solutions against industry norms
-
-### 6. Official Sources
-Access authoritative documentation:
-- Use `context7` MCP server to retrieve accurate syntax and API definitions
-- Verify implementation details against official specifications
-- Document sources for future reference
-
-### 7. Final Consolidation
-At task completion:
-- Update `project_memory` with task-specific outcomes
-- Persist generalized patterns to `global_memory`
+### 4. EXECUTION_PHASE
+Apply step-by-step reasoning and execute the plan:
+- Use `sequential_thinking` for complex problem solving and reasoning
+- Delegate to specialists with CEPH+ understanding using `new_task(mode="specialist")`
+- Handle specialist BLOCKERS and coordination using `meta-mind`
+- Use `mcp-code-graph` for code structure analysis and dependency mapping
+- Perform runtime observation and iterative testing
+- Execute targeted implementation and change management
 - Ensure all updates reflect final outcomes and are scoped under the mode's user identity
 
 ## Best Practices

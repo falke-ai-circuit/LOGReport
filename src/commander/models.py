@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List
 
 
 @dataclass
@@ -28,8 +28,17 @@ class Node:
     name: str
     ip_address: str
     status: str = "offline"
-    tokens: Dict[str, NodeToken] = field(default_factory=dict)
+    tokens: Dict[str, List[NodeToken]] = field(default_factory=dict)
 
     def add_token(self, token: NodeToken):
-        self.tokens[token.token_id] = token
+        if token.token_id not in self.tokens:
+            self.tokens[token.token_id] = []
+        # Check if a token of the same type already exists
+        for i, existing_token in enumerate(self.tokens[token.token_id]):
+            if existing_token.token_type == token.token_type:
+                # Replace the existing token of the same type
+                self.tokens[token.token_id][i] = token
+                return
+        # Add the new token
+        self.tokens[token.token_id].append(token)
 

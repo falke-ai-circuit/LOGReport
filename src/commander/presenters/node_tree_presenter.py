@@ -367,7 +367,11 @@ class NodeTreePresenter(QObject):
                 return
                 
             # Find all FBC tokens in the node
-            tokens = [t for t in node.tokens.values() if t.token_type == "FBC"]                
+            # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
+            all_tokens = []
+            for token_list in node.tokens.values():
+                all_tokens.extend(token_list)
+            tokens = [t for t in all_tokens if t.token_type == "FBC"]
         if not tokens:
             self.status_message_signal.emit(f"No FBC tokens found in node {node_name}", 3000)
             return
@@ -416,7 +420,11 @@ class NodeTreePresenter(QObject):
                 return
                 
             # Find all RPC tokens in the node
-            tokens = [t for t in node.tokens.values() if t.token_type == "RPC"]                
+            # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
+            all_tokens = []
+            for token_list in node.tokens.values():
+                all_tokens.extend(token_list)
+            tokens = [t for t in all_tokens if t.token_type == "RPC"]
         if not tokens:
             self.status_message_signal.emit(f"No RPC tokens found in node {node_name}", 3000)
             return

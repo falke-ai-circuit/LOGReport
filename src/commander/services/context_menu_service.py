@@ -305,7 +305,11 @@ class ContextMenuService:
 
         # Use consistent token type normalization
         normalized_token_type = token_type.upper()
-        return [t for t in node.tokens.values() if t.token_type == normalized_token_type]
+        # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
+        all_tokens = []
+        for token_list in node.tokens.values():
+            all_tokens.extend(token_list)
+        return [t for t in all_tokens if t.token_type == normalized_token_type]
 
     def validate_node_structure(self, item_data: Dict[str, Any]) -> Optional[str]:
         """

@@ -466,57 +466,77 @@ class NodeManager:
                 
                 # Strategy 1: Case-insensitive exact token ID and type match
                 if token_id_candidate:
-                    token = next(
-                        (t for t in matched_node.tokens.values()
-                         if t.token_id.lower() == token_id_candidate.lower() and t.token_type.upper() == token_type_dir.upper()),
-                        None
-                    )
-                    if token:
-                        matching_strategy = "extracted token ID and type match"
+                    # Look for a token with the same ID and type
+                    for token_list in matched_node.tokens.values():
+                        for t in token_list:
+                            if t.token_id.lower() == token_id_candidate.lower() and t.token_type.upper() == token_type_dir.upper():
+                                token = t
+                                matching_strategy = "extracted token ID and type match"
+                                break
+                        if token:
+                            break
                 
                 # Strategy 2: Case-insensitive token ID and type match (fallback)
                 if not token and token_id_candidate:
-                    for t in matched_node.tokens.values():
-                        if (token_id_candidate.lower() in t.token_id.lower() and
-                            t.token_type.upper() == token_type_dir.upper()):
-                            token = t
-                            matching_strategy = "token ID and type match"
+                    for token_list in matched_node.tokens.values():
+                        for t in token_list:
+                            if (token_id_candidate.lower() in t.token_id.lower() and
+                                t.token_type.upper() == token_type_dir.upper()):
+                                token = t
+                                matching_strategy = "token ID and type match"
+                                break
+                        if token:
                             break
                 
                 # Strategy 3: Case-insensitive exact token ID match (only if no token of this type exists)
                 if not token and token_id_candidate:
                     # Check if there's already a token of this type
-                    same_type_tokens = [t for t in matched_node.tokens.values()
-                                      if t.token_type.upper() == token_type_dir.upper()]
+                    same_type_tokens = []
+                    for token_list in matched_node.tokens.values():
+                        for t in token_list:
+                            if t.token_type.upper() == token_type_dir.upper():
+                                same_type_tokens.append(t)
                     if not same_type_tokens:
-                        token = next(
-                            (t for t in matched_node.tokens.values()
-                             if t.token_id.lower() == token_id_candidate.lower()),
-                            None
-                        )
-                        if token:
-                            matching_strategy = "exact token ID match (different type)"
+                        # Look for a token with the same ID but different type
+                        for token_list in matched_node.tokens.values():
+                            for t in token_list:
+                                if t.token_id.lower() == token_id_candidate.lower():
+                                    token = t
+                                    matching_strategy = "exact token ID match (different type)"
+                                    break
+                            if token:
+                                break
                 
                 # Strategy 4: Token ID contains match (only if no token of this type exists)
                 if not token and token_id_candidate:
                     # Check if there's already a token of this type
-                    same_type_tokens = [t for t in matched_node.tokens.values()
-                                      if t.token_type.upper() == token_type_dir.upper()]
+                    same_type_tokens = []
+                    for token_list in matched_node.tokens.values():
+                        for t in token_list:
+                            if t.token_type.upper() == token_type_dir.upper():
+                                same_type_tokens.append(t)
                     if not same_type_tokens:
-                        for t in matched_node.tokens.values():
-                            if token_id_candidate.lower() in t.token_id.lower():
-                                token = t
-                                matching_strategy = "token ID contains match (different type)"
+                        # Look for a token whose ID contains the candidate ID
+                        for token_list in matched_node.tokens.values():
+                            for t in token_list:
+                                if token_id_candidate.lower() in t.token_id.lower():
+                                    token = t
+                                    matching_strategy = "token ID contains match (different type)"
+                                    break
+                            if token:
                                 break
                 
                 # For all token types, create token representation and add to node if not found
                 # or if there's no token of this specific type yet
-                same_type_token = next(
-                    (t for t in matched_node.tokens.values()
-                     if t.token_id.lower() == (token_id_candidate or "UNKNOWN").lower() and
-                        t.token_type.upper() == token_type_dir.upper()),
-                    None
-                )
+                same_type_token = None
+                if token_id_candidate:
+                    for token_list in matched_node.tokens.values():
+                        for t in token_list:
+                            if t.token_id.lower() == token_id_candidate.lower() and t.token_type.upper() == token_type_dir.upper():
+                                same_type_token = t
+                                break
+                        if same_type_token:
+                            break
                 
                 if not same_type_token and token_type_dir in token_types:
                     token = NodeToken(
@@ -534,14 +554,25 @@ class NodeManager:
                     token.log_path = normalized_path
                     
                     # Ensure token is added to node if not already present
-                    if token.token_id not in matched_node.tokens:
+                    # Check if a token of the same type already exists
+                    token_exists = False
+                    if token.token_id in matched_node.tokens:
+                        for existing_token in matched_node.tokens[token.token_id]:
+                            if existing_token.token_type == token.token_type:
+                                token_exists = True
+                                break
+                    if not token_exists:
                         matched_node.add_token(token)
                         print(f"[DEBUG] ADDED token to node: {token.token_id} ({token.token_type})")
                     
                     print(f"[DEBUG] SUCCESS: Mapped log file | Node: {node_name} | Token: {token.token_id} | Strategy: {matching_strategy} | Path: {normalized_path}")
                 else:
                     print(f"[DEBUG] WARNING: Could not find matching token for: {filename} in node: {node_name}")
-                    print(f"[DEBUG] Available tokens: {[t.token_id for t in matched_node.tokens.values()]}")
+                    # Flatten the token lists to get individual tokens
+                    all_tokens = []
+                    for token_list in matched_node.tokens.values():
+                        all_tokens.extend(token_list)
+                    print(f"[DEBUG] Available tokens: {[t.token_id for t in all_tokens]}")
                     print(f"[DEBUG] Token ID candidate: {token_id_candidate}")
     def _generate_log_path(self, node_name: str, token_id: str, log_type: str, ip_address: str) -> str:
         """Generates standardized log path with formatted IP"""
@@ -603,11 +634,12 @@ class NodeManager:
         """
         print(f"[DEBUG] Updating tokens with IP: {ip_address}")
         for node in self.nodes.values():
-            for token in node.tokens.values():
-                # Only update tokens without a valid IP address
-                if not token.ip_address or token.ip_address == "0.0.0.0":
-                    print(f"[DEBUG] Updating token {token.token_id} with IP {ip_address}")
-                    token.ip_address = ip_address
+            for token_list in node.tokens.values():
+                for token in token_list:
+                    # Only update tokens without a valid IP address
+                    if not token.ip_address or token.ip_address == "0.0.0.0":
+                        print(f"[DEBUG] Updating token {token.token_id} with IP {ip_address}")
+                        token.ip_address = ip_address
     
     def get_node(self, node_name: str) -> Optional[Node]:
         """Retrieves node by name"""
@@ -618,14 +650,20 @@ class NodeManager:
         if node := self.nodes.get(node_name):
             # Normalize token ID by stripping and converting to string
             normalized_id = str(token_id).strip()
-            return node.tokens.get(normalized_id)
+            # Return the first token with this ID (if any)
+            token_list = node.tokens.get(normalized_id)
+            if token_list and len(token_list) > 0:
+                return token_list[0]
         return None
         
     def get_node_by_token(self, token: NodeToken) -> Optional[Node]:
         """Finds the node that owns a given token"""
         for node in self.nodes.values():
             if token.token_id in node.tokens:
-                return node
+                # Check if any token in the list has the same type
+                for node_token in node.tokens[token.token_id]:
+                    if node_token.token_type == token.token_type:
+                        return node
         return None
         
     def update_status(self, node_name: str, status: str):
@@ -677,15 +715,16 @@ class NodeManager:
                 "tokens": []
             }
             
-            for token in node.tokens.values():
-                token_data = {
-                    "token_id": token.token_id,  # Already normalized when created
-                    "token_type": token.token_type,
-                    "ip_address": token.ip_address,
-                    "port": token.port,
-                    "protocol": token.protocol
-                }
-                node_data["tokens"].append(token_data)
+            for token_list in node.tokens.values():
+                for token in token_list:
+                    token_data = {
+                        "token_id": token.token_id,  # Already normalized when created
+                        "token_type": token.token_type,
+                        "ip_address": token.ip_address,
+                        "port": token.port,
+                        "protocol": token.protocol
+                    }
+                    node_data["tokens"].append(token_data)
                 
             config_data.append(node_data)
             
@@ -713,5 +752,9 @@ class NodeManager:
         """Get all tokens of specified type for selected node"""
         if not self.selected_node:
             return []
-        return [t for t in self.selected_node.tokens.values()
-                if t.token_type == token_type.upper()]
+        result = []
+        for token_list in self.selected_node.tokens.values():
+            for t in token_list:
+                if t.token_type == token_type.upper():
+                    result.append(t)
+        return result

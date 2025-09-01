@@ -4,6 +4,8 @@
 
 This document describes the implementation of sequential token processing for FBC/RPC services in the LOGReporter application. The implementation ensures that all token types (FBC, RPC, LOG, LIS) are processed uniformly with proper completion-based chaining and safety mechanisms.
 
+The Node class stores tokens as a dictionary of lists (`Dict[str, List[NodeToken]]`) to handle multiple tokens with the same ID but different types. This change was implemented to correctly handle cases where FBC and RPC tokens share the same ID, which is common in the system. This approach allows the system to distinguish between different token types that have the same identifier, ensuring accurate token processing and management.
+
 ## Key Features
 
 ### 1. Sequential Processing
@@ -133,6 +135,15 @@ The NodeManager.scan_log_files method is responsible for detecting and mapping l
 - Pattern: `(\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3})` (e.g., "192-168-0-11")
 - Updates token objects with discovered IP addresses when tokens don't already have a valid IP
 
+#### 6. Enhanced Token Matching Logic
+- Token matching logic has been updated to be more specific about token types, ensuring tokens are matched by both token ID AND token type rather than just token ID
+- Multiple matching strategies are used in order of precedence to ensure accurate token identification:
+  - Case-insensitive exact token ID and type match
+  - Case-insensitive token ID and type match (substring)
+  - Case-insensitive exact token ID match (only if no token of this type exists)
+  - Token ID contains match (only if no token of this type exists)
+- This approach correctly handles cases where FBC and RPC tokens share the same ID, which is common in the system
+
 ### Implementation Details
 
 The scan_log_files method processes files in the following way:
@@ -148,17 +159,31 @@ The scan_log_files method processes files in the following way:
    - Case-insensitive exact token ID match (only if no token of this type exists)
    - Token ID contains match (only if no token of this type exists)
 
-3. Token matching logic has been updated to be more specific about token types, ensuring tokens are matched by both token ID AND token type rather than just token ID
+3. Enhanced token matching logic:
+   - Token matching logic has been updated to be more specific about token types, ensuring tokens are matched by both token ID AND token type rather than just token ID
+   - This approach correctly handles cases where FBC and RPC tokens share the same ID, which is common in the system
+   - The system can distinguish between different token types that have the same identifier, ensuring accurate token processing and management
 
-3. Token creation for unmatched files:
+4. Token creation for unmatched files:
    - When a file is found but no matching token exists, a new token representation is created
    - The token is added to the node automatically
    - Original token ID case is preserved for FBC files
 
-4. Unified handling of all token types:
+5. Unified handling of all token types:
    - All token types (FBC, RPC, LOG, LIS) are processed using the same logic
    - Token type is always determined from the filename or directory structure
    - Distance-based matching logic has been removed for improved accuracy
+
+### Token Storage Implementation
+
+The Node class now stores tokens as a dictionary of lists (`Dict[str, List[NodeToken]]`) to handle multiple tokens with the same ID but different types. The `add_token` method in the Node class has been updated to:
+
+1. Store tokens in lists grouped by token ID
+2. Check if a token of the same type already exists for a given ID
+3. Replace existing tokens of the same type rather than adding duplicates
+4. Allow multiple tokens with the same ID but different types to coexist
+
+This implementation ensures that both FBC and RPC tokens with the same ID can be stored and retrieved correctly.
 
 ### Configuration Requirements
 
@@ -189,6 +214,24 @@ For proper token detection, the node configuration file must include all expecte
         "token_type": "FBC",
         "port": 23,
         "protocol": "telnet"
+      },
+      {
+        "token_id": "162",
+        "token_type": "RPC",
+        "port": 23,
+        "protocol": "telnet"
+      },
+      {
+        "token_id": "163",
+        "token_type": "RPC",
+        "port": 23,
+        "protocol": "telnet"
+      },
+      {
+        "token_id": "164",
+        "token_type": "RPC",
+        "port": 23,
+        "protocol": "telnet"
       }
     ]
   }
@@ -202,6 +245,7 @@ Important notes:
 - Missing or incorrectly typed tokens may not be detected properly during scanning
 - The node configuration file must include all expected tokens with their correct types
 - The token type is always determined from the filename or directory structure
+- Both FBC and RPC tokens with the same ID can be configured and will be handled correctly
 
 ### Example
 
@@ -270,6 +314,11 @@ Unit tests verify:
 - Resource cleanup
 - Progress tracking
 - Completion-based chaining
+
+End-to-end tests verify:
+- Correct detection of FBC and RPC tokens with the same ID
+- Proper handling of multiple token types with identical identifiers
+- Accurate mapping of log files to tokens based on both ID and type
 
 ## Performance Considerations
 
