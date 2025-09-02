@@ -168,8 +168,8 @@ class CommanderPresenter(QObject):
             token_id: ID of the token to process
             node_name: Name of the node containing the token
         """
-        # Delegate to FBC service
-        self.fbc_service.queue_fieldbus_command(token_id, node_name)
+        # Delegate to FBC service - note the correct parameter order
+        self.fbc_service.queue_fieldbus_command(node_name, token_id)
     
     def process_rpc_command(self, node_name: str, token_id: str, action_type: str) -> None:
         """
@@ -180,7 +180,7 @@ class CommanderPresenter(QObject):
             token_id: ID of the token to process
             action_type: Type of action to perform (e.g., 'print', 'clear')
         """
-        # Delegate to RPC service
+        # Delegate to RPC service - note the correct parameter order
         self.rpc_service.queue_rpc_command(node_name, token_id, action_type)
     
     def on_node_selected(self, item, current_token) -> None:

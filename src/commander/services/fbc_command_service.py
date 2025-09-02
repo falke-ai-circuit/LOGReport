@@ -71,10 +71,12 @@ class FbcCommandService(QObject):
         # First try to find existing FBC token with matching ID
         token_formats = [token_id, str(int(token_id)) if token_id.isdigit() else token_id]
         for fmt in token_formats:
-            if token := node.tokens.get(fmt):
-                # Only return token if it's an FBC token
-                if token.token_type == "FBC":
-                    return token
+            if token_list := node.tokens.get(fmt):
+                # token_list is a list of NodeToken objects
+                # Find the first FBC token in the list
+                for token in token_list:
+                    if token.token_type == "FBC":
+                        return token
             
         # Create temporary FBC token if not found
         # Extract base node name (before space) for directory path consistency with FBC pattern

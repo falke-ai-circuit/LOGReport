@@ -308,8 +308,25 @@ class ContextMenuService:
         # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
         all_tokens = []
         for token_list in node.tokens.values():
-            all_tokens.extend(token_list)
-        return [t for t in all_tokens if t.token_type == normalized_token_type]
+            # Ensure token_list is actually a list before extending
+            if isinstance(token_list, list):
+                # Only add NodeToken objects to all_tokens
+                for token in token_list:
+                    if isinstance(token, NodeToken):
+                        all_tokens.append(token)
+            else:
+                # If it's not a list but is a NodeToken, add it
+                if isinstance(token_list, NodeToken):
+                    all_tokens.append(token_list)
+        
+        # Filter tokens by type
+        filtered_tokens = []
+        for t in all_tokens:
+            # Check if t is a NodeToken object and has the token_type attribute
+            if hasattr(t, 'token_type') and t.token_type == normalized_token_type:
+                filtered_tokens.append(t)
+        
+        return filtered_tokens
 
     def validate_node_structure(self, item_data: Dict[str, Any]) -> Optional[str]:
         """

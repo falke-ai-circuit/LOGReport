@@ -143,6 +143,7 @@ The NodeManager.scan_log_files method is responsible for detecting and mapping l
   - Case-insensitive exact token ID match (only if no token of this type exists)
   - Token ID contains match (only if no token of this type exists)
 - This approach correctly handles cases where FBC and RPC tokens share the same ID, which is common in the system
+- This enhanced matching logic is verified through comprehensive testing in `tests/commander/test_command_execution.py`, specifically the `test_same_token_id_different_types_command_execution` test case
 
 ### Implementation Details
 
@@ -319,6 +320,12 @@ End-to-end tests verify:
 - Correct detection of FBC and RPC tokens with the same ID
 - Proper handling of multiple token types with identical identifiers
 - Accurate mapping of log files to tokens based on both ID and type
+
+Specific test cases in `tests/commander/test_command_execution.py` verify:
+- Individual FBC command execution with proper command format validation
+- Individual RPC command execution for both print and clear operations
+- Context menu command execution for both FBC and RPC token types
+- Command execution when both FBC and RPC tokens exist with the same token ID, ensuring proper differentiation and handling of each token type through the `test_same_token_id_different_types_command_execution` test case
 
 ## Performance Considerations
 

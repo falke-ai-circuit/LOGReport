@@ -571,7 +571,16 @@ class NodeManager:
                     # Flatten the token lists to get individual tokens
                     all_tokens = []
                     for token_list in matched_node.tokens.values():
-                        all_tokens.extend(token_list)
+                        # Ensure token_list is actually a list before extending
+                        if isinstance(token_list, list):
+                            # Only add NodeToken objects to all_tokens
+                            for token in token_list:
+                                if isinstance(token, NodeToken):
+                                    all_tokens.append(token)
+                        else:
+                            # If it's not a list but is a NodeToken, add it
+                            if isinstance(token_list, NodeToken):
+                                all_tokens.append(token_list)
                     print(f"[DEBUG] Available tokens: {[t.token_id for t in all_tokens]}")
                     print(f"[DEBUG] Token ID candidate: {token_id_candidate}")
     def _generate_log_path(self, node_name: str, token_id: str, log_type: str, ip_address: str) -> str:

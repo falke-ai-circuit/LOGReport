@@ -370,7 +370,16 @@ class NodeTreePresenter(QObject):
             # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
             all_tokens = []
             for token_list in node.tokens.values():
-                all_tokens.extend(token_list)
+                # Ensure token_list is actually a list before extending
+                if isinstance(token_list, list):
+                    # Only add NodeToken objects to all_tokens
+                    for token in token_list:
+                        if isinstance(token, NodeToken):
+                            all_tokens.append(token)
+                else:
+                    # If it's not a list but is a NodeToken, add it
+                    if isinstance(token_list, NodeToken):
+                        all_tokens.append(token_list)
             tokens = [t for t in all_tokens if t.token_type == "FBC"]
         if not tokens:
             self.status_message_signal.emit(f"No FBC tokens found in node {node_name}", 3000)
@@ -423,7 +432,16 @@ class NodeTreePresenter(QObject):
             # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
             all_tokens = []
             for token_list in node.tokens.values():
-                all_tokens.extend(token_list)
+                # Ensure token_list is actually a list before extending
+                if isinstance(token_list, list):
+                    # Only add NodeToken objects to all_tokens
+                    for token in token_list:
+                        if isinstance(token, NodeToken):
+                            all_tokens.append(token)
+                else:
+                    # If it's not a list but is a NodeToken, add it
+                    if isinstance(token_list, NodeToken):
+                        all_tokens.append(token_list)
             tokens = [t for t in all_tokens if t.token_type == "RPC"]
         if not tokens:
             self.status_message_signal.emit(f"No RPC tokens found in node {node_name}", 3000)
