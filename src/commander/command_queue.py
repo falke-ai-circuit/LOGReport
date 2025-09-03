@@ -194,20 +194,9 @@ class CommandQueue(QObject):
         logging.debug(f"CommandQueue.add_command: QueuedCommand object created: {qc}")
         
         # Start processing if queue has commands
-        # Only start processing automatically if we're not already processing
-        with self._processing_lock:
-            if not self._is_processing and len(self.queue) > 0:
-                self._is_processing = True
-                # Release lock before calling start_processing to avoid deadlock
-                pass
-                
         # Always call start_processing to ensure commands get processed
-        # But only if we're not already processing
-        with self._processing_lock:
-            needs_processing = not self._is_processing and len([cmd for cmd in self.queue if cmd.status == 'pending']) > 0
-        
-        if needs_processing:
-            self.start_processing()
+        # The start_processing method will handle the is_processing check
+        self.start_processing()
             
     def start_processing(self):
         """Start processing all commands in the queue"""
@@ -368,7 +357,19 @@ class CommandQueue(QObject):
         
         # If we have pending commands, start processing them
         if pending_commands:
+            # Store the previous processing state
+            with self._processing_lock:
+                was_processing = self._is_processing
+            
             self.start_processing()
+            
+            # Check if processing state was reset during start_processing (e.g., due to errors)
+            # If so, we need to ensure it's properly set for future commands
+            with self._processing_lock:
+                if not self._is_processing and was_processing:
+                    logging.debug("CommandQueue._handle_worker_finished: Processing state was reset during start_processing, ensuring it can be restarted")
+                    # Reset to allow future commands to trigger processing
+                    self._is_processing = False
         elif not active_commands:
             # No more pending or active commands, reset processing state
             with self._processing_lock:

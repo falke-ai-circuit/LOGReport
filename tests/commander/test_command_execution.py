@@ -266,8 +266,6 @@ class TestCommandExecution:
         fbc_service.queue_fieldbus_command("AP01m", "163", telnet_client=mock_telnet_client)
         fbc_service.queue_fieldbus_command("AP01m", "164", telnet_client=mock_telnet_client)
 
-        # Ensure the command queue starts processing
-        command_queue.start_processing()
 
         # Wait for commands to complete (simulate event loop)
         command_queue.thread_pool.waitForDone(5000)  # Wait up to 5 seconds
