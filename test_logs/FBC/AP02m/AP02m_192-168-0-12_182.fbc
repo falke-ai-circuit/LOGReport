@@ -45,3 +45,5 @@ Unknown agent, replycode = c00d
 
    445s% ? 
         Getting FBC Utilization Rate from FBC agent 1820000
+16:00:49 >> [FBC] print from fbc io structure 1820000
+int from fbc io structure 1820000

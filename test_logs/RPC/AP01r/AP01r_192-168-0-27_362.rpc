@@ -9,3 +9,5 @@ Created: 2025-08-05 13:01:19
 Command returned error response: int from fbc rupi counters 3620000
 
         Getting FIELD BUS error counters from RUPI(8344) from FBC agent 3620000
+15:56:08 >> [RPC] print from fbc rupi counters 3620000
+int from fbc rupi counters 3620000

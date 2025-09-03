@@ -42,6 +42,15 @@ class TokenValidator:
                 token = token.upper()
             return token
         
+        # Check for RPC tokens with IP address prefix (e.g., 192-168-0-11_162)
+        rpc_ip_match = re.match(r'^(\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3})_(\d+)$', token)
+        if rpc_ip_match:
+            token_id = rpc_ip_match.group(2) # Extract the numeric token ID
+            # Normalize the extracted token ID (pad with leading zeros to make it 3 digits)
+            if token_id.isdigit() and len(token_id) < 3:
+                token_id = token_id.zfill(3)
+            return token_id
+
         # For non-FBC tokens: convert to lowercase and remove non-alphanumeric
         token = token.lower()
         token = re.sub(r'[^a-z0-9]', '', token)
