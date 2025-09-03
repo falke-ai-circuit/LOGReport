@@ -34,19 +34,39 @@ class TestCommandExecution:
         return manager
     
     @pytest.fixture
-    def command_queue(self):
-        """Create a command queue"""
-        return CommandQueue()
+    def mock_session_manager(self):
+        """Mock SessionManager for CommandQueue"""
+        mock_sm = MagicMock()
+        mock_sm.get_debugger_session.return_value = None
+        mock_sm.get_or_create_session.return_value = MagicMock(is_connected=True, connect=MagicMock())
+        return mock_sm
+
+    @pytest.fixture
+    def command_queue(self, mock_session_manager):
+        """Create a command queue with a mocked session manager"""
+        return CommandQueue(session_manager=mock_session_manager)
     
     @pytest.fixture
-    def log_writer(self):
-        """Create a log writer"""
-        return LogWriter()
+    def mock_log_writer(self):
+        """Mock LogWriter for FbcCommandService"""
+        mock_lw = MagicMock()
+        mock_lw.loggers = {}
+        mock_lw.get_node_log_path.return_value = "/tmp/test.log"
+        mock_lw.open_log.return_value = None
+        return mock_lw
     
     @pytest.fixture
-    def fbc_service(self, node_manager, command_queue, log_writer):
-        """Create an FBC command service"""
-        service = FbcCommandService(node_manager, command_queue, log_writer)
+    def fbc_service(self, node_manager, command_queue, mock_log_writer):
+        """Create an FBC command service with a mocked log writer"""
+        # Create a mock parent with active_telnet_client
+        mock_parent = MagicMock()
+        mock_parent.active_telnet_client = MagicMock()
+        
+        service = FbcCommandService(node_manager, command_queue, mock_log_writer)
+        # Explicitly set log_writer on the service, as it might try to get it from parent
+        service.log_writer = mock_log_writer
+        # Mock the parent if active_telnet_client is accessed
+        service.parent = lambda: mock_parent
         return service
     
     @pytest.fixture
@@ -230,6 +250,47 @@ class TestCommandExecution:
             assert fbc_token is not rpc_token, "FBC and RPC tokens should be different objects"
             assert fbc_token.token_type != rpc_token.token_type, "FBC and RPC tokens should have different types"
 
+    def test_sequential_command_execution(self, node_manager, fbc_service, command_queue):
+        """Test that commands are executed sequentially from the CommandQueue."""
+        node_manager.scan_log_files()
+        node = node_manager.get_node("AP01m")
+        assert node is not None, "AP01m node should exist"
+
+        # Mock the telnet session to avoid actual network calls
+        mock_telnet_client = MagicMock()
+        mock_telnet_client.is_connected = True
+        mock_telnet_client.send_command.side_effect = ["response1", "response2", "response3"]
+
+        # Add multiple commands to the queue
+        fbc_service.queue_fieldbus_command("AP01m", "162", telnet_client=mock_telnet_client)
+        fbc_service.queue_fieldbus_command("AP01m", "163", telnet_client=mock_telnet_client)
+        fbc_service.queue_fieldbus_command("AP01m", "164", telnet_client=mock_telnet_client)
+
+        # Ensure the command queue starts processing
+        command_queue.start_processing()
+
+        # Wait for commands to complete (simulate event loop)
+        command_queue.thread_pool.waitForDone(5000)  # Wait up to 5 seconds
+        
+        # Process any pending Qt events to ensure signals are handled
+        from PyQt6.QtCore import QCoreApplication
+        app = QCoreApplication.instance()
+        if app is None:
+            app = QCoreApplication([])
+        app.processEvents()
+
+        # Assert that send_command was called for each command
+        assert mock_telnet_client.send_command.call_count == 3, "send_command should be called for each command"
+        mock_telnet_client.send_command.assert_has_calls([
+            call("print from fbc io structure 1620000"),
+            call("print from fbc io structure 1630000"),
+            call("print from fbc io structure 1640000")
+        ])
+
+        # Assert that all commands are marked as completed in the queue
+        # The queue should be empty if auto_cleanup is enabled and all commands are processed
+        assert len(command_queue.queue) == 0, "Queue should be empty after cleanup"
+        assert command_queue.completed_count == 3, "All 3 commands should have been completed"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

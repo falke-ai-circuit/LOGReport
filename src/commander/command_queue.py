@@ -35,6 +35,8 @@ class CommandWorker(QRunnable):
         logging.debug(f"CommandWorker.run: Starting execution of command: {self.command}")
         logging.debug(f"CommandWorker.run: Node: {self.token.name} ({self.token.ip_address})")
         logging.debug(f"CommandWorker.run: Token: {self.token.token_id} ({self.token.token_type})")
+        logging.debug(f"CommandWorker.run: Node: {self.token.name} ({self.token.ip_address})")
+        logging.debug(f"CommandWorker.run: Token: {self.token.token_id} ({self.token.token_type})")
         
         try:
             # Enhanced session verification with socket-level checks
@@ -145,8 +147,11 @@ class CommandWorker(QRunnable):
             logging.debug(f"CommandWorker.run: Finished command: {self.command}, success={self.success}")
             # Ensure result is a string for signal emission
             result_str = str(self.result) if self.result is not None else ""
+            logging.debug(f"CommandWorker.run: Emitting finished signal for command: {self.command}")
             self.signals.finished.emit(self, result_str)
+            logging.debug(f"CommandWorker.run: Emitting command_completed signal for command: {self.command}")
             self.signals.command_completed.emit(self.command, result_str, self.success, self.token)
+            logging.debug(f"CommandWorker.run: Done emitting signals for command: {self.command}")
 
 class CommandQueue(QObject):
     command_completed = pyqtSignal(str, str, bool, object)  # command, result, success, token
@@ -189,15 +194,33 @@ class CommandQueue(QObject):
         logging.debug(f"CommandQueue.add_command: QueuedCommand object created: {qc}")
         
         # Start processing if queue has commands
-        if len(self.queue) > 0:
+        # Only start processing automatically if we're not already processing
+        with self._processing_lock:
+            if not self._is_processing and len(self.queue) > 0:
+                self._is_processing = True
+                # Release lock before calling start_processing to avoid deadlock
+                pass
+                
+        # Always call start_processing to ensure commands get processed
+        # But only if we're not already processing
+        with self._processing_lock:
+            needs_processing = not self._is_processing and len([cmd for cmd in self.queue if cmd.status == 'pending']) > 0
+        
+        if needs_processing:
             self.start_processing()
             
     def start_processing(self):
         """Start processing all commands in the queue"""
+        logging.debug(f"CommandQueue.start_processing: Called with {len(self.queue)} commands in queue")
+        # Check if we're already processing commands
         with self._processing_lock:
-            if self._is_processing:
-                logging.debug("CommandQueue.start_processing: Already processing commands, ignoring request")
+            if self._is_processing and len([cmd for cmd in self.queue if cmd.status == 'pending']) == 0:
+                logging.debug("CommandQueue.start_processing: Already processing commands with no pending commands, ignoring request")
                 return
+            elif self._is_processing:
+                logging.debug("CommandQueue.start_processing: Already processing but have pending commands, continuing")
+                # Continue processing pending commands
+                pass
                 
             if not self.session_manager:
                 logging.error("CommandQueue.start_processing: No session_manager available - cannot process commands")
@@ -208,6 +231,7 @@ class CommandQueue(QObject):
             
         logging.debug(f"CommandQueue.start_processing: Queue contents: {[qc.command for qc in self.queue]}")
         logging.debug(f"CommandQueue.start_processing: Thread pool status - active threads: {self.thread_pool.activeThreadCount()}, max threads: {self.thread_pool.maxThreadCount()}")
+        logging.debug(f"CommandQueue.start_processing: Session manager available: {self.session_manager is not None}")
         
         self.completed_count = 0
         # Only process pending commands
@@ -232,7 +256,7 @@ class CommandQueue(QObject):
                 telnet_session = item.telnet_client
                 logging.debug(f"CommandQueue.start_processing: Using provided telnet client for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
                 # Add debug log about client reuse
-                if telnet_session == self.parent().active_telnet_client:
+                if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'active_telnet_client') and telnet_session == self.parent.active_telnet_client:
                     logging.debug("CommandQueue.start_processing: Reusing active manual Telnet connection")
             else:
                 # Check for active debugger session first
@@ -273,12 +297,20 @@ class CommandQueue(QObject):
             worker = CommandWorker(item.command, item.token, telnet_session)
             logging.debug(f"CommandQueue.start_processing: Created worker for command {idx+1}/{total}: {item.command} (token {item.token.token_id})")
             worker.setAutoDelete(True)
-            worker.signals.finished.connect(lambda w=worker: self._handle_worker_finished(w))
+            # Connect the finished signal properly
+            worker.signals.finished.connect(self._handle_worker_finished)
+            logging.debug(f"CommandQueue.start_processing: Starting worker {idx+1}/{total}")
             self.thread_pool.start(worker)
             logging.debug(f"CommandQueue.start_processing: Started worker for command {idx+1}/{total}")
         
+        # If we have commands to process, ensure we're in processing state
+        if pending_commands:
+            with self._processing_lock:
+                self._is_processing = True
+        
     def _handle_worker_finished(self, worker: CommandWorker):
         """Handle completion of a worker thread"""
+        logging.debug(f"CommandQueue._handle_worker_finished: Worker finished for command: {worker.command}")
         self.completed_count += 1
         success = worker.success
         command = worker.command
@@ -330,21 +362,20 @@ class CommandQueue(QObject):
         # Check if all commands are completed (either successfully or failed) and reset processing state if so
         active_commands = [cmd for cmd in self.queue if cmd.status in ['pending', 'processing']]
         logging.debug(f"CommandQueue._handle_worker_finished: Checking processing state - active commands: {len(active_commands)}, total in queue: {len(self.queue)}")
-        if not active_commands:
-            logging.info("CommandQueue._handle_worker_finished: All commands processed")
-            # Reset processing state
-            with self._processing_lock:
-                self._is_processing = False
-                logging.info("CommandQueue._handle_worker_finished: Reset processing state to idle (state locked)")
-        else:
-            logging.debug(f"CommandQueue._handle_worker_finished: Still have {len(active_commands)} active commands, keeping processing state")
         
-        # Auto-continue processing if pending commands remain - atomic check with state lock
-        with self._processing_lock:
-            pending_commands = [cmd for cmd in self.queue if cmd.status == 'pending']
-            if pending_commands and not self._is_processing:
-                logging.debug(f"CommandQueue._handle_worker_finished: Found {len(pending_commands)} pending commands, triggering processing")
-                self.start_processing()
+        # Check if there are pending commands that need to be processed
+        pending_commands = [cmd for cmd in self.queue if cmd.status == 'pending']
+        
+        # If we have pending commands, start processing them
+        if pending_commands:
+            self.start_processing()
+        elif not active_commands:
+            # No more pending or active commands, reset processing state
+            with self._processing_lock:
+                if self._is_processing:
+                    logging.info("CommandQueue._handle_worker_finished: All commands processed")
+                    self._is_processing = False
+                    logging.info("CommandQueue._handle_worker_finished: Reset processing state to idle (state locked)")
                 
     def validate_token(self, token: NodeToken) -> bool:
         """Validate token has required fields"""

@@ -28,7 +28,12 @@ class TestRpcTokenDetection:
         assert node is not None, "AP01m node should exist"
 
         # Check that all RPC tokens are detected
-        rpc_tokens = [t for t in node.tokens.values() if t.token_type == "RPC"]
+        # Flatten the token lists and filter for RPC tokens
+        rpc_tokens = []
+        for token_list in node.tokens.values():
+            for token in token_list:
+                if token.token_type == "RPC":
+                    rpc_tokens.append(token)
         token_ids = [t.token_id for t in rpc_tokens]
 
         # Verify all three RPC tokens are present

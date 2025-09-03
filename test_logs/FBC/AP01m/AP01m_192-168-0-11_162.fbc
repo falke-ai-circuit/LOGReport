@@ -1,11 +1,2 @@
-=== COMMANDER LOG ===
-Node: AP01m
-Token: 162
-Type: FBC
-Created: 2025-09-02 09:02:04
-====================
-
-09:02:07 >> [FBC] print from fbc io structure 1620000
-int from fbc io structure 1620000
-09:04:21 >> [FBC] print from fbc io structure 1620000
+19:15:46 >> [FBC] print from fbc io structure 1620000
 int from fbc io structure 1620000

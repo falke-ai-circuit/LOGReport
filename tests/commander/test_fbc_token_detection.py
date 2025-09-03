@@ -51,7 +51,12 @@ class TestFbcTokenDetection:
         assert node is not None, "AP01m node should exist"
         
         # Check that all FBC tokens are detected
-        fbc_tokens = [t for t in node.tokens.values() if t.token_type == "FBC"]
+        # Flatten the token lists and filter for FBC tokens
+        fbc_tokens = []
+        for token_list in node.tokens.values():
+            for token in token_list:
+                if token.token_type == "FBC":
+                    fbc_tokens.append(token)
         token_ids = [t.token_id for t in fbc_tokens]
         
         # Verify all three FBC tokens are present
@@ -78,7 +83,12 @@ class TestFbcTokenDetection:
         assert node is not None, "AP01m node should exist"
         
         # Get FBC tokens
-        fbc_tokens = [t for t in node.tokens.values() if t.token_type == "FBC"]
+        # Flatten the token lists and filter for FBC tokens
+        fbc_tokens = []
+        for token_list in node.tokens.values():
+            for token in token_list:
+                if token.token_type == "FBC":
+                    fbc_tokens.append(token)
         assert len(fbc_tokens) >= 3, "Should have at least 3 FBC tokens"
         
         # Mock command queue to capture commands

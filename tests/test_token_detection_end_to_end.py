@@ -63,7 +63,11 @@ def test_token_extraction(log_path, expected_tokens):
             f"Node {node_name} should not exist for file {filename}"
     else:
         # Verify token exists in node
-        token_exists = token_id in {t.token_id for t in node.tokens.values()}
+        # Flatten the token lists and check if token exists
+        all_tokens = []
+        for token_list in node.tokens.values():
+            all_tokens.extend(token_list)
+        token_exists = token_id in {t.token_id for t in all_tokens}
         assert token_exists, \
             f"Token {token_id} not found in node {node_name} for file {filename}"
 
@@ -89,6 +93,10 @@ def test_all_token_scenarios():
                 f"Node {node_name} should not exist for file {filename}"
         else:
             # Verify token exists in node
-            token_exists = token_id in {t.token_id for t in node.tokens.values()}
+            # Flatten the token lists and check if token exists
+            all_tokens = []
+            for token_list in node.tokens.values():
+                all_tokens.extend(token_list)
+            token_exists = token_id in {t.token_id for t in all_tokens}
             assert token_exists, \
                 f"Token {token_id} not found in node {node_name} for file {filename}"
