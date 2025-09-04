@@ -112,25 +112,6 @@ class ContextMenuService:
                 menu.addAction(print_action)
                 added_actions = True
 
-                # Add individual token actions for FBC subgroups
-                if section_type == "FBC":
-                    logging.debug(f"Adding individual FBC token actions for {len(tokens)} tokens")
-                    for token in tokens:
-                        if self.context_menu_filter.should_show_command(
-                            node_name=node_name,
-                            section_type=section_type,
-                            command_type="all",
-                            command_category="token"
-                        ):
-                            token_str = str(token.token_id)
-                            logging.debug(f"Adding individual FBC token action for token {token_str}")
-                            action = QAction(f"Print FieldBus Structure (Token {token_str})", menu)
-                            action.triggered.connect(
-                                lambda _, n=node_name, t=token.token_id: self._handle_fbc_token_action(n, t)
-                            )
-                            menu.addAction(action)
-                            added_actions = True
-                    logging.debug(f"Added {len([a for a in menu.actions() if 'Token' in a.text()])} individual FBC token actions")
 
         # Handle token items (individual token files)
         elif item_data and isinstance(item_data, dict) and 'token' in item_data:

@@ -1,13 +1,17 @@
 import os
+import sys
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
-from PyQt6.QtCore import Qt, QPoint
+from unittest.mock import MagicMock, patch
+from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QMenu, QApplication
 
-from src.commander.ui.node_tree_view import NodeTreeView
-from src.commander.presenters.node_tree_presenter import NodeTreePresenter
-from src.commander.services.context_menu_service import ContextMenuService
-from src.commander.models import Node, NodeToken
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+
+from commander.services.context_menu_service import ContextMenuService
+from commander.models import NodeToken
+from commander.services.context_menu_filter import ContextMenuFilterService
+from commander.node_manager import NodeManager
 
 # Initialize QApplication once for all tests
 @pytest.fixture(scope="session")
@@ -19,104 +23,63 @@ def qapp():
     # Don't exit the app to avoid crashes
 
 @pytest.fixture
-def mock_context_menu_service():
-    return MagicMock(spec=ContextMenuService)
+def mock_node_manager():
+    return MagicMock(spec=NodeManager)
 
 @pytest.fixture
-def node_tree_presenter(mock_context_menu_service):
-    # Mock all required dependencies for NodeTreePresenter
-    mock_view = MagicMock()
-    mock_node_manager = MagicMock()
-    mock_session_manager = MagicMock()
-    mock_log_writer = MagicMock()
-    mock_command_queue = MagicMock()
-    mock_fbc_service = MagicMock()
-    mock_rpc_service = MagicMock()
-    
-    presenter = NodeTreePresenter(
-        view=mock_view,
-        node_manager=mock_node_manager,
-        session_manager=mock_session_manager,
-        log_writer=mock_log_writer,
-        command_queue=mock_command_queue,
-        fbc_service=mock_fbc_service,
-        rpc_service=mock_rpc_service,
-        context_menu_service=mock_context_menu_service
-    )
-    return presenter
+def mock_context_menu_filter():
+    return MagicMock(spec=ContextMenuFilterService)
 
 @pytest.fixture
-def node_tree_view(node_tree_presenter):
-    view = NodeTreeView()
-    # Connect the presenter to the view
-    node_tree_presenter.view = view
-    # Connect view signals to presenter methods
-    view.item_expanded.connect(node_tree_presenter.handle_item_expanded)
-    return view
+def context_menu_service(mock_node_manager, mock_context_menu_filter):
+    service = ContextMenuService(mock_node_manager, mock_context_menu_filter)
+    return service
 
-def create_test_nodes():
-    """Create test nodes structure with AP01m and its FBC tokens"""
-    # Create nodes using the current model structure
-    # For the test, we'll create a simple structure with just the AP01m node
-    ap01m = Node("AP01m", "192.168.0.11")
+def test_fbc_subsection_context_menu_contains_only_print_all_action(context_menu_service, qapp):
+    """Test that FBC subsection context menu only displays 'Print all FBC tokens' and no individual token commands."""
+    # Create test data for FBC subsection
+    fbc_subsection_data = {
+        "section_type": "FBC",
+        "node": "AP01m"
+    }
     
-    # Add FBC tokens directly to the node
-    token162 = NodeToken("162", "FBC", "AP01m", "192.168.0.11")
-    token162.log_path = os.path.join("test_logs", "AP01m", "162_FBC.log")
-    ap01m.add_token(token162)
+    # Create a mock menu
+    menu = QMenu()
     
-    token163 = NodeToken("163", "FBC", "AP01m", "192.168.0.11")
-    token163.log_path = os.path.join("test_logs", "AP01m", "163_fbc.LOG")
-    ap01m.add_token(token163)
-    
-    token164 = NodeToken("164", "FBC", "AP01m", "192.168.0.11")
-    token164.log_path = os.path.join("test_logs", "AP01m", "164_FBC.log")
-    ap01m.add_token(token164)
-    
-    return ap01m
-
-def test_context_menu_shows_correct_tokens(node_tree_view, node_tree_presenter, mock_context_menu_service, qapp):
-    """Test context menu shows all tokens for AP01m FBC group in sorted order"""
-    # Setup test nodes
-    ap01m = create_test_nodes()
-    
-    # Mock the node manager to return our test node
-    with patch.object(node_tree_presenter.node_manager, 'get_all_nodes', return_value=[ap01m]):
-        # Mock itemAt to return a mock item with user data
-        mock_item = MagicMock()
-        mock_item.data.return_value = {
-            "type": "node",
-            "node_name": "AP01m"
-        }
-        node_tree_view.itemAt = MagicMock(return_value=mock_item)
+    # Mock the context menu filter to allow FBC subgroup commands
+    with patch.object(context_menu_service.context_menu_filter, 'should_show_command', return_value=True):
+        # Mock get_node_tokens to return some test tokens
+        mock_tokens = [
+            NodeToken("162", "FBC", "AP01m", "192.168.0.11"),
+            NodeToken("163", "FBC", "AP01m", "192.168.0.11"),
+            NodeToken("164", "FBC", "AP01m", "192.168.0.11")
+        ]
         
-        # Mock viewport to return a mock viewport
-        mock_viewport = MagicMock()
-        mock_viewport.mapToGlobal.return_value = QPoint(100, 100)
-        node_tree_view.viewport = MagicMock(return_value=mock_viewport)
+        # Mock the get_node_tokens method
+        context_menu_service.get_node_tokens = MagicMock(return_value=mock_tokens)
         
-        # Call the presenter's show_context_menu method directly
-        node_tree_presenter.show_context_menu(QPoint(100, 100))
+        # Mock presenter
+        mock_presenter = MagicMock()
+        context_menu_service.set_presenter(mock_presenter)
         
-        # Verify context menu service was called
-        assert mock_context_menu_service.show_context_menu.called, "Context menu service should be called"
-
-def test_context_menu_handles_mixed_case_filenames(node_tree_view, qapp):
-    """Test token extraction handles mixed-case filenames"""
-    # Setup test nodes
-    ap01m = create_test_nodes()
-    
-    # Verify tokens were created with correct IDs
-    # Get all FBC tokens from the node
-    fbc_tokens = []
-    for token_list in ap01m.tokens.values():
-        for token in token_list:
-            if token.token_type == "FBC":
-                fbc_tokens.append(token)
-    
-    # Extract token IDs
-    token_ids = [token.token_id for token in fbc_tokens]
-    token_ids.sort()  # Sort for consistent comparison
-    
-    assert token_ids == ["162", "163", "164"], \
-        f"Failed to handle mixed-case filenames. Expected ['162', '163', '164'], got {token_ids}"
+        # Call show_context_menu with FBC subsection data
+        position = QPoint(100, 100)
+        result = context_menu_service.show_context_menu(menu, fbc_subsection_data, position)
+        
+        # Verify that the menu was shown
+        assert result == True, "Context menu should be shown for FBC subsection"
+        
+        # Get all actions from the menu
+        actions = menu.actions()
+        
+        # Verify that there is exactly one action
+        assert len(actions) == 1, f"Expected exactly 1 action, but got {len(actions)}"
+        
+        # Verify that the action is 'Print All FBC Tokens for AP01m'
+        action_text = actions[0].text()
+        expected_text = "Print All FBC Tokens for AP01m"
+        assert action_text == expected_text, f"Expected action text '{expected_text}', but got '{action_text}'"
+        
+        # Verify that no individual token actions are present
+        individual_token_actions = [action for action in actions if "Token" in action.text() and "Print All" not in action.text()]
+        assert len(individual_token_actions) == 0, f"Found {len(individual_token_actions)} individual token actions, expected 0"
