@@ -92,7 +92,23 @@ This document summarizes the implementation of token normalization consistency i
 - ✅ All normalization functions work as expected
 - ✅ No import errors or runtime exceptions
 
-## Technical Architecture
+### 5. LIS File Listing Fix
+
+**Objective**: Resolve incorrect listing of `.lis` files by updating the regex pattern.
+
+100| **Changes Made**:
+101| - Updated [`LIS_TOKEN_PATTERN`](src/commander/presenters/node_tree_presenter.py:line) regex to `r"^([\w-]+)_[\d-]+_(.+)\.lis$"`
+102| - Enhanced pattern to correctly match LIS filenames with node identifiers and timestamps
+103|
+104| **Root Cause**:
+105| - Previous regex pattern did not properly capture LIS filename structure, causing some files to be excluded from listings
+106|
+107| **Impact**:
+108| - Correct display of all LIS log files in the application
+109| - Improved consistency with FBC/RPC/LOG file handling patterns
+110| - Resolved user-reported issue with missing LIS files in node tree view
+111|
+112| ## Technical Architecture
 
 ### Token Normalization Flow
 

@@ -251,7 +251,7 @@ class NodeTreePresenter(QObject):
         # These patterns should match the ones in CommanderWindow
         FBC_TOKEN_PATTERN = r"^([\w-]+)_[\d\.-]+_([\w-]+)\."
         RPC_TOKEN_PATTERN = r"_([\d\w-]+)\.[^.]*$"  # Matches last _token.extension
-        LIS_TOKEN_PATTERN = r"^([\w-]+)_[\d-]+_([\d\w-]+)\.lis$"
+        LIS_TOKEN_PATTERN = r"^([\w-]+)_[\d-]+_(.+)\.lis$"
         
         if section_type == "LOG":
             # Use the filename without extension as token ID

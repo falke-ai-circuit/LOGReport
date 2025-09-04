@@ -154,5 +154,29 @@
         "protocol": "telnet"
       }
     ]
+  },
+  {
+    "name": "AL01",
+    "ip_address": "192.168.0.52",
+    "tokens": [
+      {
+        "token_id": "default_lis_token",
+        "token_type": "LIS",
+        "port": 23,
+        "protocol": "telnet"
+      }
+    ]
+  },
+  {
+    "name": "AL02",
+    "ip_address": "192.168.0.55",
+    "tokens": [
+      {
+        "token_id": "default_lis_token",
+        "token_type": "LIS",
+        "port": 23,
+        "protocol": "telnet"
+      }
+    ]
   }
 ]

@@ -50,6 +50,8 @@ The NodeManager supports two configuration formats:
 ]
 ```
 
+> **AL-Based Node Configuration Note**: The test configuration file [`src/nodes_test.json`](src/nodes_test.json) now includes AL-based node configurations (e.g., AL01, AL02) with LIS token types. These configurations follow the standard structure but use "LIS" as the token type to support LIS file processing workflows. When creating new test configurations, ensure AL-based nodes are included with appropriate LIS token definitions to validate LIS-related functionality.
+
 ### Configuration Schema
 
 #### Node Object
