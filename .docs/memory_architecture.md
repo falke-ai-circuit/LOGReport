@@ -145,6 +145,45 @@ Key memory operations include:
 - Update documentation alongside memory changes
 - Validate all code references against actual implementation
 
+## Domain Clustering (2025-09-05)
+
+As part of the ongoing memory optimization efforts, a comprehensive domain clustering taxonomy has been established to better organize and structure the knowledge graph:
+
+### Domain Clusters
+1. **UI Domain Cluster**: Groups all UI-related entities (CommanderWindow, node_tree_presenter, ContextMenuFilterService, etc.)
+2. **Services Domain Cluster**: Groups service-related entities (FbcCommandService, RpcCommandService, LogWriter, TelnetClient, etc.)
+3. **Data Models Domain Cluster**: Groups data modeling entities (NodeToken, QueuedCommand, SessionEvent, etc.)
+4. **Project Management Domain Cluster**: Groups project artifacts and tasks (Documentation, TODO.md, CHANGELOG.md, Project Management Tasks, etc.)
+5. **System Architecture Domain Cluster**: Groups architectural patterns (MVP Presenter Pattern, Service Layer Pattern, CommandProcessingSystem, etc.)
+6. **Error Handling Domain Cluster**: Groups error/stability entities (Robust_Error_Handling, Connection_Stability, CommandWorkerErrorHandling, etc.)
+7. **Memory Management Domain Cluster**: Groups memory/optimization entities (MemoryOptimizationOpportunity, WorkflowEnhancement, Memory Consolidation Analysis, etc.)
+
+### Hierarchical Taxonomy
+A hierarchical taxonomy has been created with System Architecture as the parent domain, providing a clear organizational structure:
+- System Architecture (parent)
+  - UI Domain Cluster
+  - Services Domain Cluster
+  - Data Models Domain Cluster
+  - Error Handling Domain Cluster
+  - Memory Management Domain Cluster
+  - Project Management Domain Cluster
+
+### Cross-Domain Relationships
+10 cross-domain relationships have been preserved to maintain connections between related concepts across different domains.
+
+## Pattern Clustering (2025-09-05)
+
+In addition to domain clustering, global memory patterns have been organized into semantic clusters for better discoverability and management:
+
+### Pattern Clusters
+1. **Architecture Patterns Cluster**: Grouping of architecture patterns including MVP patterns
+2. **Service Patterns Cluster**: Business logic and service layer patterns
+3. **Error Handling Patterns Cluster**: Error delegation and reporting patterns
+4. **UI Patterns Cluster**: User interface related patterns
+5. **Miscellaneous Patterns Cluster**: Catch-all for patterns that don't fit other clusters
+
+Each cluster follows specific naming conventions and maintains minimum node requirements for consistency.
+
 ## Optimization Results (2025-08-15)
 
 - **Entity Reduction**: 228 → 205 (10.1% reduction)
@@ -185,7 +224,6 @@ The system identifies high-value patterns for global promotion based on:
    - Standardized command execution
    - Thread-safe queue management
    - [Project Reference](TokenProcessingFix)
-
 
 ### Promotion Workflow
 1. Pattern identification during analysis
