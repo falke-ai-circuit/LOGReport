@@ -39,12 +39,30 @@ AP01m_192-168-0-11.fbc      # Missing token ID
 - Configuration file has incorrect IP address
 - Log file moved from original location
 - Multiple log files with different IPs for same token
+- Invalid IP address format in configuration or filename
 
 **Solutions**:
 1. Update the IP address in `nodes.json` to match the actual IP
 2. Verify the log file is from the correct node
 3. Use the filename IP as the authoritative source when there's a conflict
 4. Check for duplicate token configurations
+5. Validate IP address format follows standard IPv4 conventions (e.g., 192.168.0.11)
+
+### Issue: Invalid IP Address Format
+
+**Symptoms**: Warning messages about invalid IP address formats during token processing.
+
+**Causes**:
+- IP address contains non-numeric values
+- IP address segments exceed valid range (0-255)
+- Incorrect number of IP segments (not 4)
+- Mixed separator types (dots and hyphens)
+
+**Solutions**:
+1. Ensure IP addresses follow standard IPv4 format: `xxx.xxx.xxx.xxx` where each segment is 0-255
+2. Use hyphens in filenames: `192-168-0-11` (converted to dots in memory)
+3. Validate IP addresses in `nodes.json` configuration
+4. Check for typos in IP address specifications
 
 **Configuration Example**:
 ```json
@@ -70,6 +88,7 @@ AP01m_192-168-0-11.fbc      # Missing token ID
 - Incorrect regex pattern in NodeManager
 - Directory scanning not properly configured
 - File permissions preventing directory access
+- Invalid IP address formats preventing extraction
 
 **Solutions**:
 1. Verify the regex pattern in `NodeManager._scan_for_dynamic_ips()`:
@@ -79,6 +98,7 @@ AP01m_192-168-0-11.fbc      # Missing token ID
 2. Check that the log root directory is correctly specified
 3. Verify file system permissions allow directory traversal
 4. Enable debug logging to trace the scanning process
+5. Validate IP address formats in filenames and directories
 
 ## Token Management Issues
 
@@ -234,6 +254,29 @@ for node_name, node in node_manager.nodes.items():
 | "IP address mismatch" | Config IP doesn't match filename IP | Update configuration or use filename IP |
 | "Connection refused" | Port blocked or service down | Check firewall and service status |
 | "Temporary token created" | Token not configured | Add proper token configuration |
+
+## IP Validation Warnings
+
+The system now includes enhanced IP validation that provides warnings when:
+
+1. **IP Address Format Validation**: IP addresses are checked for valid IPv4 format (0-255 range for each segment)
+2. **Configuration vs Filename Mismatches**: Warnings are generated when configuration IP doesn't match filename IP
+3. **Invalid Characters**: Non-numeric characters in IP address segments are detected
+4. **Segment Count Validation**: Ensures exactly 4 segments in IP addresses
+
+### Warning Messages
+
+- `"Invalid IP address format: {ip_address}"` - IP contains invalid characters or segments
+- `"IP address segment out of range: {segment}"` - Segment value not between 0-255
+- `"IP address mismatch between configuration ({config_ip}) and filename ({file_ip})"` - Mismatch detected
+- `"Invalid IP segment count: expected 4, got {count}"` - Incorrect number of IP segments
+
+### Addressing Warnings
+
+1. **Review Configuration**: Check `nodes.json` for valid IP address formats
+2. **Validate Filenames**: Ensure log filenames use correct IP format with hyphens
+3. **Update Documentation**: Document any intentional IP variations
+4. **Implement Validation**: Add IP validation to configuration loading process
 
 ## Prevention Best Practices
 

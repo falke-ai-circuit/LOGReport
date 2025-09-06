@@ -36,13 +36,13 @@
       "alwaysAllow": [
         "find-direct-connections",
         "docs-semantic-search",
-        "folder-tree-structure",
         "get-usage-dependency-links",
         "get-code",
         "get_usage_dependency_links",
         "find_direct_connections",
         "nodes-semantic-search",
-        "get-code</toolname>\n<arguments>\n{\n  \"name\": \"ContextMenuService\",\n  \"path\": \"src/commander/services/context_menu_service.py\"\n}\n</arguments>\n</use_mcp_tool>"
+        "get-code</toolname>\n<arguments>\n{\n  \"name\": \"ContextMenuService\",\n  \"path\": \"src/commander/services/context_menu_service.py\"\n}\n</arguments>\n</use_mcp_tool>",
+        "list_code_definition_names"
       ],
       "disabled": false
     },

@@ -52,7 +52,7 @@ from src.commander.utils.token_utils import normalize_token
 
 # FBC token normalization
 normalize_token("162")      # Returns "162"
-normalize_token("abc")      # Returns "ABC" (FBC alphanumeric)
+normalize_token("abc")      # Returns "abc" (RPC alphanumeric)
 normalize_token("1a")       # Returns "1A" (FBC alphanumeric)
 
 # RPC token normalization
