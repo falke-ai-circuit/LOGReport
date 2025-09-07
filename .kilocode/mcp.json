@@ -16,9 +16,10 @@
         "delete_observations",
         "open_nodes",
         "add_observations",
-        "create_entities",
         "read_graph",
-        "search_nodes"
+        "search_nodes",
+        "update_entities",
+        "create_entities"
       ],
       "disabled": false
     },
@@ -31,7 +32,7 @@
       "env": {
         "CODEGPT_API_KEY": "sk-3f80b540-1a0c-4809-8335-eeea5f7d964a",
         "CODEGPT_ORG_ID": "08e85a15-51d0-48fc-93a1-3bcc345f7693",
-        "CODEGPT_GRAPH_ID": "1f6e8518-59dd-4d6a-a44b-18e2a65788a0"
+        "CODEGPT_GRAPH_ID": "08081ec0-4939-4bfd-a6cd-12bda9a362e3"
       },
       "alwaysAllow": [
         "find-direct-connections",
