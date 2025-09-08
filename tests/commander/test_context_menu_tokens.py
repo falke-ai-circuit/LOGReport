@@ -47,7 +47,8 @@ def test_fbc_subsection_context_menu_contains_only_print_all_action(context_menu
     menu = QMenu()
     
     # Mock the context menu filter to allow FBC subgroup commands
-    with patch.object(context_menu_service.context_menu_filter, 'should_show_command', return_value=True):
+    with patch.object(context_menu_service.context_menu_filter, 'should_show_command', return_value=True), \
+         patch.object(menu, 'exec') as mock_menu_exec:
         # Mock get_node_tokens to return some test tokens
         mock_tokens = [
             NodeToken("162", "FBC", "AP01m", "192.168.0.11"),
@@ -68,6 +69,9 @@ def test_fbc_subsection_context_menu_contains_only_print_all_action(context_menu
         
         # Verify that the menu was shown
         assert result == True, "Context menu should be shown for FBC subsection"
+        
+        # Ensure the mock exec was called, but actual exec was prevented
+        mock_menu_exec.assert_called_once_with(position)
         
         # Get all actions from the menu
         actions = menu.actions()

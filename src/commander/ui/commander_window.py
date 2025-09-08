@@ -117,6 +117,9 @@ class CommanderWindow(QMainWindow):
         # Set presenter in context menu service
         self.context_menu_service.set_presenter(self.node_tree_presenter)
         
+        # Connect VNC tab signals
+        self._connect_vnc_signals()
+        
         # Connect all signals
         self._connect_signals()
         
@@ -144,6 +147,7 @@ class CommanderWindow(QMainWindow):
         # Connect node tree presenter signals
         self.node_tree_presenter.status_message_signal.connect(self.status_service.status_updated)
         self.node_tree_presenter.node_tree_updated_signal.connect(self.on_node_tree_updated)
+        self.node_tree_presenter.log_file_selected_signal.connect(self.session_manager.ip_changed.emit)
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)
@@ -160,6 +164,14 @@ class CommanderWindow(QMainWindow):
         
         # Connect UI component signals
         self._connect_ui_signals()
+        
+    def _connect_vnc_signals(self):
+        """Connect VNC tab signals to session manager"""
+        # Connect VNC tab connect signal to session manager
+        self.vnc_tab.connect_clicked.connect(self.toggle_vnc_connection)
+        
+        # Connect session manager IP changed signal to VNC tab
+        self.session_manager.ip_changed.connect(self.vnc_tab.update_log_filename)
     
     def _connect_ui_signals(self):
         """Connect UI component signals"""
@@ -260,11 +272,59 @@ class CommanderWindow(QMainWindow):
     def on_node_selected(self, item):
         """Handles node/token selection in left pane"""
         self.commander_presenter.on_node_selected(item, self.current_token)
+        self.node_tree_presenter.on_node_selected(item)
     
     def toggle_telnet_connection(self, connect: bool):
         """Toggles connection/disconnection for Telnet tab"""
-        self.telnet_service.toggle_connection(connect, self.telnet_connection_bar.get_address()[0], 
+        self.telnet_service.toggle_connection(connect, self.telnet_connection_bar.get_address()[0],
                                               self.telnet_connection_bar.get_address()[1], self.settings)
+    
+    def toggle_vnc_connection(self, connect: bool):
+        """Toggles connection/disconnection for VNC tab"""
+        if connect:
+            # Get IP and port from VNC tab
+            ip = self.vnc_tab.ip_edit.text()
+            port_text = self.vnc_tab.port_edit.text()
+            
+            try:
+                port = int(port_text) if port_text else 5900
+            except ValueError:
+                self.vnc_tab.add_log_message("Error: Invalid port number")
+                return
+            
+            # Create session config
+            from ..session_manager import SessionConfig, SessionType
+            config = SessionConfig(
+                host=ip,
+                port=port,
+                session_type=SessionType.VNC
+            )
+            
+            # Create VNC session
+            session = self.session_manager.create_session(config, auto_connect=True)
+            if session:
+                self.vnc_tab.add_log_message(f"Connected to VNC server at {ip}:{port}")
+                self.vnc_tab.update_connection_status("Connected", True)
+                
+                # Connect session state change signal to VNC tab
+                session.connection_state_changed.connect(
+                    lambda connected: self.vnc_tab.update_connection_status(
+                        "Connected" if connected else "Disconnected", connected
+                    )
+                )
+            else:
+                self.vnc_tab.add_log_message(f"Failed to connect to VNC server at {ip}:{port}")
+                self.vnc_tab.update_connection_status("Connection Failed", False)
+        else:
+            # Disconnect all VNC sessions
+            from ..session_manager import SessionType
+            for session_key, session in list(self.session_manager.active_sessions.items()):
+                if session.config.session_type == SessionType.VNC:
+                    session.disconnect()
+                    self.session_manager.close_session(session_key)
+            
+            self.vnc_tab.add_log_message("Disconnected from VNC server")
+            self.vnc_tab.update_connection_status("Disconnected", False)
     
     def execute_telnet_command(self, automatic=False):
         """Executes command in Telnet session using background thread"""

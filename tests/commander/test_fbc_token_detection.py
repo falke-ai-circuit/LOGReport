@@ -37,7 +37,7 @@ class TestFbcTokenDetection:
     def fbc_service(self, node_manager):
         """Create an FBC command service"""
         command_queue = CommandQueue()
-        log_writer = LogWriter()
+        log_writer = LogWriter(node_manager)
         service = FbcCommandService(node_manager, command_queue, log_writer)
         return service
     

@@ -1,263 +1,81 @@
 """
-Commander UI Factory - Creates UI components for the Commander window
+Commander UI Factory
+
+This factory creates and manages the main UI components.
 """
+
 from PyQt6.QtWidgets import (
     QSplitter, QTreeWidget, QTreeWidgetItem, QTabWidget, QTextEdit, 
     QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
 )
 
-
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
-
-from ..ui.node_tree_view import NodeTreeView
-from ..widgets import ConnectionBar
+from commander.ui.node_tree_view import NodeTreeView
+from commander.ui.session_view import SessionView
+from commander.ui.vnc_tab import VNCTab
 
 
 class CommanderUIFactory:
-    """Factory for creating UI components for the Commander window"""
-
+    """
+    Factory for creating and managing UI components.
+    """
     
     def __init__(self):
-        self.node_tree_view = None
-        self.session_tabs = None
-        self.telnet_tab = None
-        self.vnc_tab = None
-        self.ftp_tab = None
-        self.telnet_output = None
-        self.cmd_input = None
-        self.execute_btn = None
-        self.copy_to_log_btn = None
-        self.clear_terminal_btn = None
-        self.clear_node_log_btn = None
-        self.telnet_connection_bar = None
-        self.vnc_connection_bar = None
-        self.ftp_connection_bar = None
-        self.vnc_content_output = None
-        self.ftp_content_output = None
-    
-    def create_main_layout(self) -> QWidget:
-        """Create the main layout for the window."""
-        # Create main layout
-        main_widget = QWidget()
-        main_layout = QHBoxLayout(main_widget)
+        """Initialize the UI factory."""
+        self._create_components()
         
-        # Create splitter for dual-pane layout
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        main_layout.addWidget(splitter)
-
-        
-        # Left Pane - Node Tree (30%)
-        left_pane = QWidget()
-        left_layout = QVBoxLayout(left_pane)
-
-        
-        # Create node tree view
+    def _create_components(self):
+        """Create UI components."""
+        # Create main views
         self.node_tree_view = NodeTreeView()
-
+        self.session_view = SessionView()
         
-        # Add node tree view to the left layout
-        left_layout.addWidget(self.node_tree_view, 1)  # Add stretch factor
-        splitter.addWidget(left_pane)
-
+        # Access VNC tab through session view
+        self.vnc_tab = self.session_view.vnc_tab
         
-        # Create buttons for the window
-        self.execute_btn = QPushButton("Execute")
-        self.copy_to_log_btn = QPushButton("Copy to Node Log")
-        self.clear_terminal_btn = QPushButton("Clear Terminal")
-        self.clear_node_log_btn = QPushButton("Clear Node Log")
+    def get_main_widget(self) -> QWidget:
+        """
+        Get the main application widget.
         
-        # Right Pane - Session Area (70%)
-        right_pane = QWidget()
-        right_layout = QVBoxLayout(right_pane)
-
-        
-        # Session Tabs
-        self.session_tabs = QTabWidget()
-
-
-        
-        # Create session tabs
-        self.telnet_tab = self.create_telnet_tab()
-        self.vnc_tab = self.create_session_tab("VNC")        
-        self.ftp_tab = self.create_session_tab("FTP")
-
-
-        
-        self.session_tabs.addTab(self.telnet_tab, "Telnet")
-        self.session_tabs.addTab(self.vnc_tab, "VNC")
-        self.session_tabs.addTab(self.ftp_tab, "FTP")
-
-
-        
-        right_layout.addWidget(self.session_tabs)
-
-        
-        # Command Buttons
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.copy_to_log_btn)
-        button_layout.addWidget(self.clear_terminal_btn)
-        button_layout.addWidget(self.clear_node_log_btn)
-
-        
-        right_layout.addLayout(button_layout)
-        splitter.addWidget(right_pane)
-
-        
-        # Set splitter sizes (30/70 ratio)
+        Returns:
+            Main application widget
+        """
+        # Create splitter for main layout
+        splitter = QSplitter()
+        splitter.addWidget(self.node_tree_view)
+        splitter.addWidget(self.session_view)
         splitter.setSizes([300, 700])
-
         
-        # Apply dark theme styling
-        main_widget.setStyleSheet(
-            """
-            QMainWindow, QWidget {
-                background-color: #2D2D30;
-                color: #DCDCDC;
-                font-family: Segoe UI;
-            }
-            QSplitter::handle {
-                background-color: #555;
-            }
-            QPushButton {
-                background-color: #3D3D3D;
-                border: 1px solid #555;
-                padding: 5px 15px;
-                min-width: 80px;
-                color: #DCDCDC;
-            }
-            QPushButton:hover {
-                background-color: #4D4D4D;
-            }
-            QPushButton:pressed {
-                background-color: #2D2D2D;
-            }
-            QTreeWidget {
-                background-color: #252526;
-                alternate-background-color: #2D2D30;
-                color: #DCDCDC;
-                border: 1px solid #3E3E42;
-            }
-
-            QTreeWidget::item {
-                padding: 3px;
-            }
-
-            QTreeWidget::item:selected {
-                background-color: #007ACC;
-                color: white;
-            }
-
-            QTabWidget::pane {
-                border: 1px solid #3E3E42;
-            }
-
-            QTabBar::tab {
-                background-color: #2D2D30;
-                color: #DCDCDC;
-                padding: 5px 10px;
-                border: 1px solid #3E3E42;
-                border-bottom: none;
-            }
-
-            QTabBar::tab:selected {
-                background-color: #1E1E1E;
-                border-bottom: 2px solid #007ACC;
-            }
-
-            QTextEdit {
-                background-color: #1E1E1E;
-                color: #DCDCDC;
-                border: 1px solid #3E3E42;
-                selection-background-color: #007ACC;
-            }
-
-            QScrollBar:vertical {
-                background-color: #3E3E42;
-                width: 15px;
-                margin: 15px 0 15px 0;
-            }
-
-            QScrollBar::handle:vertical {	
-                background-color: #686868;
-                min-height: 20px;
-            }
-
-            QScrollBar::handle:vertical:hover {	
-                background-color: #9E9E9E;
-            }
-
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                background-color: #3E3E42;
-                height: 15px;
-                subcontrol-origin: margin;
-            }"""                
-        )
-
+        # Create main widget
+        main_widget = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(splitter)
+        main_widget.setLayout(layout)
+        
         return main_widget
-    
-    def create_telnet_tab(self) -> QWidget:
-        """Creates telnet tab with IP/port inputs and command execution"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
         
-        # Telnet console output
-        self.telnet_output = QTextEdit()
-        self.telnet_output.setFont(QFont("Consolas", 10))
-        self.telnet_output.setReadOnly(False)
-        self.telnet_output.setPlaceholderText("Telnet session output will appear here")
-        self.telnet_output.setStyleSheet("font-family: Consolas; background:#1A1A1A; color: #DDD;")
-        layout.addWidget(self.telnet_output, 5)
-
-        # Command input panel
-        cmd_widget = QWidget()
-        cmd_layout = QHBoxLayout(cmd_widget)
+    def get_node_tree_view(self) -> NodeTreeView:
+        """
+        Get the node tree view.
         
-        self.cmd_input = QTextEdit()
-        self.cmd_input.setFont(QFont("Consolas", 10))
-        self.cmd_input.setMaximumHeight(60)
-        self.cmd_input.setPlaceholderText("Enter telnet command...")
-        self.cmd_input.setStyleSheet("background:#252525; color:#EEE; border:1px solid #444;")
-        # Add widgets to the command input panel
-        cmd_layout.addWidget(QLabel("Command:"))
-        cmd_layout.addWidget(self.cmd_input, 3)
-        cmd_layout.addWidget(self.execute_btn, 1)
-
-
-        layout.addWidget(cmd_widget, 1)
-
+        Returns:
+            NodeTreeView instance
+        """
+        return self.node_tree_view
         
-        # Connection Bar (Telnet)
-        self.telnet_connection_bar = ConnectionBar(ip_address="", port=0)
-        layout.addWidget(self.telnet_connection_bar)
-
+    def get_session_view(self) -> SessionView:
+        """
+        Get the session view.
         
-        return tab
+        Returns:
+            SessionView instance
+        """
+        return self.session_view
         
-    def create_session_tab(self, tab_type: str) -> QWidget:
-        """Creates placeholder session tab"""        
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+    def get_vnc_tab(self) -> VNCTab:
+        """
+        Get the VNC tab.
         
-        # Session content area
-        content = QTextEdit()
-        content.setFont(QFont("Consolas", 10))
-        content.setPlaceholderText(f"{tab_type} session will appear here")
-        content.setStyleSheet("background:#1A1A1A; color:#DDD;")
-        layout.addWidget(content, 5)
-        
-        # Connection Bar (VNC/FTP uses a generic one for now)
-        # Note: IP/Port will be updated dynamically later
-        connection_bar = ConnectionBar(ip_address="", port=0)
-        
-        # Store a reference to the connection bar for potential dynamic updates
-        # For now, let's keep it simple and assume they will be updated via item selection
-        if tab_type == "VNC":
-            self.vnc_connection_bar = connection_bar
-            self.vnc_content_output = content # For VNC content capture
-        elif tab_type == "FTP":
-            self.ftp_connection_bar = connection_bar
-            self.ftp_content_output = content # For FTP content capture
-
-        layout.addWidget(connection_bar)        
-        return tab
+        Returns:
+            VNCTab instance
+        """
+        return self.vnc_tab

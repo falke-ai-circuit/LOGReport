@@ -18,6 +18,7 @@ from ..command_queue import CommandQueue
 from ..services.fbc_command_service import FbcCommandService
 from ..services.rpc_command_service import RpcCommandService
 from ..icons import get_node_online_icon, get_node_offline_icon, get_token_icon
+import os
 
 
 class NodeTreePresenter(QObject):
@@ -28,6 +29,7 @@ class NodeTreePresenter(QObject):
     # Signals for UI updates
     status_message_signal = pyqtSignal(str, int)  # message, duration
     node_tree_updated_signal = pyqtSignal()  # emitted when node tree is updated
+    log_file_selected_signal = pyqtSignal(str)  # emitted when log file is selected, carries filename
     
     def __init__(self, view, node_manager: NodeManager, session_manager: SessionManager,
                  log_writer: LogWriter, command_queue: CommandQueue,
@@ -528,3 +530,18 @@ class NodeTreePresenter(QObject):
         except Exception as e:
             logging.error(f"Unexpected error in RPC command setup: {str(e)}")
             self._report_error("RPC command setup failed", e)
+            
+    def on_node_selected(self, item):
+        """
+        Handle node/token selection in the view.
+        
+        Args:
+            item: Selected item from the view
+        """
+        # Check if the selected item is a log file
+        if item:
+            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+            if item_data and "log_path" in item_data:
+                # This is a log file item, emit the signal with the filename
+                filename = os.path.basename(item_data["log_path"])
+                self.log_file_selected_signal.emit(filename)

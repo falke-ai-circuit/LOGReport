@@ -27,6 +27,7 @@ MCP Ecosystem Structure:
 │   ├── mcp_contract.md            # Universal MCP server usage instructions
 │   ├── custom_modes_clean.yaml   # Core MCP mode definitions (6 integrated modes)
 │   ├── mcp_workflow.md           # Circular workflow orchestration
+│   ├── update_modes.md           # 3-layer ecosystem optimization workflow  
 │   ├── update_memory.md          # Memory optimization executable workflow
 │   ├── update_documents.md       # Documentation update executable workflow
 │   ├── ecosystem_overview.md     # This comprehensive guide
@@ -36,6 +37,7 @@ MCP Ecosystem Structure:
 │   ├── c:\Users\gorjovicgo\.kilocode\workflows\custom_modes.yaml
 │   ├── c:\Users\gorjovicgo\.kilocode\workflows\mcp_contract.md
 │   ├── c:\Users\gorjovicgo\.kilocode\workflows\mcp_workflow.md
+│   ├── c:\Users\gorjovicgo\.kilocode\workflows\update_modes.md        # 3-layer ecosystem optimization
 │   ├── c:\Users\gorjovicgo\.kilocode\workflows\update_memory.md
 │   └── c:\Users\gorjovicgo\.kilocode\workflows\update_documents.md
 │
@@ -449,7 +451,36 @@ You are optimizing the memory system for better connectivity and organization. F
 - Backup preference before major changes
 ```
 
-### 5. update_documents.md - Documentation Update Executable Workflow
+### 5. update_modes.md - 3-Layer Ecosystem Optimization Workflow
+
+**Design Intent**: Analyze session performance to optimize the complete 3-layer MCP ecosystem: custom_modes.yaml (Layer 1), mcp_contract.md (Layer 2), and mcp_workflow.md (Layer 3).
+
+**KiloCode Philosophy**:
+- **Holistic analysis**: Examines all 3 layers for cross-layer conflicts and optimization opportunities
+- **Session-driven insights**: Uses real session transcripts to identify improvement patterns
+- **System coherence**: Ensures changes maintain integrated design philosophy
+- **Measurable improvements**: Specific targets for layer coherence and workflow efficiency
+
+**Structure Breakdown**:
+```markdown
+# 5-step execution pattern:
+Step 1: Session Analysis (behavior patterns across all 3 layers)
+Step 2: Performance Evaluation (layer effectiveness and cross-layer gaps)
+Step 3: Cross-Layer Impact Analysis (rule conflicts and missing integrations)
+Step 4: Improvement Recommendations (layer-specific and ecosystem-wide)
+Step 5: Implementation Planning (prioritized changes with cross-layer validation)
+
+# Success targets (measurable):
+- Layer Coherence: ≥95% consistency across all 3 layers
+- Rule Clarity: ≥95% instruction clarity within each layer
+- Completion Rate: ≥90% of tasks completed successfully
+- BLOCKERS Reduction: 20% reduction in cross-layer confusion
+
+# Output format:
+LAYER: [Layer 1/2/3] | FILE: [specific file] | CROSS_LAYER_EFFECTS: [impact on other layers]
+```
+
+### 6. update_documents.md - Documentation Update Executable Workflow
 
 **Design Intent**: Transform documentation maintenance from a complex theoretical process into simple executable steps.
 

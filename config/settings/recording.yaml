@@ -1,0 +1,8 @@
+session_recording:
+  enabled: true
+  max_file_size: 500 # MB
+  compression_level: 6
+  storage_path: "test_logs/recordings"
+  screen_capture_interval: 100 # ms
+  clipboard_capture: true
+  encryption_enabled: false # Set to true to enable encryption
