@@ -13,8 +13,9 @@ class StatusService(QObject):
     Service for displaying status messages to the user.
     """
     
-    # Signal for status messages
-    status_message = pyqtSignal(str)
+    # Signal for status messages (alias status_updated for compatibility)
+    status_updated = pyqtSignal(str)
+    status_message = pyqtSignal(str)  # Keep existing for backward compatibility
     
     def __init__(self):
         """Initialize the StatusService."""
@@ -28,6 +29,7 @@ class StatusService(QObject):
             message: Message to display
             timeout: Timeout in milliseconds (0 for no timeout)
         """
+        self.status_updated.emit(message)
         self.status_message.emit(message)
         
     def show_error(self, message: str):
@@ -37,6 +39,7 @@ class StatusService(QObject):
         Args:
             message: Error message to display
         """
+        self.status_updated.emit(f"Error: {message}")
         self.status_message.emit(f"Error: {message}")
         
     def show_warning(self, message: str):
@@ -46,6 +49,7 @@ class StatusService(QObject):
         Args:
             message: Warning message to display
         """
+        self.status_updated.emit(f"Warning: {message}")
         self.status_message.emit(f"Warning: {message}")
         
     def show_info(self, message: str):
@@ -55,4 +59,5 @@ class StatusService(QObject):
         Args:
             message: Info message to display
         """
+        self.status_updated.emit(f"Info: {message}")
         self.status_message.emit(f"Info: {message}")

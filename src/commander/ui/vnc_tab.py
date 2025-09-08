@@ -40,7 +40,8 @@ class VNCTab(QWidget):
         
         # Create toolbar for recording controls
         self.toolbar = QToolBar()
-        self.toolbar.setToolButtonStyle(3)  # ToolButtonTextBesideIcon
+        from PyQt6.QtCore import Qt
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         layout.addWidget(self.toolbar)
         
         # Recording controls

@@ -25,8 +25,17 @@ class CommanderPresenter(QObject):
     Main presenter that coordinates application functionality.
     """
     
+    # Signal definitions
+    status_message_signal = pyqtSignal(str, int)
+    set_cmd_input_text_signal = pyqtSignal(str)
+    update_connection_status_signal = pyqtSignal(object)  # ConnectionState
+    switch_to_telnet_tab_signal = pyqtSignal()
+    set_cmd_focus_signal = pyqtSignal()
+    
     def __init__(self, ui_factory: CommanderUIFactory, node_manager: NodeManager,
-                 log_writer: LogWriter, status_service: StatusService):
+                 log_writer: LogWriter, status_service: StatusService,
+                 session_manager, command_queue, fbc_service, rpc_service,
+                 context_menu_service):
         """
         Initialize the CommanderPresenter.
         
@@ -35,19 +44,34 @@ class CommanderPresenter(QObject):
             node_manager: NodeManager instance
             log_writer: LogWriter instance
             status_service: StatusService instance
+            session_manager: SessionManager instance
+            command_queue: CommandQueue instance
+            fbc_service: FbcCommandService instance
+            rpc_service: RpcCommandService instance
+            context_menu_service: ContextMenuService instance
         """
         super().__init__()
         self.ui_factory = ui_factory
         self.node_manager = node_manager
         self.log_writer = log_writer
         self.status_service = status_service
+        self.session_manager = session_manager
+        self.command_queue = command_queue
+        self.fbc_service = fbc_service
+        self.rpc_service = rpc_service
+        self.context_menu_service = context_menu_service
         
         # Create presenters
         self.node_tree_presenter = NodeTreePresenter(
             view=self.ui_factory.node_tree_view,
-            node_manager=self.node_manager
+            node_manager=self.node_manager,
+            session_manager=self.session_manager,
+            log_writer=self.log_writer,
+            command_queue=self.command_queue,
+            fbc_service=self.fbc_service,
+            rpc_service=self.rpc_service,
+            context_menu_service=self.context_menu_service
         )
-        
         self.session_presenter = SessionPresenter(
             view=self.ui_factory.session_view,
             commander_presenter=self,
