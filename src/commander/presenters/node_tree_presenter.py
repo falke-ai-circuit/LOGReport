@@ -545,3 +545,31 @@ class NodeTreePresenter(QObject):
                 # This is a log file item, emit the signal with the filename
                 filename = os.path.basename(item_data["log_path"])
                 self.log_file_selected_signal.emit(filename)
+
+    def open_log_file(self, item, column: int):
+        """
+        Open log file associated with the tree item.
+        
+        Args:
+            item: Tree item representing the log file
+            column: Column index (unused)
+        """
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data or "log_path" not in data:
+            return
+            
+        log_path = data["log_path"]
+        if not os.path.exists(log_path):
+            self.status_message_signal.emit(f"Log file not found: {log_path}", 5000)
+            return
+            
+        try:
+            # Open file with default application
+            import subprocess
+            if os.name == 'nt':  # Windows
+                os.startfile(log_path)
+            else:  # macOS and Linux
+                subprocess.call(('open', log_path) if sys.platform == 'darwin'
+                              else ('xdg-open', log_path))
+        except Exception as e:
+            self.status_message_signal.emit(f"Error opening log file: {str(e)}", 5000)

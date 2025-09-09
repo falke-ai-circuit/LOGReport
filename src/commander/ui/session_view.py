@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLa
 from PyQt6.QtCore import pyqtSignal
 
 from commander.ui.vnc_tab import VNCTab
+from commander.ui.telnet_tab import TelnetTab  # Add import for TelnetTab
 
 
 class SessionView(QWidget):
@@ -37,6 +38,10 @@ class SessionView(QWidget):
         # Create tab widget
         self.tab_widget = QTabWidget()
         
+        # Create Telnet tab (should be first tab)
+        self.telnet_tab = TelnetTab()
+        self.tab_widget.addTab(self.telnet_tab, "Telnet")
+        
         # Create VNC tab
         self.vnc_tab = VNCTab()
         self.tab_widget.addTab(self.vnc_tab, "VNC")
@@ -48,6 +53,7 @@ class SessionView(QWidget):
         
         # Connect signals
         self.vnc_tab.copy_to_log_clicked.connect(self.copy_to_log_clicked.emit)
+        self.telnet_tab.copy_to_log_clicked.connect(self.copy_to_log_clicked.emit)
         
         # Connect recording signals
         self.vnc_tab.record_clicked.connect(self.record_clicked.emit)

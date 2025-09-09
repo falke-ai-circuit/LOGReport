@@ -1,7 +1,7 @@
 """
 Commander Window - Main UI view for the Commander application
 """
-from PyQt6.QtWidgets import QMainWindow, QStatusBar
+from PyQt6.QtWidgets import QMainWindow, QStatusBar, QFileDialog
 from PyQt6.QtCore import QSettings, pyqtSignal
 
 from ..services.context_menu_service import ContextMenuService
@@ -57,13 +57,16 @@ class CommanderWindow(QMainWindow):
         self.current_token = None
         
         # Initialize all components
+        # Initialize all components
+        print("[DEBUG] Starting component initialization")
+        self._initialize_components()
+        print("[DEBUG] Component initialization complete")
         self._initialize_components()
     
     def _initialize_components(self):
         """Initialize all services and presenters"""
         # Initialize Status Service
         self.status_service = StatusService()
-        self.status_service.status_updated.connect(self.statusBar().showMessage)
         
         # Initialize context menu filter service
         self.context_menu_filter = ContextMenuFilterService()
@@ -90,6 +93,9 @@ class CommanderWindow(QMainWindow):
         
         # Setup UI first
         self.init_ui()
+        
+        # Connect status service AFTER UI is created
+        self.status_service.status_updated.connect(self.statusBar().showMessage)
         
         # Initialize presenters after UI is created
         self.commander_presenter = CommanderPresenter(
@@ -140,11 +146,10 @@ class CommanderWindow(QMainWindow):
         
         # Connect presenter signals
         self.commander_presenter.status_message_signal.connect(self.status_service.status_updated)
-        self.commander_presenter.set_cmd_input_text_signal.connect(self.set_cmd_input_text_signal)
-        self.commander_presenter.update_connection_status_signal.connect(self.update_connection_status_signal)
+        self.commander_presenter.set_cmd_input_text_signal.connect(self.telnet_tab.command_input.setText)
+        self.commander_presenter.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
         self.commander_presenter.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
-        # TODO: Re-implement when cmd_input is available
-        # self.commander_presenter.set_cmd_focus_signal.connect(self.cmd_input.setFocus)
+        self.commander_presenter.set_cmd_focus_signal.connect(self.telnet_tab.command_input.setFocus)
         
         # Connect node tree presenter signals
         self.node_tree_presenter.status_message_signal.connect(self.status_service.status_updated)
@@ -153,18 +158,22 @@ class CommanderWindow(QMainWindow):
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)
-        # TODO: Re-implement when telnet tab is available
-        # self.set_cmd_input_text_signal.connect(self.cmd_input.setPlainText)
-        # TODO: Re-implement when telnet_connection_bar is available
-        # self.update_connection_status_signal.connect(self.telnet_connection_bar.update_status)
-        # TODO: Re-implement when telnet tab is available
-        # self.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.set_cmd_input_text_signal.connect(self.telnet_tab.command_input.setText)
+        self.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
+        self.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
         self.status_message_signal.connect(self.status_service.status_updated)
         
-        # Connect telnet service signals
-        self.telnet_service.status_message_signal = self.status_service.status_updated
-        self.telnet_service.command_finished_signal = self.command_finished
-        self.telnet_service.update_connection_status_signal = self.update_connection_status_signal
+        # Connect telnet service signals properly
+        self.telnet_service.status_message_signal.connect(self.status_service.status_updated)
+        self.telnet_service.command_finished_signal.connect(self.command_finished)
+        self.telnet_service.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
+        
+        # Connect Telnet tab signals
+        self.telnet_tab.execute_clicked.connect(self.execute_telnet_command)
+        self.telnet_tab.connect_clicked.connect(self.toggle_telnet_connection)
+        self.telnet_tab.copy_to_log_clicked.connect(self.copy_to_log)
+        self.telnet_tab.clear_terminal_clicked.connect(self.clear_terminal)
+        self.telnet_tab.clear_log_clicked.connect(self.clear_node_log)
         
         # Connect UI component signals
         self._connect_ui_signals()
@@ -180,9 +189,8 @@ class CommanderWindow(QMainWindow):
     def _connect_ui_signals(self):
         """Connect UI component signals"""
         # Node tree view signals
-        # TODO: Re-implement when methods are available
-        # self.node_tree_view.load_nodes_clicked.connect(self.load_configuration)
-        # self.node_tree_view.set_log_root_clicked.connect(self.set_log_root_folder)
+        self.node_tree_view.load_nodes_clicked.connect(self.load_configuration)
+        self.node_tree_view.set_log_root_clicked.connect(self.set_log_root_folder)
         self.node_tree_view.node_selected.connect(self.on_node_selected)
         self.node_tree_view.node_double_clicked.connect(self._on_node_double_clicked)
         self.node_tree_view.context_menu_requested.connect(self.show_context_menu)
@@ -236,8 +244,8 @@ class CommanderWindow(QMainWindow):
         
         # Access components from session_view
         self.session_tabs = self.session_view.tab_widget
+        self.telnet_tab = self.session_view.telnet_tab
         self.vnc_tab = self.session_view.vnc_tab
-        # TODO: Implement telnet tab if needed
         
         # Status Bar
         self.setStatusBar(QStatusBar())
@@ -253,13 +261,19 @@ class CommanderWindow(QMainWindow):
     
     # Delegated methods to presenter
     # TODO: Implement in CommanderPresenter
-    # def load_configuration(self):
-    #     """Load node configuration from selected file"""
-    #     self.commander_presenter.load_configuration()
+    def load_configuration(self):
+        """Open file dialog to select node configuration and load it"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select Node Configuration", "", "JSON Files (*.json)"
+        )
+        if file_path:
+            self.node_tree_presenter.load_configuration(file_path)
     
     def set_log_root_folder(self):
         """Set the root folder for log files"""
-        self.commander_presenter.set_log_root_folder()
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Log Root Folder")
+        if folder_path:
+            self.node_tree_presenter.set_log_root_folder(folder_path)
     
     def show_context_menu(self, position):
         """Show context menu for the selected item in the node tree"""
@@ -271,17 +285,16 @@ class CommanderWindow(QMainWindow):
     
     def _on_node_double_clicked(self, item):
         """Wrapper method to handle node double-click events"""
-        self.commander_presenter.open_log_file(item, 0)
+        self.node_tree_presenter.open_log_file(item, 0)
     
     def on_node_selected(self, item):
         """Handles node/token selection in left pane"""
-        self.commander_presenter.on_node_selected(item, self.current_token)
         self.node_tree_presenter.on_node_selected(item)
     
     def toggle_telnet_connection(self, connect: bool):
         """Toggles connection/disconnection for Telnet tab"""
-        self.telnet_service.toggle_connection(connect, self.telnet_connection_bar.get_address()[0],
-                                              self.telnet_connection_bar.get_address()[1], self.settings)
+        ip, port = self.telnet_tab.get_connection_info()
+        self.telnet_service.toggle_connection(connect, ip, port, self.settings)
     
     def toggle_vnc_connection(self, connect: bool):
         """Toggles connection/disconnection for VNC tab"""
@@ -333,23 +346,22 @@ class CommanderWindow(QMainWindow):
     def execute_telnet_command(self, automatic=False):
         """Executes command in Telnet session using background thread"""
         self.telnet_service.set_current_token(self.current_token)
-        return self.telnet_service.execute_command(self.cmd_input.toPlainText().strip(), automatic)
+        return self.telnet_service.execute_command(self.telnet_tab.get_command(), automatic)
     
     def on_telnet_command_finished(self, response, automatic):
         """Handles the completion of a telnet command run in a background thread"""
-        # For automatic commands, show command + response
-        if automatic:
-            self.telnet_output.append(f"{response}\n")
-        else:
-            self.telnet_output.append(response)
-        from PyQt6.QtGui import QTextCursor
-        self.telnet_output.moveCursor(QTextCursor.MoveOperation.End)
+        # Append response to telnet output
+        self.telnet_tab.append_output(response)
+        
+        # Clear command input if not automatic
+        if not automatic:
+            self.telnet_tab.clear_command()
         
         # Delegate logging to commander service
         self.commander_service.log_telnet_command_finished(
             response, automatic, self.current_token, self.node_manager,
             self.status_service.status_updated, self.log_writer,
-            self.cmd_input, self.execute_btn
+            self.telnet_tab.command_input, self.telnet_tab.execute_btn
         )
     
     def copy_to_log(self):
@@ -364,9 +376,7 @@ class CommanderWindow(QMainWindow):
         """Clear the currently selected node's log file"""
         self.commander_presenter.clear_node_log(self.node_tree_view.selectedItems())
     
-    def open_log_file(self, item, column: int):
-        """Opens log file when double-clicked in tree view"""
-        return self.commander_presenter.open_log_file(item, column)
+    # This method is no longer needed - functionality moved to NodeTreePresenter
     
     def process_fieldbus_command(self, token_id, node_name):
         """Process fieldbus command with optimized error handling"""
@@ -395,10 +405,10 @@ class CommanderWindow(QMainWindow):
         self.settings.setValue("log_root", self.node_manager.log_root)
         
         # Save telnet connection state
-        # TODO: Re-implement when telnet_connection_bar is available
-        # if hasattr(self, 'telnet_connection_bar'):
-        #     self.settings.setValue("telnet_ip", self.telnet_connection_bar.ip_edit.text())
-        #     self.settings.setValue("telnet_port", self.telnet_connection_bar.port_edit.text())
+        if hasattr(self, 'telnet_tab'):
+            ip, port = self.telnet_tab.get_connection_info()
+            self.settings.setValue("telnet_ip", ip)
+            self.settings.setValue("telnet_port", port)
 
         super().closeEvent(event)
 
@@ -407,8 +417,23 @@ def run():
     # Initialize Qt application safely
     app = initialize_qt() or QApplication(sys.argv)
     
-    # Apply dark theme styling
+    # Apply dark theme styling with custom button colors
     app.setStyle("Fusion")
+    app.setStyleSheet("""
+        QPushButton {
+            background-color: #d0d0d0;
+            color: black;
+            border: 1px solid #a0a0a0;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        QPushButton:hover {
+            background-color: #c0c0c0;
+        }
+        QPushButton:pressed {
+            background-color: #b0b0b0;
+        }
+    """)
     
     # Create main window instance
     window = CommanderWindow()

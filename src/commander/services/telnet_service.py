@@ -11,15 +11,21 @@ from ..models import NodeToken
 from ..widgets import ConnectionState
 from ..commands.telnet_commands import CommandResolver
 from ..services.threading_service import ThreadingService
+from PyQt6.QtCore import QObject, pyqtSignal
 
 
-class TelnetService:
+class TelnetService(QObject):
     """Service for handling Telnet operations"""
     
     # Status message durations in milliseconds
     STATUS_MSG_SHORT = 3000    # 3 seconds
     STATUS_MSG_MEDIUM = 5000   # 5 seconds
     STATUS_MSG_LONG = 10000    # 10 seconds
+
+    # Define signals as class attributes
+    status_message_signal = pyqtSignal(str, int)  # Message and duration
+    command_finished_signal = pyqtSignal(str, bool)
+    update_connection_status_signal = pyqtSignal(ConnectionState)
     
     def __init__(self, session_manager: SessionManager):
         """
@@ -28,6 +34,7 @@ class TelnetService:
         Args:
             session_manager: Manager for session operations
         """
+        super().__init__()
         self.session_manager = session_manager
         self.command_resolver = CommandResolver()
         self.threading_service = ThreadingService()
@@ -35,11 +42,6 @@ class TelnetService:
         self.active_telnet_client = None
         self.telnet_session = None
         self.current_token = None
-        
-        # Signals for UI updates (to be connected by the UI)
-        self.status_message_signal = None
-        self.command_finished_signal = None
-        self.update_connection_status_signal = None
         
         logging.debug("TelnetService initialized")
     
@@ -96,51 +98,33 @@ class TelnetService:
         )
         
         try:
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.CONNECTING)
-                
+            self.update_connection_status_signal.emit(ConnectionState.CONNECTING)
             self.telnet_session = self.session_manager.create_session(config)
             
             # Attempt connection and get detailed result
             if self.telnet_session and self.telnet_session.is_connected:
-                if self.status_message_signal:
-                    self.status_message_signal.emit(f"Connected to {ip_address}:{port}", self.STATUS_MSG_SHORT)
-                    
-                if self.update_connection_status_signal:
-                    self.update_connection_status_signal.emit(ConnectionState.CONNECTED)
-                    
+                self.status_message_signal.emit(f"Connected to {ip_address}:{port}")
+                self.update_connection_status_signal.emit(ConnectionState.CONNECTED)
                 # Store active client for reuse in context commands
                 self.active_telnet_client = self.telnet_session
                 return True
             
             # Handle connection failure
-            if self.status_message_signal:
-                self.status_message_signal.emit("Connection failed", self.STATUS_MSG_MEDIUM)
-                
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.ERROR)
+            self.status_message_signal.emit("Connection failed")
+            self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
             
         except socket.timeout as e:
-            if self.status_message_signal:
-                self.status_message_signal.emit(f"Connection timed out: {str(e)}", self.STATUS_MSG_MEDIUM)
-                
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.ERROR)
+            self.status_message_signal.emit(f"Connection timed out: {str(e)}")
+            self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
         except ConnectionRefusedError as e:
-            if self.status_message_signal:
-                self.status_message_signal.emit(f"Connection refused: {str(e)}", self.STATUS_MSG_MEDIUM)
-                
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.ERROR)
+            self.status_message_signal.emit(f"Connection refused: {str(e)}")
+            self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
         except Exception as e:
-            if self.status_message_signal:
-                self.status_message_signal.emit(f"Connection error: {str(e)}", self.STATUS_MSG_MEDIUM)
-                
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.ERROR)
+            self.status_message_signal.emit(f"Connection error: {str(e)}")
+            self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
     
     def disconnect(self) -> bool:
@@ -159,16 +143,13 @@ class TelnetService:
             self.active_telnet_client = None
             
             # Force UI update to disconnected state
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.DISCONNECTED)
-                
+            self.update_connection_status_signal.emit(ConnectionState.DISCONNECTED)
             return True
             
         except Exception as e:
             logging.error(f"Error disconnecting: {str(e)}")
             # Still reset UI state even if disconnection failed
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.DISCONNECTED)
+            self.update_connection_status_signal.emit(ConnectionState.DISCONNECTED)
             return False
     
     def execute_command(self, command: str, automatic=False) -> str:
@@ -187,7 +168,7 @@ class TelnetService:
             self.telnet_session = self.active_telnet_client
             
         if not self.telnet_session:
-            if not automatic and self.status_message_signal:
+            if not automatic:
                 self.status_message_signal.emit("Create a Telnet session first!", self.STATUS_MSG_MEDIUM)
             logging.debug("Telnet session not available for command execution")
             return ""
@@ -203,8 +184,7 @@ class TelnetService:
 
         if not automatic:
             # Display user command in output
-            if self.command_finished_signal:
-                self.command_finished_signal.emit(f"> {command}\n", automatic)
+            self.command_finished_signal.emit(f"> {command}\n", automatic)
             
         # Start command execution in background thread
         self.threading_service.start_thread(
@@ -229,9 +209,7 @@ class TelnetService:
                 resolved_cmd = self.command_resolver.resolve(command, token_id)
                 response = self.telnet_session.send_command(resolved_cmd, timeout=5)
                 
-                if self.update_connection_status_signal:
-                    self.update_connection_status_signal.emit(ConnectionState.CONNECTED)
-                    
+                self.update_connection_status_signal.emit(ConnectionState.CONNECTED)
             except (ConnectionRefusedError, TimeoutError, socket.timeout) as e:
                 response = f"ERROR: {type(e).__name__} - {str(e)}"
                 self._handle_connection_error(e)
@@ -240,8 +218,7 @@ class TelnetService:
                 logging.error(f"Telnet command failed: {command}", exc_info=True)
             
             logging.debug(f"Emitting command_finished signal for command: {command}")
-            if self.command_finished_signal:
-                self.command_finished_signal.emit(response, automatic)
+            self.command_finished_signal.emit(response, automatic)
     
     def _handle_connection_error(self, error):
         """
@@ -252,8 +229,6 @@ class TelnetService:
         """
         error_type = type(error).__name__
         if error_type in ["ConnectionRefusedError", "TimeoutError", "socket.timeout"]:
-            if self.update_connection_status_signal:
-                self.update_connection_status_signal.emit(ConnectionState.ERROR)
-                
+            self.update_connection_status_signal.emit(ConnectionState.ERROR)
             if self.status_message_signal:
-                self.status_message_signal.emit(f"Connection error: {str(error)}", self.STATUS_MSG_MEDIUM)
+                self.status_message_signal.emit(f"Connection error: {str(error)}")
