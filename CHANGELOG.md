@@ -76,6 +76,8 @@
 
 - [IMPROVEMENT] Composite key handling implemented in LogWriter and FbcCommandService
 - [IMPROVEMENT] Composite key handling resolved ValueError for token ID 162 with protocol 'fbc'
+- [FIX] Resolved TypeError in `TelnetService.status_message_signal` emission:
+  - Modified emit calls in [`telnet_service.py`](src/commander/services/telnet_service.py) at lines 106, 113, 118, 122, 126, and 234 to ensure proper signal parameter passing
 
 ## [2025-08-15] - Memory Optimization
 - **Memory Graph Optimization**: Reduced entity count by 10.1% (228 → 205)

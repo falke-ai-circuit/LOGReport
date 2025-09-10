@@ -103,27 +103,27 @@ class TelnetService(QObject):
             
             # Attempt connection and get detailed result
             if self.telnet_session and self.telnet_session.is_connected:
-                self.status_message_signal.emit(f"Connected to {ip_address}:{port}")
+                self.status_message_signal.emit(f"Connected to {ip_address}:{port}", self.STATUS_MSG_SHORT)
                 self.update_connection_status_signal.emit(ConnectionState.CONNECTED)
                 # Store active client for reuse in context commands
                 self.active_telnet_client = self.telnet_session
                 return True
             
             # Handle connection failure
-            self.status_message_signal.emit("Connection failed")
+            self.status_message_signal.emit("Connection failed", self.STATUS_MSG_SHORT)
             self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
             
         except socket.timeout as e:
-            self.status_message_signal.emit(f"Connection timed out: {str(e)}")
+            self.status_message_signal.emit(f"Connection timed out: {str(e)}", self.STATUS_MSG_MEDIUM)
             self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
         except ConnectionRefusedError as e:
-            self.status_message_signal.emit(f"Connection refused: {str(e)}")
+            self.status_message_signal.emit(f"Connection refused: {str(e)}", self.STATUS_MSG_MEDIUM)
             self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
         except Exception as e:
-            self.status_message_signal.emit(f"Connection error: {str(e)}")
+            self.status_message_signal.emit(f"Connection error: {str(e)}", self.STATUS_MSG_MEDIUM)
             self.update_connection_status_signal.emit(ConnectionState.ERROR)
             return False
     
@@ -231,4 +231,4 @@ class TelnetService(QObject):
         if error_type in ["ConnectionRefusedError", "TimeoutError", "socket.timeout"]:
             self.update_connection_status_signal.emit(ConnectionState.ERROR)
             if self.status_message_signal:
-                self.status_message_signal.emit(f"Connection error: {str(error)}")
+                self.status_message_signal.emit(f"Connection error: {str(error)}", self.STATUS_MSG_MEDIUM)
