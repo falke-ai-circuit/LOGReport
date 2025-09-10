@@ -27,6 +27,8 @@ from ..command_queue import CommandQueue
 # Centralized Qt application initialization
 from ..qt_init import initialize_qt
 
+# Centralized theme
+from .theme import STYLESHEETS
 
 class CommanderWindow(QMainWindow):
     """Main Commander window view."""
@@ -419,21 +421,7 @@ def run():
     
     # Apply dark theme styling with custom button colors
     app.setStyle("Fusion")
-    app.setStyleSheet("""
-        QPushButton {
-            background-color: #d0d0d0;
-            color: black;
-            border: 1px solid #a0a0a0;
-            border-radius: 4px;
-            padding: 5px;
-        }
-        QPushButton:hover {
-            background-color: #c0c0c0;
-        }
-        QPushButton:pressed {
-            background-color: #b0b0b0;
-        }
-    """)
+    app.setStyleSheet(STYLESHEETS.get_application_stylesheet())
     
     # Create main window instance
     window = CommanderWindow()

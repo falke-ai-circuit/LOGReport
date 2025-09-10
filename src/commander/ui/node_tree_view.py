@@ -5,7 +5,7 @@ Stateless UI component for displaying nodes in a tree structure
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
-
+from .theme import STYLESHEETS
 
 class NodeTreeView(QWidget):
     """View component for the node tree UI"""
@@ -43,6 +43,9 @@ class NodeTreeView(QWidget):
         self.node_tree.setFont(QFont("Consolas", 10))
         
         layout.addWidget(self.node_tree, 1)  # Add stretch factor
+        
+        # Apply styling
+        self.setStyleSheet(STYLESHEETS.get_application_stylesheet())
         
         # Connect signals
         self.load_nodes_btn.clicked.connect(self.load_nodes_clicked.emit)

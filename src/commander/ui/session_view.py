@@ -9,7 +9,7 @@ from PyQt6.QtCore import pyqtSignal
 
 from commander.ui.vnc_tab import VNCTab
 from commander.ui.telnet_tab import TelnetTab  # Add import for TelnetTab
-
+from .theme import STYLESHEETS
 
 class SessionView(QWidget):
     """
@@ -50,6 +50,9 @@ class SessionView(QWidget):
         layout.addWidget(self.tab_widget)
         
         self.setLayout(layout)
+        
+        # Apply styling
+        self.setStyleSheet(STYLESHEETS.get_application_stylesheet())
         
         # Connect signals
         self.vnc_tab.copy_to_log_clicked.connect(self.copy_to_log_clicked.emit)

@@ -5,6 +5,7 @@ Creates placeholder icons for Commander UI
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt, QSize
+from .ui.theme import COLORS
 
 def create_node_icon(color: QColor) -> QIcon:
     """Creates a circular icon for nodes"""
@@ -42,10 +43,22 @@ def create_token_icon(color: QColor) -> QIcon:
 
 # Create icon instances as functions to defer creation
 def get_node_online_icon():
-    return create_node_icon(QColor(50, 168, 82))      # Green
+    # Use the centralized color palette
+    from .ui.theme import COLORS
+    color = QColor()
+    color.setNamedColor(COLORS.ICON_NODE_ONLINE)
+    return create_node_icon(color)
 
 def get_node_offline_icon():
-    return create_node_icon(QColor(200, 200, 200))   # Gray
+    # Use the centralized color palette
+    from .ui.theme import COLORS
+    color = QColor()
+    color.setNamedColor(COLORS.ICON_NODE_OFFLINE)
+    return create_node_icon(color)
 
 def get_token_icon():
-    return create_token_icon(QColor(88, 139, 139))    # CadetBlue
+    # Use the centralized color palette
+    from .ui.theme import COLORS
+    color = QColor()
+    color.setNamedColor(COLORS.ICON_TOKEN)
+    return create_token_icon(color)

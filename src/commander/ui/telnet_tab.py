@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 
+from .theme import STYLESHEETS
+
 class TelnetTab(QWidget):
     """
     Tab for Telnet session management
@@ -84,6 +86,9 @@ class TelnetTab(QWidget):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
+        
+        # Apply styling
+        self.setStyleSheet(STYLESHEETS.get_telnet_tab_stylesheet())
 
     def append_output(self, text):
         """Append text to the telnet output"""

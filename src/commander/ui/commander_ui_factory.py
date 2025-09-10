@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
 from commander.ui.node_tree_view import NodeTreeView
 from commander.ui.session_view import SessionView
 from commander.ui.vnc_tab import VNCTab
-
+from .theme import STYLESHEETS
 
 class CommanderUIFactory:
     """
@@ -50,6 +50,9 @@ class CommanderUIFactory:
         layout = QVBoxLayout()
         layout.addWidget(splitter)
         main_widget.setLayout(layout)
+        
+        # Apply styling
+        main_widget.setStyleSheet(STYLESHEETS.get_application_stylesheet())
         
         return main_widget
         

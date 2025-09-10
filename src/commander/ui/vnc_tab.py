@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 
+from .theme import STYLESHEETS, COLORS
 
 class VNCTab(QWidget):
     """
@@ -46,7 +47,8 @@ class VNCTab(QWidget):
         
         # Recording controls
         self.record_btn = QPushButton("● Record")
-        self.record_btn.setStyleSheet("color: red; font-weight: bold;")
+        # Use theme colors for record button
+        self.record_btn.setStyleSheet(f"color: {COLORS.STATUS_ERROR}; font-weight: bold;")
         self.record_btn.setCheckable(True)
         
         self.stop_btn = QPushButton("Stop")
@@ -138,52 +140,7 @@ class VNCTab(QWidget):
         
     def _setup_styling(self):
         """Set up widget styling."""
-        self.setStyleSheet(
-            """
-            QWidget {
-                background-color: #2D2D30;
-                color: #DCDCDC;
-                font-family: Segoe UI;
-            }
-            QPushButton {
-                background-color: #3D3D3D;
-                border: 1px solid #555;
-                padding: 5px 15px;
-                min-width: 80px;
-                color: #DCDCDC;
-            }
-            QPushButton:hover {
-                background-color: #4D4D4D;
-            }
-            QPushButton:pressed {
-                background-color: #2D2D2D;
-            }
-            QPushButton:checked {
-                background-color: #5D5D5D;
-                font-weight: bold;
-            }
-            QLineEdit, QComboBox {
-                background-color: #252526;
-                color: #DCDCDC;
-                border: 1px solid #3E3E42;
-                padding: 4px;
-            }
-            QTextEdit {
-                background-color: #1E1E1E;
-                color: #DCDCDC;
-                border: 1px solid #3E3E42;
-                selection-background-color: #007ACC;
-            }
-            QFrame {
-                border: 1px solid #3E3E42;
-            }
-            QToolBar {
-                background-color: #2D2D30;
-                border: none;
-                spacing: 10px;
-            }
-            """
-        )
+        self.setStyleSheet(STYLESHEETS.get_vnc_tab_stylesheet())
 
     def set_connection_status(self, connected: bool):
         """

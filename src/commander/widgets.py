@@ -1,7 +1,7 @@
 from enum import Enum
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QPushButton
 from PyQt6.QtCore import pyqtSignal
-
+from .ui.theme import COLORS, STYLESHEETS
 
 class ConnectionState(Enum):
     """Connection state for Commander connections."""
@@ -36,6 +36,9 @@ class ConnectionBar(QWidget):
         self.layout.addWidget(self.connect_btn)
         self.layout.addStretch()
         self.setLayout(self.layout)
+        
+        # Apply styling
+        self.setStyleSheet(STYLESHEETS.get_application_stylesheet())
 
         self.connect_btn.clicked.connect(self._on_connect_button_clicked)
         self.update_status(ConnectionState.DISCONNECTED)
@@ -53,10 +56,10 @@ class ConnectionBar(QWidget):
             ConnectionState.ERROR: "\u2a2f",
         }
         colors = {
-            ConnectionState.DISCONNECTED: "#888",
-            ConnectionState.CONNECTING: "orange",
-            ConnectionState.CONNECTED: "lime",
-            ConnectionState.ERROR: "red",
+            ConnectionState.DISCONNECTED: COLORS.STATUS_DISCONNECTED,
+            ConnectionState.CONNECTING: COLORS.STATUS_WARNING,
+            ConnectionState.CONNECTED: COLORS.STATUS_SUCCESS,
+            ConnectionState.ERROR: COLORS.STATUS_ERROR,
         }
         self.status_icon.setText(icons[state])
         self.status_icon.setStyleSheet(
