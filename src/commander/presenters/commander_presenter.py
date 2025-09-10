@@ -151,3 +151,17 @@ class CommanderPresenter(QObject):
         Clear the telnet terminal output.
         """
         self.ui_factory.session_view.telnet_tab.output.clear()
+    
+    def handle_queue_processed(self, success_count, total_count, status_service):
+        """
+        Handle queue processing completion and update UI status.
+        
+        Args:
+            success_count: Number of successfully processed commands
+            total_count: Total number of commands in the queue
+            status_service: StatusService instance for UI updates
+        """
+        if success_count == total_count:
+            self.status_message_signal.emit(f"Successfully processed {success_count} commands", 3000)
+        else:
+            self.status_message_signal.emit(f"Processed {success_count}/{total_count} commands successfully", 5000)
