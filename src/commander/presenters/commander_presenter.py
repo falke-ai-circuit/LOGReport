@@ -145,3 +145,9 @@ class CommanderPresenter(QObject):
             selected_items: Selected items from the view
         """
         self.utils.clear_node_log(selected_items, self.status_message_signal)
+    
+    def clear_terminal(self):
+        """
+        Clear the telnet terminal output.
+        """
+        self.ui_factory.session_view.telnet_tab.output.clear()

@@ -21,9 +21,14 @@ def mock_ui_factory(app):
     ui_factory = MagicMock(spec=CommanderUIFactory)
     session_view = MagicMock(spec=SessionView)
     telnet_tab = MagicMock(spec=TelnetTab)
+    vnc_tab = MagicMock()  # Add mock for vnc_tab
+    node_tree_view = MagicMock()  # Add missing mock
     
     # Set up the mock hierarchy
     ui_factory.session_view = session_view
+    ui_factory.node_tree_view = node_tree_view  # Add to UI factory
+    ui_factory.vnc_tab = vnc_tab  # For CommanderPresenter
+    session_view.vnc_tab = vnc_tab  # For SessionPresenter
     session_view.telnet_tab = telnet_tab
     
     # Mock the output widget
@@ -64,6 +69,6 @@ class TestButtonActions:
     """Tests for button action functionalities."""
 
     def test_clear_terminal_button(self, commander_presenter, mock_ui_factory):
-        """Verify 'Clear terminal' button clears the terminal_output."""
+        """Verify that clear_terminal method calls the output.clear() method on the telnet tab."""
         commander_presenter.clear_terminal()
         mock_ui_factory.session_view.telnet_tab.output.clear.assert_called_once()
