@@ -106,3 +106,35 @@ class LogWriter:
         """
         # This method is specifically for clipboard content
         self.write_to_log(content, log_type)
+
+    def clear_log(self, token_id: str):
+        """
+        Clear the log file associated with a token.
+        
+        Args:
+            token_id: ID of the token whose log should be cleared
+        """
+        # Find the token with the given ID
+        token_found = False
+        for node in self.node_manager.get_all_nodes():
+            # In the real Node class, node.tokens is a dict where keys are token IDs
+            # and values are lists of tokens with that ID
+            if token_id in node.tokens:
+                token_found = True
+                token_list = node.tokens[token_id]
+                for token in token_list:
+                    # Check if the token has a log_path
+                    log_path = getattr(token, 'log_path', None)
+                    if log_path:
+                        try:
+                            # Clear the file by opening in write mode and writing nothing
+                            with open(log_path, 'w', encoding='utf-8') as f:
+                                f.write("")
+                            self.write_to_app_log(f"Successfully cleared log file: {log_path}")
+                        except Exception as e:
+                            self.write_to_app_log(f"Failed to clear log file {log_path}: {str(e)}")
+                    else:
+                        self.write_to_app_log(f"Token {token_id} has no log_path attribute or it's empty")
+        
+        # If we didn't find the token, we don't write to app log as it's not necessarily an error
+        # The test expects that we process all tokens with the same ID, so we don't return early

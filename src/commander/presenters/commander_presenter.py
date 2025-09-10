@@ -18,6 +18,7 @@ from commander.services.clipboard_monitor import ClipboardMonitor
 from commander.services.status_service import StatusService
 from commander.log_writer import LogWriter
 from commander.node_manager import NodeManager
+from commander.presenters.commander_presenter_utils import CommanderPresenterUtils
 
 
 class CommanderPresenter(QObject):
@@ -60,6 +61,7 @@ class CommanderPresenter(QObject):
         self.fbc_service = fbc_service
         self.rpc_service = rpc_service
         self.context_menu_service = context_menu_service
+        self.utils = CommanderPresenterUtils(node_manager=self.node_manager, log_writer=self.log_writer)
         
         # Create presenters
         self.node_tree_presenter = NodeTreePresenter(
@@ -134,3 +136,12 @@ class CommanderPresenter(QObject):
             content: Selected text content
         """
         self.session_presenter.handle_vnc_text_selection(content)
+    
+    def clear_node_log(self, selected_items):
+        """
+        Clear the log for the selected node.
+        
+        Args:
+            selected_items: Selected items from the view
+        """
+        self.utils.clear_node_log(selected_items, self.status_message_signal)
