@@ -50,6 +50,11 @@ class TelnetTab(QWidget):
         self.disconnect_btn.clicked.connect(lambda: self.connect_clicked.emit(False))
         connection_layout.addWidget(self.disconnect_btn)
         
+        # Status indicator
+        self.status_label = QLabel("\u25CB")  # Default disconnected icon
+        self.status_label.setStyleSheet("font-size: 16pt; color: #888;")
+        connection_layout.addWidget(self.status_label)
+        
         layout.addLayout(connection_layout)
 
         # Telnet output
@@ -109,6 +114,24 @@ class TelnetTab(QWidget):
     def update_connection_status(self, state):
         """Update UI based on connection status"""
         from ..widgets import ConnectionState
+        
+        # Update status indicator
+        icons = {
+            ConnectionState.DISCONNECTED: "\u25CB",  # ○
+            ConnectionState.CONNECTING: "\u25D1",    # ◑
+            ConnectionState.CONNECTED: "\u25CF",    # ●
+            ConnectionState.ERROR: "\u2a2f",       # ⨯
+        }
+        colors = {
+            ConnectionState.DISCONNECTED: "#888",   # Gray
+            ConnectionState.CONNECTING: "orange",  # Orange
+            ConnectionState.CONNECTED: "lime",     # Green
+            ConnectionState.ERROR: "red",         # Red
+        }
+        self.status_label.setText(icons[state])
+        self.status_label.setStyleSheet(f"font-size: 16pt; color: {colors[state]};")
+        
+        # Update button states
         connected = state == ConnectionState.CONNECTED
         self.connect_btn.setEnabled(not connected)
         self.disconnect_btn.setEnabled(connected)

@@ -1,0 +1,52 @@
+--- a/tests/commander/test_telnet_connect.py
++++ b/tests/commander/test_telnet_connect.py
+@@ -44,7 +44,7 @@
+         assert result is True
+         mock_session_manager.create_session.assert_called_once()
+         telnet_service.status_message_signal.emit.assert_called_once_with(
+-            f"Connected to {host}:{port}", 
+-            TelnetService.STATUS_MSG_MEDIUM
++            f"Connected to {host}:{port}",
++            TelnetService.STATUS_MSG_SHORT
+         )
+         telnet_service.update_connection_status_signal.emit.assert_any_call(ConnectionState.CONNECTING)
+         telnet_service.update_connection_status_signal.emit.assert_called_with(ConnectionState.CONNECTED)
+@@ -66,7 +66,7 @@
+         assert result is False
+         telnet_service.status_message_signal.emit.assert_called_once_with(
+             "Connection error: Connection failed", 
+-            TelnetService.STATUS_MSG_LONG
++            TelnetService.STATUS_MSG_MEDIUM
+         )
+         telnet_service.update_connection_status_signal.emit.assert_any_call(ConnectionState.CONNECTING)
+         telnet_service.update_connection_status_signal.emit.assert_called_with(ConnectionState.ERROR)
+@@ -88,7 +88,7 @@
+         assert result is False
+         telnet_service.status_message_signal.emit.assert_called_once_with(
+             "Connection timed out: Connection timed out", 
+-            TelnetService.STATUS_MSG_LONG
++            TelnetService.STATUS_MSG_MEDIUM
+         )
+         telnet_service.update_connection_status_signal.emit.assert_any_call(ConnectionState.CONNECTING)
+         telnet_service.update_connection_status_signal.emit.assert_called_with(ConnectionState.ERROR)
+@@ -110,7 +110,7 @@
+         assert result is False
+         telnet_service.status_message_signal.emit.assert_called_once_with(
+             "Connection refused: Connection refused", 
+-            TelnetService.STATUS_MSG_LONG
++            TelnetService.STATUS_MSG_MEDIUM
+         )
+         telnet_service.update_connection_status_signal.emit.assert_any_call(ConnectionState.CONNECTING)
+         telnet_service.update_connection_status_signal.emit.assert_called_with(ConnectionState.ERROR)
+@@ -139,7 +139,7 @@
+         assert result is True
+         mock_settings.setValue.assert_any_call("telnet_ip", host)
+         mock_settings.setValue.assert_any_call("telnet_port", str(port))
+         telnet_service.status_message_signal.emit.assert_called_once_with(
+-            f"Connected to {host}:{port}", 
+-            TelnetService.STATUS_MSG_MEDIUM
++            f"Connected to {host}:{port}",
++            TelnetService.STATUS_MSG_SHORT
+         )
+ 
+     def test_toggle_connection_disconnect(self, telnet_service, mock_session_manager):
