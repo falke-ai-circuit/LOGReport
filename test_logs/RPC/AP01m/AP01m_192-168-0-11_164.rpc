@@ -1,11 +1,37 @@
-=== COMMANDER LOG ===
-Node: AP01m
-Token: 164
-Type: RPC
-Created: 2025-09-04 10:02:36
-====================
+[2025-09-11 16:29:43] print from fbc rupi counters 1640000
+Unknown agent, replycode = c00d
 
-10:02:39 >> [RPC] print from fbc rupi counters 1640000
-int from fbc rupi counters 1640000
-10:03:45 >> [RPC] print from fbc rupi counters 1640000
-int from fbc rupi counters 1640000
+    84s% ?
+
+        THE ALTERNATIVES AT THIS POINT ARE:
+ clear          (Clearing commands)
+ search         (Searching commands)
+ watch          (Watch commands)
+ kill           (Destroy Process)
+ logout         (Logout from Diagnostic Station)
+ modify         (Modiying commands)
+ print          (Printing commands)
+ reet          (Reset station)
+ set            (Seting commands)
+ togglemode     (Switch to Application mode)
+ systemmode     (Switch to System mode)
+ applmode       (Switch to Application mode)
+ systemtest     (Misc system test commands)
+ disconnect     (Disconnect network connection)
+ lock           (Lock session)
+ unlock         (Unlok session)
+ update         (Update commands)
+ user          (User commands)
+ capture        (Start/sto capture)
+ script         (Start/stop script)
+ sleep          (sleep)
+ echo           (control echo)
+ cmd            (menu control)
+ syscall        (OS system() command)
+ node           (Node related commands)
+ rem            (comment line for scripts)
+ <CR>
+
+    84s% ? print from fb io structure 1640000
+
+        Getting FBC Utilization Rate from FBC agent 1640000

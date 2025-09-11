@@ -80,10 +80,11 @@ class LoggingService:
         """
         try:
             if token and hasattr(token, 'token_id') and hasattr(token, 'token_type'):
-                self.log_writer.append_to_log(
-                    token.token_id,
+                self.log_writer.write_to_log(
                     f"{command}\n{result}",
-                    protocol=token.token_type
+                    token.token_type,
+                    token.name,
+                    token
                 )
             else:
                 logging.warning(f"Unable to log command result: missing token information")
@@ -119,18 +120,10 @@ class LoggingService:
                     logging.debug(f"Processing manual command for token {current_token.token_id}")
                     node = node_manager.get_node_by_token(current_token)
                     if node:
-                        node_ip = node.ip_address.replace('.', '-') if node.ip_address else "unknown-ip"
-                        # Use composite key (token_id, protocol) to find log path
-                        key = (current_token.token_id, current_token.token_type.lower())
-                        log_path = log_writer.log_paths.get(key)
-                        if not log_path:
-                            logging.debug(f"Opening new log for token {current_token.token_id}")
-                            log_path = log_writer.open_log(node.name, node_ip, current_token, log_writer.get_log_path(node.name, node_ip, current_token))
-                        
-                        log_writer.append_to_log(current_token.token_id, response, protocol=current_token.token_type)
-                        logging.info(f"Successfully appended to log: {os.path.basename(log_path)}")
+                        log_writer.write_to_log(response, current_token.token_type, node.name, current_token)
+                        # We don't have access to the filename here, so we'll just emit a generic message
                         if status_message_signal:
-                            status_message_signal.emit(f"Command output appended to {os.path.basename(log_path)}", 3000)
+                            status_message_signal.emit("Command output logged", 3000)
                     else:
                         logging.warning(f"Node not found for token {current_token.token_id}")
                         if status_message_signal:
@@ -142,36 +135,24 @@ class LoggingService:
         else:   # automatic commands
             if response.strip() and current_token:
                 try:
-                    # Check if token has a direct log path (from context menu)
-                    log_path = getattr(current_token, 'log_path', None)
-                    if log_path:
-                        # Write directly to the specified log file
-                        with open(log_path, 'a') as f:
-                            f.write(response + "\n")
-                        if status_message_signal:
-                            status_message_signal.emit(
-                                f"Command output appended to {os.path.basename(log_path)}",
-                                3000
-                            )
-                    else:
-                        # For automatic commands, always ensure we have a log file open
-                        node = node_manager.get_node_by_token(current_token)
-                        if node:
-                            node_ip = node.ip_address.replace('.', '-') if node.ip_address else "unknown-ip"
-                            # Always call open_log for automatic commands to ensure proper log path generation
-                            log_writer.open_log(node.name, node_ip, current_token, log_writer.get_log_path(node.name, node_ip, current_token))
-                        
-                        # Fall back to standard log writer
-                        log_writer.append_to_log(
-                            current_token.token_id,
+                    # For automatic commands, use the standard log writer
+                    node = node_manager.get_node_by_token(current_token)
+                    if node:
+                        log_writer.write_to_log(
                             response,
-                            protocol=current_token.token_type
+                            current_token.token_type,
+                            node.name,
+                            current_token
                         )
                         if status_message_signal:
                             status_message_signal.emit(
                                 "Command output logged",
                                 3000
                             )
+                    else:
+                        logging.warning(f"Node not found for token {current_token.token_id}")
+                        if status_message_signal:
+                            status_message_signal.emit(f"Node not found for token {current_token.token_id}", 3000)
                 except Exception as e:
                     logging.error(f"Log write error: {str(e)}")
                     if status_message_signal:

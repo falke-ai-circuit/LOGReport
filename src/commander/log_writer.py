@@ -44,47 +44,83 @@ class LogWriter:
         file_handler.setFormatter(formatter)
         self.app_logger.addHandler(file_handler)
 
-    def write_to_log(self, content: str, log_type: str, node_name: Optional[str] = None):
-        """
-        Write content to the appropriate log file.
-        
-        Args:
-            content: Content to write to log
-            log_type: Type of log (FBC, LIS, LOG, RPC)
-            node_name: Optional node name, if not provided uses active node
-        """
-        if not content.strip():
-            return
-            
-        # Get node name
-        if not node_name:
-            active_node = getattr(self.node_manager, 'active_node', None)
-            if active_node:
-                node_name = active_node.name
-            else:
-                # If no active node, write to application log
-                self.write_to_app_log(f"No active node, writing {log_type} content to app log: {content[:100]}...")
-                return
-                
-        # Determine log directory and filename
-        log_dir = os.path.join("test_logs", log_type)
-        if node_name:
-            log_dir = os.path.join(log_dir, node_name)
-            
-        os.makedirs(log_dir, exist_ok=True)
-        
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{node_name}_{timestamp}.{log_type.lower()}"
-        filepath = os.path.join(log_dir, filename)
-        
-        # Write content to file
-        try:
-            with open(filepath, 'a', encoding='utf-8') as f:
-                f.write(content + '\n')
-        except Exception as e:
-            self.write_to_app_log(f"Failed to write to {log_type} log: {str(e)}")
-            raise
+    def write_to_log(self, content: str, log_type: str, node_name: Optional[str] = None, token=None):
+       """
+       Write content to the appropriate log file.
+       
+       Args:
+           content: Content to write to log
+           log_type: Type of log (FBC, LIS, LOG, RPC)
+           node_name: Optional node name, if not provided uses active node
+           token: Optional token with log_path attribute
+       """
+       if not content.strip():
+           return
+           
+       # Check if token has a log_path attribute and use it directly
+       if token and hasattr(token, 'log_path') and token.log_path:
+           filepath = token.log_path
+       else:
+           # Get node name
+           if not node_name:
+               active_node = getattr(self.node_manager, 'active_node', None)
+               if active_node:
+                   node_name = active_node.name
+               else:
+                   # If no active node, write to application log
+                   self.write_to_app_log(f"No active node, writing {log_type} content to app log: {content[:100]}...")
+                   return
+                   
+           # Determine log directory and filename
+           log_dir = os.path.join("test_logs", log_type)
+           if node_name:
+               # For node-specific logs, create subdirectory
+               log_dir = os.path.join(log_dir, node_name)
+               
+           os.makedirs(log_dir, exist_ok=True)
+           
+           # Generate consistent filename without timestamp
+           if log_type.upper() == "LOG":
+               # LOG files use naming: {node_name}_{formatted_ip}.log
+               if token and hasattr(token, 'ip_address'):
+                   formatted_ip = token.ip_address.replace('.', '-')
+                   filename = f"{node_name}_{formatted_ip}.log"
+               else:
+                   # Fallback to simple naming: {node_name}.log
+                   filename = f"{node_name}.log"
+           else:
+               # For FBC, LIS, RPC files, if we have a token, use proper naming pattern
+               # Otherwise, use simple naming like before
+               if token and hasattr(token, 'token_id') and hasattr(token, 'ip_address'):
+                   # Format IP address: 192.168.0.11 -> 192-168-0-11
+                   formatted_ip = token.ip_address.replace('.', '-')
+                   # Generate filename with identifiers based on log type
+                   if log_type.upper() == "RPC":
+                       # RPC pattern: {node_name}_{formatted_ip}_{token_id}.{extension}
+                       filename = f"{node_name}_{formatted_ip}_{token.token_id}.{log_type.lower()}"
+                   elif log_type.upper() == "FBC":
+                       # FBC pattern: {node_name}_{formatted_ip}_{token_id}.{extension}
+                       filename = f"{node_name}_{formatted_ip}_{token.token_id}.{log_type.lower()}"
+                   else:
+                       # LIS and other types: {node_name}_{formatted_ip}_{token_id}.{extension}
+                       filename = f"{node_name}_{formatted_ip}_{token.token_id}.{log_type.lower()}"
+               else:
+                   # Fallback to simple naming: {node_name}.{extension}
+                   filename = f"{node_name}.{log_type.lower()}"
+               
+           filepath = os.path.join(log_dir, filename)
+       
+       # Add timestamp to the content
+       timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+       timestamped_content = f"[{timestamp}] {content}"
+       
+       # Write content to file
+       try:
+           with open(filepath, 'a', encoding='utf-8') as f:
+               f.write(timestamped_content + '\n')
+       except Exception as e:
+           self.write_to_app_log(f"Failed to write to {log_type} log: {str(e)}")
+           raise
 
     def write_to_app_log(self, message: str, level: int = logging.INFO):
         """

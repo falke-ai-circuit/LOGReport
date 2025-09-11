@@ -1,11 +1,2 @@
-=== COMMANDER LOG ===
-Node: AP01m
-Token: 162
-Type: RPC
-Created: 2025-09-04 10:02:08
-====================
+[2025-09-11 16:29:36] print from fbc rupi counters 1620000
 
-10:02:11 >> [RPC] print from fbc rupi counters 1620000
-int from fbc rupi counters 1620000
-10:03:39 >> [RPC] print from fbc rupi counters 1620000
-int from fbc rupi counters 1620000

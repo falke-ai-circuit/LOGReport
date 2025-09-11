@@ -93,7 +93,7 @@ class TestTelnetConnection:
         telnet_service.execute_command("test command")
 
         mock_telnet_client.send_command.assert_called_once_with("test command")
-        mock_session_manager.append_to_log.assert_called_once_with("Command output")
+        mock_session_manager.write_to_log.assert_called_once_with("Command output", "Telnet", None)
 
     def test_execute_command_failure(self, telnet_service, mock_telnet_client, mock_session_manager):
         """Verify command execution failure handling."""
@@ -101,5 +101,5 @@ class TestTelnetConnection:
         telnet_service.execute_command("test command")
 
         mock_telnet_client.send_command.assert_called_once_with("test command")
-        mock_session_manager.append_to_log.assert_not_called()
+        mock_session_manager.write_to_log.assert_not_called()
         mock_session_manager.update_status.assert_called_with("Command execution failed: Command execution error", TelnetService.STATUS_MSG_LONG)

@@ -589,7 +589,16 @@ class NodeManager:
         formatted_ip = ip_address.replace('.', '-')
         
         # Create path: <log_root>/<token_type>/<node_name>/<filename>
-        filename = f"{node_name}_{token_id}_{formatted_ip}_{token_id}.{log_type.lower()}"
+        # Generate filename with identifiers based on log type
+        if log_type.upper() == "RPC":
+            # RPC pattern: {node_name}_{formatted_ip}_{token_id}.{extension}
+            filename = f"{node_name}_{formatted_ip}_{token_id}.{log_type.lower()}"
+        elif log_type.upper() == "FBC":
+            # FBC pattern: {node_name}_{token_id}_{formatted_ip}_{token_id}.{extension}
+            filename = f"{node_name}_{token_id}_{formatted_ip}_{token_id}.{log_type.lower()}"
+        else:
+            # LIS, LOG and other types: {node_name}_{formatted_ip}_{token_id}.{extension}
+            filename = f"{node_name}_{formatted_ip}_{token_id}.{log_type.lower()}"
         return os.path.join(self.log_root, log_type, node_name, filename)
     
     def _token_distance(self, token1: str, token2: str) -> int:

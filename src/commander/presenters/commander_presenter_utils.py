@@ -62,11 +62,18 @@ class CommanderPresenterUtils:
             # Handle based on item type
             if "log_path" in data:
                 log_path = data["log_path"]
-                # Write directly to the file
-                with open(log_path, 'a') as f:
-                    f.write(content + "\n")
-                filename = os.path.basename(log_path)
-                status_message_signal.emit(f"Content copied to {filename}", 3000)
+                # Extract node name, token type, and token ID from log_path
+                # This is a simplified approach - in a real implementation, you might want to parse the path more carefully
+                path_parts = log_path.split(os.sep)
+                if len(path_parts) >= 3:
+                    node_name = path_parts[-2]  # Node name is the directory name
+                    token_type = path_parts[-3]  # Token type is the parent directory name
+                    # Write using the log_writer
+                    self.log_writer.write_to_log(content, token_type, node_name)
+                    filename = os.path.basename(log_path)
+                    status_message_signal.emit(f"Content copied to {filename}", 3000)
+                else:
+                    status_message_signal.emit("Unable to parse log path", 3000)
 
             elif "token" in data:
                 token_id = data["token"]
@@ -86,7 +93,7 @@ class CommanderPresenterUtils:
                 log_dir = os.path.join(self.node_manager.log_root, token_type, node_name)
                 filename = f"{node_name}_{ip}_{token_id}.{token_type.lower()}"
                 # Write using the log_writer
-                self.log_writer.append_to_log(token_id, content, source=session_type)
+                self.log_writer.write_to_log(content, session_type, node_name)
                 status_message_signal.emit(f"Content copied to {filename}", 3000)
 
             else:
@@ -109,7 +116,7 @@ class CommanderPresenterUtils:
         try:
             if "log_path" in data:
                 log_path = data["log_path"]
-                # Clear the file
+                # Clear the file by writing nothing to it
                 with open(log_path, 'w') as f:
                     f.write("")
                 filename = os.path.basename(log_path)

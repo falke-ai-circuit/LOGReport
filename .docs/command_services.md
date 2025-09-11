@@ -21,7 +21,7 @@ class FbcCommandService(CommandService):
         if "ERROR" in response:
             self.report_error(response)
         else:
-            self.log_writer.append_to_log(response)
+            self.log_writer.write_to_log(response)
 ```
 
 ### RPC Command Service

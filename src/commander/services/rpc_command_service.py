@@ -35,32 +35,6 @@ class RpcCommandService(QObject):
         token_str = str(token_id).strip()
         return token_str.zfill(3) if token_str.isdigit() else token_str
     
-    def _initialize_log_file(self, token: NodeToken):
-        """Initialize log file for the token if not already initialized"""
-        try:
-            # Get reference to log writer from parent (CommanderWindow)
-            if hasattr(self.parent(), 'log_writer'):
-                log_writer = self.parent().log_writer
-                
-                # Check if log is already initialized for this token using composite key
-                key = (token.token_id, token.token_type.lower())
-                if key not in log_writer.loggers:
-                    # Get node from node manager
-                    node = self.node_manager.get_node_by_token(token)
-                    if not node:
-                        # Fallback to creating a temporary node with token's name
-                        from ..models import Node
-                        node = Node(name=token.name, ip_address=token.ip_address)
-                
-                    # Generate log path using shared utility
-                    log_path = log_writer.get_node_log_path(node, token.token_id, token.token_type.lower())
-                
-                    # Open log file
-                    log_writer.open_log(node.name, node.ip_address, token, log_path)
-                    self.logger.debug(f"Initialized log file for token {token.token_id} at {log_path}")
-        except Exception as e:
-            self.logger.warning(f"Failed to initialize log file for token {token.token_id}: {str(e)}")
-            # Don't fail the command if log initialization fails
     
     def get_token(self, node_name: str, token_id: str) -> NodeToken:
         """Retrieve token from node manager with multiple lookup attempts"""
@@ -88,8 +62,6 @@ class RpcCommandService(QObject):
             self.logger.debug(f"RpcCommandService.queue_rpc_command: Retrieved token - ID: {token.token_id}, Type: {token.token_type}, Node: {token.name}, IP: {token.ip_address}")
 
             
-            # Ensure log file is initialized before queuing command
-            self._initialize_log_file(token)
             
             command = self.generate_rpc_command(token_id, action)
             self.logger.debug(f"RpcCommandService.queue_rpc_command: Generated command: {command}")

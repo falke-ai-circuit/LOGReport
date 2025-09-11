@@ -4,20 +4,18 @@
 The logging system in LOGReport handles creation, management, and writing of log files for different protocol types (FBC, RPC, LOG, LIS). It ensures proper separation and organization of logs while maintaining performance through efficient file handle management.
 
 ## Log Key Structure
-The LogWriter uses composite keys in the format `(token_id, protocol)` where:
+The LogWriter uses token-based identification where possible, falling back to composite keys in the format `(token_id, protocol)` where:
 - `token_id`: Numeric identifier from node configuration
 - `protocol`: Lowercase string ("fbc", "rpc", etc.)
-
-This prevents log file conflicts when multiple protocols share the same token ID.
 
 ## Key Components
 
 ### LogWriter
 Primary class responsible for:
-- Creating and managing log file handles
-- Writing command outputs to appropriate logs
-- Maintaining open file handles for performance
-- Handling file rotation and cleanup
+- Writing content to appropriate log files
+- Handling token-based log path resolution
+- Managing application logging
+- Handling file I/O operations
 
 ### LoggingService
 Orchestrates the logging process:
@@ -36,29 +34,29 @@ Protocol-specific services that:
 ### Directory Structure
 - FBC logs: `{log_root}/FBC/{node}/`
 - RPC logs: `{log_root}/RPC/{node}/`
-- LOG files: `{log_root}/{node}/`
+- LOG files: `{log_root}/LOG/`
+- LIS files: `{log_root}/LIS/{node}/`
 
 ### File Naming Convention
-- FBC: `{node}_{ip}_{token}.fbc`
-- RPC: `{node}_{ip}_{token}.rpc`
-- LOG: `{node}_{timestamp}_LOG.log`
-- LIS: `{node}_{timestamp}_LIS.lis`
+- FBC: `{node}_{ip}_{token}.fbc` (when token info available) or `{node}.{extension}`
+- RPC: `{node}_{ip}_{token}.rpc` (when token info available) or `{node}.{extension}`
+- LOG: `{node}_{ip}.log` (standard naming) or `{node}_{ip}_{token}.log` (when token info available)
+- LIS: `{node}_{ip}_{token}.lis` (when token info available) or `{node}.{extension}`
 
-## Composite Key Implementation
-The system implements composite keys to prevent conflicts between different protocol types that share the same token ID. For example, token ID 162 can now have separate logs for FBC and RPC protocols:
-- `(162, "fbc")` → AP01m_192-168-0-11_162.fbc
-- `(162, "rpc")` → AP01m_192-168-0-11_163.rpc
+## Token-Based Path Resolution
+The system now implements token-based path resolution to determine appropriate log file paths:
+1. If a token with a `log_path` attribute is provided, that path is used directly
+2. If a token with `token_id` and `ip_address` attributes is provided, filenames are generated using these identifiers
+3. If no token information is available, fallback naming conventions are used
 
-This ensures that each protocol type maintains its own log file even when using the same token identifier.
+This approach ensures that log files are consistently named and located based on the context in which they are created.
 
 ## Performance Considerations
-- File handles are kept open during active sessions
-- Batch writing operations to reduce I/O overhead
-- Efficient key lookup using composite key structure
+- Direct file writing without keeping handles open
+- Efficient path resolution using token attributes
 - Memory-efficient handling of multiple concurrent logs
 
 ## Error Handling
 - Graceful handling of file I/O errors
-- Automatic retry mechanisms for transient failures
-- Comprehensive logging of error conditions
+- Comprehensive logging of error conditions to application log
 - Fallback behavior for inaccessible log directories
