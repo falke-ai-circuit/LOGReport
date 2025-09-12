@@ -174,3 +174,21 @@ class LogWriter:
         
         # If we didn't find the token, we don't write to app log as it's not necessarily an error
         # The test expects that we process all tokens with the same ID, so we don't return early
+         
+    def append_to_file(self, filepath: str, content: str):
+        """
+        Append content to a file.
+        
+        Args:
+            filepath: Path to the file to append to
+            content: Content to append to the file
+        """
+        if not content.strip():
+            return
+            
+        try:
+            with open(filepath, 'a', encoding='utf-8') as f:
+                f.write(content + '\n')
+        except Exception as e:
+            self.write_to_app_log(f"Failed to append to file {filepath}: {str(e)}")
+            raise

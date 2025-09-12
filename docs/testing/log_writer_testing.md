@@ -34,6 +34,13 @@ The additional tests cover the following scenarios:
 - Directory creation behavior
 - Token-based path resolution with various token attributes
 
+### Known Coverage Gaps
+- CommanderPresenter.copy_to_log functionality requires test coverage to verify:
+  - Correct retrieval of active terminal content
+  - Proper invocation of log writing methods
+  - Error handling when no active terminal exists
+  - User feedback mechanisms
+
 ## Running Tests
 
 To run all LogWriter tests:

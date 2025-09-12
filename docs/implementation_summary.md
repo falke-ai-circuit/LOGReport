@@ -110,6 +110,22 @@ This document summarizes the implementation of token normalization consistency i
 111|
 112| ## Technical Architecture
 
+### 6. Clipboard to Log Functionality
+
+**Objective**: Implement the 'copy_to_log' functionality to copy terminal content to log files.
+
+**Changes Made**:
+- Added `copy_to_log` method to `src/commander/presenters/commander_presenter.py` (lines 169-198)
+- Implemented `get_active_terminal_content` in `src/commander/presenters/session_presenter.py` to retrieve content from the active terminal
+- Enhanced `append_to_file` in `src/commander/log_writer.py` to handle file appending with error handling
+
+**Key Features**:
+- **Content Retrieval**: Gets the content of the active terminal tab
+- **Log Writing**: Appends the content to the appropriate log file based on the log type (FBC, RPC, LOG, LIS)
+- **Error Handling**: Provides user feedback for success or failure
+
+**Resolution of AttributeError**: The missing `copy_to_log` method was implemented, resolving the AttributeError.
+
 ### Token Normalization Flow
 
 ```

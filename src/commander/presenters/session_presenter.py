@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import QWidget
 # from commander.presenters.commander_presenter import CommanderPresenter
 from commander.ui.session_view import SessionView
 from commander.ui.vnc_tab import VNCTab
+from commander.ui.telnet_tab import TelnetTab
 from commander.services.clipboard_monitor import ClipboardMonitor
 from commander.services.status_service import StatusService
 from commander.log_writer import LogWriter
@@ -258,6 +259,15 @@ class SessionPresenter(QObject):
             session.connection_state_changed.connect(self._on_vnc_connection_state_changed)
         else:
             self.status_service.show_message(f"Failed to connect to VNC server at {host}:{port}")
+            
+    def get_active_terminal_content(self, session_tabs):
+        """Retrieve content from active terminal tab"""
+        active_tab = session_tabs.currentWidget()
+        if isinstance(active_tab, TelnetTab):
+            return active_tab.output.toPlainText()
+        elif isinstance(active_tab, VNCTab):
+            return active_tab.get_selected_text()
+        return None
             
     def _on_vnc_disconnect_clicked(self):
         """Handle VNC disconnect button click."""

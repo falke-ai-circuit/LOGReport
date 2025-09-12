@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QTabWidget, QTextEdit, 
     QVBoxLayout, QWidget, QPushButton, QFileDialog
 )
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal, Qt
 
 from commander.ui.commander_ui_factory import CommanderUIFactory
 from commander.presenters.session_presenter import SessionPresenter
@@ -165,3 +165,34 @@ class CommanderPresenter(QObject):
             self.status_message_signal.emit(f"Successfully processed {success_count} commands", 3000)
         else:
             self.status_message_signal.emit(f"Processed {success_count}/{total_count} commands successfully", 5000)
+    
+    def copy_to_log(self, selected_items, session_tabs):
+        """Copy terminal content to selected log file"""
+        if not selected_items:
+            self.status_message_signal.emit("No log file selected in node tree", 3000)
+            return
+
+        # Get first valid log path from selection
+        log_path = None
+        for item in selected_items:
+            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+            if item_data and 'log_path' in item_data:
+                log_path = item_data['log_path']
+                break
+        
+        if not log_path:
+            self.status_message_signal.emit("Selected item is not a valid log file", 3000)
+            return
+
+        # Get content from active terminal tab
+        content = self.session_presenter.get_active_terminal_content(session_tabs)
+        if not content:
+            self.status_message_signal.emit("No terminal content available", 3000)
+            return
+
+        # Write to file through service
+        try:
+            self.log_writer.append_to_file(log_path, content)
+            self.status_message_signal.emit(f"Content saved to {os.path.basename(log_path)}", 3000)
+        except Exception as e:
+            self.status_message_signal.emit(f"Error saving content: {str(e)}", 5000)
