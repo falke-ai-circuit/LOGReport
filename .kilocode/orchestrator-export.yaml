@@ -115,7 +115,7 @@ customModes:
       - After all tasks complete:
         - Launch a `new_task` in `document-mode`
         - Include the overall task context and all results
-        - Instruct it to update `.docs/`, `README.md`, `CHANGELOG.md`, `TODO.md` and memory
+        - Instruct it to update `docs/`, `README.md`, `CHANGELOG.md`, `TODO.md` and memory
         - Persist all final documentation using memory tools
 
       ---
@@ -147,7 +147,7 @@ customModes:
 
       - Always use `mcp-code-graph` for deeper code insights.
 
-      - Always consult `.docs/`, `README.md`, `TODO.md`, and `CHANGELOG.md` and
+      - Always consult `docs/`, `README.md`, `TODO.md`, and `CHANGELOG.md` and
       memory before planning
 
 

@@ -88,8 +88,23 @@ Implemented in [`CommanderWindow.process_all_fbc_subgroup_commands()`](src/comma
 
 Additional documentation for key components and features:
 
-- [Service Layer Pattern](.docs/service_layer_pattern.md) - Centralizes business logic in dedicated service classes
-- [Context Menu Filtering](.docs/context_menu_filtering.md) - Dynamic control over context menu options based on configurable rules
-- [Hybrid Token Resolution](.docs/hybrid_token_resolution.md) - Multi-step token resolution with intelligent fallback mechanisms
-- [Token Processing](.docs/token_processing.md) - Identification, management, and execution of commands for various token types
-- [Troubleshooting Guide](.docs/troubleshooting_guide.md) - Solutions to common issues related to node resolution and token management
+- [Service Layer Pattern](docs/architecture/service_layer/service_layer_pattern.md) - Centralizes business logic in dedicated service classes
+- [Context Menu Filtering](docs/blueprints/context_menu_filtering.md) - Dynamic control over context menu options based on configurable rules
+- [Hybrid Token Resolution](docs/architecture/token_management/hybrid_token_resolution.md) - Multi-step token resolution with intelligent fallback mechanisms
+- [Token Processing](docs/architecture/token_management/token_processing.md) - Identification, management, and execution of commands for various token types
+- [Troubleshooting Guide](docs/user/troubleshooting/troubleshooting_guide.md) - Solutions to common issues related to node resolution and token management
+## Documentation Structure
+
+### Core Documentation
+- [Changelog Management](docs/changelog/management.md) - Versioning and change tracking
+- [Task Management System](docs/roadmaps/task_management.md) - Workflow and prioritization
+- [Memory Consolidation](docs/blueprints/memory_consolidation.md) - Dual memory architecture
+
+### System Blueprints
+- [Context Menu Filtering](docs/blueprints/context_menu_filtering.md) - Dynamic UI configuration
+- [Session Recording](docs/blueprints/session_recording_blueprint.md) - Command capture/replay
+- [VNC Integration](docs/blueprints/vnc_tab_blueprint.md) - Remote control implementation
+
+### API References
+- [Token Processing](docs/api_token_utilities.md) - FBC/RPC handling
+- [Node Management](docs/node_manager_configuration.md) - Device tree configuration

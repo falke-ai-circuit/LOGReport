@@ -67,7 +67,7 @@ This document details all integration points between the VNC tab implementation 
 
 ### Connection Sequence
 1. Log file selection → NodeManager emits `log_file_selected` signal
-2. [`LogFilenameParser`](src/commander/utils/log_filename_parser.py:1) extracts IP
+2. Log filename parsing extracts IP
 3. SessionPresenter receives IP → updates ConnectionBar
 4. User clicks Connect → SessionPresenter initiates connection
 5. VNC client establishes connection → SessionPresenter updates state

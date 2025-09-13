@@ -45,7 +45,7 @@ VNC Tab (QWidget)
 ### 1. Dynamic IP Management
 - **IP Extraction Logic**:
   - Parse IP from log filename pattern (e.g., `AP01m-192_168_0_11` → `192.168.0.11`)
-  - Implemented in [`LogFilenameParser`](src/commander/utils/log_filename_parser.py:1)
+  - Implemented via log filename parsing
   - Triggered when log file is selected in node tree
 - **IP Input Field** must support:
   - Real-time validation of IP/port format
@@ -107,7 +107,7 @@ VNC Tab (QWidget)
 ## Implementation Roadmap
 1. Create `VNCTab` class extending `QWidget`
 2. Implement layout structure with QVBoxLayout
-3. Integrate [`LogFilenameParser`](src/commander/utils/log_filename_parser.py:1) for IP extraction
+3. Integrate log filename parsing for IP extraction
 4. Implement bottom-section connection controls matching Telnet tab pattern
 5. Integrate clipboard monitoring service for automatic log writing
 6. Add Ctrl+C text selection handling with clipboard notification

@@ -50,7 +50,7 @@ customModes:
 
       1. **Summary**: Outline project structure, current docs, and goals  
 
-      2. **Organize `.docs/`**: Add missing files, clean outdated ones, ensure
+      2. **Organize `docs/`**: Add missing files, clean outdated ones, ensure
       headings and examples  
 
       3. **Update `README.md`**: Reflect setup, configuration, usage, and

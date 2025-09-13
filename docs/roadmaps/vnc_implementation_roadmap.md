@@ -34,7 +34,7 @@ This roadmap details the phased implementation of VNC viewer integration based o
 - [ ] Status indicators synchronized with connection state
 
 **Key Tasks**:
-1. Integrate [`LogFilenameParser`](src/commander/utils/log_filename_parser.py:1) for IP extraction
+1. Implement log filename parsing for IP extraction
 2. Implement real-time IP validation in input field
 3. Connect to `SessionManager.ip_changed` signal
 4. Develop connection state machine (Disconnected/Connecting/Connected)

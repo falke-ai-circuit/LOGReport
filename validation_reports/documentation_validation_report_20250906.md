@@ -6,11 +6,11 @@ Re-integrate and validate the updated documentation, verifying it serves its int
 ## Scope
 The validation focused on the following updated documentation files:
 - `README.md`
-- `.docs/service_layer_pattern.md`
-- `.docs/context_menu_filtering.md`
-- `.docs/hybrid_token_resolution.md`
-- `.docs/token_processing.md`
-- `.docs/troubleshooting_guide.md`
+- `docs/architecture/service_layer/service_layer_pattern.md`
+- `docs/blueprints/context_menu_filtering.md`
+- `docs/architecture/token_management/hybrid_token_resolution.md`
+- `docs/architecture/token_management/token_processing.md`
+- `docs/user/troubleshooting/troubleshooting_guide.md`
 
 The validation criteria included:
 - **Coverage**: All specified new/updated documentation files are present and contain relevant information.
@@ -28,7 +28,7 @@ The validation criteria included:
 
 ### 2. Internal Links
 - **Status**: PASSED
-- **Evidence**: All internal links within `README.md` and the `.docs/*.md` files (pointing to code files, configuration files, and other documentation files) were extracted and verified to exist in the project structure. No broken internal links were found.
+- **Evidence**: All internal links within `README.md` and the `docs/architecture/*.md`, `docs/user/*.md`, and `docs/technical/*.md` files (pointing to code files, configuration files, and other documentation files) were extracted and verified to exist in the project structure. No broken internal links were found.
 
 ### 3. External Links
 - **Status**: PASSED
