@@ -25,7 +25,7 @@ class SimpleNodeManager:
         if file_path is None:
             file_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
-                "src", "nodes_test.json"
+                "src", "nodes.json"
             )
         
         try:

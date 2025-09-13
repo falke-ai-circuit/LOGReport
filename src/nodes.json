@@ -20,7 +20,7 @@
                 "token_type": "FBC",
                 "port": 2077,
                 "protocol": "telnet"
-            },
+            }
         ]
     },
     {

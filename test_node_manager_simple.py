@@ -9,46 +9,21 @@ import json
 # Add src to path so we can import commander modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-# Let's try to directly import the node_manager module
-import importlib.util
-
-# Specify the path to the node_manager.py file
-node_manager_path = os.path.join(os.path.dirname(__file__), 'src', 'commander', 'node_manager.py')
-
-# Load the module
-spec = importlib.util.spec_from_file_location("node_manager", node_manager_path)
-node_manager_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(node_manager_module)
-
-# Import the models module the same way
-models_path = os.path.join(os.path.dirname(__file__), 'src', 'commander', 'models.py')
-spec2 = importlib.util.spec_from_file_location("models", models_path)
-models_module = importlib.util.module_from_spec(spec2)
-spec2.loader.exec_module(models_module)
+# Import the modules directly
+from commander.node_manager import NodeManager
+from commander.models import Node, NodeToken
 
 def test_node_manager():
     """Test node manager functionality"""
     print("Testing NodeManager functionality...")
     
     # Create a simple NodeManager instance
-    NodeManager = node_manager_module.NodeManager
-    Node = models_module.Node
-    NodeToken = models_module.NodeToken
+    # NodeManager = node_manager_module.NodeManager
+    # Node = models_module.Node
+    # NodeToken = models_module.NodeToken
     
     # Create a node manager
-    nm = NodeManager.__new__(NodeManager)  # Create instance without calling __init__
-    
-    # Initialize the attributes manually
-    nm.nodes = {}
-    nm.log_root = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "test_logs"
-    )
-    nm.selected_node = None
-    nm.config_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "src", "nodes_test.json"
-    )
+    nm = NodeManager()
     
     # Load configuration
     success = nm.load_configuration()

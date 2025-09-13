@@ -21,10 +21,10 @@ class NodeManager:
         )
         print(f"[DEBUG] Log root set to: {self.log_root}")
         self.selected_node: Optional[Node] = None
-        # Use test nodes configuration for development
+        # Use nodes configuration
         self.config_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "nodes_test.json"
+            "nodes.json"
         )
         # Load configuration immediately after setting path
         self.load_configuration()
@@ -36,6 +36,8 @@ class NodeManager:
     def set_log_root(self, path):
         """Set the root folder for log files"""
         self.log_root = path
+        # Reload configuration to update node paths
+        self.load_configuration()
         # Update log paths when log root changes
         self.scan_log_files()
         
