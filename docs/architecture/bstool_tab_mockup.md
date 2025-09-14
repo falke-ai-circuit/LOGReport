@@ -26,21 +26,13 @@ This horizontal bar will be at the top of the tab.
     -   Placeholder: `e.g., C:\Program Files\BsTool\bstool.exe`
     -   Width: Occupies significant horizontal space.
 -   **Label:** `Env Var:`
--   **Input Field (Environment Variable):**
-    -   Type: `QLineEdit`
-    -   Placeholder: `e.g., BSL_CONFIG=C:\config.json`
-    -   Width: Shorter than the BsTool Path input, but sufficient for typical environment variable key-value pairs.
--   **Connect Button:**
-    -   Type: `QPushButton`
-    -   Text: `Connect`
-    -   Initial State: Enabled
--   **Disconnect Button:**
-    -   Type: `QPushButton`
-    -   Text: `Disconnect`
-    -   Initial State: Disabled
+-   **Static Display (Environment Variable):**
+    -   Type: `QLabel`
+    -   Content: `COMMUNICATION_LINE=AB01`
+    -   Width: Sufficient to display the fixed environment variable.
 -   **Status Indicator:**
     -   Type: `QLabel`
-    -   Content: A circular Unicode character (e.g., `●` for connected, `○` for disconnected, `◔` for connecting, `✖` for error).
+    -   Content: A circular Unicode character (e.g., `●` for running, `○` for stopped, `◔` for starting, `✖` for error).
     -   Color: Dynamically changes based on process state (e.g., green for running, gray for stopped, orange for starting, red for error).
     -   Font Size: Larger than surrounding text for visibility.
 
@@ -88,7 +80,7 @@ This horizontal bar will be at the bottom of the tab.
 
 ```
 +---------------------------------------------------------------------+
-| BsTool Path: [ C:\Program Files\BsTool\bstool.exe         ] Env Var: [ BSL_CONFIG=C:\config.json ] [Connect] [Disconnect] ● |
+| BsTool Path: [ C:\Program Files\BsTool\bstool.exe         ] COMMUNICATION_LINE=AB01 ● |
 +---------------------------------------------------------------------+
 |                                                                     |
 |                                                                     |

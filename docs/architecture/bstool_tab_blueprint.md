@@ -5,7 +5,8 @@ This document outlines the blueprint for integrating `bstool.exe` into the LOGRe
 
 ## 2. Goals
 - Integrate `bstool.exe` directly into the LOGReport application's build process.
-- Enable execution of `bstool.exe` via a right-click context menu action on `.log` files.
+- Enable execution of `bstool.exe` via a right-click context menu action on `.log` files, passing dynamic arguments (e.g., `bstool -errlog AP01`).
+- Provide UI buttons for 'Execute', 'Copy to Log', 'Clear Terminal', and 'Clear Log' within the BsTool tab.
 - Ensure `bstool.exe` is executed with the fixed environment variable `COMMUNICATION_LINE=AB01`.
 - Capture and write the console output of `bstool.exe` to the selected `.log` file.
 - Maintain UI/UX consistency with existing command execution patterns (e.g., FBC/RPC).
@@ -21,21 +22,25 @@ This document outlines the blueprint for integrating `bstool.exe` into the LOGRe
 ### 3.2. Context Menu Integration (`ContextMenuService`)
 The existing `ContextMenuService` (`src/commander/services/context_menu_service.py`) will be extended to provide a new right-click action for `.log` files.
 - **File Type Detection**: The `ContextMenuService` will identify when a `.log` file is selected in the file explorer or relevant UI component.
-- **New Menu Action**: A `QAction` named "Run BsTool on this file" (or similar) will be added to the context menu for `.log` files.
-- **Presenter Integration**: This action will trigger a new method in the main presenter (e.g., `self.presenter.process_bstool_command(log_file_path)`), passing the full path of the selected `.log` file.
+-   **New Menu Action**: A `QAction` named "Run BsTool on this file" (or similar) will be added to the context menu for `.log` files.
+-   **Context Menu Command Construction**: The context menu action will construct a command for `bstool.exe` dynamically, for example, `bstool -errlog AP01`, where `AP01` is derived from the selected `.log` file's name (e.g., `AP01m_192-168-0-11.log` -> `AP01`).
+-   **Presenter Integration**: This action will trigger a new method in the main presenter (e.g., `self.presenter.process_bstool_command(log_file_path, bstool_command_args)`), passing the full path of the selected `.log` file and the constructed `bstool` command arguments.
 
 ### 3.3. Service Component (`BsToolCommandService`)
 A new `BsToolCommandService` (or an extension to an existing service if applicable) will be created as a QObject, responsible for managing the `bstool.exe` process and its interaction. This service will be analogous to `FbcCommandService` and `RpcCommandService`.
 
 **Key Functionalities:**
-- `execute_bstool(log_file_path: str)`:
-    - Constructs the command to execute `bstool.exe` with the `log_file_path` as an argument.
+- `execute_bstool(log_file_path: str, bstool_command_args: str = "")`:
+    - Constructs the command to execute `bstool.exe` with the `log_file_path` and `bstool_command_args` as arguments.
     - **Fixed Environment Variable**: Sets the environment variable `COMMUNICATION_LINE=AB01` for the `bstool.exe` subprocess. This variable will be hardcoded within the service.
     - Launches `bstool.exe` using Python's `subprocess` module.
     - Captures `stdout` and `stderr` of the `bstool.exe` process in real-time.
     - Runs in a separate thread using `ThreadingService` to prevent UI blocking.
     - Emits `bstool_output_signal` with the captured output.
     - Emits `status_message_signal` for process status updates.
+- `copy_to_log(content: str, log_file_path: str)`: Copies provided content to the specified log file.
+- `clear_terminal()`: Clears the output display in the UI.
+- `clear_log(log_file_path: str)`: Clears the content of the specified log file.
 - **Output Redirection**: The captured output from `bstool.exe` will be written directly to the `log_file_path` using the application's `LogWriter` (or a similar mechanism), appending the output to the end of the selected `.log` file.
 
 **Signals Emitted by `BsToolCommandService`:**
@@ -48,8 +53,8 @@ A new `BsToolCommandService` (or an extension to an existing service if applicab
 2.  `ContextMenuService` detects the `.log` file and adds "Run BsTool on this file" action.
 3.  User selects the action.
 4.  `ContextMenuService` triggers `self.presenter.process_bstool_command(log_file_path)`.
-5.  The presenter calls `BsToolCommandService.execute_bstool(log_file_path)`.
-6.  `BsToolCommandService` executes `bstool.exe` with `COMMUNICATION_LINE=AB01` and the `log_file_path`.
+5.  The presenter calls `BsToolCommandService.execute_bstool(log_file_path, bstool_command_args)`.
+6.  `BsToolCommandService` executes `bstool.exe` with `COMMUNICATION_LINE=AB01`, the `log_file_path`, and any provided `bstool_command_args`.
 7.  `BsToolCommandService` captures `bstool.exe`'s output and emits `bstool_output_signal`.
 8.  A slot (e.g., in the presenter or a dedicated log handling component) receives `bstool_output_signal` and uses the `LogWriter` to append the output to the specified `log_file_path`.
 

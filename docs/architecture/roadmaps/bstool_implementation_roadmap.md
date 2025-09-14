@@ -11,10 +11,11 @@ This document outlines the phased implementation roadmap for integrating `bstool
 
 **Milestones:**
 -   **M1.1: `BsToolCommandService` Class Definition:** Create the `BsToolCommandService` class with basic structure, signals, and slots.
--   **M1.2: Process Launch & Termination:** Implement `execute_bstool()` method, including `subprocess` calls, setting the fixed `COMMUNICATION_LINE=AB01` environment variable, and process management.
+-   **M1.2: Process Launch & Termination:** Implement `execute_bstool(log_file_path: str, bstool_command_args: str = "")` method, including `subprocess` calls, setting the fixed `COMMUNICATION_LINE=AB01` environment variable, and process management.
 -   **M1.3: Output Capture & Redirection:** Implement logic to capture `stdout` and `stderr` from `bstool.exe` in real-time and integrate with the `LogWriter` to append output to the specified log file.
--   **M1.4: Asynchronous Execution:** Integrate `ThreadingService` for non-blocking process management.
--   **M1.5: Unit Tests for `BsToolCommandService`:** Develop comprehensive unit tests covering all core functionalities, environment variable setting, output capture, and error handling.
+-   **M1.4: UI Action Implementations:** Implement `copy_to_log()`, `clear_terminal()`, and `clear_log()` methods within the service.
+-   **M1.5: Asynchronous Execution:** Integrate `ThreadingService` for non-blocking process management.
+-   **M1.6: Unit Tests for `BsToolCommandService`:** Develop comprehensive unit tests covering all core functionalities, environment variable setting, output capture, and error handling, as well as the new UI action methods.
 
 **Deliverables:**
 -   `src/commander/services/bstool_command_service.py` (initial version)
@@ -27,8 +28,8 @@ This document outlines the phased implementation roadmap for integrating `bstool
 
 **Milestones:**
 -   **M2.1: PyInstaller Spec File Modification:** Update `LOGReporter.spec` to include `bstool.exe` as a data file, ensuring it's bundled correctly with the main executable.
--   **M2.2: `ContextMenuService` Extension:** Modify `src/commander/services/context_menu_service.py` to detect `.log` files and add a new `QAction` for "Run BsTool on this file".
--   **M2.3: Presenter Integration:** Implement a new method in the main presenter (e.g., `process_bstool_command`) to receive the `log_file_path` from the `ContextMenuService` and trigger `BsToolCommandService.execute_bstool()`.
+-   **M2.2: `ContextMenuService` Extension:** Modify `src/commander/services/context_menu_service.py` to detect `.log` files and add a new `QAction` for "Run BsTool on this file", including dynamic command argument construction (e.g., `bstool -errlog AP01`).
+-   **M2.3: Presenter Integration:** Implement a new method in the main presenter (e.g., `process_bstool_command`) to receive the `log_file_path` and `bstool_command_args` from the `ContextMenuService` and trigger `BsToolCommandService.execute_bstool()`.
 -   **M2.4: Integration Tests:** Conduct comprehensive integration tests to verify the end-to-end flow from right-click to `bstool.exe` execution and output writing.
 
 **Deliverables:**
@@ -43,7 +44,7 @@ This document outlines the phased implementation roadmap for integrating `bstool
 
 **Milestones:**
 -   **M3.1: User Guide Update:** Add a section to the user guide (`docs/user/user_guide.md`) on how to use the "Run BsTool" context menu action for `.log` files.
--   **M3.2: Technical Documentation:** Update relevant technical documentation with implementation details for `bstool.exe` bundling, context menu integration, and `BsToolCommandService`.
+-   **M3.2: Technical Documentation:** Update relevant technical documentation with implementation details for `bstool.exe` bundling, context menu integration, `BsToolCommandService`, and the new UI actions.
 -   **M3.3: System Tests:** Perform a full build and verify the right-click action on a `.log` file correctly triggers `bstool.exe` with the environment variable and appends its output.
 -   **M3.4: Performance Optimization:** Identify and address any performance bottlenecks related to `bstool.exe` execution and output handling.
 
