@@ -68,7 +68,12 @@ class TelnetSession(BaseSession):
     def __init__(self, config: SessionConfig):
         super().__init__(config)
         self.buffer = b""
-        self.prompt_pattern = re.compile(r'\d+[a-z]\%\s*$')
+        # Multiple, more specific prompt patterns with proper anchoring
+        self.prompt_patterns = [
+            re.compile(r'\n\d+[a-z]\%\s*$'),  # Prompt at beginning of line after newline
+            re.compile(r'^\d+[a-z]\%\s*$'),   # Prompt at very beginning of response
+            re.compile(r'\r\n\d+[a-z]\%\s*$') # Prompt after carriage return and newline
+        ]
         
     def connect(self) -> bool:
         try:
@@ -187,6 +192,7 @@ class TelnetSession(BaseSession):
         last_data_time = time.time()
         
         logging.debug(f"TelnetSession._read_response: Starting read with timeout={timeout}s")
+        logging.debug(f"TelnetSession._read_response: Using prompt patterns: {[p.pattern for p in self.prompt_patterns]}")
         
         while (time.time() - start_time) < timeout:
             chunk = self.connection.read_very_eager()
@@ -196,7 +202,8 @@ class TelnetSession(BaseSession):
                 decoded = response.decode('ascii', 'ignore')
                 logging.debug(f"TelnetSession._read_response: Received {len(chunk)} bytes, total {len(response)}")
                 
-                if self.prompt_pattern.search(decoded):
+                # Check for any of the prompt patterns
+                if any(pattern.search(decoded) for pattern in self.prompt_patterns):
                     logging.debug("TelnetSession._read_response: Detected prompt pattern")
                     break
                     

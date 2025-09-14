@@ -112,7 +112,6 @@ class CommandWorker(QRunnable):
                 if "error" in lower_result or "invalid token" in lower_result or "unknown command" in lower_result:
                     error_msg = f"Command returned error response: {self.result[:200]}"
                     logging.error(error_msg)
-                    self.result = error_msg
                     self.success = False
                 else:
                     # Handle specific device response patterns

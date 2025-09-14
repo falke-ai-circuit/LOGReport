@@ -18,6 +18,11 @@
 - Fixed SyntaxError in command processing
 - Corrected output redirection (responses now go to terminal instead of files)
 - Improved error handling for malformed commands
+- **Telnet Command Output Truncation Fix**:
+  - **Root Cause**: An overly broad regex pattern `\d+[a-z]\%\s*$` in `TelnetClient._read_response` led to premature truncation of command output.
+  - **Solution**: Implemented multiple, more robust regex patterns with newline anchors in `TelnetClient` and `TelnetSession` to ensure accurate prompt detection and prevent output truncation.
+  - **Verification**: All integration tests in `tests/commander/test_telnet_command_output.py` passed, confirming full and consistent output from both context menu and Telnet tab executions.
+  - **Learnings**: Emphasized the importance of precise regex for protocol parsing, dynamic test creation to unblock workflows, and iterative debugging of tests.
 
 ## Basic Usage
 ```python

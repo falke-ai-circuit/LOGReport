@@ -8,7 +8,12 @@ class TelnetClient:
     def __init__(self):
         self.connection = None
         self.timeout = 10
-        self.prompt_pattern = re.compile(r'\d+[a-z]\%\s*$')
+        # Multiple, more specific prompt patterns with proper anchoring
+        self.prompt_patterns = [
+            re.compile(r'\n\d+[a-z]\%\s*$'),  # Prompt at beginning of line after newline
+            re.compile(r'^\d+[a-z]\%\s*$'),   # Prompt at very beginning of response
+            re.compile(r'\r\n\d+[a-z]\%\s*$') # Prompt after carriage return and newline
+        ]
         self.mode = "INSERT"  # Default mode
         self.log = []
         
@@ -118,7 +123,7 @@ class TelnetClient:
         
     def _read_response(self):
         """Read telnet response with prompt detection"""
-        logging.debug(f"TelnetClient._read_response: Reading response with prompt pattern: {self.prompt_pattern.pattern}")
+        logging.debug(f"TelnetClient._read_response: Reading response with prompt patterns: {[p.pattern for p in self.prompt_patterns]}")
         response = b""
         start_time = time.time()
         timeout_seconds = self.timeout
@@ -132,7 +137,8 @@ class TelnetClient:
                 decoded = response.decode('ascii', 'ignore')
                 logging.debug(f"TelnetClient._read_response: Received {len(chunk)} bytes, total {len(response)}")
                 
-                if self.prompt_pattern.search(decoded):
+                # Check for any of the prompt patterns
+                if any(pattern.search(decoded) for pattern in self.prompt_patterns):
                     logging.debug("TelnetClient._read_response: Detected prompt pattern")
                     break
                     
