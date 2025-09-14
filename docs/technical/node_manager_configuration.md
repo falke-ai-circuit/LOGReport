@@ -301,6 +301,58 @@ nm = NodeManager()
 nm.load_configuration("legacy_config.json")  # Will be converted
 ```
 
+### Saving Configuration
+
+The NodeManager provides functionality to save the current configuration to a JSON file. This is useful when programmatically adding nodes or making changes to the configuration that need to be persisted.
+
+#### Method Signature
+
+```python
+save_configuration(file_path: str = None) -> bool
+```
+
+#### Parameters
+
+- `file_path` (str, optional): The path to the file where the configuration should be saved. If not provided, the default configuration path will be used.
+
+#### Return Value
+
+- `bool`: Returns `True` if the configuration was successfully saved, `False` otherwise.
+
+#### Usage Example
+
+```python
+from src.commander.node_manager import NodeManager
+
+# Create NodeManager instance
+nm = NodeManager()
+
+# Add a new node
+nm.add_node({
+    "name": "NEW_NODE",
+    "ip_address": "192.168.1.100",
+    "tokens": [
+        {
+            "token_id": "001",
+            "token_type": "FBC",
+            "port": 23
+        }
+    ]
+})
+
+# Save configuration to default path
+if nm.save_configuration():
+    print("Configuration saved successfully")
+else:
+    print("Failed to save configuration")
+
+# Save configuration to custom path
+if nm.save_configuration("custom_config.json"):
+    print("Configuration saved to custom path")
+else:
+    print("Failed to save configuration to custom path")
+```
+
 ### Configuration Validation Script
 
 ```python
@@ -517,6 +569,7 @@ Get the currently selected node.
 - **v1.3.0**: Added token normalization integration
 - **v1.4.0**: Improved logging and statistics
 - **v1.5.0**: Added configuration validation and migration tools
+- **v1.6.0**: Added configuration saving functionality and enhanced validation
 
 ## Support
 

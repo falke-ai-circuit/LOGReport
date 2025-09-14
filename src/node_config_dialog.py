@@ -25,7 +25,43 @@ class NodeConfigDialog(QDialog):
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r') as f:
-                    self.nodes_data = json.load(f)
+                    loaded_data = json.load(f)
+                
+                # Transform loaded data to match the internal format
+                self.nodes_data = []
+                for node in loaded_data:
+                    # Check if the file is in the new format (has ip_address and detailed tokens)
+                    if "ip_address" in node:
+                        # New format - transform to internal format
+                        new_node = {
+                            "name": node.get("name", ""),
+                            "ip": node.get("ip_address", ""),
+                            "tokens": [],
+                            "types": []
+                        }
+                        
+                        # Extract tokens and types from detailed token objects
+                        token_ids = []
+                        types = set()
+                        for token_obj in node.get("tokens", []):
+                            token_id = token_obj.get("token_id")
+                            token_type = token_obj.get("token_type")
+                            
+                            # Add token_id to list if not already present
+                            if token_id and token_id not in token_ids and token_id != "default_lis_token":
+                                token_ids.append(token_id)
+                            
+                            # Add token_type to set
+                            if token_type:
+                                types.add(token_type)
+                        
+                        new_node["tokens"] = token_ids
+                        new_node["types"] = list(types)
+                        
+                        self.nodes_data.append(new_node)
+                    else:
+                        # Old format - use as is
+                        self.nodes_data.append(node)
             except Exception as e:
                 QMessageBox.warning(
                     self,
@@ -37,10 +73,9 @@ class NodeConfigDialog(QDialog):
             self.nodes_data = [
                 {"name": "AP00", "tokens": ["001", "002"], "types": ["FBC"], "ip": "192.168.0.1"}
             ]
-            # Save the default configuration to nodes.json
+            # Save the default configuration to nodes.json in the new format
             try:
-                with open(self.config_file, 'w') as f:
-                    json.dump(self.nodes_data, f, indent=4)
+                self.save_config_as_default()
             except:
                 pass
         
@@ -59,9 +94,53 @@ class NodeConfigDialog(QDialog):
         if not file_path:
             return
             
+        # Transform nodes_data to match the desired format
+        transformed_data = []
+        for node in self.nodes_data:
+            # Create a new node with ip_address instead of ip
+            new_node = {
+                "name": node.get("name", ""),
+                "ip_address": node.get("ip", ""),
+                "tokens": []
+            }
+            
+            # Transform tokens to detailed objects
+            tokens = node.get("tokens", [])
+            types = node.get("types", [])
+            
+            # For FBC and RPC types, create entries for each token
+            # Based on the nodes_test.json format, it seems like all tokens get entries for selected types
+            for token_type in types:
+                # Skip LIS for now, handle it separately
+                if token_type == "LIS":
+                    continue
+                
+                # For each token, create a detailed object
+                for token in tokens:
+                    # Create token object with appropriate port and protocol
+                    token_obj = {
+                        "token_id": token,
+                        "token_type": token_type,
+                        "port": 23,  # Default port for telnet
+                        "protocol": "telnet"  # Default protocol
+                    }
+                    new_node["tokens"].append(token_obj)
+            
+            # Add LIS token if LIS type is selected
+            if "LIS" in types:
+                lis_token_obj = {
+                    "token_id": "default_lis_token",  # Default LIS token ID
+                    "token_type": "LIS",
+                    "port": 23,
+                    "protocol": "telnet"
+                }
+                new_node["tokens"].append(lis_token_obj)
+            
+            transformed_data.append(new_node)
+            
         try:
             with open(file_path, 'w') as f:
-                json.dump(self.nodes_data, f, indent=4)
+                json.dump(transformed_data, f, indent=4)
             QMessageBox.information(
                 self,
                 "Success",
@@ -88,7 +167,38 @@ class NodeConfigDialog(QDialog):
             
         try:
             with open(file_path, 'r') as f:
-                self.nodes_data = json.load(f)
+                loaded_data = json.load(f)
+            
+            # Transform loaded data to match the internal format
+            self.nodes_data = []
+            for node in loaded_data:
+                # Create a new node with ip instead of ip_address
+                new_node = {
+                    "name": node.get("name", ""),
+                    "ip": node.get("ip_address", ""),
+                    "tokens": [],
+                    "types": []
+                }
+                
+                # Extract tokens and types from detailed token objects
+                token_ids = []
+                types = set()
+                for token_obj in node.get("tokens", []):
+                    token_id = token_obj.get("token_id")
+                    token_type = token_obj.get("token_type")
+                    
+                    # Add token_id to list if not already present
+                    if token_id and token_id not in token_ids and token_id != "default_lis_token":
+                        token_ids.append(token_id)
+                    
+                    # Add token_type to set
+                    if token_type:
+                        types.add(token_type)
+                
+                new_node["tokens"] = token_ids
+                new_node["types"] = list(types)
+                
+                self.nodes_data.append(new_node)
             
             self.populate_node_list()
             
@@ -317,6 +427,58 @@ class NodeConfigDialog(QDialog):
                 self.example_label.setText(f"Couldn't generate examples: {str(e)}")
         else:
             self.example_label.setText("No examples generated yet")
+            
+    def save_config_as_default(self):
+        """Save default configuration to the default nodes.json file"""
+        try:
+            with open(self.config_file, 'w') as f:
+                # Transform nodes_data to match the desired format for default save
+                transformed_data = []
+                for node in self.nodes_data:
+                    # Create a new node with ip_address instead of ip
+                    new_node = {
+                        "name": node.get("name", ""),
+                        "ip_address": node.get("ip", ""),
+                        "tokens": []
+                    }
+                    
+                    # Transform tokens to detailed objects
+                    tokens = node.get("tokens", [])
+                    types = node.get("types", [])
+                    
+                    # For FBC and RPC types, create entries for each token
+                    # Based on the nodes_test.json format, it seems like all tokens get entries for selected types
+                    for token_type in types:
+                        # Skip LIS for now, handle it separately
+                        if token_type == "LIS":
+                            continue
+                        
+                        # For each token, create a detailed object
+                        for token in tokens:
+                            # Create token object with appropriate port and protocol
+                            token_obj = {
+                                "token_id": token,
+                                "token_type": token_type,
+                                "port": 23,  # Default port for telnet
+                                "protocol": "telnet"  # Default protocol
+                            }
+                            new_node["tokens"].append(token_obj)
+                    
+                    # Add LIS token if LIS type is selected
+                    if "LIS" in types:
+                        lis_token_obj = {
+                            "token_id": "default_lis_token",  # Default LIS token ID
+                            "token_type": "LIS",
+                            "port": 23,
+                            "protocol": "telnet"
+                        }
+                        new_node["tokens"].append(lis_token_obj)
+                    
+                    transformed_data.append(new_node)
+                
+                json.dump(transformed_data, f, indent=4)
+        except:
+            pass
             
     def create_files(self):
         """Create files and folders based on current configuration"""
