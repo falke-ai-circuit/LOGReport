@@ -44,6 +44,7 @@
 {"type":"entity","name":"Dynamic Configuration Reload Pattern","entityType":"Architectural Pattern","observations":["When external dependencies (like log root paths) change, relevant application components must trigger a full reload of affected configurations and data.","Explicitly calling reload methods (e.g., load_configuration(), scan_log_files()) ensures data consistency."]}
 {"type":"entity","name":"Circular Dependency Resolution Pattern","entityType":"Architectural Pattern","observations":["Decoupling modules by moving shared logic to a common utility or by using interfaces/events can resolve circular import issues.","Independent validation functions improve module reusability and reduce coupling."]}
 {"type":"entity","name":"Workflow Finalization","entityType":"Coordination Pattern","observations":["Coordination pattern: Delegated documentation updates to a Code specialist for `docs/technical/node_manager_configuration.md`.","Documentation updated with 'Saving Configuration' section and 'v1.6.0' in Version History.","Overall task completion verified."]}
+{"type":"entity","name":"RPC Command Output Logging Fix Pattern","entityType":"WorkflowPattern","observations":["Identified unpopulated `log_path` in `NodeToken` for RPC commands.","Modified `RpcCommandService.get_token` to use `NodeManager._generate_log_path`.","Created and executed `test_rpc_log_path.py` for verification.","Successful cross-mode delegation for code modification and test creation/execution."]}
 {"type":"relation","from":"MVP_Presenter_Pattern","to":"Architecture Patterns","relationType":"belongs_to"}
 {"type":"relation","from":"MVP_View_Pattern","to":"Architecture Patterns","relationType":"belongs_to"}
 {"type":"relation","from":"MVP_Model_Pattern","to":"Architecture Patterns","relationType":"belongs_to"}
@@ -86,3 +87,5 @@
 {"type":"relation","from":"Dynamic Configuration Reload Pattern","to":"NodeManager.set_log_root()","relationType":"APPLIES_TO"}
 {"type":"relation","from":"Circular Dependency Resolution Pattern","to":"src/commander/utils/token_utils.py","relationType":"APPLIES_TO"}
 {"type":"relation","from":"Circular Dependency Resolution Pattern","to":"src/commander/node_manager.py","relationType":"APPLIES_TO"}
+{"type":"relation","from":"RPC Command Output Logging Fix Pattern","to":"RpcCommandService.get_token_log_path_fix","relationType":"includes"}
+{"type":"relation","from":"RPC Command Output Logging Fix Pattern","to":"test_rpc_log_path.py","relationType":"includes"}

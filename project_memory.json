@@ -224,6 +224,10 @@
 {"type":"entity","name":"TelnetSession (in session_manager.py)","entityType":"Code Class","observations":["Modified to include `prompt_patterns` list and updated `_read_response` method for multi-pattern detection, mirroring changes in `TelnetClient`."]}
 {"type":"entity","name":"test_telnet_command_output.py","entityType":"Test File","observations":["New integration tests created to simulate Telnet connections, execute commands from context menu and Telnet tab, and compare outputs.","Tests debugged to fix signal name mismatches, presenter mocking, and duplicate signal connections."]}
 {"type":"entity","name":"CommandWorker Error Handling Fix","entityType":"CodeChange","observations":["Modified the CommandWorker's error handling logic in src/commander/command_queue.py to preserve full .rpc command output while still correctly indicating command success/failure. Removed the line that was truncating self.result to 200 characters when an error was detected, ensuring that the full response is always available while maintaining proper success/failure status reporting."]}
+{"type":"entity","name":"RPC Command Logging Test","entityType":"Test","observations":["Test `tests/commander/test_rpc_log_path.py` executed successfully.","The test passed with 1 warning related to `telnetlib` deprecation.","The warning is not critical to the RPC command logging functionality."]}
+{"type":"entity","name":"RpcCommandService.get_token_log_path_fix","entityType":"CodeModification","observations":["Modified `RpcCommandService.get_token` to populate `log_path` in `NodeToken`.","Used `NodeManager._generate_log_path` for path generation."]}
+{"type":"entity","name":"test_rpc_log_path.py","entityType":"TestFile","observations":["New test file created to verify RPC command output logging.","Test simulates RPC command execution and verifies log file content."]}
+{"type":"entity","name":"RPC Command Output Logging","entityType":"Feature","observations":["Ensures RPC command output is written to designated log files.","Documentation updated in docs/architecture/command_processing_architecture.md to reflect the fix for RPC command output logging.","The fix involved modifying RpcCommandService.get_token to use NodeManager._generate_log_path.","Verification was done through tests/commander/test_rpc_log_path.py."]}
 {"type":"relation","from":"Developer Documentation","to":"Project Artifacts","relationType":"DOCUMENTS"}
 {"type":"relation","from":"Automatic Command Logging","to":"LogWriter","relationType":"EXTENDS"}
 {"type":"relation","from":"Editor Configuration Task","to":"ProjectManagement","relationType":"PART_OF"}
@@ -593,3 +597,6 @@
 {"type":"relation","from":"Telnet Output Truncation Fix","to":"TelnetClient.py","relationType":"modifies"}
 {"type":"relation","from":"Telnet Output Truncation Fix","to":"TelnetSession (in session_manager.py)","relationType":"modifies"}
 {"type":"relation","from":"Telnet Output Truncation Fix","to":"test_telnet_command_output.py","relationType":"validated by"}
+{"type":"relation","from":"RpcCommandService.get_token_log_path_fix","to":"RPC Command Output Logging","relationType":"enables"}
+{"type":"relation","from":"test_rpc_log_path.py","to":"RpcCommandService.get_token_log_path_fix","relationType":"verifies"}
+{"type":"relation","from":"test_rpc_log_path.py","to":"RPC Command Output Logging","relationType":"validates"}

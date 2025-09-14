@@ -45,12 +45,22 @@ class RpcCommandService(QObject):
         # Create pure RPC token without inheriting FBC properties
         # Extract base node name (before space) for directory path consistency with FBC pattern
         base_node_name = node_name.split()[0] if " " in node_name else node_name
+        
+        # Generate log path using NodeManager's _generate_log_path method
+        log_path = self.node_manager._generate_log_path(
+            base_node_name,
+            token_id,
+            "RPC",
+            node.ip_address
+        )
+        
         return NodeToken(
             token_id=token_id,
             token_type="RPC",
             name=base_node_name,
             ip_address=node.ip_address,
             port=23,  # Default port for RPC
+            log_path=log_path,
             protocol="telnet"
         )
     

@@ -16,6 +16,18 @@ The fix involved removing the explicit `start_processing()` call, aligning `.fbc
 
 This alignment improves consistency, reliability, and maintainability of command handling.
 
+### RPC Command Output Logging Fix
+
+**Problem**: Previously, RPC command output was not being written to dedicated log files, leading to incomplete logging for remote procedure calls.
+
+**Root Cause**: The `log_path` attribute of the `NodeToken` was not correctly populated for RPC commands within the `RpcCommandService.get_token` method. This prevented the system from knowing where to write the RPC command output.
+
+**Fix Implemented**: The `RpcCommandService.get_token` method was modified to correctly populate the `log_path` attribute by utilizing `NodeManager._generate_log_path`. This ensures that a proper log file path is generated and associated with each RPC command.
+
+**Verification**: A new test, `tests/commander/test_rpc_log_path.py`, was created and successfully executed. This test specifically validates that RPC command outputs are correctly logged to their designated files.
+
+**Impact**: RPC command output is now consistently and correctly logged to file, enhancing the traceability and auditability of remote procedure call executions.
+
 ## Future Plans
 
 - Implement asynchronous batch processing to improve throughput.
