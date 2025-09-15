@@ -9,6 +9,7 @@ from PyQt6.QtCore import pyqtSignal
 
 from commander.ui.vnc_tab import VNCTab
 from commander.ui.telnet_tab import TelnetTab  # Add import for TelnetTab
+from commander.ui.bstool_tab import BsToolTab  # Import BsToolTab
 from .theme import STYLESHEETS
 
 class SessionView(QWidget):
@@ -41,7 +42,11 @@ class SessionView(QWidget):
         # Create Telnet tab (should be first tab)
         self.telnet_tab = TelnetTab()
         self.tab_widget.addTab(self.telnet_tab, "Telnet")
-        
+
+        # Create BsTool tab
+        self.bstool_tab = BsToolTab()
+        self.tab_widget.addTab(self.bstool_tab, "BsTool")
+
         # Create VNC tab
         self.vnc_tab = VNCTab()
         self.tab_widget.addTab(self.vnc_tab, "VNC")

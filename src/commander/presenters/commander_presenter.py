@@ -121,6 +121,18 @@ class CommanderPresenter(QObject):
         self.ui_factory.vnc_tab.text_selected.connect(
             self.session_presenter.handle_vnc_text_selection
         )
+        
+        # Connect BsTool tab execute signal
+        self.ui_factory.bstool_tab.execute_clicked.connect(
+            self.handle_bstool_execute
+        )
+        
+        # Connect BsTool output to UI tab
+        def handle_bstool_output(output: str, log_file_path: str):
+            """Handle bstool output by passing only the output text to the UI tab."""
+            self.ui_factory.bstool_tab.append_output(output)
+            
+        self.bstool_service.bstool_output_signal.connect(handle_bstool_output)
 
     def get_clipboard_monitor(self) -> ClipboardMonitor:
         """
@@ -200,17 +212,16 @@ class CommanderPresenter(QObject):
         except Exception as e:
             self.status_message_signal.emit(f"Error saving content: {str(e)}", 5000)
             
-    def process_bstool_command(self, log_file_path: str):
+    def handle_bstool_execute(self, command: str):
         """
-        Process BsTool command for a log file.
-
+        Handle BsTool command execution from the BsTool tab.
+        
         Args:
-            log_file_path: Path to the log file to process with BsTool
+            command: Command string to execute
         """
         try:
-            # Execute bstool with the log file path
-            self.bstool_service.execute_bstool(log_file_path)
-            self.status_message_signal.emit(f"Started BsTool processing for {os.path.basename(log_file_path)}", 3000)
+            self.bstool_service.execute_command(command)
+            self.status_message_signal.emit(f"Executing BsTool command: {command}", 3000)
         except Exception as e:
-            error_msg = f"Error processing BsTool command: {str(e)}"
+            error_msg = f"Error executing BsTool command: {str(e)}"
             self.status_message_signal.emit(error_msg, 5000)

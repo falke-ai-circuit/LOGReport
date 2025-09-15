@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from commander.ui.node_tree_view import NodeTreeView
 from commander.ui.session_view import SessionView
 from commander.ui.vnc_tab import VNCTab
+from commander.ui.bstool_tab import BsToolTab
 from .theme import STYLESHEETS
 
 class CommanderUIFactory:
@@ -29,8 +30,9 @@ class CommanderUIFactory:
         self.node_tree_view = NodeTreeView()
         self.session_view = SessionView()
         
-        # Access VNC tab through session view
+        # Access tabs through session view
         self.vnc_tab = self.session_view.vnc_tab
+        self.bstool_tab = self.session_view.bstool_tab
         
     def get_main_widget(self) -> QWidget:
         """
@@ -82,3 +84,12 @@ class CommanderUIFactory:
             VNCTab instance
         """
         return self.vnc_tab
+        
+    def get_bstool_tab(self) -> BsToolTab:
+        """
+        Get the BsTool tab.
+        
+        Returns:
+            BsToolTab instance
+        """
+        return self.bstool_tab

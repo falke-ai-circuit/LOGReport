@@ -167,9 +167,24 @@ class ContextMenuService:
                         menu.addAction(clear_action)
                         added_actions = True
 
+                elif token_type == "LOG":
+                    # For LOG tokens, add BsTool action similar to regular log files
+                    # Get the log file path for this token
+                    log_file_path = item_data.get('log_path') or item_data.get('file_path')
+                    if log_file_path:
+                        # Add BsTool action for .log files
+                        bstool_action = QAction("Run BsTool on this file", menu)
+                        if self.presenter:
+                            # Connect action to presenter method
+                            bstool_action.triggered.connect(
+                                lambda: self._handle_bstool_action(log_file_path)
+                            )
+                        menu.addAction(bstool_action)
+                        added_actions = True
+
         # Handle log files
-        elif item_data and isinstance(item_data, dict) and 'log_path' in item_data:
-            log_file_path = item_data.get("log_path")
+        elif item_data and isinstance(item_data, dict) and ('log_path' in item_data or 'file_path' in item_data):
+            log_file_path = item_data.get('log_path') or item_data.get('file_path')
             if log_file_path and log_file_path.lower().endswith('.log'):
                 # Add BsTool action for .log files
                 bstool_action = QAction("Run BsTool on this file", menu)

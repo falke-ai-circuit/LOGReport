@@ -536,13 +536,13 @@ class NodeTreePresenter(QObject):
     def process_bstool_command(self, log_file_path: str):
         """
         Process BsTool command for a log file.
-
+        
         Args:
             log_file_path: Path to the log file to process with BsTool
         """
         try:
-            # Execute bstool with the log file path
-            self.bstool_service.execute_bstool(log_file_path)
+            # Execute bstool with the log file path and empty command arguments
+            self.bstool_service.execute_bstool(log_file_path, "")
             self.status_message_signal.emit(f"Started BsTool processing for {os.path.basename(log_file_path)}", 3000)
         except Exception as e:
             self._report_error("Error processing BsTool command", e)

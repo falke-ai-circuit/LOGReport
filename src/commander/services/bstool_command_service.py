@@ -12,7 +12,7 @@ class BsToolCommandService(QObject):
     
     # Define signals for communication
     status_message_signal = pyqtSignal(str, int)  # message, duration
-    bstool_output_signal = pyqtSignal(str)        # output from bstool
+    bstool_output_signal = pyqtSignal(str, str)   # output from bstool, log file path
     report_error = pyqtSignal(str)                # error message
     
     def __init__(self, log_writer=None, parent=None):
@@ -25,13 +25,13 @@ class BsToolCommandService(QObject):
         
     def execute_bstool(self, log_file_path: str, bstool_command_args: str = ""):
         """
-        Execute bstool.exe with the specified log file path and command arguments.
+        Execute bstool.exe with the specified log file and command arguments.
         
         Args:
             log_file_path (str): Path to the log file
-            bstool_command_args (str): Additional command arguments for bstool
+            bstool_command_args (str): Command arguments for bstool.exe
         """
-        self.logger.info(f"Executing bstool with log file: {log_file_path}")
+        self.logger.info(f"Executing bstool for log file: {log_file_path} with args: {bstool_command_args}")
         
         # Emit status message
         self.status_message_signal.emit("Starting bstool execution...", 3000)
@@ -58,11 +58,10 @@ class BsToolCommandService(QObject):
         env["COMMUNICATION_LINE"] = "AB01"
         
         # Construct command
-        command = [bstool_path]
-        if bstool_command_args:
-            command.extend(bstool_command_args.split())
+        import shlex
+        command = [bstool_path] + shlex.split(bstool_command_args)
             
-        self.logger.debug(f"Executing command: {' '.join(command)}")
+        self.logger.debug(f"Executing command: {' '.join(command)} for log file: {log_file_path}")
         
         try:
             # Start the process in a separate thread to avoid blocking UI
@@ -77,6 +76,146 @@ class BsToolCommandService(QObject):
             self.logger.error(error_msg, exc_info=True)
             self.report_error.emit(error_msg)
             self.status_message_signal.emit(error_msg, 5000)
+            
+    def execute_command(self, command_str: str):
+        """
+        Execute bstool.exe with the specified command string.
+        This is kept for backward compatibility with the UI tab.
+        
+        Args:
+            command_str (str): Full command string to execute
+        """
+        self.logger.info(f"Executing bstool command: {command_str}")
+        
+        # Emit status message
+        self.status_message_signal.emit("Starting bstool command execution...", 3000)
+        
+        # Get the path to bstool.exe
+        bstool_path = self._get_bstool_path()
+        if not bstool_path:
+            error_msg = "Could not locate bstool.exe"
+            self.logger.error(error_msg)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+            return
+            
+        # Verify bstool.exe exists
+        if not os.path.exists(bstool_path):
+            error_msg = f"bstool.exe not found at {bstool_path}"
+            self.logger.error(error_msg)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+            return
+            
+        # Set up environment with fixed COMMUNICATION_LINE variable
+        env = os.environ.copy()
+        env["COMMUNICATION_LINE"] = "AB01"
+        
+        # Construct command
+        command = [bstool_path] + command_str.split()
+            
+        self.logger.debug(f"Executing command: {' '.join(command)}")
+        
+        try:
+            # Start the process in a separate thread to avoid blocking UI
+            # Use a dummy log file path for backward compatibility
+            self.threading_service.start_thread(
+                target=self._run_bstool_process,
+                args=(command, env, ""),
+                daemon=True
+            )
+            
+        except Exception as e:
+            error_msg = f"Failed to start bstool process: {str(e)}"
+            self.logger.error(error_msg, exc_info=True)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+            
+    def _run_command_process(self, command: list, env: dict):
+        """
+        Run the bstool command process in a separate thread.
+        
+        Args:
+            command (list): Command to execute
+            env (dict): Environment variables
+        """
+        try:
+            # Emit status message
+            self.status_message_signal.emit("bstool command process started", 3000)
+            
+            # Start the subprocess
+            with self.process_lock:
+                self.process = subprocess.Popen(
+                    command,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+                
+            self.logger.info(f"bstool process started with PID: {self.process.pid}")
+            
+            # Read output in real-time using a non-blocking approach
+            def read_output():
+                for line in iter(self.process.stdout.readline, ''):
+                    if line:
+                        output_str = line.strip()
+                        # Emit the output signal with empty log file path for backward compatibility
+                        self.bstool_output_signal.emit(output_str, "")
+                        self.logger.debug(f"bstool output: {output_str}")
+                self.process.stdout.close()
+                
+            # Start reading output in a separate thread to prevent blocking
+            output_thread = threading.Thread(target=read_output, daemon=True)
+            output_thread.start()
+            
+            # Wait for the process to complete with a timeout to prevent hanging
+            try:
+                self.process.wait(timeout=30)  # 30 second timeout
+            except subprocess.TimeoutExpired:
+                self.logger.warning("bstool process timed out, terminating...")
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)  # Give 5 seconds to terminate gracefully
+                except subprocess.TimeoutExpired:
+                    self.process.kill()  # Force kill if it doesn't terminate
+                    self.process.wait()
+                    
+            # Wait for output thread to complete
+            output_thread.join(timeout=5)
+            
+            # Check for any remaining stderr output
+            stderr_output = self.process.stderr.read()
+            if stderr_output:
+                error_str = f"ERROR: {stderr_output.strip()}"
+                self.bstool_output_signal.emit(error_str, "")
+                self.logger.error(f"bstool stderr: {stderr_output.strip()}")
+                
+            return_code = self.process.poll()
+            if return_code == 0:
+                self.status_message_signal.emit("bstool command execution completed successfully", 3000)
+                self.logger.info("bstool command execution completed successfully")
+            else:
+                error_msg = f"bstool process exited with code {return_code}"
+                self.logger.error(error_msg)
+                self.report_error.emit(error_msg)
+                self.status_message_signal.emit(error_msg, 5000)
+                
+        except FileNotFoundError as e:
+            error_msg = f"bstool.exe not found: {str(e)}"
+            self.logger.error(error_msg)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+        except Exception as e:
+            error_msg = f"Error during bstool execution: {str(e)}"
+            self.logger.error(error_msg, exc_info=True)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+        finally:
+            with self.process_lock:
+                self.process = None
             
     def _get_bstool_path(self) -> str:
         """
@@ -123,44 +262,57 @@ class BsToolCommandService(QObject):
                 
             self.logger.info(f"bstool process started with PID: {self.process.pid}")
             
-            # Read output in real-time
-            while True:
-                output = self.process.stdout.readline()
-                if output == '' and self.process.poll() is not None:
-                    break
-                if output:
-                    output_str = output.strip()
-                    # Emit the output signal
-                    self.bstool_output_signal.emit(output_str)
-                    self.logger.debug(f"bstool output: {output_str}")
+            # Read output in real-time using a non-blocking approach
+            def read_output():
+                for line in iter(self.process.stdout.readline, ''):
+                    if line:
+                        output_str = line.strip()
+                        # Emit the output signal with log file path
+                        self.bstool_output_signal.emit(output_str, log_file_path)
+                        self.logger.debug(f"bstool output: {output_str}")
+                        
+                        # Write to log file using LogWriter if available
+                        if self.log_writer and log_file_path:
+                            try:
+                                self.log_writer.append_to_file(log_file_path, output_str)
+                            except Exception as e:
+                                self.logger.error(f"Failed to write to log file: {str(e)}")
+                self.process.stdout.close()
+                
+            # Start reading output in a separate thread to prevent blocking
+            output_thread = threading.Thread(target=read_output, daemon=True)
+            output_thread.start()
+            
+            # Wait for the process to complete with a timeout to prevent hanging
+            try:
+                self.process.wait(timeout=30)  # 30 second timeout
+            except subprocess.TimeoutExpired:
+                self.logger.warning("bstool process timed out, terminating...")
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)  # Give 5 seconds to terminate gracefully
+                except subprocess.TimeoutExpired:
+                    self.process.kill()  # Force kill if it doesn't terminate
+                    self.process.wait()
                     
-                    # Write to log file using LogWriter if available
-                    if self.log_writer:
-                        try:
-                            self.log_writer.append_to_file(log_file_path, output_str)
-                        except Exception as e:
-                            self.logger.error(f"Failed to write to log file: {str(e)}")
-                    
+            # Wait for output thread to complete
+            output_thread.join(timeout=5)
+            
             # Check for any remaining stderr output
             stderr_output = self.process.stderr.read()
             if stderr_output:
                 error_str = f"ERROR: {stderr_output.strip()}"
-                self.bstool_output_signal.emit(error_str)
+                self.bstool_output_signal.emit(error_str, log_file_path)
                 self.logger.error(f"bstool stderr: {stderr_output.strip()}")
                 
                 # Write error to log file using LogWriter if available
-                if self.log_writer:
+                if self.log_writer and log_file_path:
                     try:
                         self.log_writer.append_to_file(log_file_path, error_str)
                     except Exception as e:
                         self.logger.error(f"Failed to write error to log file: {str(e)}")
                 
-            # Wait for process to complete
-            return_code = self.process.wait()
-            
-            with self.process_lock:
-                self.process = None
-                
+            return_code = self.process.poll()
             if return_code == 0:
                 self.status_message_signal.emit("bstool execution completed successfully", 3000)
                 self.logger.info("bstool execution completed successfully")
@@ -231,7 +383,7 @@ class BsToolCommandService(QObject):
         """Clear the output display in the UI."""
         # This method would typically emit a signal to clear the UI terminal display
         # For now, we'll just emit an empty string to indicate clearing
-        self.bstool_output_signal.emit("")
+        self.bstool_output_signal.emit("", "")
         self.status_message_signal.emit("Terminal cleared", 3000)
         
     def clear_log(self, log_file_path: str):
