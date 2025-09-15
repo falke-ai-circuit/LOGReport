@@ -27,6 +27,10 @@ class BsToolTab(QWidget):
     def __init__(self):
         super().__init__()
         self._setup_ui()
+        
+    def connect_bstool_service(self, service):
+        """Connect to bstool service signals"""
+        service.bstool_output_signal.connect(lambda output, _: self.append_output(output))
 
     def _setup_ui(self):
         """Set up the BsTool tab UI"""
@@ -101,8 +105,13 @@ class BsToolTab(QWidget):
             self.execute_clicked.emit(command)
 
     def append_output(self, text):
-        """Append text to the output display"""
-        self.output.append(text)
+        """Append text to the output display without adding extra newlines"""
+        # Move cursor to end and insert text
+        from PyQt6.QtGui import QTextCursor
+        cursor = self.output.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        cursor.insertText(text)
+        self.output.setTextCursor(cursor)
         
     def clear_output(self):
         """Clear the output display"""

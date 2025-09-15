@@ -59,12 +59,10 @@ class CommanderWindow(QMainWindow):
         self.log_writer = LogWriter(self.node_manager)
         self.current_token = None
         
-        # Initialize all components
-        # Initialize all components
+        # Initialize components
         print("[DEBUG] Starting component initialization")
         self._initialize_components()
         print("[DEBUG] Component initialization complete")
-        self._initialize_components()
     
     def _initialize_components(self):
         """Initialize all services and presenters"""
@@ -78,8 +76,15 @@ class CommanderWindow(QMainWindow):
         self.fbc_service = FbcCommandService(self.node_manager, self.command_queue, self.log_writer, self)
         self.rpc_service = RpcCommandService(self.node_manager, self.command_queue, self)
         
+        # Setup UI first
+        self.init_ui()
+        
         # Initialize BsTool service
         self.bstool_service = BsToolCommandService(self.log_writer, self)
+        
+        # Connect BsToolTab signals to service
+        self.bstool_tab = self.session_view.bstool_tab
+        self.bstool_tab.execute_clicked.connect(self.bstool_service.execute_command)
         
         # Initialize services through commander service
         self.commander_service = CommanderService(
@@ -96,9 +101,6 @@ class CommanderWindow(QMainWindow):
         
         # Initialize context menu service
         self.context_menu_service = ContextMenuService(self.node_manager, self.context_menu_filter)
-        
-        # Setup UI first
-        self.init_ui()
         
         # Connect status service AFTER UI is created
         self.status_service.status_updated.connect(self.statusBar().showMessage)
@@ -186,6 +188,9 @@ class CommanderWindow(QMainWindow):
         # Connect UI component signals
         self._connect_ui_signals()
         
+        # Connect BsTool path change signal to save settings
+        self.bstool_tab.bstool_path_changed.connect(self._save_bstool_path)
+        
     def _connect_vnc_signals(self):
         """Connect VNC tab signals to session manager"""
         # Connect VNC tab connect signal to session manager
@@ -202,6 +207,10 @@ class CommanderWindow(QMainWindow):
         self.node_tree_view.node_selected.connect(self.on_node_selected)
         self.node_tree_view.node_double_clicked.connect(self._on_node_double_clicked)
         self.node_tree_view.context_menu_requested.connect(self.show_context_menu)
+        
+    def _save_bstool_path(self, path: str):
+        """Save the BsTool path to settings"""
+        self.settings.setValue("bstool_path", path)
         
         # TODO: Re-implement when UI buttons are available
         # self.execute_btn.clicked.connect(self.execute_telnet_command)
@@ -240,6 +249,11 @@ class CommanderWindow(QMainWindow):
             self.telnet_tab.ip_edit.setText(telnet_ip)
         if telnet_port:
             self.telnet_tab.port_edit.setText(telnet_port)
+            
+        # Load saved BsTool path if it exists
+        bstool_path = self.settings.value("bstool_path", "")
+        if bstool_path:
+            self.bstool_tab.bstool_path_edit.setText(bstool_path)
     
     def init_ui(self):
         """Initialize the main UI components"""
@@ -252,12 +266,12 @@ class CommanderWindow(QMainWindow):
         # Get references to UI components
         self.node_tree_view = self.ui_factory.node_tree_view
         self.session_view = self.ui_factory.session_view
-        self.vnc_tab = self.ui_factory.vnc_tab
         
         # Access components from session_view
         self.session_tabs = self.session_view.tab_widget
         self.telnet_tab = self.session_view.telnet_tab
         self.vnc_tab = self.session_view.vnc_tab
+        self.bstool_tab = self.session_view.bstool_tab
         
         # Status Bar
         self.setStatusBar(QStatusBar())
@@ -421,6 +435,11 @@ class CommanderWindow(QMainWindow):
             ip, port = self.telnet_tab.get_connection_info()
             self.settings.setValue("telnet_ip", ip)
             self.settings.setValue("telnet_port", port)
+            
+        # Save bstool path
+        if hasattr(self, 'bstool_tab'):
+            bstool_path = self.bstool_tab.get_bstool_path()
+            self.settings.setValue("bstool_path", bstool_path)
 
         # Call parent closeEvent, handling both real instances and mocks
         try:

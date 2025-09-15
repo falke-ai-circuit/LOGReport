@@ -15,6 +15,7 @@ The system test performs the following steps:
 ## Test Files
 
 - `test_bstool_system_integration.py` - Main system test implementation
+- `test_bstool_path_persistence_e2e.py` - End-to-end test for bstool path persistence across application restarts
 
 ## Running the Tests
 
@@ -48,6 +49,13 @@ python -m pytest tests/commander/system/test_bstool_system_integration.py::TestB
 python -m pytest tests/commander/system/test_bstool_system_integration.py::TestBsToolSystemIntegration::test_bstool_full_system_integration -v
 ```
 
+### Running BsTool Path Persistence Test
+
+```bash
+# Run the bstool path persistence end-to-end test
+python -m pytest tests/commander/system/test_bstool_path_persistence_e2e.py -v
+```
+
 ### Running All Tests
 
 ```bash
@@ -77,6 +85,13 @@ As an alternative to UI automation, the test includes a direct execution method 
 1. Builds the application
 2. Executes `BsTool.exe` directly with the required environment variables
 3. Verifies the output is correctly appended to log files
+
+### Path Persistence Test
+
+The bstool path persistence test verifies that:
+1. The bstool path is correctly saved to QSettings when changed in the UI
+2. The bstool path is correctly loaded from QSettings when the application restarts
+3. The loaded path is properly displayed in the UI
 
 ## Environment Variables
 

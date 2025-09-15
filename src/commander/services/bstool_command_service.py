@@ -168,8 +168,10 @@ class BsToolCommandService(QObject):
                 self.process.stdout.close()
                 
             # Start reading output in a separate thread to prevent blocking
+            self.logger.debug("Starting output thread for bstool process")
             output_thread = threading.Thread(target=read_output, daemon=True)
             output_thread.start()
+            self.logger.debug("Output thread started")
             
             # Wait for the process to complete with a timeout to prevent hanging
             try:
@@ -266,14 +268,18 @@ class BsToolCommandService(QObject):
             def read_output():
                 for line in iter(self.process.stdout.readline, ''):
                     if line:
+                        self.logger.debug(f"Raw output line: {line!r}")
                         output_str = line.strip()
+                        self.logger.debug(f"Processed output: {output_str}")
+                        
                         # Emit the output signal with log file path
+                        self.logger.debug(f"Emitting bstool_output_signal: {output_str}")
                         self.bstool_output_signal.emit(output_str, log_file_path)
-                        self.logger.debug(f"bstool output: {output_str}")
                         
                         # Write to log file using LogWriter if available
                         if self.log_writer and log_file_path:
                             try:
+                                self.logger.debug(f"Writing to log file: {log_file_path}")
                                 self.log_writer.append_to_file(log_file_path, output_str)
                             except Exception as e:
                                 self.logger.error(f"Failed to write to log file: {str(e)}")
@@ -302,12 +308,14 @@ class BsToolCommandService(QObject):
             stderr_output = self.process.stderr.read()
             if stderr_output:
                 error_str = f"ERROR: {stderr_output.strip()}"
-                self.bstool_output_signal.emit(error_str, log_file_path)
                 self.logger.error(f"bstool stderr: {stderr_output.strip()}")
+                self.logger.debug(f"Emitting error signal: {error_str}")
+                self.bstool_output_signal.emit(error_str, log_file_path)
                 
                 # Write error to log file using LogWriter if available
                 if self.log_writer and log_file_path:
                     try:
+                        self.logger.debug(f"Writing error to log file: {log_file_path}")
                         self.log_writer.append_to_file(log_file_path, error_str)
                     except Exception as e:
                         self.logger.error(f"Failed to write error to log file: {str(e)}")
