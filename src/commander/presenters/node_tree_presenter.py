@@ -34,7 +34,7 @@ class NodeTreePresenter(QObject):
     def __init__(self, view, node_manager: NodeManager, session_manager: SessionManager,
                  log_writer: LogWriter, command_queue: CommandQueue,
                  fbc_service: FbcCommandService, rpc_service: RpcCommandService,
-                 context_menu_service):
+                 context_menu_service, bstool_service):
         """
         Initialize the NodeTreePresenter.
 
@@ -47,6 +47,7 @@ class NodeTreePresenter(QObject):
             fbc_service: Service for FBC command operations
             rpc_service: Service for RPC command operations
             context_menu_service: Service for context menu operations
+            bstool_service: Service for BsTool command operations
         """
         super().__init__()
         self.view = view
@@ -57,6 +58,7 @@ class NodeTreePresenter(QObject):
         self.fbc_service = fbc_service
         self.rpc_service = rpc_service
         self.context_menu_service = context_menu_service
+        self.bstool_service = bstool_service
         
         # Connect view signals to presenter methods
         self.view.item_expanded.connect(self.handle_item_expanded)
@@ -530,6 +532,20 @@ class NodeTreePresenter(QObject):
         except Exception as e:
             logging.error(f"Unexpected error in RPC command setup: {str(e)}")
             self._report_error("RPC command setup failed", e)
+            
+    def process_bstool_command(self, log_file_path: str):
+        """
+        Process BsTool command for a log file.
+
+        Args:
+            log_file_path: Path to the log file to process with BsTool
+        """
+        try:
+            # Execute bstool with the log file path
+            self.bstool_service.execute_bstool(log_file_path)
+            self.status_message_signal.emit(f"Started BsTool processing for {os.path.basename(log_file_path)}", 3000)
+        except Exception as e:
+            self._report_error("Error processing BsTool command", e)
             
     def on_node_selected(self, item):
         """

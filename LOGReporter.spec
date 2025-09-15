@@ -10,7 +10,9 @@ sys.path.append(os.path.abspath('src'))
 a = Analysis(
     ['src/main.py'],
     pathex=[os.getcwd()],
-    binaries=[],
+    binaries=[
+        (os.path.abspath('BsTool.exe'), '.')
+    ],
     datas=[
         ('src/nodes.json', 'src'),
         ('version_info.txt', '.'),

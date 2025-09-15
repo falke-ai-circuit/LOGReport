@@ -11,6 +11,7 @@ from ..services.rpc_command_service import RpcCommandService
 from ..services.commander_service import CommanderService
 from ..services.telnet_service import TelnetService
 from ..services.status_service import StatusService
+from ..services.bstool_command_service import BsToolCommandService
 from ..presenters.commander_presenter import CommanderPresenter
 from ..presenters.node_tree_presenter import NodeTreePresenter
 
@@ -77,6 +78,9 @@ class CommanderWindow(QMainWindow):
         self.fbc_service = FbcCommandService(self.node_manager, self.command_queue, self.log_writer, self)
         self.rpc_service = RpcCommandService(self.node_manager, self.command_queue, self)
         
+        # Initialize BsTool service
+        self.bstool_service = BsToolCommandService(self.log_writer, self)
+        
         # Initialize services through commander service
         self.commander_service = CommanderService(
             self.node_manager,
@@ -109,7 +113,8 @@ class CommanderWindow(QMainWindow):
             self.command_queue,
             self.fbc_service,
             self.rpc_service,
-            self.context_menu_service
+            self.context_menu_service,
+            self.bstool_service
         )
         
         self.node_tree_presenter = NodeTreePresenter(
@@ -120,7 +125,8 @@ class CommanderWindow(QMainWindow):
             self.command_queue,
             self.fbc_service,
             self.rpc_service,
-            self.context_menu_service
+            self.context_menu_service,
+            self.bstool_service
         )
         
         # Set presenter in context menu service

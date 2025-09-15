@@ -19,6 +19,58 @@ This document outlines the blueprint for integrating `bstool.exe` into the LOGRe
 - **PyInstaller Spec File Modification**: The `LOGReporter.spec` file will be updated to include `bstool.exe` as a data file. This will ensure `bstool.exe` is placed in a predictable location within the bundled application's directory structure (e.g., `dist/LOGReporter/_internal/bstool.exe`).
 - **Access Path**: The `BsToolCommandService` will use a relative path to locate `bstool.exe` within the bundled application, ensuring it works correctly after deployment.
 
+#### PyInstaller Spec File Details
+The `LOGReporter.spec` file is modified to include `bstool.exe` in the `datas` array. This ensures that `bstool.exe` is copied to the `_internal` directory within the bundled application.
+
+```python
+# -*- mode: python ; coding: utf-8 -*-
+
+block_cipher = None
+
+added_files = [
+    ('path/to/bstool.exe', 'bstool.exe') # Example: Adjust 'path/to/bstool.exe' as needed
+]
+
+a = Analysis(
+    ['src/main.py'],
+    pathex=['.'],
+    binaries=[],
+    datas=added_files,
+    hiddenimports=[],
+    hookspath=[],
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='LOGReporter',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_info=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+```
+After bundling, `bstool.exe` will be accessible at `_internal/bstool.exe` relative to the main executable.
+
 ### 3.2. Context Menu Integration (`ContextMenuService`)
 The existing `ContextMenuService` (`src/commander/services/context_menu_service.py`) will be extended to provide a new right-click action for `.log` files.
 - **File Type Detection**: The `ContextMenuService` will identify when a `.log` file is selected in the file explorer or relevant UI component.
@@ -26,27 +78,84 @@ The existing `ContextMenuService` (`src/commander/services/context_menu_service.
 -   **Context Menu Command Construction**: The context menu action will construct a command for `bstool.exe` dynamically, for example, `bstool -errlog AP01`, where `AP01` is derived from the selected `.log` file's name (e.g., `AP01m_192-168-0-11.log` -> `AP01`).
 -   **Presenter Integration**: This action will trigger a new method in the main presenter (e.g., `self.presenter.process_bstool_command(log_file_path, bstool_command_args)`), passing the full path of the selected `.log` file and the constructed `bstool` command arguments.
 
+#### Context Menu Action Implementation
+The `ContextMenuService` is responsible for dynamically adding the "Run BsTool on this file" action. When a `.log` file is detected, a `QAction` is created and connected to a presenter method. The `APxx` identifier is extracted from the log file name using regular expressions or string manipulation.
+
 ### 3.3. Service Component (`BsToolCommandService`)
 A new `BsToolCommandService` (or an extension to an existing service if applicable) will be created as a QObject, responsible for managing the `bstool.exe` process and its interaction. This service will be analogous to `FbcCommandService` and `RpcCommandService`.
 
-**Key Functionalities:**
-- `execute_bstool(log_file_path: str, bstool_command_args: str = "")`:
-    - Constructs the command to execute `bstool.exe` with the `log_file_path` and `bstool_command_args` as arguments.
-    - **Fixed Environment Variable**: Sets the environment variable `COMMUNICATION_LINE=AB01` for the `bstool.exe` subprocess. This variable will be hardcoded within the service.
-    - Launches `bstool.exe` using Python's `subprocess` module.
-    - Captures `stdout` and `stderr` of the `bstool.exe` process in real-time.
-    - Runs in a separate thread using `ThreadingService` to prevent UI blocking.
-    - Emits `bstool_output_signal` with the captured output.
-    - Emits `status_message_signal` for process status updates.
-- `copy_to_log(content: str, log_file_path: str)`: Copies provided content to the specified log file.
-- `clear_terminal()`: Clears the output display in the UI.
-- `clear_log(log_file_path: str)`: Clears the content of the specified log file.
-- **Output Redirection**: The captured output from `bstool.exe` will be written directly to the `log_file_path` using the application's `LogWriter` (or a similar mechanism), appending the output to the end of the selected `.log` file.
+#### BsToolCommandService Class Structure
+The `BsToolCommandService` inherits from `QObject` and manages the execution of `bstool.exe`.
 
-**Signals Emitted by `BsToolCommandService`:**
-- `status_message_signal(message: str, duration: int)`: For displaying transient status messages in the main application status bar.
-- `bstool_output_signal(output: str, log_file_path: str)`: Emitted with the console output from `bstool.exe` and the target log file path for writing.
-- `report_error(error_message: str)`: For reporting errors during execution.
+```python
+import subprocess
+import os
+from PyQt5.QtCore import QObject, pyqtSignal
+from src.commander.services.threading_service import ThreadingService # Assuming this path
+
+class BsToolCommandService(QObject):
+    status_message_signal = pyqtSignal(str, int)
+    bstool_output_signal = pyqtSignal(str, str)
+    report_error = pyqtSignal(str)
+
+    def __init__(self, log_writer, parent=None):
+        super().__init__(parent)
+        self.log_writer = log_writer
+        self.threading_service = ThreadingService(parent=self) # Initialize ThreadingService
+
+    def execute_bstool(self, log_file_path: str, bstool_command_args: str = ""):
+        def _run_bstool():
+            try:
+                bstool_path = os.path.join(os.path.dirname(sys.executable), '_internal', 'bstool.exe') # Adjust path as needed
+                command = [bstool_path] + shlex.split(bstool_command_args)
+
+                env = os.environ.copy()
+                env['COMMUNICATION_LINE'] = 'AB01'
+
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env
+                )
+
+                for line in iter(process.stdout.readline, ''):
+                    self.bstool_output_signal.emit(line, log_file_path)
+                process.stdout.close()
+
+                stderr_output = process.stderr.read()
+                if stderr_output:
+                    self.report_error.emit(f"BsTool Error: {stderr_output}")
+
+                process.wait()
+                self.status_message_signal.emit("BsTool execution complete.", 3000)
+
+            except FileNotFoundError:
+                self.report_error.emit(f"Error: bstool.exe not found at {bstool_path}. Ensure it's bundled correctly.")
+            except Exception as e:
+                self.report_error.emit(f"Error executing BsTool: {e}")
+
+        self.threading_service.run_in_thread(_run_bstool)
+
+    def copy_to_log(self, content: str, log_file_path: str):
+        self.log_writer.write_to_log(content, log_file_path)
+
+    def clear_terminal(self):
+        # This would typically involve emitting a signal to the UI to clear its display
+        pass
+
+    def clear_log(self, log_file_path: str):
+        with open(log_file_path, 'w') as f:
+            f.truncate(0)
+        self.status_message_signal.emit(f"Log file {log_file_path} cleared.", 3000)
+```
+
+#### Signals and Slots
+The `BsToolCommandService` communicates with the UI and other components via signals:
+- `status_message_signal(message: str, duration: int)`: Emitted for displaying transient status messages in the main application status bar.
+- `bstool_output_signal(output: str, log_file_path: str)`: Emitted with the console output from `bstool.exe` and the target log file path. A slot in the presenter or a dedicated log handling component receives this signal and uses the `LogWriter` to append the output to the specified `log_file_path`.
+- `report_error(error_message: str)`: Emitted for reporting errors during execution to the UI.
 
 ### 3.4. Interaction Flow
 1.  User right-clicks a `.log` file.

@@ -36,7 +36,7 @@ class CommanderPresenter(QObject):
     def __init__(self, ui_factory: CommanderUIFactory, node_manager: NodeManager,
                  log_writer: LogWriter, status_service: StatusService,
                  session_manager, command_queue, fbc_service, rpc_service,
-                 context_menu_service):
+                 context_menu_service, bstool_service):
         """
         Initialize the CommanderPresenter.
         
@@ -50,6 +50,7 @@ class CommanderPresenter(QObject):
             fbc_service: FbcCommandService instance
             rpc_service: RpcCommandService instance
             context_menu_service: ContextMenuService instance
+            bstool_service: BsToolCommandService instance
         """
         super().__init__()
         self.ui_factory = ui_factory
@@ -61,6 +62,7 @@ class CommanderPresenter(QObject):
         self.fbc_service = fbc_service
         self.rpc_service = rpc_service
         self.context_menu_service = context_menu_service
+        self.bstool_service = bstool_service
         self.utils = CommanderPresenterUtils(node_manager=self.node_manager, log_writer=self.log_writer)
         
         # Create presenters
@@ -72,7 +74,8 @@ class CommanderPresenter(QObject):
             command_queue=self.command_queue,
             fbc_service=self.fbc_service,
             rpc_service=self.rpc_service,
-            context_menu_service=self.context_menu_service
+            context_menu_service=self.context_menu_service,
+            bstool_service=self.bstool_service
         )
         self.session_presenter = SessionPresenter(
             view=self.ui_factory.session_view,
@@ -196,3 +199,18 @@ class CommanderPresenter(QObject):
             self.status_message_signal.emit(f"Content saved to {os.path.basename(log_path)}", 3000)
         except Exception as e:
             self.status_message_signal.emit(f"Error saving content: {str(e)}", 5000)
+            
+    def process_bstool_command(self, log_file_path: str):
+        """
+        Process BsTool command for a log file.
+
+        Args:
+            log_file_path: Path to the log file to process with BsTool
+        """
+        try:
+            # Execute bstool with the log file path
+            self.bstool_service.execute_bstool(log_file_path)
+            self.status_message_signal.emit(f"Started BsTool processing for {os.path.basename(log_file_path)}", 3000)
+        except Exception as e:
+            error_msg = f"Error processing BsTool command: {str(e)}"
+            self.status_message_signal.emit(error_msg, 5000)

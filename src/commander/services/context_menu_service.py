@@ -167,6 +167,20 @@ class ContextMenuService:
                         menu.addAction(clear_action)
                         added_actions = True
 
+        # Handle log files
+        elif item_data and isinstance(item_data, dict) and 'log_path' in item_data:
+            log_file_path = item_data.get("log_path")
+            if log_file_path and log_file_path.lower().endswith('.log'):
+                # Add BsTool action for .log files
+                bstool_action = QAction("Run BsTool on this file", menu)
+                if self.presenter:
+                    # Connect action to presenter method
+                    bstool_action.triggered.connect(
+                        lambda: self._handle_bstool_action(log_file_path)
+                    )
+                menu.addAction(bstool_action)
+                added_actions = True
+
         if added_actions:
             # Show menu at cursor position
             menu.exec(position)
@@ -308,6 +322,17 @@ class ContextMenuService:
                 filtered_tokens.append(t)
         
         return filtered_tokens
+
+    def _handle_bstool_action(self, log_file_path: str) -> None:
+        """
+        Handle BsTool context menu action.
+
+        Args:
+            log_file_path: Path to the log file to process with BsTool
+        """
+        if self.presenter:
+            # Use presenter method to process the BsTool command
+            self.presenter.process_bstool_command(log_file_path)
 
     def validate_node_structure(self, item_data: Dict[str, Any]) -> Optional[str]:
         """
