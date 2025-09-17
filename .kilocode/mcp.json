@@ -18,7 +18,8 @@
         "search_nodes",
         "update_entities",
         "create_relations",
-        "add_observations"
+        "add_observations",
+        "create_entities"
       ],
       "disabled": false
     },

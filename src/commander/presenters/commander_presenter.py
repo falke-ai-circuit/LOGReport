@@ -15,6 +15,8 @@ from commander.ui.commander_ui_factory import CommanderUIFactory
 from commander.presenters.session_presenter import SessionPresenter
 from commander.presenters.node_tree_presenter import NodeTreePresenter
 from commander.services.clipboard_monitor import ClipboardMonitor
+from commander.ui.telnet_tab import TelnetTab
+from commander.ui.bstool_tab import BsToolTab
 from commander.services.status_service import StatusService
 from commander.log_writer import LogWriter
 from commander.node_manager import NodeManager
@@ -159,9 +161,13 @@ class CommanderPresenter(QObject):
     
     def clear_terminal(self):
         """
-        Clear the telnet terminal output.
+        Clear the output of the currently active terminal tab.
         """
-        self.ui_factory.session_view.telnet_tab.output.clear()
+        active_tab = self.ui_factory.session_view.tab_widget.currentWidget()
+        if isinstance(active_tab, TelnetTab):
+            active_tab.output.clear()
+        elif isinstance(active_tab, BsToolTab):
+            active_tab.clear_output()
     
     def handle_queue_processed(self, success_count, total_count, status_service):
         """

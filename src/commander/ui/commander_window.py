@@ -197,6 +197,11 @@ class CommanderWindow(QMainWindow):
         self.telnet_tab.clear_terminal_clicked.connect(self.clear_terminal)
         self.telnet_tab.clear_log_clicked.connect(self.clear_node_log)
         
+        # Connect BsTool tab signals
+        self.bstool_tab.copy_to_log_clicked.connect(self.copy_to_log)
+        self.bstool_tab.clear_terminal_clicked.connect(self.clear_terminal)
+        self.bstool_tab.clear_log_clicked.connect(self.clear_node_log)
+        
         # Connect UI component signals
         self._connect_ui_signals()
         

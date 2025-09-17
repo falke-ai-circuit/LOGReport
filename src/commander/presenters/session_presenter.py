@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import QWidget
 from commander.ui.session_view import SessionView
 from commander.ui.vnc_tab import VNCTab
 from commander.ui.telnet_tab import TelnetTab
+from commander.ui.bstool_tab import BsToolTab
 from commander.services.clipboard_monitor import ClipboardMonitor
 from commander.services.status_service import StatusService
 from commander.log_writer import LogWriter
@@ -267,6 +268,8 @@ class SessionPresenter(QObject):
             return active_tab.output.toPlainText()
         elif isinstance(active_tab, VNCTab):
             return active_tab.get_selected_text()
+        elif isinstance(active_tab, BsToolTab):
+            return active_tab.output.toPlainText()
         return None
             
     def _on_vnc_disconnect_clicked(self):
