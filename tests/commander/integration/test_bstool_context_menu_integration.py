@@ -11,7 +11,7 @@ import logging
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
-from commander.main_window import CommanderWindow
+from commander.main_window import MainWindow
 from commander.services.bstool_command_service import BsToolCommandService
 from commander.services.context_menu_service import ContextMenuService
 from commander.services.context_menu_filter import ContextMenuFilterService
@@ -43,20 +43,20 @@ class TestBsToolContextMenuIntegration:
         """Set up test environment."""
         self.app = get_app()
         self.temp_dir = tempfile.mkdtemp()
-        self.log_file_path = os.path.join(self.temp_dir, "test.log")
+        self.log_file_path = os.path.join(self.temp_dir, "AP01m_192-168-0-11.log")
         with open(self.log_file_path, 'w') as f:
             f.write("Sample log content\n")
         
         # Initialize components
         self.node_manager = NodeManager()
-        self.log_writer = LogWriter()
+        self.log_writer = LogWriter(self.node_manager)
         self.context_menu_filter = ContextMenuFilterService()
         self.context_menu_service = ContextMenuService(self.node_manager, self.context_menu_filter)
         self.bstool_service = BsToolCommandService(self.log_writer)
         self.status_service = StatusService()
         self.command_queue = CommandQueue(None)  # Mock session manager
         self.fbc_service = FbcCommandService(self.node_manager, self.command_queue, self.log_writer)
-        self.rpc_service = RpcCommandService(self.node_manager, self.command_queue, self.log_writer)
+        self.rpc_service = RpcCommandService(self.node_manager, self.command_queue)
         
         # Create a mock UI factory
         self.ui_factory = MagicMock()
@@ -86,6 +86,8 @@ class TestBsToolContextMenuIntegration:
         def status_handler(msg, duration):
             self.status_messages.append((msg, duration))
         self.presenter.status_message_signal.connect(status_handler)
+        # Also connect the node tree presenter's signal
+        self.presenter.node_tree_presenter.status_message_signal.connect(status_handler)
 
     def teardown_method(self):
         """Clean up test environment."""
@@ -146,6 +148,8 @@ class TestBsToolContextMenuIntegration:
             mock_process.stdout.readline.side_effect = ["Output line 1\n", "Output line 2\n", ""]
             mock_process.stderr.read.return_value = ""
             mock_process.wait.return_value = 0
+            mock_process.poll.return_value = 0
+            mock_process.poll.return_value = 0
             mock_popen.return_value = mock_process
             
             # Mock _get_bstool_path to return a valid path
@@ -159,8 +163,8 @@ class TestBsToolContextMenuIntegration:
                     # Connect to bstool output signal
                     self.bstool_service.bstool_output_signal.connect(output_handler)
                     
-                    # Execute bstool through the presenter
-                    self.presenter.process_bstool_command(self.log_file_path)
+                    # Execute bstool through the node tree presenter
+                    self.presenter.node_tree_presenter.process_bstool_command(self.log_file_path)
                     
                     # Process Qt events to allow signals to be emitted
                     qtbot.wait(100)
@@ -198,8 +202,8 @@ class TestBsToolContextMenuIntegration:
                     # Clear previous status messages
                     self.status_messages.clear()
                     
-                    # Execute bstool through the presenter
-                    self.presenter.process_bstool_command(self.log_file_path)
+                    # Execute bstool through the node tree presenter
+                    self.presenter.node_tree_presenter.process_bstool_command(self.log_file_path)
                     
                     # Process Qt events to allow signals to be emitted
                     qtbot.wait(100)

@@ -127,12 +127,8 @@ class CommanderPresenter(QObject):
             self.handle_bstool_execute
         )
         
-        # Connect BsTool output to UI tab
-        def handle_bstool_output(output: str, log_file_path: str):
-            """Handle bstool output by passing only the output text to the UI tab."""
-            self.ui_factory.bstool_tab.append_output(output)
-            
-        self.bstool_service.bstool_output_signal.connect(handle_bstool_output)
+        # BsTool service connections are handled in CommanderWindow
+        # to avoid duplicate connections
 
     def get_clipboard_monitor(self) -> ClipboardMonitor:
         """

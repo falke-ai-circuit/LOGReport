@@ -46,7 +46,11 @@ class CommanderWindow(QMainWindow):
         logging.basicConfig(
             level=logging.DEBUG,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            encoding='utf-8'
+            encoding='utf-8',
+            handlers=[
+                logging.StreamHandler(),
+                logging.FileHandler('debug.log')
+            ]
         )
         
         # Load application settings
@@ -84,7 +88,15 @@ class CommanderWindow(QMainWindow):
         
         # Connect BsToolTab signals to service
         self.bstool_tab = self.session_view.bstool_tab
-        self.bstool_tab.execute_clicked.connect(self.bstool_service.execute_command)
+        # NOTE: BsTool service connections are handled in CommanderPresenter to avoid duplicate connections
+        
+        # Connect BsTool service signals to UI components
+        self.bstool_service.status_message_signal.connect(self.status_service.status_updated)
+        self.bstool_service.report_error.connect(self.status_service.show_error)
+        self.bstool_service.connection_state_signal.connect(self.bstool_tab.update_status)
+        
+        # Connect BsTool service to tab
+        self.bstool_tab.connect_bstool_service(self.bstool_service)
         
         # Initialize services through commander service
         self.commander_service = CommanderService(
@@ -211,6 +223,7 @@ class CommanderWindow(QMainWindow):
     def _save_bstool_path(self, path: str):
         """Save the BsTool path to settings"""
         self.settings.setValue("bstool_path", path)
+        self.settings.sync()
         
         # TODO: Re-implement when UI buttons are available
         # self.execute_btn.clicked.connect(self.execute_telnet_command)
@@ -440,6 +453,7 @@ class CommanderWindow(QMainWindow):
         if hasattr(self, 'bstool_tab'):
             bstool_path = self.bstool_tab.get_bstool_path()
             self.settings.setValue("bstool_path", bstool_path)
+            self.settings.sync()
 
         # Call parent closeEvent, handling both real instances and mocks
         try:

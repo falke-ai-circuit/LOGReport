@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, 
     QPushButton, QLineEdit, QLabel
 )
+import logging
 from PyQt6.QtCore import pyqtSignal
 from enum import Enum
 
@@ -26,11 +27,22 @@ class BsToolTab(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.logger = logging.getLogger(__name__)
         self._setup_ui()
         
     def connect_bstool_service(self, service):
         """Connect to bstool service signals"""
-        service.bstool_output_signal.connect(lambda output, _: self.append_output(output))
+        def handle_bstool_output(output: str, log_file_path: str):
+            """Handle bstool output by passing only the output text to the UI tab."""
+            self.logger.debug(f"DEBUG_MARK: BsToolTab received bstool_output_signal. Output: {output!r}, Log Path: {log_file_path}")
+            self.append_output(output)
+            
+        service.bstool_output_signal.connect(handle_bstool_output)
+        service.connection_state_signal.connect(self.update_status)
+        
+        # Set initial state to connected since bstool doesn't require explicit connection
+        # This ensures the execute button is enabled
+        self.update_status(ConnectionState.CONNECTED)
 
     def _setup_ui(self):
         """Set up the BsTool tab UI"""
@@ -101,17 +113,27 @@ class BsToolTab(QWidget):
     def _on_execute_clicked(self):
         """Handle execute button click"""
         command = self.command_input.text().strip()
-        if command:
-            self.execute_clicked.emit(command)
+        # Always emit the command, even if empty, to allow bstool.exe to show help
+        self.logger.debug(f"DEBUG_MARK: _on_execute_clicked emitting command: {command!r}")
+        self.execute_clicked.emit(command)
 
     def append_output(self, text):
         """Append text to the output display without adding extra newlines"""
-        # Move cursor to end and insert text
+        self.logger.debug(f"DEBUG_MARK: BsToolTab.append_output called with text: {text!r}")
+        # Use the same approach as telnet_tab to avoid extra newlines
         from PyQt6.QtGui import QTextCursor
         cursor = self.output.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
-        cursor.insertText(text)
+        
+        # Ensure consistent newline handling: remove any trailing newlines and add one back
+        # This prevents issues with multiple newlines or missing newlines when appending.
+        normalized_text = text.rstrip('\n') + '\n'
+        cursor.insertText(normalized_text)
         self.output.setTextCursor(cursor)
+        
+        # Scroll to bottom to ensure the latest output is visible
+        scrollbar = self.output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
         
     def clear_output(self):
         """Clear the output display"""

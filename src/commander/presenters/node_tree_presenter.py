@@ -19,6 +19,7 @@ from ..services.fbc_command_service import FbcCommandService
 from ..services.rpc_command_service import RpcCommandService
 from ..icons import get_node_online_icon, get_node_offline_icon, get_token_icon
 import os
+import re
 
 
 class NodeTreePresenter(QObject):
@@ -463,6 +464,45 @@ class NodeTreePresenter(QObject):
             
         self.status_message_signal.emit(f"Queued {len(tokens)} commands for node {node_name}", 3000)
         
+    def _extract_node_id_from_log_path(self, log_file_path: str) -> str:
+        """
+        Extract node ID from log file path.
+        
+        Args:
+            log_file_path (str): Path to the log file
+            
+        Returns:
+            str: Extracted node ID or empty string if not found
+        """
+        try:
+            # Get filename from path
+            filename = os.path.basename(log_file_path)
+            
+            # Remove extension
+            name_without_ext = os.path.splitext(filename)[0]
+            
+            # Handle special case where filename might have additional extensions
+            # like "AP01m_192-168-0-11_162.rpc.log"
+            if '.' in name_without_ext:
+                name_without_ext = name_without_ext.split('.')[0]
+            
+            # Extract node ID using regex pattern
+            # Pattern matches: NODEID_IPADDRESS or NODEID_IPADDRESS_TOKEN
+            pattern = r'^([a-zA-Z0-9]+[a-zA-Z]?)_'  # Capture node ID part before first underscore
+            match = re.match(pattern, name_without_ext)
+            
+            if match:
+                return match.group(1)
+            else:
+                # Fallback: try to extract first part before first underscore
+                parts = name_without_ext.split('_')
+                if parts:
+                    return parts[0]
+        except Exception as e:
+            logging.error(f"Error extracting node ID from log path {log_file_path}: {str(e)}")
+            
+        return ""
+        
     def process_fieldbus_command(self, token_id, node_name):
         """
         Process a single fieldbus command.
@@ -541,8 +581,14 @@ class NodeTreePresenter(QObject):
             log_file_path: Path to the log file to process with BsTool
         """
         try:
-            # Execute bstool with the log file path and empty command arguments
-            self.bstool_service.execute_bstool(log_file_path, "")
+            # Extract node ID from log file path
+            node_id = self._extract_node_id_from_log_path(log_file_path)
+            
+            # Construct bstool command arguments
+            bstool_command_args = f"-errlog {node_id}" if node_id else ""
+            
+            # Execute bstool with the log file path and constructed command arguments
+            self.bstool_service.execute_bstool(log_file_path, bstool_command_args)
             self.status_message_signal.emit(f"Started BsTool processing for {os.path.basename(log_file_path)}", 3000)
         except Exception as e:
             self._report_error("Error processing BsTool command", e)
