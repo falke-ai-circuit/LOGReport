@@ -827,6 +827,46 @@ class TestBsToolCommandService:
                     
                     # Wait a bit for thread to finish
                     time.sleep(0.2)
+    @patch('bstool_command_service.subprocess.Popen')
+    def test_execute_bstool_timeout(self, mock_popen, bstool_service, temp_log_file):
+        """Test that bstool process times out after 10 seconds"""
+        mock_process = MagicMock()
+        mock_process.pid = 12345
+        mock_process.poll.return_value = None
+        mock_process.stdout.readline.side_effect = [""]
+        mock_process.stderr.read.return_value = ""
+        
+        # Simulate a timeout by raising TimeoutExpired when wait is called
+        mock_process.wait.side_effect = subprocess.TimeoutExpired("cmd", 10)
+        mock_process.terminate = MagicMock()
+        mock_process.kill = MagicMock()
+        mock_popen.return_value = mock_process
+
+        with patch.object(bstool_service, '_get_bstool_path', return_value='/path/to/BsTool.exe'):
+            with patch('bstool_command_service.os.path.exists', return_value=True):
+                status_messages = []
+                error_messages = []
+
+                def status_handler(msg, duration):
+                    status_messages.append((msg, duration))
+
+                def error_handler(error):
+                    error_messages.append(error)
+
+                bstool_service.status_message_signal.connect(status_handler)
+                bstool_service.report_error.connect(error_handler)
+
+                bstool_service.execute_bstool(temp_log_file, "-errlog AP01")
+
+                # Wait for the thread to execute and the timeout to occur
+                import time
+                time.sleep(0.1) # Give the thread a moment to start and hit the mocked wait
+
+                mock_process.wait.assert_called_with(timeout=10)
+                mock_process.terminate.assert_called_once()
+                assert any("bstool process timed out" in msg for msg, _ in status_messages)
+                assert any("bstool process exited with code" in msg for msg in error_messages) # Should report an error due to termination
+
                     
     def test_execute_bstool_with_log_writer_error_handling(self, bstool_service_with_log_writer, temp_log_file):
         """Test bstool execution with LogWriter error handling"""

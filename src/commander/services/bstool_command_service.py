@@ -196,7 +196,7 @@ class BsToolCommandService(QObject):
             
             # Wait for the process to complete with a timeout to prevent hanging
             try:
-                self.process.wait(timeout=30)  # 30 second timeout
+                self.process.wait(timeout=10)  # 10 second timeout
             except subprocess.TimeoutExpired:
                 self.logger.warning("bstool process timed out, terminating...")
                 self.process.terminate()
@@ -308,7 +308,7 @@ class BsToolCommandService(QObject):
 
             # Wait for the process to complete with a timeout to prevent hanging
             try:
-                self.process.wait(timeout=30)  # 30 second timeout
+                self.process.wait(timeout=10)  # 10 second timeout
             except subprocess.TimeoutExpired:
                 self.logger.warning("bstool process timed out, terminating...")
                 self.process.terminate()
