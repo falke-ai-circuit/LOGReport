@@ -37,8 +37,9 @@ class CommanderWindow(QMainWindow):
     # Signal for status messages
     status_message_signal = pyqtSignal(str, int)
     
-    def __init__(self):
+    def __init__(self, bstool_path=None):
         super().__init__()
+        self.bstool_path = bstool_path
         self.setWindowTitle("Commander LogCreator v1.0")
         self.setMinimumSize(1200, 800)
         
@@ -277,7 +278,7 @@ class CommanderWindow(QMainWindow):
         """Initialize the main UI components"""
         # Create main layout
         from commander.ui.commander_ui_factory import CommanderUIFactory
-        self.ui_factory = CommanderUIFactory()
+        self.ui_factory = CommanderUIFactory(bstool_path=self.bstool_path)
         main_widget = self.ui_factory.get_main_widget()
         self.setCentralWidget(main_widget)
         
@@ -294,6 +295,10 @@ class CommanderWindow(QMainWindow):
         # Status Bar
         self.setStatusBar(QStatusBar())
         self.status_service.show_message("Welcome to Commander LogCreator")
+        
+        # Set BsTool path if provided
+        if self.bstool_path:
+            self.bstool_tab.bstool_path_edit.setText(self.bstool_path)
     
     # Signal definitions (to be connected by presenter)
     set_cmd_input_text_signal = pyqtSignal(str)

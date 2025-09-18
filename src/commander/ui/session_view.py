@@ -27,9 +27,10 @@ class SessionView(QWidget):
     pause_clicked = pyqtSignal()
     speed_changed = pyqtSignal(float)
     
-    def __init__(self):
+    def __init__(self, bstool_path=None):
         """Initialize the SessionView."""
         super().__init__()
+        self.bstool_path = bstool_path
         self._setup_ui()
         
     def _setup_ui(self):
@@ -45,6 +46,8 @@ class SessionView(QWidget):
 
         # Create BsTool tab
         self.bstool_tab = BsToolTab()
+        if self.bstool_path:
+            self.bstool_tab.bstool_path_edit.setText(self.bstool_path)
         self.tab_widget.addTab(self.bstool_tab, "BsTool")
 
         # Create VNC tab

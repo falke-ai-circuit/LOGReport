@@ -13,8 +13,9 @@ from datetime import datetime
 from gui_workers import Worker
 
 class LogReportGUI(QMainWindow):
-    def __init__(self):
+    def __init__(self, bstool_path=None):
         super().__init__()
+        self.bstool_path = bstool_path
         # Configure logging
         import logging
         from pathlib import Path
@@ -191,7 +192,7 @@ class LogReportGUI(QMainWindow):
         
     def open_commander(self):
         from commander.ui.commander_window import CommanderWindow
-        self.commander = CommanderWindow()
+        self.commander = CommanderWindow(bstool_path=self.bstool_path)
         self.commander.show()
         
     def _style_controls(self):

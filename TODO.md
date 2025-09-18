@@ -10,6 +10,6 @@ This file contains a list of pending tasks and improvements for the LOGReport pr
 
 [ ]We should add colour change on nodes list to files that have been processed ( changes colour to green if command executed and written to file)
 
-[ ]We should add lower timeout for bstool commands ( 10 seconds maybe?) before we read content from temporary file created by it.
+[X]We should add lower timeout for bstool commands ( 10 seconds maybe?) before we read content from temporary file created by it.
 
 [ ]We should add bstool inside pyinstall package and we should set the path automatically to it when started from packaged exe inside bstool tab executiong path ( otherwise we need it separately or we need to know the path ) 
