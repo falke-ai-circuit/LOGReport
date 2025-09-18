@@ -492,12 +492,19 @@ class NodeTreePresenter(QObject):
             match = re.match(pattern, name_without_ext)
             
             if match:
-                return match.group(1)
+                node_id = match.group(1)
             else:
                 # Fallback: try to extract first part before first underscore
                 parts = name_without_ext.split('_')
                 if parts:
-                    return parts[0]
+                    node_id = parts[0]
+                else:
+                    node_id = "" # No node ID found
+            # Apply nodename truncation logic for '.log' files
+            if log_file_path.lower().endswith('.log') and len(node_id) > 3 and node_id[-1].lower() in ['r', 'm']:
+                node_id = node_id[:-1]
+            
+            return node_id
         except Exception as e:
             logging.error(f"Error extracting node ID from log path {log_file_path}: {str(e)}")
             

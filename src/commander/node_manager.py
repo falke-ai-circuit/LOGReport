@@ -591,6 +591,10 @@ class NodeManager:
         formatted_ip = ip_address.replace('.', '-')
         
         # Create path: <log_root>/<token_type>/<node_name>/<filename>
+        # Apply nodename truncation logic for 'LOG' type files
+        if log_type.upper() == "LOG" and len(node_name) > 2 and node_name[-1].lower() in ['r', 'm']:
+            node_name = node_name[:-1]
+            
         # Generate filename with identifiers based on log type
         if log_type.upper() == "RPC":
             # RPC pattern: {node_name}_{formatted_ip}_{token_id}.{extension}

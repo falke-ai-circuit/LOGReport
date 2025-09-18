@@ -27,3 +27,44 @@ The solution involved establishing a connection between the `bstool_service.bsto
 
 ### Verification
 The fix was verified by a passing end-to-end test (`test_bstool_system_integration.py` or `test_bstool_ui_output.py`) that confirmed `bstool.exe` output is now correctly displayed in the UI. This test likely involved executing a `bstool.exe` command and asserting that its expected output appears in the designated UI area.
+## 3. Nodename Truncation Logic for LOG Files
+
+### Problem Description
+The `bstool.exe` command was being constructed with the full nodename extracted from log files, even for 'LOG' type files where a truncated nodename was expected. For example, `AP01m` was used as `-errlog AP01m`, but the requirement was to use `AP01`. This led to incorrect command parameters for specific log file types.
+
+### Root Cause
+The `_extract_node_id_from_log_path` method in `src/commander/presenters/node_tree_presenter.py` was responsible for extracting the nodename from the log file path. However, it did not implement the truncation logic for 'LOG' type files before returning the `node_id`, which was then used to construct the `bstool_command_args`.
+
+### Implemented Solution
+The `_extract_node_id_from_log_path` method in `src/commander/presenters/node_tree_presenter.py` was modified to include the nodename truncation logic. Specifically, after extracting the `node_id`, a conditional check was added: if the `log_file_path` indicates a '.log' file, and the `node_id` is longer than 3 characters and ends with 'r' or 'm', the last character is removed from the `node_id`. This ensures that the correct, truncated nodename is used when constructing the `bstool.exe` command.
+
+### Verification
+The fix was verified by creating a new unit test file `tests/unit/test_node_tree_presenter.py`. This test file includes several test cases that cover various scenarios, including nodenames ending with 'm' or 'r', nodenames that should not be truncated, and different log file types. All test cases passed, confirming the correct implementation of the nodename truncation logic.
+
+## 4. ModuleNotFoundError Resolution in TelnetTab
+
+### Problem Description
+During testing, a `ModuleNotFoundError: No module named 'src'` occurred in `src/commander/ui/telnet_tab.py`.
+
+### Root Cause
+The import statement `from src.commander.widgets import ConnectionState` was an absolute import that failed when the application was run as a packaged executable, as the `src` directory was no longer directly accessible in the Python path.
+
+### Implemented Solution
+The absolute import was changed to a relative import: `from ..widgets import ConnectionState`. This ensures that the module can be correctly located regardless of how the application is packaged or executed.
+
+### Verification
+The fix was verified by successfully running the application and its tests, confirming that `src/commander/ui/telnet_tab.py` could correctly import `ConnectionState` without errors.
+
+## 5. Meta-Mind Task Progression Issues and Workaround
+
+### Problem Description
+During the execution of this task, `meta-mind` exhibited issues with task progression, specifically failing to automatically mark tasks as "in progress" or "completed" after tool execution, leading to workflow stalls.
+
+### Root Cause
+The exact root cause is still under investigation, but it appears to be related to the `meta-mind` server's internal state management or its interaction with the environment's task completion signals.
+
+### Workaround Employed
+Manual intervention was required to update the task status using the `update_todo_list` tool after each successful step. This allowed the workflow to continue without interruption.
+
+### Learnings
+This highlights the importance of robust error handling and explicit state management in automated workflows. Future `meta-mind` integrations should include more explicit status checks and fallback mechanisms for task progression.
