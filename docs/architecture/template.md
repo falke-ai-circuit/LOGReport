@@ -1,22 +1,59 @@
-# {Document Title}
+# 🏗️ {Architecture Document Title}
 
-## Overview
-Brief description of what this document covers.
+> **Purpose:** *{Brief one-line description}*
 
-## Purpose
-Explanation of why this component/pattern exists and what problem it solves.
+## 📋 Overview
+**Problem:** {What this solves} | **Solution:** {High-level approach} | **Scope:** {Included/excluded}
 
-## Key Concepts
-Important concepts related to this architecture component.
+## 🎯 Context
+| Aspect | Detail |
+|--------|---------|
+| **Business Value** | {Primary benefit → measurable outcomes} |
+| **System Role** | {Where this fits → interfaces with} |
+| **Success Criteria** | {Acceptance criteria} |
 
-## Implementation Details
-Details about how this component is implemented.
+## 🔧 Design
 
-## Benefits
-Advantages of this approach.
+### Core Architecture
+```
+[Simple architectural diagram]
+```
+| Component | Responsibility | Pattern |
+|-----------|----------------|---------|
+| {Component1} | {Role} | {Design pattern} |
+| {Component2} | {Role} | {Integration approach} |
 
-## Related Components
-Other components that interact with this one.
+### Tech Stack
+| Layer | Technology | Rationale |
+|-------|------------|-----------|
+| {Frontend} | {Tech + v.x} | *{Why chosen}* |
+| {Backend} | {Tech + v.x} | *{Benefits}* |
+| {Data} | {Tech + v.x} | *{Fit}* |
 
-## References
-Links to related documentation or external resources.
+## ⚡ Implementation
+| Decision | Rationale | Trade-offs |
+|----------|-----------|------------|
+| {Key choice} | *{Why}* | *{What sacrificed}* |
+
+**Performance:** Latency {ms} • Throughput {req/s} • Scale {users}  
+**Security:** Auth {method} • Data {encryption} • Access {model}
+
+## 🔗 Integration
+**Dependencies:** {Internal} → {External}  
+**APIs:** 
+```
+{Critical interface example}
+```
+
+## 🧪 Quality
+**Testing:** Unit {%} • Integration {scope} • Performance {benchmarks}  
+**Gates:** ✅ {Criteria 1} ✅ {Criteria 2}
+
+## 🚀 Deployment
+**Strategy:** {Approach} • **Environment:** {Requirements} • **Monitoring:** {Key metrics → alerts}
+
+## 🔮 Future
+**Scale:** {Growth strategy} • **Extend:** {Extension points} • **Limits:** {Known constraints}
+
+---
+**📚 Refs:** *{Related docs}*

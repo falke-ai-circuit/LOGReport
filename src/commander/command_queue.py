@@ -154,6 +154,7 @@ class CommandWorker(QRunnable):
 
 class CommandQueue(QObject):
     command_completed = pyqtSignal(str, str, bool, object)  # command, result, success, token
+    command_completed_with_log_status = pyqtSignal(str, str, bool, object, bool) # command, result, success, token, log_success
     progress_updated = pyqtSignal(int, int)    # current, total
     
     @property
@@ -345,6 +346,7 @@ class CommandQueue(QObject):
         # Emit command completion with result
         # Ensure error details are properly propagated
         self.command_completed.emit(command, result, success, worker.token)
+        self.command_completed_with_log_status.emit(command, result, success, worker.token, False) # log_success will be updated by LogWriter
         logging.debug(f"CommandQueue._handle_worker_finished: Emitted completion signal for command: {command} (success={success})")
         
         # Check if all commands are completed (either successfully or failed) and reset processing state if so

@@ -68,6 +68,9 @@ class TestLogWriterWriteToLog:
                     mock_file.assert_called_once_with(expected_filepath, 'a', encoding='utf-8')
                     expected_content = f"[{timestamp}] {content}"
                     mock_file().write.assert_called_once_with(expected_content + '\n')
+                    
+                    # Verify signal emission
+                    log_writer.log_write_completed.emit.assert_called_once_with(node_name, mock_token.token_id, True)
     
     def test_write_to_log_with_explicit_node_name(self, log_writer, mock_node_manager):
         """Test writing to log with explicit node name"""
@@ -103,6 +106,9 @@ class TestLogWriterWriteToLog:
                     mock_file.assert_called_once_with(expected_filepath, 'a', encoding='utf-8')
                     expected_content = f"[{timestamp}] {content}"
                     mock_file().write.assert_called_once_with(expected_content + '\n')
+                    
+                    # Verify signal emission
+                    log_writer.log_write_completed.emit.assert_called_once_with(node_name, mock_token.token_id, True)
     
     def test_write_to_log_with_empty_content(self, log_writer, mock_node_manager):
         """Test writing to log with empty content"""
@@ -122,6 +128,7 @@ class TestLogWriterWriteToLog:
             
             # Verify - should return early without writing
             mock_write_to_app_log.assert_not_called()
+            log_writer.log_write_completed.emit.assert_not_called()
     
     def test_write_to_log_with_whitespace_only_content(self, log_writer, mock_node_manager):
         """Test writing to log with whitespace-only content"""
@@ -141,6 +148,7 @@ class TestLogWriterWriteToLog:
             
             # Verify - should return early without writing
             mock_write_to_app_log.assert_not_called()
+            log_writer.log_write_completed.emit.assert_not_called()
     
     def test_write_to_log_file_write_exception(self, log_writer, mock_node_manager):
         """Test writing to log when file write operation fails"""
@@ -170,6 +178,8 @@ class TestLogWriterWriteToLog:
                     
                     # Verify app log was written with error message
                     mock_write_to_app_log.assert_called_once_with(f"Failed to write to {log_type} log: Permission denied")
+                    # Verify signal emission with failure
+                    log_writer.log_write_completed.emit.assert_called_once_with("N/A", "N/A", False)
     
     def test_write_to_log_no_active_node_fallback(self, log_writer, mock_node_manager):
         """Test writing to log when no active node exists - should fallback to app log"""
@@ -187,6 +197,7 @@ class TestLogWriterWriteToLog:
             # Verify - should write to app log with fallback message
             expected_message = f"No active node, writing {log_type} content to app log: {content[:100]}..."
             mock_write_to_app_log.assert_called_once_with(expected_message)
+            log_writer.log_write_completed.emit.assert_called_once_with("N/A", "N/A", False)
     
     def test_write_to_log_no_active_node_and_no_node_name(self, log_writer, mock_node_manager):
         """Test writing to log with no active node and no explicit node name"""
@@ -204,6 +215,7 @@ class TestLogWriterWriteToLog:
             # Verify - should write to app log with fallback message
             expected_message = f"No active node, writing {log_type} content to app log: {content[:100]}..."
             mock_write_to_app_log.assert_called_once_with(expected_message)
+            log_writer.log_write_completed.emit.assert_called_once_with("N/A", "N/A", False)
     
     def test_write_to_log_creates_directories(self, log_writer, mock_node_manager):
         """Test that write_to_log creates necessary directories"""
@@ -231,6 +243,7 @@ class TestLogWriterWriteToLog:
                     # Verify directories were created
                     expected_dir = os.path.join("test_logs", log_type, node_name)
                     mock_makedirs.assert_called_once_with(expected_dir, exist_ok=True)
+                    log_writer.log_write_completed.emit.assert_called_once_with(node_name, "N/A", True)
                     
     def test_write_to_log_with_token_log_path(self, log_writer, mock_node_manager):
         """Test writing to log with token that has log_path"""
@@ -260,6 +273,8 @@ class TestLogWriterWriteToLog:
                 mock_file.assert_called_once_with(log_path, 'a', encoding='utf-8')
                 expected_content = f"[{timestamp}] {content}"
                 mock_file().write.assert_called_once_with(expected_content + '\n')
+                log_writer.log_write_completed.emit.assert_called_once_with(node_name, token_id, True)
+                log_writer.log_write_completed.emit.assert_called_once_with(node_name, "N/A", True)
                 
     def test_write_to_log_with_token_and_identifiers(self, log_writer, mock_node_manager):
         """Test writing to log with token that has token_id and ip_address"""

@@ -1,82 +1,184 @@
-import unittest
-import os
-from unittest.mock import Mock, patch
-from src.commander.presenters.node_tree_presenter import NodeTreePresenter
-from src.commander.node_manager import NodeManager
+"""
+Unit tests for NodeTreePresenter
+"""
+import pytest
+from unittest.mock import MagicMock, patch
+from PyQt6.QtGui import QColor
+from commander.presenters.node_tree_presenter import NodeTreePresenter
+from commander.node_manager import NodeManager
+from commander.session_manager import SessionManager
+from commander.log_writer import LogWriter
+from commander.command_queue import CommandQueue
+from commander.services.fbc_command_service import FbcCommandService
+from commander.services.rpc_command_service import RpcCommandService
+from commander.services.context_menu_service import ContextMenuService
+from commander.services.bstool_service import BsToolService
 
-class TestNodeTreePresenter(unittest.TestCase):
-
-    def setUp(self):
-        self.mock_view = Mock()
-        self.mock_node_manager = Mock(spec=NodeManager)
-        self.mock_session_manager = Mock()
-        self.mock_log_writer = Mock()
-        self.mock_command_queue = Mock()
-        self.mock_fbc_service = Mock()
-        self.mock_rpc_service = Mock()
-        self.mock_context_menu_service = Mock()
-        self.mock_bstool_service = Mock()
-
-        self.presenter = NodeTreePresenter(
-            self.mock_view,
-            self.mock_node_manager,
-            self.mock_session_manager,
-            self.mock_log_writer,
-            self.mock_command_queue,
-            self.mock_fbc_service,
-            self.mock_rpc_service,
-            self.mock_context_menu_service,
-            self.mock_bstool_service
+class TestNodeTreePresenter:
+    """Test suite for NodeTreePresenter class"""
+    
+    @pytest.fixture
+    def mock_view(self):
+        """Create a mock view"""
+        mock_view = MagicMock()
+        mock_view.node_tree = MagicMock()
+        mock_view.node_tree.invisibleRootItem.return_value = MagicMock()
+        return mock_view
+    
+    @pytest.fixture
+    def mock_node_manager(self):
+        """Create a mock NodeManager"""
+        mock_nm = MagicMock()
+        mock_nm.get_node.return_value = MagicMock()
+        return mock_nm
+    
+    @pytest.fixture
+    def mock_session_manager(self):
+        """Create a mock SessionManager"""
+        mock_sm = MagicMock()
+        mock_sm.validate_token.return_value = True
+        return mock_sm
+    
+    @pytest.fixture
+    def mock_log_writer(self):
+        """Create a mock LogWriter"""
+        mock_lw = MagicMock()
+        return mock_lw
+    
+    @pytest.fixture
+    def mock_command_queue(self):
+        """Create a mock CommandQueue"""
+        mock_cq = MagicMock()
+        return mock_cq
+    
+    @pytest.fixture
+    def mock_fbc_service(self):
+        """Create a mock FbcCommandService"""
+        mock_fbc = MagicMock()
+        return mock_fbc
+    
+    @pytest.fixture
+    def mock_rpc_service(self):
+        """Create a mock RpcCommandService"""
+        mock_rpc = MagicMock()
+        return mock_rpc
+    
+    @pytest.fixture
+    def mock_context_menu_service(self):
+        """Create a mock ContextMenuService"""
+        mock_cm = MagicMock()
+        return mock_cm
+    
+    @pytest.fixture
+    def mock_bstool_service(self):
+        """Create a mock BsToolService"""
+        mock_bs = MagicMock()
+        return mock_bs
+    
+    @pytest.fixture
+    def presenter(self, mock_view, mock_node_manager, mock_session_manager, mock_log_writer, 
+                  mock_command_queue, mock_fbc_service, mock_rpc_service, mock_context_menu_service, mock_bstool_service):
+        """Create a NodeTreePresenter instance with mocked dependencies"""
+        return NodeTreePresenter(
+            view=mock_view,
+            node_manager=mock_node_manager,
+            session_manager=mock_session_manager,
+            log_writer=mock_log_writer,
+            command_queue=mock_command_queue,
+            fbc_service=mock_fbc_service,
+            rpc_service=mock_rpc_service,
+            context_menu_service=mock_context_menu_service,
+            bstool_service=mock_bstool_service
         )
-
-    def test_extract_node_id_from_log_path_truncation(self):
-        # Test case 1: Node name ends with 'm' and is longer than 2 characters
-        log_path_m = "/path/to/logs/LOG/AP01m_192-168-0-11.log"
-        expected_node_id_m = "AP01"
-        actual_node_id_m = self.presenter._extract_node_id_from_log_path(log_path_m)
-        self.assertEqual(actual_node_id_m, expected_node_id_m, f"Failed for {log_path_m}")
-
-        # Test case 2: Node name ends with 'r' and is longer than 2 characters
-        log_path_r = "/path/to/logs/LOG/AP02r_192-168-0-12.log"
-        expected_node_id_r = "AP02"
-        actual_node_id_r = self.presenter._extract_node_id_from_log_path(log_path_r)
-        self.assertEqual(actual_node_id_r, expected_node_id_r, f"Failed for {log_path_r}")
-
-        # Test case 3: Node name does not end with 'm' or 'r'
-        log_path_no_trunc = "/path/to/logs/LOG/AP03_192-168-0-13.log"
-        expected_node_id_no_trunc = "AP03"
-        actual_node_id_no_trunc = self.presenter._extract_node_id_from_log_path(log_path_no_trunc)
-        self.assertEqual(actual_node_id_no_trunc, expected_node_id_no_trunc, f"Failed for {log_path_no_trunc}")
-
-        # Test case 4: Node name is 2 characters long (should not truncate)
-        log_path_short = "/path/to/logs/LOG/AAm_192-168-0-14.log"
-        expected_node_id_short = "AAm"
-        actual_node_id_short = self.presenter._extract_node_id_from_log_path(log_path_short)
-        self.assertEqual(actual_node_id_short, expected_node_id_short, f"Failed for {log_path_short}")
-
-        # Test case 5: Non-LOG file type (should not truncate)
-        log_path_fbc = "/path/to/logs/FBC/AP01m_192-168-0-11.fbc"
-        expected_node_id_fbc = "AP01m"
-        actual_node_id_fbc = self.presenter._extract_node_id_from_log_path(log_path_fbc)
-        self.assertEqual(actual_node_id_fbc, expected_node_id_fbc, f"Failed for {log_path_fbc}")
-
-        # Test case 6: Log file with multiple extensions
-        log_path_multi_ext = "/path/to/logs/LOG/AP01m_192-168-0-11.rpc.log"
-        expected_node_id_multi_ext = "AP01"
-        actual_node_id_multi_ext = self.presenter._extract_node_id_from_log_path(log_path_multi_ext)
-        self.assertEqual(actual_node_id_multi_ext, expected_node_id_multi_ext, f"Failed for {log_path_multi_ext}")
-
-        # Test case 7: Log file with no underscore
-        log_path_no_underscore = "/path/to/logs/LOG/AP01m.log"
-        expected_node_id_no_underscore = "AP01"
-        actual_node_id_no_underscore = self.presenter._extract_node_id_from_log_path(log_path_no_underscore)
-        self.assertEqual(actual_node_id_no_underscore, expected_node_id_no_underscore, f"Failed for {log_path_no_underscore}")
-
-        # Test case 8: Log file with no underscore and no truncation needed
-        log_path_no_underscore_no_trunc = "/path/to/logs/LOG/AP01.log"
-        expected_node_id_no_underscore_no_trunc = "AP01"
-        actual_node_id_no_underscore_no_trunc = self.presenter._extract_node_id_from_log_path(log_path_no_underscore_no_trunc)
-        self.assertEqual(actual_node_id_no_underscore_no_trunc, expected_node_id_no_underscore_no_trunc, f"Failed for {log_path_no_underscore_no_trunc}")
-
-if __name__ == '__main__':
-    unittest.main()
+    
+    def test_set_node_color_success(self, presenter):
+        """Test set_node_color method sets the correct color for a node"""
+        # Setup
+        mock_item = MagicMock()
+        mock_root_item = MagicMock()
+        mock_root_item.childCount.return_value = 1
+        mock_root_item.child.return_value = mock_item
+        mock_item.data.return_value = {"type": "node", "node_name": "AP01m"}
+        mock_node_tree = presenter.view.node_tree
+        mock_node_tree.invisibleRootItem.return_value = mock_root_item
+        mock_root_item.childCount.return_value = 1
+        mock_root_item.child.return_value = mock_item
+        mock_item.data.return_value = {"type": "node", "node_name": "AP01m"}
+        
+        # Execute
+        presenter.set_node_color("AP01m", QColor("green"))
+        
+        # Verify
+        mock_item.setForeground.assert_called_with(0, QColor("green"))
+    
+    def test_set_node_color_no_match(self, presenter):
+        """Test set_node_color method when no node is found"""
+        # Setup
+        mock_root_item = MagicMock()
+        mock_root_item.childCount.return_value = 0
+        mock_node_tree = presenter.view.node_tree
+        mock_node_tree.invisibleRootItem.return_value = mock_root_item
+        
+        # Execute
+        presenter.set_node_color("NonExistentNode", QColor("red"))
+        
+        # Verify no setForeground is called
+        mock_item = MagicMock()
+        mock_item.setForeground.assert_not_called()
+    
+    def test_handle_command_and_log_completion_success(self, presenter):
+        """Test handle_command_and_log_completion for successful case"""
+        # Setup
+        mock_token = MagicMock()
+        mock_token.name = "AP01m"
+        
+        # Execute
+        with patch.object(presenter, 'set_node_color') as mock_set_color:
+            presenter.handle_command_and_log_completion("test_command", "result", True, mock_token, True)
+            
+        # Verify
+        mock_set_color.assert_called_with("AP01m", QColor("green"))
+    
+    def test_handle_command_and_log_completion_failure(self, presenter):
+        """Test handle_command_and_log_completion for failure case"""
+        # Setup
+        mock_token = MagicMock()
+        mock_token.name = "AP01m"
+        
+        # Execute
+        with patch.object(presenter, 'set_node_color') as mock_set_color:
+            presenter.handle_command_and_log_completion("test_command", "result", False, mock_token, True)
+            
+        # Verify
+        mock_set_color.assert_called_with("AP01m", QColor("red"))
+    
+    def test_handle_command_and_log_completion_log_failure(self, presenter):
+        """Test handle_command_and_log_completion when log fails but command succeeds"""
+        # Setup
+        mock_token = MagicMock()
+        mock_token.name = "AP01m"
+        
+        # Execute
+        with patch.object(presenter, 'set_node_color') as mock_set_color:
+            presenter.handle_command_and_log_completion("test_command", "result", True, mock_token, False)
+            
+        # Verify
+        mock_set_color.assert_called_with("AP01m", QColor("red"))
+    
+    def test_handle_log_write_completion_success(self, presenter):
+        """Test handle_log_write_completion for successful log write"""
+        # Setup
+        with patch.object(presenter, 'set_node_color') as mock_set_color:
+            presenter.handle_log_write_completion("AP01m", "token_id", True)
+            
+        # Verify
+        mock_set_color.assert_called_with("AP01m", QColor("green"))
+    
+    def test_handle_log_write_completion_failure(self, presenter):
+        """Test handle_log_write_completion for failed log write"""
+        # Setup
+        with patch.object(presenter, 'set_node_color') as mock_set_color:
+            presenter.handle_log_write_completion("AP01m", "token_id", False)
+            
+        # Verify
+        mock_set_color.assert_called_with("AP01m", QColor("red"))

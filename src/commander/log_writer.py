@@ -10,21 +10,25 @@ from datetime import datetime
 from typing import Optional
 
 from commander.node_manager import NodeManager
+from PyQt6.QtCore import QObject, pyqtSignal
 
 
-class LogWriter:
+class LogWriter(QObject):
     """
     Service for writing to log files and application logs.
     """
+    log_write_completed = pyqtSignal(str, str, bool) # node_name, token_id, success
     
-    def __init__(self, node_manager: NodeManager, log_root: str = "logs"):
+    def __init__(self, node_manager: NodeManager, log_root: str = "logs", parent=None):
         """
         Initialize the LogWriter.
         
         Args:
             node_manager: NodeManager instance
             log_root: Root directory for logs
+            parent: Parent QObject
         """
+        super().__init__(parent)
         self.node_manager = node_manager
         self.log_root = log_root
         
@@ -115,12 +119,22 @@ class LogWriter:
        timestamped_content = f"[{timestamp}] {content}"
        
        # Write content to file
+       log_success = False
        try:
            with open(filepath, 'a', encoding='utf-8') as f:
                f.write(timestamped_content + '\n')
+           log_success = True
        except Exception as e:
            self.write_to_app_log(f"Failed to write to {log_type} log: {str(e)}")
            raise
+       finally:
+           # Emit signal after attempting to write to log
+           if token and hasattr(token, 'name') and hasattr(token, 'token_id'):
+               self.log_write_completed.emit(token.name, token.token_id, log_success)
+           elif node_name and token and hasattr(token, 'token_id'):
+               self.log_write_completed.emit(node_name, token.token_id, log_success)
+           else:
+               self.log_write_completed.emit("N/A", "N/A", log_success)
 
     def write_to_app_log(self, message: str, level: int = logging.INFO):
         """
@@ -175,7 +189,7 @@ class LogWriter:
         # If we didn't find the token, we don't write to app log as it's not necessarily an error
         # The test expects that we process all tokens with the same ID, so we don't return early
          
-    def append_to_file(self, filepath: str, content: str):
+    def append_to_file(self, filepath: str, content: str, token=None):
         """
         Append content to a file.
         
@@ -189,6 +203,12 @@ class LogWriter:
         try:
             with open(filepath, 'a', encoding='utf-8') as f:
                 f.write(content + '\n')
+            log_success = True
         except Exception as e:
             self.write_to_app_log(f"Failed to append to file {filepath}: {str(e)}")
             raise
+        finally:
+            if token and hasattr(token, 'name') and hasattr(token, 'token_id'):
+                self.log_write_completed.emit(token.name, token.token_id, log_success)
+            else:
+                self.log_write_completed.emit("N/A", "N/A", log_success)

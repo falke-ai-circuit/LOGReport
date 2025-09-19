@@ -20,6 +20,8 @@ from ..services.rpc_command_service import RpcCommandService
 from ..icons import get_node_online_icon, get_node_offline_icon, get_token_icon
 import os
 import re
+import subprocess
+from PyQt6.QtGui import QColor
 
 
 class NodeTreePresenter(QObject):
@@ -63,6 +65,14 @@ class NodeTreePresenter(QObject):
         
         # Connect view signals to presenter methods
         self.view.item_expanded.connect(self.handle_item_expanded)
+        
+        # Dictionary to track command and log write status for each node
+        # Key: node_name, Value: {"command_success": Optional[bool], "log_success": Optional[bool]}
+        self.node_status = {}
+        
+        # Connect signals from CommandQueue and LogWriter
+        self.command_queue.command_completed.connect(self.handle_command_completed)
+        self.log_writer.log_write_completed.connect(self.handle_log_write_completed)
         
         logging.debug("NodeTreePresenter initialized")
     
@@ -294,6 +304,54 @@ class NodeTreePresenter(QObject):
         file_item.setIcon(0, get_token_icon())
         return file_item
         
+    def handle_command_completed(self, command: str, result: str, success: bool, token: NodeToken):
+        """
+        Handle the command_completed signal from CommandQueue.
+        
+        Args:
+            command: The command that was executed
+            result: The result of the command
+            success: True if the command was successful, False otherwise
+            token: The NodeToken associated with the command
+        """
+        node_name = token.name
+        if node_name in self.node_status:
+            self.node_status[node_name]["command_success"] = success
+            self._check_and_update_node_color(node_name)
+            
+    def handle_log_write_completed(self, node_name: str, token_id: str, success: bool):
+        """
+        Handle the log_write_completed signal from LogWriter.
+        
+        Args:
+            node_name: The name of the node associated with the log write
+            token_id: The ID of the token associated with the log write
+            success: True if the log write was successful, False otherwise
+        """
+        if node_name in self.node_status:
+            self.node_status[node_name]["log_success"] = success
+            self._check_and_update_node_color(node_name)
+            
+    def _check_and_update_node_color(self, node_name: str):
+        """
+        Check if both command and log write were successful for a node and update its color.
+        
+        Args:
+            node_name: The name of the node to check and update
+        """
+        if node_name in self.node_status:
+            command_success = self.node_status[node_name].get("command_success")
+            log_success = self.node_status[node_name].get("log_success")
+
+            # Only update color if both statuses have been set (are not None)
+            if command_success is not None and log_success is not None:
+                if command_success and log_success:
+                    self.view.update_node_color(node_name, "green")
+                else:
+                    self.view.update_node_color(node_name, "red")
+                # Reset status after update
+                self.node_status[node_name] = {"command_success": None, "log_success": None}
+                
     def set_log_root_folder(self, folder_path):
         """Set the root folder for log files"""
         # This method is called by the view when the user selects a folder
@@ -397,7 +455,9 @@ class NodeTreePresenter(QObject):
         for token in tokens:
             # Pass active telnet client for reuse if available
             telnet_client = getattr(self, 'active_telnet_client', None)
-            self.fbc_service.queue_fieldbus_command(node_name, token.token_id, telnet_client)            
+            self.fbc_service.queue_fieldbus_command(node_name, token.token_id, telnet_client)
+            # Initialize node status for this node
+            self.node_status[node_name] = {"command_success": False, "log_success": False}
         # Start processing the queue
         self.command_queue.start_processing()
         self.status_message_signal.emit(f"Queued {len(tokens)} commands for node {node_name}", 3000)
