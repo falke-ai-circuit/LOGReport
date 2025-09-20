@@ -104,6 +104,7 @@ Additional documentation for key components and features:
 - [Context Menu Filtering](docs/blueprints/context_menu_filtering.md) - Dynamic UI configuration
 - [Session Recording](docs/blueprints/session_recording_blueprint.md) - Command capture/replay
 - [VNC Integration](docs/blueprints/vnc_tab_blueprint.md) - Remote control implementation
+- [Memory Hierarchy Template](docs/blueprints/memory_hierarchy.md) - Standardized entity naming + clustering
 
 ### API References
 - [Token Processing](docs/api_token_utilities.md) - FBC/RPC handling
