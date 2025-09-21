@@ -1,17 +1,7 @@
 {"type":"entity","name":"Project Artifacts","entityType":"ProjectManagement","observations":["High-level category for project-related deliverables and outcomes."]}
-{"type":"entity","name":"LogWriter","entityType":"System Component","observations":["Manages writing to node log files with rotation capabilities.","Implemented size-based log rotation (10MB max) using RotatingFileHandler.","Replaced TextIO file handles with logging.Logger instances.","Added RotatingFileHandler with maxBytes=10MB and backupCount=5.","Preserved existing header writing for new files.","Maintained timestamp and protocol annotation formats.","Updated close methods to properly handle logger cleanup.","Leveraged Python's built-in logging module and RotatingFileHandler for a straightforward implementation.","Prioritizing well-established libraries minimizes custom code and potential bugs.","Abstraction and established patterns are beneficial for common functionalities.","Decoupling components (e.g., Telnet client from UI) using message bus or observer pattern can enhance modularity and testability.","All critical operations and data flows should be logged with appropriate levels for easier debugging and monitoring.","Fixed UnicodeEncodeError by using UTF-8 encoding","Validates token IP addresses against filename IPs","Provides warnings for IP mismatches"]}
-{"type":"entity","name":"TelnetClient","entityType":"System Component","observations":["Manages Telnet connections to external debugger/nodes.","This component is part of the Network Operations System pattern promoted to global memory.","Enhanced error handling for Telnet writes","Improves connection stability","Identified issue with prompt pattern \\d+[a-z]\\%\\s*$ in _read_response method causing premature truncation of command output","Both TelnetClient and TelnetSession classes use the same problematic pattern","filter_telnet_output function also recognizes this pattern as a garbage pattern to remove","Planning to implement fix with multiple, more specific regex patterns with newline anchors","Fixed prompt pattern issue causing command output truncation","Replaced single broad regex pattern \\d+[a-z]\\%\\s*$ with multiple specific patterns","Implemented patterns with proper anchoring to prevent matching within command output","Modified _read_response method to check for any of the prompt patterns","Applied same fix to TelnetSession class for consistency"]}
-{"type":"entity","name":"FbcCommandService","entityType":"PythonClass","observations":["Experienced 'NameError: name 'logging' is not defined' during command execution.","Responsible for queuing and generating FBC commands.","Uses composite key (token_id, protocol) for command handling","Removed explicit command_queue.start_processing() call to fix terminal display","Resolved ValueError for token ID 162 with protocol 'fbc'"]}
 {"type":"entity","name":"Automated Unit Testing for Data Model Changes","entityType":"Optimization","observations":["Requirement for unit tests verifying attribute access and data integrity after data model changes.","Ensures backward compatibility and prevents runtime errors."]}
 {"type":"entity","name":"Enhanced Code Review Guidelines","entityType":"Optimization","observations":["Update checklists to include verification of attribute names and type consistency.","Adds a human review layer for quality assurance."]}
-{"type":"entity","name":"NodeToken","entityType":"data_model","observations":["Standardized attribute names from node_name to name and node_ip to ip_address","Requires comprehensive type hinting","Needs automated unit tests for attribute changes","Defined in src/commander/models.py","Has attribute 'name' that stores node name","Does not have 'node_name' attribute","This component is part of the Data Model System pattern promoted to global memory.","AttributeError: 'NodeToken' object has no attribute 'node_name'","Caused by renaming NodeToken attributes without updating all references","Fixed by replacing 'node_name' with 'name' in affected code","Serialized to JSON for command payloads in command_queue.py","Validated via TypeHintingStandard in models.py","Versioned through MemorySchemaV2 attribute definitions","VALIDATED_BY implementation at src/commander/models.py:15-28 (type hints)","VERSIONED_BY schema at .docs/memory_architecture.md:42-55","VALIDATED_BY relationship schema: MemorySchemaV2","VERSIONED_BY relationship schema: MemorySchemaV2","Relationships created: 2025-08-15","Last modified: 2025-08-15"]}
-{"type":"entity","name":"optimize_user","entityType":"user","observations":["Analyzed recent bug fixes for SessionManager and TelnetSession.","Identified root causes: missing method implementation, insufficient error handling, and incorrect attribute usage.","Proposed best practices for API contract enforcement (unit tests, type hinting, ABCs), robust error handling (granular exceptions, input validation, retries), and connection stability (health checks, data serialization robustness, centralized logging).","Planned integration into development workflow (code review, developer training), CI/CD (automated tests, static analysis, linters), and post-deployment (monitoring, incident response)."]}
-{"type":"entity","name":"Robust_Error_Handling","entityType":"best_practice","observations":["Use granular exception handling for network operations (e.g., ConnectionRefusedError, BrokenPipeError).","Implement input validation before network transmission.","Introduce retry mechanisms with exponential backoff for transient failures."]}
-{"type":"entity","name":"Connection_Stability","entityType":"best_practice","observations":["Implement periodic connection health checks/heartbeats.","Ensure robust data serialization/deserialization for inter-module communication (e.g., NodeToken).","Centralize error logging and monitoring for proactive issue detection."]}
-{"type":"entity","name":"Workflow_Integration","entityType":"process_enhancement","observations":["Update code review checklists with API contract, error handling, and input validation points.","Provide developer training on type hinting, unit testing, and defensive programming.","Automate unit tests, static analysis, and linter checks in CI/CD.","Set up production monitoring and alerting for specific error types.","Update incident response playbooks."]}
 {"type":"entity","name":"Optimization Feedback for SessionManager and TelnetSession Fixes","entityType":"optimization_feedback","observations":["Root Cause Analysis: Missing method in SessionManager due to lack of API contract enforcement/unit testing. ConnectionError in TelnetSession due to connection instability, incomplete error handling, and NodeToken attribute misuse.","Proposed Solutions: Formal API contracts, mandatory unit/integration testing, strict input validation, enhanced logging/monitoring, connection resilience (pooling, retry mechanisms).","Integration Plan: Implement changes through code reviews, CI/CD pipeline enhancements, and developer training."]}
-{"type":"entity","name":"Memory Consolidation Analysis","entityType":"Feature","observations":["Added memory consolidation analysis for src/commander/ directory","Helps maintain knowledge graph consistency","Completed consolidation of project_memory and global_memory","Merged duplicate patterns and normalized terminology","Promoted reusable concepts to global memory","Created cross-memory relationships for better traceability","Validated patterns against community best practices","Standardized naming conventions across entities","Finalized Dual Memory Consolidation Workflow by completing optimization and cleanup of project_memory and global_memory using Analyze, Optimize, and Document modes. This workflow ensures insights are properly captured, validated, and shared across contexts, with key patterns promoted to global memory for reuse.","Completed memory optimization on 2025-08-15","Key improvements:","- Eliminated all orphaned nodes (0 entities with 0 connections)","- Achieved minimum connectivity: 2+ connections per entity","- Strengthened cross-domain relationships (errors↔solutions, features↔implementations)","- Verified pattern complementarity (BatchCommandProcessing ↔ HybridTokenResolution)","- Added critical documentation references","- Promoted reusable patterns to global memory: ContextMenuFilteringSystem, MVP Presenter Pattern, BatchCommandProcessing","Domain clustering completed on 2025-08-15T12:24:53Z","Established 7 domain clusters: UI, Services, Data Models, Project Management, System Architecture, Error Handling, Memory Management","Created hierarchical taxonomy with System Architecture as parent domain","Preserved 10 cross-domain relationships","Final optimization actions:","- Deleted 4 transient/resolved entities","- Added 8 new relationships to strengthen connectivity","- Core entities now have minimum 2 connections","- Documentation updated to reflect changes"]}
-{"type":"entity","name":"Developer Documentation","entityType":"Feature","observations":["Added comprehensive developer documentation in docs/ directory","Includes architecture overview and component-specific docs"]}
 {"type":"entity","name":"Automatic Command Logging","entityType":"Feature","observations":["Added automatic output logging for context menu commands","Captures command output to log files with error handling"]}
 {"type":"entity","name":"MemorySystem","entityType":"System","observations":["This project uses a dual memory system with both global and local memory contexts","Global memory is defined in C:\\Users\\gorjovicgo\\.kilocode\\rules\\mcp_global.md","Local memory is configured in d:/_APP/LOGReport/.kilocode/mcp.json","Test observation added to verify local memory functionality","Current timestamp: 2025-07-20T14:15:15.714Z","Updated with versioned schema references for memory consolidation workflow","Added cross-referenced documentation links to .docs/memory_architecture.md"]}
 {"type":"entity","name":"Node","entityType":"System Component","observations":["Manages node configurations and connections","Mentioned as a core component in README.md","The Node class now stores tokens as a dictionary of lists (Dict[str, List[NodeToken]]) to handle multiple tokens with the same ID but different types. This change was implemented to correctly handle cases where FBC and RPC tokens share the same ID, which is common in the system.","The add_token method in the Node class has been updated to store tokens in lists grouped by token ID, check if a token of the same type already exists for a given ID, replace existing tokens of the same type rather than adding duplicates, and allow multiple tokens with the same ID but different types to coexist.","These changes are validated by the test_same_token_id_different_types_command_execution test case in tests/commander/test_command_execution.py which ensures proper differentiation and handling of FBC and RPC tokens with identical IDs."]}
@@ -216,24 +206,24 @@
 {"type":"entity","name":"ComprehensiveDocumentationManagementPattern","entityType":"DocumentationPattern","observations":["A structured approach to managing project documentation, covering taxonomy, consolidation, anti-fragmentation, and validation.","Key Properties: Taxonomy, ConsolidationLogic, ValidationRules, Automation, ContributionGuidelines.","Universal Application: Any project needing to maintain high-quality, consistent, and discoverable documentation.","Reusability Score (Estimated): 4.7/5.0","Consolidates: Documentation Analysis, Documentation Classification, Content Overlap Detection, Organizational Problems, Documentation Consolidation Strategy, Documentation Anti-Fragmentation Guidelines, 3-Type Taxonomy Compliance Rules, Documentation Consolidation Workflow, Documentation Taxonomy, Documentation Fragmentation, Token Management Documentation Consolidation, update_modes.md, CrossReferencedDocumentation"]}
 {"type":"entity","name":"ProblemSolutionLog","entityType":"ProblemSolutionLog","observations":["Consolidated log of problems and their corresponding solutions, with references to the Problem-Solution Workflow Pattern.","Consolidates: FBC Token Detection Issue, FBC Token Detection Solution, Root Cause Analysis, Proposed Solution"]}
 {"type":"entity","name":"Memory Optimization & Cross-Project Promotion Workflow Documentation Plan","entityType":"DocumentationPlan","observations":["New Architectural Document: `docs/architecture/memory_optimization_workflow.md` (or `docs/technical/`) covering workflow overview, key learnings, promoted patterns, and cross-project impact.","Updated Technical Document: `docs/technical/memory_optimization_tests.md` to include test suite overview, validation results, and test coverage.","Verification Plan: Manual review, cross-referencing with global memory, verification of success targets, and confirmation of saved coordination patterns."]}
-{"type":"relation","from":"Developer Documentation","to":"Project Artifacts","relationType":"DOCUMENTS"}
-{"type":"relation","from":"Automatic Command Logging","to":"LogWriter","relationType":"EXTENDS"}
-{"type":"relation","from":"CHANGELOG.md","to":"Memory Consolidation Analysis","relationType":"DOCUMENTS"}
-{"type":"relation","from":"CHANGELOG.md","to":"Developer Documentation","relationType":"DOCUMENTS"}
+{"type":"entity","name":"Component.Services.Logging.LogWriter_Component","entityType":"Component","observations":["Manages writing to node log files with rotation capabilities.","Implemented size-based log rotation (10MB max) using RotatingFileHandler.","Replaced TextIO file handles with logging.Logger instances.","Added RotatingFileHandler with maxBytes=10MB and backupCount=5.","Preserved existing header writing for new files.","Maintained timestamp and protocol annotation formats.","Updated close methods to properly handle logger cleanup.","Leveraged Python's built-in logging module and RotatingFileHandler for a straightforward implementation.","Prioritizing well-established libraries minimizes custom code and potential bugs.","Abstraction and established patterns are beneficial for common functionalities.","Decoupling components (e.g., Telnet client from UI) using message bus or observer pattern can enhance modularity and testability.","All critical operations and data flows should be logged with appropriate levels for easier debugging and monitoring.","Fixed UnicodeEncodeError by using UTF-8 encoding","Validates token IP addresses against filename IPs","Provides warnings for IP mismatches"]}
+{"type":"entity","name":"Component.Services.Network.TelnetClient_Component","entityType":"Component","observations":["Manages Telnet connections to external debugger/nodes.","This component is part of the Network Operations System pattern promoted to global memory.","Enhanced error handling for Telnet writes","Improves connection stability","Identified issue with prompt pattern \\d+[a-z]\\%\\s*$ in _read_response method causing premature truncation of command output","Both TelnetClient and TelnetSession classes use the same problematic pattern","filter_telnet_output function also recognizes this pattern as a garbage pattern to remove","Planning to implement fix with multiple, more specific regex patterns with newline anchors","Fixed prompt pattern issue causing command output truncation","Replaced single broad regex pattern \\d+[a-z]\\%\\s*$ with multiple specific patterns","Implemented patterns with proper anchoring to prevent matching within command output","Modified _read_response method to check for any of the prompt patterns","Applied same fix to TelnetSession class for consistency"]}
+{"type":"entity","name":"Component.Services.Command.FbcCommandService_Class","entityType":"Class","observations":["Experienced 'NameError: name 'logging' is not defined' during command execution.","Responsible for queuing and generating FBC commands.","Uses composite key (token_id, protocol) for command handling","Removed explicit command_queue.start_processing() call to fix terminal display","Resolved ValueError for token ID 162 with protocol 'fbc'"]}
+{"type":"entity","name":"DataModel.Core.NodeToken_DataModel","entityType":"DataModel","observations":["Standardized attribute names from node_name to name and node_ip to ip_address","Requires comprehensive type hinting","Needs automated unit tests for attribute changes","Defined in src/commander/models.py","Has attribute 'name' that stores node name","Does not have 'node_name' attribute","This component is part of the Data Model System pattern promoted to global memory.","AttributeError: 'NodeToken' object has no attribute 'node_name'","Caused by renaming NodeToken attributes without updating all references","Fixed by replacing 'node_name' with 'name' in affected code","Serialized to JSON for command payloads in command_queue.py","Validated via TypeHintingStandard in models.py","Versioned through MemorySchemaV2 attribute definitions","VALIDATED_BY implementation at src/commander/models.py:15-28 (type hints)","VERSIONED_BY schema at .docs/memory_architecture.md:42-55","VALIDATED_BY relationship schema: MemorySchemaV2","VERSIONED_BY relationship schema: MemorySchemaV2","Relationships created: 2025-08-15","Last modified: 2025-08-15"]}
+{"type":"entity","name":"User.System.Optimize_User","entityType":"User","observations":["Analyzed recent bug fixes for SessionManager and TelnetSession.","Identified root causes: missing method implementation, insufficient error handling, and incorrect attribute usage.","Proposed best practices for API contract enforcement (unit tests, type hinting, ABCs), robust error handling (granular exceptions, input validation, retries), and connection stability (health checks, data serialization robustness, centralized logging).","Planned integration into development workflow (code review, developer training), CI/CD (automated tests, static analysis, linters), and post-deployment (monitoring, incident response)."]}
+{"type":"entity","name":"BestPractice.SystemStability.ErrorHandling_BestPractice","entityType":"BestPractice","observations":["Use granular exception handling for network operations (e.g., ConnectionRefusedError, BrokenPipeError).","Implement input validation before network transmission.","Introduce retry mechanisms with exponential backoff for transient failures."]}
+{"type":"entity","name":"BestPractice.SystemStability.ConnectionStability_BestPractice","entityType":"BestPractice","observations":["Implement periodic connection health checks/heartbeats.","Ensure robust data serialization/deserialization for inter-module communication (e.g., NodeToken).","Centralize error logging and monitoring for proactive issue detection."]}
+{"type":"entity","name":"ProcessEnhancement.ProjectManagement.WorkflowIntegration_ProcessEnhancement","entityType":"ProcessEnhancement","observations":["Update code review checklists with API contract, error handling, and input validation points.","Provide developer training on type hinting, unit testing, and defensive programming.","Automate unit tests, static analysis, and linter checks in CI/CD.","Set up production monitoring and alerting for specific error types.","Update incident response playbooks."]}
+{"type":"entity","name":"Feature.MemoryManagement.MemoryConsolidation_Feature","entityType":"Feature","observations":["Added memory consolidation analysis for src/commander/ directory","Helps maintain knowledge graph consistency","Completed consolidation of project_memory and global_memory","Merged duplicate patterns and normalized terminology","Promoted reusable concepts to global memory","Created cross-memory relationships for better traceability","Validated patterns against community best practices","Standardized naming conventions across entities","Finalized Dual Memory Consolidation Workflow by completing optimization and cleanup of project_memory and global_memory using Analyze, Optimize, and Document modes. This workflow ensures insights are properly captured, validated, and shared across contexts, with key patterns promoted to global memory for reuse.","Completed memory optimization on 2025-08-15","Key improvements:","- Eliminated all orphaned nodes (0 entities with 0 connections)","- Achieved minimum connectivity: 2+ connections per entity","- Strengthened cross-domain relationships (errors↔solutions, features↔implementations)","- Verified pattern complementarity (BatchCommandProcessing ↔ HybridTokenResolution)","- Added critical documentation references","- Promoted reusable patterns to global memory: ContextMenuFilteringSystem, MVP Presenter Pattern, BatchCommandProcessing","Domain clustering completed on 2025-08-15T12:24:53Z","Established 7 domain clusters: UI, Services, Data Models, Project Management, System Architecture, Error Handling, Memory Management","Created hierarchical taxonomy with System Architecture as parent domain","Preserved 10 cross-domain relationships","Final optimization actions:","- Deleted 4 transient/resolved entities","- Added 8 new relationships to strengthen connectivity","- Core entities now have minimum 2 connections","- Documentation updated to reflect changes"]}
+{"type":"entity","name":"Feature.ProjectManagement.DeveloperDocumentation_Feature","entityType":"Feature","observations":["Added comprehensive developer documentation in docs/ directory","Includes architecture overview and component-specific docs"]}
 {"type":"relation","from":"CHANGELOG.md","to":"Automatic Command Logging","relationType":"DOCUMENTS"}
-{"type":"relation","from":"src/commander/models.py","to":"NodeToken","relationType":"CONTAINS_CODE_FOR"}
-{"type":"relation","from":"src/commander/log_writer.py","to":"LogWriter","relationType":"CONTAINS_CODE_FOR"}
-{"type":"relation","from":"src/commander/telnet_client.py","to":"TelnetClient","relationType":"CONTAINS_CODE_FOR"}
-{"type":"relation","from":"src/commander/services/fbc_command_service.py","to":"FbcCommandService","relationType":"CONTAINS_CODE_FOR"}
 {"type":"relation","from":"src/commander/session_manager.py","to":"SessionManager","relationType":"CONTAINS_CODE_FOR"}
 {"type":"relation","from":"NodeToken Validation Conflict","to":"SessionManager","relationType":"AFFECTS"}
-{"type":"relation","from":"NodeToken Validation Conflict","to":"NodeToken","relationType":"AFFECTS"}
 {"type":"relation","from":"Documentation","to":"README.md","relationType":"CONTAINS"}
 {"type":"relation","from":"Documentation","to":"TODO.md","relationType":"CONTAINS"}
 {"type":"relation","from":"Documentation","to":"CHANGELOG.md","relationType":"CONTAINS"}
 {"type":"relation","from":"Application Features","to":"LOGReporter","relationType":"PROVIDED_BY"}
 {"type":"relation","from":"Design Principles","to":"LOGReporter","relationType":"GUIDES"}
-{"type":"relation","from":"RPC Command Format","to":"FbcCommandService","relationType":"AFFECTS"}
 {"type":"relation","from":"RPC Command Format","to":"RpcCommandService","relationType":"AFFECTS"}
 {"type":"relation","from":"Documentation","to":"Project Artifacts","relationType":"IS_A"}
 {"type":"relation","from":"Application Features","to":"Project Artifacts","relationType":"IS_A"}
@@ -244,7 +234,6 @@
 {"type":"relation","from":"Code Quality Optimization","to":"Optimizations","relationType":"IS_A"}
 {"type":"relation","from":"Debugging Protocol Optimization","to":"Optimizations","relationType":"IS_A"}
 {"type":"relation","from":"Connection Stability Optimization","to":"Optimizations","relationType":"IS_A"}
-{"type":"relation","from":"LogWriter","to":"Log Rotation Strategy","relationType":"IMPLEMENTS"}
 {"type":"relation","from":"CommandQueue Processing State","to":"src/commander/command_queue.py","relationType":"MODIFIES"}
 {"type":"relation","from":"FBC Subclass Group Context Menu","to":"AP01m Command Visibility Logic","relationType":"subject_to"}
 {"type":"relation","from":"AP01m Command Visibility Logic","to":"Command Filtering Strategy","relationType":"follows"}
@@ -254,7 +243,6 @@
 {"type":"relation","from":"Context Menu Filtering","to":"config/menu_filter_rules.json","relationType":"configured_by"}
 {"type":"relation","from":"ContextMenuFilterService.is_visible","to":"ContextMenuFilterService","relationType":"BELONGS_TO"}
 {"type":"relation","from":"ContextMenuFilterService.is_visible","to":"ContextMenuFilterService.should_show_command","relationType":"DELEGATES_TO"}
-{"type":"relation","from":"NodeToken","to":"TypeHintingStandard","relationType":"follows"}
 {"type":"relation","from":"MemoryOptimizationOpportunity","to":"src/commander/models.py","relationType":"requires_refactoring_in"}
 {"type":"relation","from":"WorkflowEnhancement","to":"project_memory.json","relationType":"improves_usage_of"}
 {"type":"relation","from":"WorkflowEnhancement","to":"TODO.md","relationType":"addresses_task_in"}
@@ -262,10 +250,6 @@
 {"type":"relation","from":"MemorySchemaV2","to":"docs/architecture/memory_architecture.md","relationType":"documented_in"}
 {"type":"relation","from":"VersionedMemorySchema","to":"README.md","relationType":"references"}
 {"type":"relation","from":"VersionedMemorySchema","to":"CHANGELOG.md","relationType":"references"}
-{"type":"relation","from":"CommandProcessingSystem","to":"LogWriter","relationType":"USES"}
-{"type":"relation","from":"CommandProcessingSystem","to":"NodeToken","relationType":"USES"}
-{"type":"relation","from":"UIComponents","to":"NodeToken","relationType":"USES"}
-{"type":"relation","from":"NetworkOperationsSystem","to":"NodeToken","relationType":"USES"}
 {"type":"relation","from":"DataModelSystem","to":"src/commander/models.py","relationType":"CONTAINS_CODE_FOR"}
 {"type":"relation","from":"SystemStability","to":"NetworkOperationsSystem","relationType":"IMPROVES"}
 {"type":"relation","from":"CommandProcessingSystem","to":"src/commander/command_queue.py","relationType":"CONTAINS_CODE_FOR"}
@@ -274,21 +258,11 @@
 {"type":"relation","from":"NetworkOperationsSystem","to":"src/commander/session_manager.py","relationType":"CONTAINS_CODE_FOR"}
 {"type":"relation","from":"MVP Pattern Adoption","to":"CommanderWindow Refactoring","relationType":"drives"}
 {"type":"relation","from":"Automated Unit Testing for Data Model Changes","to":"Optimizations","relationType":"IS_A"}
-{"type":"relation","from":"Automated Unit Testing for Data Model Changes","to":"NodeToken","relationType":"VERIFIES"}
 {"type":"relation","from":"Automated Unit Testing for Data Model Changes","to":"DataModelSystem","relationType":"PART_OF"}
 {"type":"relation","from":"Enhanced Code Review Guidelines","to":"Optimizations","relationType":"IS_A"}
-{"type":"relation","from":"optimize_user","to":"Optimization Feedback for SessionManager and TelnetSession Fixes","relationType":"CREATES"}
-{"type":"relation","from":"optimize_user","to":"Workflow_Integration","relationType":"CREATES"}
-{"type":"relation","from":"Robust_Error_Handling","to":"Optimizations","relationType":"IS_A"}
-{"type":"relation","from":"Connection_Stability","to":"Optimizations","relationType":"IS_A"}
-{"type":"relation","from":"Workflow_Integration","to":"Optimizations","relationType":"IS_A"}
 {"type":"relation","from":"Optimization Feedback for SessionManager and TelnetSession Fixes","to":"Optimizations","relationType":"IS_A"}
 {"type":"relation","from":"Optimization Feedback for SessionManager and TelnetSession Fixes","to":"SessionManager","relationType":"OPTIMIZES"}
 {"type":"relation","from":"Optimization Feedback for SessionManager and TelnetSession Fixes","to":"TelnetSession","relationType":"OPTIMIZES"}
-{"type":"relation","from":"Memory Consolidation Analysis","to":"Feature","relationType":"IS_A"}
-{"type":"relation","from":"Memory Consolidation Analysis","to":"project_memory.json","relationType":"MODIFIES"}
-{"type":"relation","from":"Memory Consolidation Analysis","to":"global_memory","relationType":"MODIFIES"}
-{"type":"relation","from":"Developer Documentation","to":"docs/","relationType":"CREATES"}
 {"type":"relation","from":"Automatic Command Logging","to":"src/commander/log_writer.py","relationType":"MODIFIES"}
 {"type":"relation","from":"MemorySystem","to":"System","relationType":"IS_A"}
 {"type":"relation","from":"MemorySystem","to":"C:\\Users\\gorjovicgo\\.kilocode\\rules\\mcp_global.md","relationType":"DEFINED_IN"}
@@ -298,68 +272,41 @@
 {"type":"relation","from":"ContextMenuFilterService","to":"Service","relationType":"IS_A"}
 {"type":"relation","from":"MVP Presenter Pattern","to":"DesignPattern","relationType":"IS_A"}
 {"type":"relation","from":"WorkflowEnhancement","to":"ProcessImprovement","relationType":"IS_A"}
-{"type":"relation","from":"FbcCommandService","to":"PythonClass","relationType":"IS_A"}
-{"type":"relation","from":"optimize_user","to":"user","relationType":"IS_A"}
-{"type":"relation","from":"Robust_Error_Handling","to":"best_practice","relationType":"IS_A"}
-{"type":"relation","from":"Connection_Stability","to":"best_practice","relationType":"IS_A"}
-{"type":"relation","from":"Workflow_Integration","to":"process_enhancement","relationType":"IS_A"}
 {"type":"relation","from":"Optimization Feedback for SessionManager and TelnetSession Fixes","to":"optimization_feedback","relationType":"IS_A"}
 {"type":"relation","from":"Node","to":"System Component","relationType":"IS_A"}
-{"type":"relation","from":"TelnetClient","to":"Network Operations System","relationType":"PART_OF"}
-{"type":"relation","from":"NodeToken","to":"Data Model System","relationType":"PART_OF"}
 {"type":"relation","from":"node_manager","to":"nodes","relationType":"CONFIGURED_BY"}
 {"type":"relation","from":"node_tree_presenter","to":"node_manager","relationType":"USES"}
 {"type":"relation","from":"MVP Presenter Pattern","to":"global_memory","relationType":"promotable","attributes":{"reusability_score":5,"last_verified":"2025-08-08"}}
 {"type":"relation","from":"Service Layer Pattern","to":"global_memory","relationType":"promotable","attributes":{"reusability_score":4,"last_verified":"2025-08-08"}}
-{"type":"relation","from":"CommandProcessingSystem","to":"NodeToken","relationType":"uses"}
 {"type":"relation","from":"FBC Subclass Group Context Menu","to":"UI Components Cluster","relationType":"belongs_to"}
 {"type":"relation","from":"CommandProcessingSystem","to":"Core Services Cluster","relationType":"belongs_to"}
-{"type":"relation","from":"LogWriter","to":"Core Services Cluster","relationType":"belongs_to"}
 {"type":"relation","from":"SessionManager","to":"Core Services Cluster","relationType":"belongs_to"}
 {"type":"relation","from":"TokenProcessingFix","to":"SequentialCommandProcessor","relationType":"implemented_in"}
 {"type":"relation","from":"CommandQueue","to":"BatchProcessingFix","relationType":"fixed_by"}
 {"type":"relation","from":"BatchProcessingFix","to":"command_queue.py:CommandQueue.process_batch","relationType":"implemented_in"}
 {"type":"relation","from":"UnifiedCommandExecution","to":"CommandQueue","relationType":"uses"}
 {"type":"relation","from":"CommandQueue","to":"UnifiedCommandExecution","relationType":"implements"}
-{"type":"relation","from":"ExecutionLogger","to":"LogWriter","relationType":"writes_to"}
-{"type":"relation","from":"TokenUIBinding","to":"NodeToken","relationType":"references"}
-{"type":"relation","from":"FbcCommandService","to":"ServiceTokenBinding","relationType":"uses"}
 {"type":"relation","from":"RpcCommandService","to":"ServiceTokenBinding","relationType":"uses"}
-{"type":"relation","from":"ServiceTokenBinding","to":"NodeToken","relationType":"references"}
-{"type":"relation","from":"NodeToken","to":"DataConformance","relationType":"implements"}
 {"type":"relation","from":"DataConformance","to":"TypeHintingStandard","relationType":"follows"}
-{"type":"relation","from":"UIComponents","to":"NodeToken","relationType":"DISPLAYS_TOKEN"}
-{"type":"relation","from":"NetworkOperationsSystem","to":"NodeToken","relationType":"CONNECTS_TOKEN"}
-{"type":"relation","from":"SystemStability","to":"NodeToken","relationType":"PROTECTS_TOKEN"}
-{"type":"relation","from":"NodeToken","to":"TypeHintingStandard","relationType":"VALIDATED_BY"}
-{"type":"relation","from":"NodeToken","to":"MemorySchemaV2","relationType":"VERSIONED_BY"}
-{"type":"relation","from":"LogWriter","to":"NodeToken","relationType":"LOGS_TOKEN"}
 {"type":"relation","from":"CommandProcessingSystem","to":"SystemComponent","relationType":"COMPONENT_OF"}
-{"type":"relation","from":"NodeToken","to":"data_model","relationType":"INSTANCE_OF"}
 {"type":"relation","from":"src/commander/command_queue.py","to":"CommandQueue","relationType":"IMPLEMENTS"}
 {"type":"relation","from":"ContextMenuFilteringSystem","to":"ContextMenuFilterService","relationType":"implemented_by"}
-{"type":"relation","from":"APIContractEnforcement","to":"FbcCommandService","relationType":"implemented_by"}
 {"type":"relation","from":"APIContractEnforcement","to":"RpcCommandService","relationType":"implemented_by"}
 {"type":"relation","from":"CommanderWindow","to":"ContextMenuFilteringSystem","relationType":"uses_pattern"}
 {"type":"relation","from":"CommanderWindow","to":"MVP Presenter Pattern","relationType":"implements"}
 {"type":"relation","from":"CommanderWindow","to":"UIComponents","relationType":"component_of"}
-{"type":"relation","from":"CommanderWindow","to":"FbcCommandService","relationType":"coordinates"}
 {"type":"relation","from":"CommanderWindow","to":"RpcCommandService","relationType":"coordinates"}
-{"type":"relation","from":"FbcCommandService","to":"CommandProcessor","relationType":"implements"}
 {"type":"relation","from":"RpcCommandService","to":"CommandProcessor","relationType":"implements"}
 {"type":"relation","from":"CommandProcessor","to":"APIContractEnforcement","relationType":"follows"}
 {"type":"relation","from":"ContextMenuFilterService","to":"UI Components Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"ContextMenuFiltering","to":"UI Components Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"OptimizationProcess","to":"memory_workflow","relationType":"PART_OF"}
-{"type":"relation","from":"process_log_data","to":"LogWriter","relationType":"PROCESSES"}
-{"type":"relation","from":"TypeHintingStandard","to":"NodeToken","relationType":"APPLIES_TO"}
 {"type":"relation","from":"MemoryOptimizationOpportunity","to":"project_memory.json","relationType":"ANALYZES"}
 {"type":"relation","from":"WorkflowEnhancement","to":"update_memory.md","relationType":"IMPROVES"}
 {"type":"relation","from":"CommandProcessor","to":"CommandProcessingSystem","relationType":"PART_OF"}
 {"type":"relation","from":"AP01m Command Visibility Logic","to":"ContextMenuFilteringSystem","relationType":"IMPLEMENTS_RULE"}
 {"type":"relation","from":"Command Filtering Strategy","to":"ContextMenuFilteringSystem","relationType":"GUIDES_DESIGN"}
 {"type":"relation","from":"ContextMenuFilteringSystem","to":"UIComponents","relationType":"COMPONENT_OF"}
-{"type":"relation","from":"NodeToken","to":"DataModelSystem","relationType":"CORE_ENTITY"}
 {"type":"relation","from":"CommandProcessingSystem","to":"SystemComponent","relationType":"CORE_SYSTEM"}
 {"type":"relation","from":"Project Artifacts","to":"Application Features","relationType":"CONTAINS"}
 {"type":"relation","from":"Project Artifacts","to":"Design Principles","relationType":"CONTAINS"}
@@ -372,14 +319,9 @@
 {"type":"relation","from":"HybridTokenResolution","to":"DynamicIPResolution","relationType":"OFTEN_USED_WITH"}
 {"type":"relation","from":"ContextMenuRoutingIssue","to":"ContextMenuFilterService","relationType":"PREVENTED_BY"}
 {"type":"relation","from":"CommandWorkerErrorHandling","to":"SystemStability","relationType":"ENHANCES"}
-{"type":"relation","from":"process_log_data","to":"LogWriter","relationType":"PROCESSES_DATA_FOR"}
 {"type":"relation","from":"MVP Presenter Pattern","to":"CommanderWindow Refactoring","relationType":"APPLIED_IN"}
-{"type":"relation","from":"Service Layer Pattern","to":"FbcCommandService","relationType":"REALIZED_BY"}
 {"type":"relation","from":"BatchCommandProcessing","to":"CommandProcessingSystem","relationType":"OPTIMIZES"}
-{"type":"relation","from":"TypeHintingStandard","to":"NodeToken","relationType":"ENFORCED_IN"}
 {"type":"relation","from":"APIContractEnforcement","to":"CommandProcessor","relationType":"MAINTAINS"}
-{"type":"relation","from":"optimize_user","to":"WorkflowEnhancement","relationType":"PROPOSED"}
-{"type":"relation","from":"LogWriter","to":"SystemStability","relationType":"SUPPORTS"}
 {"type":"relation","from":"MemoryOptimizationOpportunity","to":"src/commander/models.py","relationType":"REQUIRES_REFACTORING_IN"}
 {"type":"relation","from":"WorkflowEnhancement","to":"update_memory.md","relationType":"DOCUMENTED_IN"}
 {"type":"relation","from":"CommanderWindow","to":"UI Domain Cluster","relationType":"PART_OF"}
@@ -387,12 +329,8 @@
 {"type":"relation","from":"ContextMenuFilterService","to":"UI Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"FBC Subclass Group Context Menu","to":"UI Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"Context Menu Filtering","to":"UI Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"LogWriter","to":"Services Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"TelnetClient","to":"Services Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"FbcCommandService","to":"Services Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"RpcCommandService","to":"Services Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"SessionManager","to":"Services Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"NodeToken","to":"Data Models Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"QueuedCommand","to":"Data Models Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"SessionEvent","to":"Data Models Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"Node","to":"Data Models Domain Cluster","relationType":"PART_OF"}
@@ -406,12 +344,9 @@
 {"type":"relation","from":"CommandProcessingSystem","to":"System Architecture Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"UIComponents","to":"System Architecture Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"NetworkOperationsSystem","to":"System Architecture Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"Robust_Error_Handling","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"Connection_Stability","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"CommandWorkerErrorHandling","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"ErrorHandler","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"ErrorReporter","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"Memory Consolidation Analysis","to":"Memory Management Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"MemoryOptimizationOpportunity","to":"Memory Management Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"WorkflowEnhancement","to":"Memory Management Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"MemorySystem","to":"Memory Management Domain Cluster","relationType":"PART_OF"}
@@ -427,10 +362,8 @@
 {"type":"relation","from":"Services Domain Cluster","to":"Data Models Domain Cluster","relationType":"OPERATES_ON"}
 {"type":"relation","from":"System Architecture Domain Cluster","to":"Project Management Domain Cluster","relationType":"GUIDES"}
 {"type":"relation","from":"CommandQueue","to":"LOGReport","relationType":"partOf"}
-{"type":"relation","from":"FbcCommandService","to":"LOGReport","relationType":"partOf"}
 {"type":"relation","from":"RpcCommandService","to":"LOGReport","relationType":"partOf"}
 {"type":"relation","from":"NodeManager","to":"LOGReport","relationType":"partOf"}
-{"type":"relation","from":"LogWriter","to":"LOGReport","relationType":"partOf"}
 {"type":"relation","from":"RpcCommandService","to":"HybridTokenResolution","relationType":"implements"}
 {"type":"relation","from":"NodeManager","to":"DynamicIPResolution","relationType":"implements"}
 {"type":"relation","from":"CommandQueue","to":"BatchCommandProcessing","relationType":"implements"}
@@ -439,22 +372,16 @@
 {"type":"relation","from":"LOGReport","to":"DynamicIPResolution","relationType":"implements"}
 {"type":"relation","from":"LOGReport","to":"BatchCommandProcessing","relationType":"implements"}
 {"type":"relation","from":"LOGReport","to":"DualMemoryConsolidation","relationType":"implements"}
-{"type":"relation","from":"optimize_user","to":"Optimizations","relationType":"CONTRIBUTED_TO"}
-{"type":"relation","from":"optimize_user","to":"Documentation","relationType":"DOCUMENTED_IN"}
 {"type":"relation","from":"CommandQueue Processing State","to":"CommandQueue","relationType":"IMPLEMENTED_IN"}
 {"type":"relation","from":"CommandQueue Processing State","to":"CommandProcessingSystem","relationType":"COMPONENT_OF"}
 {"type":"relation","from":"CommanderWindowAnalysis","to":"CommanderWindow","relationType":"ANALYZES"}
 {"type":"relation","from":"CommanderWindowAnalysis","to":"MVP Presenter Pattern","relationType":"EVALUATES"}
 {"type":"relation","from":"NetworkOperationsSystem","to":"SessionManager","relationType":"CONTAINS"}
-{"type":"relation","from":"TelnetClient","to":"NetworkOperationsSystem","relationType":"PART_OF"}
-{"type":"relation","from":"Service Layer Pattern","to":"FbcCommandService","relationType":"APPLIED_IN"}
 {"type":"relation","from":"Service Layer Pattern","to":"RpcCommandService","relationType":"APPLIED_IN"}
 {"type":"relation","from":"HybridTokenResolution","to":"RpcCommandService","relationType":"IMPLEMENTED_BY"}
 {"type":"relation","from":"DynamicIPResolution","to":"NodeManager","relationType":"IMPLEMENTED_BY"}
 {"type":"relation","from":"DualMemoryConsolidation","to":"LOGReport","relationType":"USED_BY"}
 {"type":"relation","from":"UI Domain Cluster","to":"CommanderWindow","relationType":"CONTAINS"}
-{"type":"relation","from":"Services Domain Cluster","to":"FbcCommandService","relationType":"CONTAINS"}
-{"type":"relation","from":"Data Models Domain Cluster","to":"NodeToken","relationType":"CONTAINS"}
 {"type":"relation","from":"LOGReport","to":"UI Domain Cluster","relationType":"CONTAINS"}
 {"type":"relation","from":"LOGReport","to":"Services Domain Cluster","relationType":"CONTAINS"}
 {"type":"relation","from":"LOGReport","to":"Data Models Domain Cluster","relationType":"CONTAINS"}
@@ -468,16 +395,12 @@
 {"type":"relation","from":"Hybrid Token Handling","to":"RpcCommandService","relationType":"IMPLEMENTED_BY"}
 {"type":"relation","from":"Dynamic IP Extraction","to":"NodeManager","relationType":"IMPLEMENTED_BY"}
 {"type":"relation","from":"UICommandTrigger","to":"CommanderWindow","relationType":"ABSTRACTS"}
-{"type":"relation","from":"ExecutionLogger","to":"LogWriter","relationType":"ABSTRACTS"}
 {"type":"relation","from":"TokenUIBinding","to":"NodeTreePresenter","relationType":"ABSTRACTS"}
-{"type":"relation","from":"ServiceTokenBinding","to":"FbcCommandService","relationType":"ABSTRACTS"}
-{"type":"relation","from":"DataConformance","to":"NodeToken","relationType":"ABSTRACTS"}
 {"type":"relation","from":"RelationshipMapping","to":"MemorySchemaV2","relationType":"DOCUMENTS"}
 {"type":"relation","from":"Error Delegation Pattern","to":"SystemStability","relationType":"COMPONENT_OF"}
 {"type":"relation","from":"SequentialCommandProcessor","to":"TokenProcessingWorkflow","relationType":"implements"}
 {"type":"relation","from":"SequentialCommandProcessor","to":"CircuitBreaker","relationType":"uses"}
 {"type":"relation","from":"TokenProcessingWorkflow","to":"token_processing.md","relationType":"documented_in"}
-{"type":"relation","from":"SequentialCommandProcessor","to":"FbcCommandService","relationType":"interacts_with"}
 {"type":"relation","from":"SequentialCommandProcessor","to":"RpcCommandService","relationType":"interacts_with"}
 {"type":"relation","from":"NodeManager Configuration","to":"Token Processing Logic","relationType":"affects"}
 {"type":"relation","from":"TokenProcessingWorkflow","to":"CommandProcessingSystem","relationType":"OPTIMIZES","attributes":{"strength":0.9,"last_verified":"2025-08-23"}}
@@ -487,7 +410,6 @@
 {"type":"relation","from":"tests/commander/test_command_execution.py","to":"test_context_menu_individual_fbc_command_execution","relationType":"CONTAINS"}
 {"type":"relation","from":"tests/commander/test_command_execution.py","to":"test_context_menu_individual_rpc_command_execution","relationType":"CONTAINS"}
 {"type":"relation","from":"test_same_token_id_different_types_command_execution","to":"Node","relationType":"TESTS"}
-{"type":"relation","from":"test_same_token_id_different_types_command_execution","to":"FbcCommandService","relationType":"TESTS"}
 {"type":"relation","from":"test_same_token_id_different_types_command_execution","to":"RpcCommandService","relationType":"TESTS"}
 {"type":"relation","from":"test_context_menu_individual_fbc_command_execution","to":"ContextMenuService","relationType":"TESTS"}
 {"type":"relation","from":"test_context_menu_individual_rpc_command_execution","to":"ContextMenuService","relationType":"TESTS"}
@@ -499,21 +421,17 @@
 {"type":"relation","from":"Documentation","to":"MemorySystem","relationType":"EXPLAINS"}
 {"type":"relation","from":"UICachingSystem","to":"CommanderWindow","relationType":"INTEGRATES_WITH"}
 {"type":"relation","from":"UICachingSystem","to":"UI Domain Cluster","relationType":"PART_OF"}
-{"type":"relation","from":"CommanderWindow","to":"Memory Consolidation Analysis","relationType":"USES"}
 {"type":"relation","from":"UICachingSystem","to":"Memory Management Domain Cluster","relationType":"PART_OF"}
 {"type":"relation","from":"UI Domain Cluster","to":"Memory Management Domain Cluster","relationType":"DEPENDS_ON"}
 {"type":"relation","from":"SystemStability","to":"Services Domain Cluster","relationType":"PROTECTS"}
 {"type":"relation","from":"Error Handling Domain Cluster","to":"CommandProcessingSystem","relationType":"ENHANCES"}
-{"type":"relation","from":"Documentation","to":"Memory Consolidation Analysis","relationType":"DETAILS"}
 {"type":"relation","from":"MemoryManagementAbstraction","to":"Memory Management Domain Cluster","relationType":"ABSTRACTS"}
-{"type":"relation","from":"MemoryManagementAbstraction","to":"Memory Consolidation Analysis","relationType":"MANAGES"}
 {"type":"relation","from":"MemoryManagementAbstraction","to":"MemorySystem","relationType":"COORDINATES"}
 {"type":"relation","from":"ErrorHandlingAbstraction","to":"Error Handling Domain Cluster","relationType":"ABSTRACTS"}
 {"type":"relation","from":"ErrorHandlingAbstraction","to":"SystemStability","relationType":"MANAGES"}
 {"type":"relation","from":"ErrorHandlingAbstraction","to":"CommandWorkerErrorHandling","relationType":"COORDINATES"}
 {"type":"relation","from":"DocumentationAbstraction","to":"Project Management Domain Cluster","relationType":"ABSTRACTS"}
 {"type":"relation","from":"DocumentationAbstraction","to":"Documentation","relationType":"MANAGES"}
-{"type":"relation","from":"DocumentationAbstraction","to":"Developer Documentation","relationType":"COORDINATES"}
 {"type":"relation","from":"UI Domain Cluster","to":"MemoryManagementAbstraction","relationType":"USES"}
 {"type":"relation","from":"Services Domain Cluster","to":"ErrorHandlingAbstraction","relationType":"USES"}
 {"type":"relation","from":"Project Management Domain Cluster","to":"DocumentationAbstraction","relationType":"USES"}
@@ -557,9 +475,92 @@
 {"type":"relation","from":"Asynchronous UI Feedback Pattern","to":"GUINodeColorUpdatePattern","relationType":"DEFINED_BY"}
 {"type":"relation","from":"Asynchronous UI Feedback Pattern","to":"PresenterMediatedStateManagementPattern","relationType":"UTILIZES"}
 {"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"Documentation","relationType":"APPLIED_TO"}
-{"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"Developer Documentation","relationType":"GUIDES"}
 {"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"DocumentationAbstraction","relationType":"IMPLEMENTED_VIA"}
 {"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"CondensationAnalysisSummary","relationType":"INFORMED_BY"}
 {"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"PatternAbstractionMap","relationType":"UTILIZES"}
 {"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"ConsolidationEliminationPlan","relationType":"UTILIZES"}
 {"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"OptimalKnowledgeOrganizationDesign","relationType":"INFLUENCED_BY"}
+{"type":"relation","from":"Automatic Command Logging","to":"Component.Services.Logging.LogWriter_Component","relationType":"EXTENDS"}
+{"type":"relation","from":"src/commander/log_writer.py","to":"Component.Services.Logging.LogWriter_Component","relationType":"CONTAINS_CODE_FOR"}
+{"type":"relation","from":"Component.Services.Logging.LogWriter_Component","to":"Log Rotation Strategy","relationType":"IMPLEMENTS"}
+{"type":"relation","from":"CommandProcessingSystem","to":"Component.Services.Logging.LogWriter_Component","relationType":"USES"}
+{"type":"relation","from":"ExecutionLogger","to":"Component.Services.Logging.LogWriter_Component","relationType":"ABSTRACTS"}
+{"type":"relation","from":"Component.Services.Logging.LogWriter_Component","to":"Core Services Cluster","relationType":"belongs_to"}
+{"type":"relation","from":"process_log_data","to":"Component.Services.Logging.LogWriter_Component","relationType":"PROCESSES_DATA_FOR"}
+{"type":"relation","from":"Component.Services.Logging.LogWriter_Component","to":"SystemStability","relationType":"SUPPORTS"}
+{"type":"relation","from":"src/commander/telnet_client.py","to":"Component.Services.Network.TelnetClient_Component","relationType":"CONTAINS_CODE_FOR"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"Network Operations System","relationType":"PART_OF"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"Services Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"NetworkOperationsSystem","relationType":"PART_OF"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"NetworkOperationsSystem","relationType":"CONTAINS_CODE_FOR"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"Telnet Prompt Detection","relationType":"FOLLOWS"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"TelnetClient.py","relationType":"DEFINED_IN"}
+{"type":"relation","from":"Component.Services.Network.TelnetClient_Component","to":"NetworkClientManagementPattern","relationType":"ABSTRACTED_FROM"}
+{"type":"relation","from":"src/commander/services/fbc_command_service.py","to":"Component.Services.Command.FbcCommandService_Class","relationType":"CONTAINS_CODE_FOR"}
+{"type":"relation","from":"RPC Command Format","to":"Component.Services.Command.FbcCommandService_Class","relationType":"AFFECTS"}
+{"type":"relation","from":"Component.Services.Command.FbcCommandService_Class","to":"PythonClass","relationType":"IS_A"}
+{"type":"relation","from":"Component.Services.Command.FbcCommandService_Class","to":"Core Services Cluster","relationType":"belongs_to"}
+{"type":"relation","from":"Component.Services.Command.FbcCommandService_Class","to":"CommandProcessor","relationType":"implements"}
+{"type":"relation","from":"Component.Services.Command.FbcCommandService_Class","to":"APIContractEnforcement","relationType":"implemented_by"}
+{"type":"relation","from":"Component.Services.Command.FbcCommandService_Class","to":"LOGReport","relationType":"partOf"}
+{"type":"relation","from":"Component.Services.Command.FbcCommandService_Class","to":"Services Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"test_same_token_id_different_types_command_execution","to":"Component.Services.Command.FbcCommandService_Class","relationType":"TESTS"}
+{"type":"relation","from":"SequentialCommandProcessor","to":"Component.Services.Command.FbcCommandService_Class","relationType":"interacts_with"}
+{"type":"relation","from":"Service Layer Pattern","to":"Component.Services.Command.FbcCommandService_Class","relationType":"REALIZED_BY"}
+{"type":"relation","from":"Service Layer Pattern","to":"Component.Services.Command.FbcCommandService_Class","relationType":"APPLIED_IN"}
+{"type":"relation","from":"ServiceTokenBinding","to":"Component.Services.Command.FbcCommandService_Class","relationType":"ABSTRACTS"}
+{"type":"relation","from":"src/commander/models.py","to":"DataModel.Core.NodeToken_DataModel","relationType":"CONTAINS_CODE_FOR"}
+{"type":"relation","from":"NodeToken Validation Conflict","to":"DataModel.Core.NodeToken_DataModel","relationType":"AFFECTS"}
+{"type":"relation","from":"DataModel.Core.NodeToken_DataModel","to":"TypeHintingStandard","relationType":"follows"}
+{"type":"relation","from":"CommandProcessingSystem","to":"DataModel.Core.NodeToken_DataModel","relationType":"USES"}
+{"type":"relation","from":"UIComponents","to":"DataModel.Core.NodeToken_DataModel","relationType":"USES"}
+{"type":"relation","from":"NetworkOperationsSystem","to":"DataModel.Core.NodeToken_DataModel","relationType":"USES"}
+{"type":"relation","from":"Automated Unit Testing for Data Model Changes","to":"DataModel.Core.NodeToken_DataModel","relationType":"VERIFIES"}
+{"type":"relation","from":"DataModel.Core.NodeToken_DataModel","to":"data_model","relationType":"IS_A"}
+{"type":"relation","from":"DataModel.Core.NodeToken_DataModel","to":"TypeHintingStandard","relationType":"VALIDATED_BY"}
+{"type":"relation","from":"DataModel.Core.NodeToken_DataModel","to":"MemorySchemaV2","relationType":"VERSIONED_BY"}
+{"type":"relation","from":"Component.Services.Logging.LogWriter_Component","to":"DataModel.Core.NodeToken_DataModel","relationType":"LOGS_TOKEN"}
+{"type":"relation","from":"DataModel.Core.NodeToken_DataModel","to":"DataModelSystem","relationType":"CORE_ENTITY"}
+{"type":"relation","from":"UIComponents","to":"DataModel.Core.NodeToken_DataModel","relationType":"DISPLAYS_TOKEN"}
+{"type":"relation","from":"NetworkOperationsSystem","to":"DataModel.Core.NodeToken_DataModel","relationType":"CONNECTS_TOKEN"}
+{"type":"relation","from":"SystemStability","to":"DataModel.Core.NodeToken_DataModel","relationType":"PROTECTS_TOKEN"}
+{"type":"relation","from":"DataModel.Core.NodeToken_DataModel","to":"Data Models Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"test_same_token_id_different_types_command_execution","to":"DataModel.Core.NodeToken_DataModel","relationType":"TESTS"}
+{"type":"relation","from":"TokenUIBinding","to":"DataModel.Core.NodeToken_DataModel","relationType":"references"}
+{"type":"relation","from":"ServiceTokenBinding","to":"DataModel.Core.NodeToken_DataModel","relationType":"references"}
+{"type":"relation","from":"DataConformance","to":"DataModel.Core.NodeToken_DataModel","relationType":"ABSTRACTS"}
+{"type":"relation","from":"DataConformance","to":"DataModel.Core.NodeToken_DataModel","relationType":"implements"}
+{"type":"relation","from":"TypeHintingStandard","to":"DataModel.Core.NodeToken_DataModel","relationType":"APPLIES_TO"}
+{"type":"relation","from":"TypeHintingStandard","to":"DataModel.Core.NodeToken_DataModel","relationType":"ENFORCED_IN"}
+{"type":"relation","from":"User.System.Optimize_User","to":"Optimization Feedback for SessionManager and TelnetSession Fixes","relationType":"CREATES"}
+{"type":"relation","from":"User.System.Optimize_User","to":"user","relationType":"IS_A"}
+{"type":"relation","from":"User.System.Optimize_User","to":"Optimizations","relationType":"CONTRIBUTED_TO"}
+{"type":"relation","from":"User.System.Optimize_User","to":"Documentation","relationType":"DOCUMENTED_IN"}
+{"type":"relation","from":"User.System.Optimize_User","to":"WorkflowEnhancement","relationType":"PROPOSED"}
+{"type":"relation","from":"BestPractice.SystemStability.ErrorHandling_BestPractice","to":"Optimizations","relationType":"IS_A"}
+{"type":"relation","from":"BestPractice.SystemStability.ErrorHandling_BestPractice","to":"best_practice","relationType":"IS_A"}
+{"type":"relation","from":"BestPractice.SystemStability.ErrorHandling_BestPractice","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"BestPractice.SystemStability.ErrorHandling_BestPractice","to":"SystemStability","relationType":"CONTAINS"}
+{"type":"relation","from":"BestPractice.SystemStability.ConnectionStability_BestPractice","to":"Optimizations","relationType":"IS_A"}
+{"type":"relation","from":"BestPractice.SystemStability.ConnectionStability_BestPractice","to":"best_practice","relationType":"IS_A"}
+{"type":"relation","from":"BestPractice.SystemStability.ConnectionStability_BestPractice","to":"Error Handling Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"BestPractice.SystemStability.ConnectionStability_BestPractice","to":"SystemStability","relationType":"CONTAINS"}
+{"type":"relation","from":"User.System.Optimize_User","to":"ProcessEnhancement.ProjectManagement.WorkflowIntegration_ProcessEnhancement","relationType":"CREATES"}
+{"type":"relation","from":"ProcessEnhancement.ProjectManagement.WorkflowIntegration_ProcessEnhancement","to":"process_enhancement","relationType":"IS_A"}
+{"type":"relation","from":"ProcessEnhancement.ProjectManagement.WorkflowIntegration_ProcessEnhancement","to":"Optimizations","relationType":"IS_A"}
+{"type":"relation","from":"ProcessEnhancement.ProjectManagement.WorkflowIntegration_ProcessEnhancement","to":"Project Management Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"CHANGELOG.md","to":"Feature.MemoryManagement.MemoryConsolidation_Feature","relationType":"DOCUMENTS"}
+{"type":"relation","from":"Feature.MemoryManagement.MemoryConsolidation_Feature","to":"Feature","relationType":"IS_A"}
+{"type":"relation","from":"Feature.MemoryManagement.MemoryConsolidation_Feature","to":"project_memory.json","relationType":"MODIFIES"}
+{"type":"relation","from":"Feature.MemoryManagement.MemoryConsolidation_Feature","to":"global_memory","relationType":"MODIFIES"}
+{"type":"relation","from":"Feature.MemoryManagement.MemoryConsolidation_Feature","to":"Memory Management Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"CommanderWindow","to":"Feature.MemoryManagement.MemoryConsolidation_Feature","relationType":"USES"}
+{"type":"relation","from":"MemoryManagementAbstraction","to":"Feature.MemoryManagement.MemoryConsolidation_Feature","relationType":"MANAGES"}
+{"type":"relation","from":"Documentation","to":"Feature.MemoryManagement.MemoryConsolidation_Feature","relationType":"DETAILS"}
+{"type":"relation","from":"Feature.ProjectManagement.DeveloperDocumentation_Feature","to":"Project Artifacts","relationType":"DOCUMENTS"}
+{"type":"relation","from":"CHANGELOG.md","to":"Feature.ProjectManagement.DeveloperDocumentation_Feature","relationType":"DOCUMENTS"}
+{"type":"relation","from":"Feature.ProjectManagement.DeveloperDocumentation_Feature","to":"docs/","relationType":"CREATES"}
+{"type":"relation","from":"Feature.ProjectManagement.DeveloperDocumentation_Feature","to":"Feature","relationType":"IS_A"}
+{"type":"relation","from":"Feature.ProjectManagement.DeveloperDocumentation_Feature","to":"Project Management Domain Cluster","relationType":"PART_OF"}
+{"type":"relation","from":"DocumentationAbstraction","to":"Feature.ProjectManagement.DeveloperDocumentation_Feature","relationType":"COORDINATES"}
+{"type":"relation","from":"Comprehensive Documentation Management Pattern","to":"Feature.ProjectManagement.DeveloperDocumentation_Feature","relationType":"GUIDES"}
