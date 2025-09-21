@@ -10,16 +10,16 @@
         "MEMORY_FILE_PATH": "${workspaceFolder}/project_memory.json"
       },
       "alwaysAllow": [
-        "delete_entities",
         "delete_relations",
         "delete_observations",
-        "open_nodes",
-        "read_graph",
         "search_nodes",
         "update_entities",
-        "create_relations",
         "add_observations",
-        "create_entities"
+        "read_graph",
+        "open_nodes",
+        "create_entities",
+        "create_relations",
+        "delete_entities"
       ],
       "disabled": false
     },
