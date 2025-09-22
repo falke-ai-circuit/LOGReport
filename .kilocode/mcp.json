@@ -15,11 +15,11 @@
         "search_nodes",
         "update_entities",
         "add_observations",
-        "read_graph",
         "open_nodes",
         "create_entities",
         "create_relations",
-        "delete_entities"
+        "delete_entities",
+        "read_graph"
       ],
       "disabled": false
     },

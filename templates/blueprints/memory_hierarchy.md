@@ -39,7 +39,10 @@
 ```
 
 ## 🚀 Workflow Integration
-**Assessment:** Check template compliance | **Planning:** Map entities to hierarchy | **Execution:** Apply template format | **Validation:** Verify compliance
+**Assessment:** Check template compliance | **Planning:** Map entities to hierarchy | **Domain/Cluster Creation:** Create missing hierarchical structure | **Orphan Connection:** Establish entity relationships | **Execution:** Apply template format | **Validation:** Verify compliance + connectivity
+
+## 🔧 Implementation Commands
+**Hierarchy Creation:** `memory.create_entities(missing_domains, structure)` | `memory.create_entities(missing_subclusters, template)` | **Connectivity:** `memory.create_relations(orphans, connections)` | `memory.connect_orphans(isolated, patterns)` | **Structure:** `memory.establish_hierarchy(entities, template)`
 
 ## 📊 Success Metrics
-**Compliance:** >95% template adherence | **Discovery:** 50% search reduction | **Reuse:** 3x pattern adoption | **Quality:** Zero orphans
+**Compliance:** >95% template adherence | **Discovery:** 50% search reduction | **Reuse:** 3x pattern adoption | **Quality:** Zero orphans | **Connectivity:** >90% entities with 2+ connections
