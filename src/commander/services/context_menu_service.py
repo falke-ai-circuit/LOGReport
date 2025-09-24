@@ -298,7 +298,7 @@ class ContextMenuService:
         if self.presenter:
             # Use presenter method instead of window method
             token_part = normalized_token_id.split('_')[-1] if '_' in normalized_token_id else normalized_token_id
-            self.presenter.process_rpc_command(node_name, normalized_token_id, action_type)
+            self.presenter.process_rpc_command(node_name, token_part, action_type)
 
     def get_node_tokens(self, node_name: str, token_type: str) -> List[NodeToken]:
         """

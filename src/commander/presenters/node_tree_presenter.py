@@ -655,9 +655,9 @@ class NodeTreePresenter(QObject):
             # Construct bstool command arguments
             bstool_command_args = f"-errlog {node_id}" if node_id else ""
             
-            # Execute bstool with the log file path and constructed command arguments
-            self.bstool_service.execute_bstool(log_file_path, bstool_command_args)
-            self.status_message_signal.emit(f"Started BsTool processing for {os.path.basename(log_file_path)}", 3000)
+            # Emit the command to UI instead of executing directly
+            self.command_generated_signal.emit(bstool_command_args, "BSTOOL")
+            self.status_message_signal.emit(f"Generated BsTool command for {os.path.basename(log_file_path)}", 3000)
         except Exception as e:
             self._report_error("Error processing BsTool command", e)
             
@@ -693,8 +693,16 @@ class NodeTreePresenter(QObject):
                         command = f"{bstool_path} -errlog {node_id}"
                     else:
                         logging.warning(f"Could not generate BSTOOL command for {filename}: node_id={node_id}, bstool_path={bstool_path}")
-                elif token_type in ["LOG", "LIS"]:
-                    # For LOG and LIS, no command is generated, only the log file is selected
+                elif token_type == "LOG":
+                    # For LOG files, generate BsTool command
+                    node_id = self._extract_node_id_from_log_path(item_data["log_path"])
+                    if node_id:
+                        command = f"-errlog {node_id}"
+                        token_type = "BSTOOL"
+                    else:
+                        logging.warning(f"Could not extract node ID for LOG file: {filename}")
+                elif token_type == "LIS":
+                    # For LIS, no command is generated, only the log file is selected
                     pass
                 else:
                     logging.warning(f"Unknown token type for command generation: {token_type}")

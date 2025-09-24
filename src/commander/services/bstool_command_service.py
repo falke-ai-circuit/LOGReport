@@ -6,7 +6,7 @@ import threading
 import tempfile # Import tempfile
 import io # Import io
 from PyQt6.QtCore import QObject, pyqtSignal
-from .threading_service import ThreadingService
+from commander.services.threading_service import ThreadingService
 
 
 class BsToolCommandService(QObject):

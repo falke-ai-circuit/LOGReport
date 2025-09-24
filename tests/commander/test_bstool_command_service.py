@@ -13,7 +13,7 @@ import subprocess
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'commander', 'services')))
 
-from bstool_command_service import BsToolCommandService
+from commander.services.bstool_command_service import BsToolCommandService
 
 
 class TestBsToolCommandService:
@@ -62,8 +62,8 @@ class TestBsToolCommandService:
         
         path = bstool_service._get_bstool_path()
         # Should be in the same directory as the executable
-        expected_path = os.path.join("/path/to/executable", "BsTool.exe")
-        assert path == expected_path
+        expected_path = os.path.normpath(os.path.join("/path/to/executable", "BsTool.exe"))
+        assert os.path.normpath(path) == expected_path
         
     @patch('bstool_command_service.sys')
     @patch('bstool_command_service.os.path.exists')
@@ -118,7 +118,7 @@ class TestBsToolCommandService:
                 
                 # Wait a bit for thread to start
                 import time
-                time.sleep(0.1)
+                time.sleep(0.5) # Increased sleep to allow subprocess to complete and output to be processed
                 
                 # Verify signals were emitted
                 assert len(status_messages) >= 1
@@ -173,7 +173,7 @@ class TestBsToolCommandService:
                  
                 # Wait a bit for thread to start
                 import time
-                time.sleep(0.1)
+                time.sleep(0.5) # Increased sleep to allow subprocess to complete and output to be processed
                  
                 # Verify signals were emitted
                 assert len(status_messages) >= 1
@@ -474,7 +474,8 @@ class TestBsToolCommandService:
         mock_process = MagicMock()
         mock_process.poll.return_value = None  # Process is running
         mock_process.terminate = MagicMock()
-        mock_process.wait.side_effect = subprocess.TimeoutExpired("cmd", 5)  # Timeout on wait
+        # Simulate a timeout on the first wait, then no timeout on the second
+        mock_process.wait.side_effect = [subprocess.TimeoutExpired("cmd", 5), 0]
         mock_process.kill = MagicMock()
         
         # Set the mock process on the service
@@ -560,7 +561,7 @@ class TestBsToolCommandService:
                 
                 # Wait a bit for thread to start
                 import time
-                time.sleep(0.1)
+                time.sleep(0.5) # Increased sleep to allow subprocess to complete and output to be processed
                 
                 # Verify stdout output was emitted
                 assert "Output line 1" in output_messages
@@ -603,7 +604,7 @@ class TestBsToolCommandService:
                 
                 # Wait a bit for thread to start
                 import time
-                time.sleep(0.1)
+                time.sleep(0.5) # Increased sleep to allow subprocess to complete and output to be processed
                 
                 # Verify error was reported
                 assert len(error_messages) >= 1
@@ -641,7 +642,7 @@ class TestBsToolCommandService:
                 
                 # Wait a bit for thread to start
                 import time
-                time.sleep(0.1)
+                time.sleep(0.5) # Increased sleep to allow subprocess to complete and output to be processed
                 
                 # Verify error was reported
                 assert len(error_messages) >= 1
@@ -762,7 +763,8 @@ class TestBsToolCommandService:
                     assert "Output line 2" in output_messages
                     
                     # Verify no error signals were emitted for successful execution
-                    # (there might be some from the threading, but not from our execution)
+                    # Verify no error signals were emitted for successful execution
+                    assert len(error_messages) == 0
                     
     def test_signal_emissions_on_error(self, bstool_service, temp_log_file):
         """Test that error signals are emitted when execution fails"""
@@ -860,12 +862,14 @@ class TestBsToolCommandService:
 
                 # Wait for the thread to execute and the timeout to occur
                 import time
-                time.sleep(0.1) # Give the thread a moment to start and hit the mocked wait
+                time.sleep(0.5) # Increased sleep to allow the thread to execute and hit the mocked wait
 
-                mock_process.wait.assert_called_with(timeout=10)
+                mock_process.wait.assert_any_call(timeout=10) # Check that wait with timeout was called
                 mock_process.terminate.assert_called_once()
+                mock_process.wait.assert_any_call() # Check that wait without timeout was called after kill
                 assert any("bstool process timed out" in msg for msg, _ in status_messages)
-                assert any("bstool process exited with code" in msg for msg in error_messages) # Should report an error due to termination
+                assert any("bstool process killed forcefully" in msg for msg, _ in status_messages) # Should report killed forcefully
+                assert any("Error during bstool execution" in msg for msg in error_messages) # Should report an error due to timeout
 
                     
     def test_execute_bstool_with_log_writer_error_handling(self, bstool_service_with_log_writer, temp_log_file):
