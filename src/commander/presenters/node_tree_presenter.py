@@ -33,6 +33,7 @@ class NodeTreePresenter(QObject):
     status_message_signal = pyqtSignal(str, int)  # message, duration
     node_tree_updated_signal = pyqtSignal()  # emitted when node tree is updated
     log_file_selected_signal = pyqtSignal(str)  # emitted when log file is selected, carries filename
+    command_generated_signal = pyqtSignal(str, str) # emitted when a command is generated, carries command string and token type
     
     def __init__(self, view, node_manager: NodeManager, session_manager: SessionManager,
                  log_writer: LogWriter, command_queue: CommandQueue,
@@ -671,9 +672,36 @@ class NodeTreePresenter(QObject):
         if item:
             item_data = item.data(0, Qt.ItemDataRole.UserRole)
             if item_data and "log_path" in item_data:
-                # This is a log file item, emit the signal with the filename
                 filename = os.path.basename(item_data["log_path"])
+                token_id = item_data.get("token")
+                token_type = item_data.get("token_type")
+                node_name = item_data.get("node")
+
+                # Emit log_file_selected_signal for all log files
                 self.log_file_selected_signal.emit(filename)
+
+                command = ""
+                if token_type == "FBC":
+                    command = self.fbc_service.generate_fieldbus_command(token_id)
+                elif token_type == "RPC":
+                    command = self.rpc_service.generate_rpc_command(token_id, "print")
+                elif token_type == "BSTOOL":
+                    # For BSTOOL, construct the command manually
+                    node_id = self._extract_node_id_from_log_path(item_data["log_path"])
+                    bstool_path = self.bstool_service._get_bstool_path()
+                    if node_id and bstool_path:
+                        command = f"{bstool_path} -errlog {node_id}"
+                    else:
+                        logging.warning(f"Could not generate BSTOOL command for {filename}: node_id={node_id}, bstool_path={bstool_path}")
+                elif token_type in ["LOG", "LIS"]:
+                    # For LOG and LIS, no command is generated, only the log file is selected
+                    pass
+                else:
+                    logging.warning(f"Unknown token type for command generation: {token_type}")
+
+                if command:
+                    self.command_generated_signal.emit(command, token_type)
+                    logging.debug(f"Emitted command_generated_signal: {command}, {token_type}")
 
     def open_log_file(self, item, column: int):
         """

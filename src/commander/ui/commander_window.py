@@ -178,6 +178,7 @@ class CommanderWindow(QMainWindow):
         self.node_tree_presenter.status_message_signal.connect(self.status_service.status_updated)
         self.node_tree_presenter.node_tree_updated_signal.connect(self.on_node_tree_updated)
         self.node_tree_presenter.log_file_selected_signal.connect(self.session_manager.ip_changed.emit)
+        self.node_tree_presenter.command_generated_signal.connect(self._handle_command_generated)
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)
@@ -442,6 +443,21 @@ class CommanderWindow(QMainWindow):
     def on_queue_processed(self, success_count, total_count):
         """Handle queue processing completion"""
         self.commander_presenter.handle_queue_processed(success_count, total_count, self.status_service)
+        
+    def _handle_command_generated(self, command: str, token_type: str):
+        """
+        Handle the command_generated_signal from NodeTreePresenter.
+        Updates the command input of the active tab (Telnet or BsTool) with the received command.
+        """
+        if token_type in ["FBC", "RPC"]:
+            self.telnet_tab.command_input.setText(command)
+            self.telnet_tab.command_input.setFocus()
+            self.session_tabs.setCurrentWidget(self.telnet_tab)
+        elif token_type == "BSTOOL":
+            self.bstool_tab.command_input.setText(command)
+            self.bstool_tab.command_input.setFocus()
+            self.session_tabs.setCurrentWidget(self.bstool_tab)
+        logging.debug(f"Command '{command}' for type '{token_type}' set in UI.")
     
     def closeEvent(self, event):
         """Cleanup on window close"""

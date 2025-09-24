@@ -16,10 +16,10 @@
         "update_entities",
         "add_observations",
         "open_nodes",
-        "create_entities",
         "create_relations",
         "delete_entities",
-        "read_graph"
+        "read_graph",
+        "create_entities"
       ],
       "disabled": false
     },

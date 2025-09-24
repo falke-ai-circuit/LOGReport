@@ -437,6 +437,25 @@ class BsToolCommandService(QObject):
             self.report_error.emit(error_msg)
             self.status_message_signal.emit(error_msg, 5000)
             
+    def generate_bstool_command(self, log_file_path: str, bstool_command_args: str = "") -> str:
+        """
+        Generate the bstool command string.
+        
+        Args:
+            log_file_path (str): Path to the log file
+            bstool_command_args (str): Command arguments for bstool.exe
+            
+        Returns:
+            str: The generated bstool command string
+        """
+        bstool_path = self._get_bstool_path()
+        if not bstool_path:
+            return "bstool.exe not found"
+            
+        import shlex
+        command = [bstool_path] + shlex.split(bstool_command_args)
+        return " ".join(command)
+
     def clear_terminal(self):
         """Clear the output display in the UI."""
         # This method would typically emit a signal to clear the UI terminal display
