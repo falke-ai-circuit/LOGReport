@@ -8,7 +8,7 @@ This file contains a list of pending tasks and improvements for the LOGReport pr
 
 [ ]We should add posibility to execute all node related commands when rightclicked on node ( example: AP01m when executing all node commands should sequentially execute all FBC and RPC and LOG subcommands hierarchically, so clicking on AP01m and executing all commands would trigger all subcommands one after another )
 
-[ ]We should add colour change on nodes list to files that have been processed ( changes colour to green if command executed and written to file)
+[ ]We should add colour change on nodes list to files that have been processed, .rpc .fbc .log and .lis files ( changes colour to green if command executed and if there is content in selected file for example more than 5 lines change to green, if command is executed and content is below 5 lines in file writing should be in red colour, and if no command is executed and its below 5 lines of content for example writing should become yellow)
 
 [X]We should add lower timeout for bstool commands ( 10 seconds maybe?) before we read content from temporary file created by it.
 
