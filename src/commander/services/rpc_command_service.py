@@ -33,6 +33,9 @@ class RpcCommandService(QObject):
     def normalize_token(self, token_id: str) -> str:
         """Normalize token ID to 3-digit format"""
         token_str = str(token_id).strip()
+        # Strip any IP prefix by taking the last part after '_'
+        if '_' in token_str:
+            token_str = token_str.split('_')[-1]
         return token_str.zfill(3) if token_str.isdigit() else token_str
     
     
