@@ -56,20 +56,21 @@ def is_error_response(response: str) -> bool:
         bool: True if the response is an error, False otherwise
     """
     if not response:
+        logger.debug("Response is empty, not an error.")
         return False
         
     # First check if it's a valid response that should not be considered an error
     for pattern in VALID_RESPONSE_PATTERNS:
         if pattern.search(response):
-            logger.debug(f"Response identified as valid: {response[:100]}...")
+            logger.debug(f"Response matches valid pattern '{pattern.pattern}'. Identified as valid: {response[:100]}...")
             return False
     
     # Then check if it matches any error patterns
     for pattern in ERROR_PATTERNS:
         if pattern.search(response):
-            logger.debug(f"Response identified as error: {response[:100]}...")
+            logger.debug(f"Response matches error pattern '{pattern.pattern}'. Identified as error: {response[:100]}...")
             return True
             
     # If no patterns match, it's not an error
-    logger.debug(f"Response identified as non-error: {response[:100]}...")
+    logger.debug(f"Response identified as non-error (no matching patterns): {response[:100]}...")
     return False

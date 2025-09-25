@@ -17,7 +17,7 @@ class LogWriter(QObject):
     """
     Service for writing to log files and application logs.
     """
-    log_write_completed = pyqtSignal(str, str, bool) # node_name, token_id, success
+    log_write_completed = pyqtSignal(str, bool, int) # log_path, success, line_count # Modified signal signature
     
     def __init__(self, node_manager: NodeManager, log_root: str = "logs", parent=None):
         """
@@ -128,13 +128,13 @@ class LogWriter(QObject):
            self.write_to_app_log(f"Failed to write to {log_type} log: {str(e)}")
            raise
        finally:
-           # Emit signal after attempting to write to log
-           if token and hasattr(token, 'name') and hasattr(token, 'token_id'):
-               self.log_write_completed.emit(token.name, token.token_id, log_success)
-           elif node_name and token and hasattr(token, 'token_id'):
-               self.log_write_completed.emit(node_name, token.token_id, log_success)
+           filepath_to_emit = filepath if log_success else "N/A"
+           line_count_to_emit = self.get_file_line_count(filepath) if log_success else 0
+           
+           if token and hasattr(token, 'log_path'):
+               self.log_write_completed.emit(token.log_path, log_success, line_count_to_emit) # Emit log_path
            else:
-               self.log_write_completed.emit("N/A", "N/A", log_success)
+               self.log_write_completed.emit("N/A", log_success, line_count_to_emit) # Fallback if log_path not available
 
     def write_to_app_log(self, message: str, level: int = logging.INFO):
         """
@@ -208,7 +208,34 @@ class LogWriter(QObject):
             self.write_to_app_log(f"Failed to append to file {filepath}: {str(e)}")
             raise
         finally:
-            if token and hasattr(token, 'name') and hasattr(token, 'token_id'):
-                self.log_write_completed.emit(token.name, token.token_id, log_success)
+            filepath_to_emit = filepath if log_success else "N/A"
+            line_count_to_emit = self.get_file_line_count(filepath) if log_success else 0
+            
+            if token and hasattr(token, 'log_path'):
+                self.log_write_completed.emit(token.log_path, log_success, line_count_to_emit) # Emit log_path
             else:
-                self.log_write_completed.emit("N/A", "N/A", log_success)
+                self.log_write_completed.emit("N/A", log_success, line_count_to_emit) # Fallback if log_path not available
+
+    def get_file_line_count(self, filepath: str) -> int:
+        """
+        Efficiently counts the number of lines in a given file.
+        
+        Args:
+            filepath: Path to the file.
+            
+        Returns:
+            The total number of lines in the file.
+        """
+        if not os.path.exists(filepath):
+            logging.debug(f"get_file_line_count: File not found: {filepath}, returning 0 lines.")
+            return 0
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                line_count = sum(1 for line in f)
+                logging.debug(f"get_file_line_count: File: {filepath}, Line Count: {line_count}")
+                return line_count
+        except Exception as e:
+            self.write_to_app_log(f"Error counting lines in file {filepath}: {str(e)}")
+            logging.error(f"get_file_line_count: Error counting lines in file {filepath}: {str(e)}")
+            return 0

@@ -118,7 +118,7 @@ class TestNodeColorUpdateIntegration:
             mock_token = NodeToken(token_id=token_id, token_type="FBC", name=node_name, ip_address="127.0.0.1")
             
             node_tree_presenter.handle_command_completed("test_command", "success", True, mock_token)
-            node_tree_presenter.handle_log_write_completed(node_name, token_id, True)
+            node_tree_presenter.handle_log_write_completed(node_name, token_id, True, "/tmp/logs/test.log", 10)
             
             # Verify that update_node_color was called with the correct arguments
             mock_update_node_color.assert_called_once_with(node_name, "green")
@@ -151,7 +151,7 @@ class TestNodeColorUpdateIntegration:
             mock_token = NodeToken(token_id=token_id, token_type="RPC", name=node_name, ip_address="127.0.0.2")
             
             node_tree_presenter.handle_command_completed("failed_command", "error", False, mock_token)
-            node_tree_presenter.handle_log_write_completed(node_name, token_id, True)
+            node_tree_presenter.handle_log_write_completed(node_name, token_id, True, "/tmp/logs/another.log", 10)
             
             # Verify that update_node_color was called with the correct arguments
             mock_update_node_color.assert_called_once_with(node_name, "red")
@@ -184,7 +184,7 @@ class TestNodeColorUpdateIntegration:
             mock_token = NodeToken(token_id=token_id, token_type="LOG", name=node_name, ip_address="127.0.0.3")
             
             node_tree_presenter.handle_command_completed("successful_command", "output", True, mock_token)
-            node_tree_presenter.handle_log_write_completed(node_name, token_id, False)
+            node_tree_presenter.handle_log_write_completed(node_name, token_id, False, "/tmp/logs/third.log", 10)
             
             # Verify that update_node_color was called with the correct arguments
             mock_update_node_color.assert_called_once_with(node_name, "red")

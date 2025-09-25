@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 from .theme import STYLESHEETS
+import logging
 
 class NodeTreeView(QWidget):
     """View component for the node tree UI"""
@@ -102,24 +103,18 @@ class NodeTreeView(QWidget):
         """Get viewport"""
         return self.node_tree.viewport()
         
-    def update_node_color(self, node_name: str, color_name: str):
+    def update_node_color(self, item: QTreeWidgetItem, color_name: str):
         """
-        Update the color of a specific node in the tree view.
+        Update the color of a specific tree item.
         
         Args:
-            node_name: The name of the node to update.
+            item: The QTreeWidgetItem to update.
             color_name: The name of the color (e.g., "green", "red").
         """
         from PyQt6.QtGui import QColor
         color = QColor(color_name)
-        
-        root_item = self.node_tree.invisibleRootItem()
-        for i in range(root_item.childCount()):
-            item = root_item.child(i)
-            data = item.data(0, Qt.ItemDataRole.UserRole)
-            if data and data.get("type") == "node" and data.get("node_name") == node_name:
-                item.setForeground(0, color)
-                break
+        item.setForeground(0, color)
+        logging.debug(f"NodeTreeView.update_node_color: Updated color for item {item.text(0)} to {color_name}")
         
 def setHeaderLabels(self, labels):
     """Set header labels"""

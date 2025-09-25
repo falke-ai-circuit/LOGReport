@@ -68,8 +68,9 @@ class NodeTreePresenter(QObject):
         self.view.item_expanded.connect(self.handle_item_expanded)
         
         # Dictionary to track command and log write status for each node
-        # Key: node_name, Value: {"command_success": Optional[bool], "log_success": Optional[bool]}
+        # Key: node_name, Value: {"command_success": Optional[bool], "log_success": Optional[bool], "line_count": Optional[int]}
         self.node_status = {}
+        self.file_item_map = {} # Map log_path to QTreeWidgetItem
         
         # Connect signals from CommandQueue and LogWriter
         self.command_queue.command_completed.connect(self.handle_command_completed)
@@ -295,14 +296,17 @@ class NodeTreePresenter(QObject):
         file_extension = os.path.splitext(file_path)[1][1:].upper()
         resolved_type = file_extension if file_extension in {'FBC','RPC','LOG','LIS'} else token_type
         
+        normalized_file_path = os.path.normpath(file_path)
         file_item.setData(0, Qt.ItemDataRole.UserRole, {
-            "log_path": file_path,
+            "log_path": normalized_file_path,
             "token": token_id,
             "token_type": resolved_type,
             "node": node.name,
             "ip_address": node.ip_address
         })
         file_item.setIcon(0, get_token_icon())
+        self.file_item_map[normalized_file_path] = file_item
+        logging.debug(f"_create_file_item: Added {normalized_file_path} to file_item_map. Current map size: {len(self.file_item_map)}")
         return file_item
         
     def handle_command_completed(self, command: str, result: str, success: bool, token: NodeToken):
@@ -315,43 +319,70 @@ class NodeTreePresenter(QObject):
             success: True if the command was successful, False otherwise
             token: The NodeToken associated with the command
         """
-        node_name = token.name
-        if node_name in self.node_status:
-            self.node_status[node_name]["command_success"] = success
-            self._check_and_update_node_color(node_name)
+        log_path = token.log_path # Use log_path from token
+        if log_path not in self.node_status:
+            self.node_status[log_path] = {"command_success": None, "log_success": None, "line_count": None}
+        self.node_status[log_path]["command_success"] = success
+        logging.debug(f"handle_command_completed: Log Path: {log_path}, Command Success: {success}, Token Type: {token.token_type}")
+        self._check_and_update_node_color(log_path)
             
-    def handle_log_write_completed(self, node_name: str, token_id: str, success: bool):
+    def handle_log_write_completed(self, log_path: str, success: bool, line_count: int): # Modified signature
         """
         Handle the log_write_completed signal from LogWriter.
         
         Args:
-            node_name: The name of the node associated with the log write
-            token_id: The ID of the token associated with the log write
+            log_path: The path to the log file
             success: True if the log write was successful, False otherwise
+            line_count: The number of lines in the log file
         """
-        if node_name in self.node_status:
-            self.node_status[node_name]["log_success"] = success
-            self._check_and_update_node_color(node_name)
+        if log_path not in self.node_status:
+            self.node_status[log_path] = {"command_success": None, "log_success": None, "line_count": None}
+        
+        self.node_status[log_path]["log_success"] = success
+        self.node_status[log_path]["line_count"] = line_count
+        logging.debug(f"handle_log_write_completed: Log Path: {log_path}, Log Success: {success}, Line Count: {line_count}")
+        self._check_and_update_node_color(log_path)
             
-    def _check_and_update_node_color(self, node_name: str):
+    def _check_and_update_node_color(self, log_path: str): # Modified signature
         """
         Check if both command and log write were successful for a node and update its color.
         
         Args:
-            node_name: The name of the node to check and update
+            log_path: The log_path of the file item to check and update
         """
-        if node_name in self.node_status:
-            command_success = self.node_status[node_name].get("command_success")
-            log_success = self.node_status[node_name].get("log_success")
+        if log_path not in self.node_status:
+            self.node_status[log_path] = {"command_success": None, "log_success": None, "line_count": None}
+        command_success = self.node_status[log_path].get("command_success")
+        log_success = self.node_status[log_path].get("log_success")
+        line_count = self.node_status[log_path].get("line_count")
+        logging.debug(f"_check_and_update_node_color: Log Path: {log_path}, Command Success: {command_success}, Log Success: {log_success}, Line Count: {line_count}")
 
-            # Only update color if both statuses have been set (are not None)
-            if command_success is not None and log_success is not None:
+        # Only update color if both statuses have been set (are not None)
+        if command_success is not None and log_success is not None:
+            line_count = self.node_status[log_path].get("line_count")
+
+            normalized_log_path = os.path.normpath(log_path)
+            logging.debug(f"_check_and_update_node_color: Looking for normalized_log_path: {normalized_log_path} in file_item_map. Map keys: {list(self.file_item_map.keys())}")
+            file_item = self.file_item_map.get(normalized_log_path)
+            if file_item:
                 if command_success and log_success:
-                    self.view.update_node_color(node_name, "green")
+                    if line_count is None or line_count == 0:
+                        logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (no content)")
+                        self.view.update_node_color(file_item, "red") # Pass QTreeWidgetItem
+                    elif line_count < 10:
+                        logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to yellow (line_count < 10)")
+                        self.view.update_node_color(file_item, "yellow") # Pass QTreeWidgetItem
+                    else: # line_count >= 10
+                        logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to green (line_count >= 10)")
+                        self.view.update_node_color(file_item, "green") # Pass QTreeWidgetItem
                 else:
-                    self.view.update_node_color(node_name, "red")
-                # Reset status after update
-                self.node_status[node_name] = {"command_success": None, "log_success": None}
+                    logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (command/log failed)")
+                    self.view.update_node_color(file_item, "red") # Pass QTreeWidgetItem
+            else:
+                logging.warning(f"_check_and_update_node_color: file_item not found for log_path: {normalized_log_path}")
+
+            # Reset status after update
+            self.node_status[log_path] = {"command_success": None, "log_success": None, "line_count": None}
                 
     def set_log_root_folder(self, folder_path):
         """Set the root folder for log files"""
