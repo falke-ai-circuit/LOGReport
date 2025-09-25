@@ -100,32 +100,23 @@ class CommandWorker(QRunnable):
             self.result = self.telnet_session.send_command(self.command)
             logging.debug(f"CommandWorker.run: Raw response received (length={len(self.result)}): {self.result[:200]}{'...' if len(self.result) > 200 else ''}")
             
-            # Verify command execution
+            # Verify command execution using the centralized error_detection utility
+            from .utils.error_detection import is_error_response
+            
             if not self.result:
-                logging.warning("Empty response received from command execution")
-                # Consider empty response as successful but log warning
+                logging.warning("CommandWorker.run: Empty response received from command execution. Considering it successful.")
                 self.success = True
             else:
-                # More precise error detection
-                lower_result = self.result.lower()
-                # Handle error responses without crashing
-                if "error" in lower_result or "invalid token" in lower_result or "unknown command" in lower_result:
-                    error_msg = f"Command returned error response: {self.result[:200]}"
+                if is_error_response(self.result):
+                    error_msg = f"Command returned error response (detected by error_detection.py): {self.result[:200]}"
                     logging.error(error_msg)
                     self.success = False
                 else:
-                    # Handle specific device response patterns
-                    if "int from fbc rupi counters" in lower_result:
-                        # This appears to be a valid device response format
-                        self.success = True
-                        if len(self.result) < 10:
-                            logging.warning(f"CommandWorker.run: Unexpectedly short response: {len(self.result)} chars")
-                    else:
-                        # Handle general case
-                        if len(self.result) < 10:  # Minimum expected response length
-                            logging.warning(f"CommandWorker.run: Unexpectedly short response: {len(self.result)} chars")
-                        self.success = True
-            logging.info(f"CommandWorker.run: Command executed successfully: {self.command}")
+                    self.success = True
+                    logging.info(f"CommandWorker.run: Command executed successfully (detected by error_detection.py): {self.command}")
+                    if len(self.result) < 10: # Minimum expected response length
+                        logging.warning(f"CommandWorker.run: Unexpectedly short response: {len(self.result)} chars")
+            
             logging.debug(f"CommandWorker.run: Final processed response length: {len(self.result)}")
             
         except Exception as e:

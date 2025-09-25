@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Define regex patterns for actual error responses
-ERROR_PATTERNS = [
+BASE_ERROR_PATTERNS = [ # Renamed to BASE_ERROR_PATTERNS
     # General error patterns
     re.compile(r'\berror\b', re.IGNORECASE),
     re.compile(r'\bfailure\b', re.IGNORECASE),
@@ -13,10 +13,7 @@ ERROR_PATTERNS = [
     re.compile(r'\bnot found\b', re.IGNORECASE),
     re.compile(r'\bnot supported\b', re.IGNORECASE),
     re.compile(r'\binvalid\b', re.IGNORECASE),
-    re.compile(r'\bunknown\b', re.IGNORECASE),
-    
-    # Specific error message patterns
-    re.compile(r'command not found', re.IGNORECASE),
+    re.compile(r'command not found', re.IGNORECASE), # Specific error message patterns
     re.compile(r'syntax error', re.IGNORECASE),
     re.compile(r'permission denied', re.IGNORECASE),
     re.compile(r'access denied', re.IGNORECASE),
@@ -26,24 +23,24 @@ ERROR_PATTERNS = [
     re.compile(r'network error', re.IGNORECASE),
     re.compile(r'authentication failed', re.IGNORECASE),
     re.compile(r'login failed', re.IGNORECASE),
-    
-    # Error codes
-    re.compile(r'error\s*\d+', re.IGNORECASE),
+    re.compile(r'error\s*\d+', re.IGNORECASE), # Error codes
     re.compile(r'err\s*\d+', re.IGNORECASE),
 ]
 
 # Define patterns for valid responses that should NOT be considered errors
 VALID_RESPONSE_PATTERNS = [
-    # The specific case mentioned in the issue
     re.compile(r'int from fbc rupi counters \d+', re.IGNORECASE),
-    
-    # Other valid response patterns
+    re.compile(r'Getting FIELD BUS error counters from RUPI\(\d+\) from FBC agent \d+', re.IGNORECASE),
+    re.compile(r'pic\s+IREX ERROR\s+POLL ERROR\s+RESP FAIL\s+IREX COUNT\s+TIMEOUT', re.IGNORECASE),
     re.compile(r'\bok\b', re.IGNORECASE),
     re.compile(r'\bsuccess\b', re.IGNORECASE),
     re.compile(r'\bcompleted\b', re.IGNORECASE),
     re.compile(r'\bdone\b', re.IGNORECASE),
     re.compile(r'\bfinished\b', re.IGNORECASE),
 ]
+
+# Specific pattern for "Unknown command: 0" that should be ignored in valid RPC responses
+UNKNOWN_COMMAND_PATTERN = re.compile(r'Unknown command:\s*\d+', re.IGNORECASE)
 
 def is_error_response(response: str) -> bool:
     """
@@ -59,14 +56,23 @@ def is_error_response(response: str) -> bool:
         logger.debug("Response is empty, not an error.")
         return False
         
-    # First check if it's a valid response that should not be considered an error
+    # First, check if any valid response patterns are present
+    is_valid_response_present = False
     for pattern in VALID_RESPONSE_PATTERNS:
         if pattern.search(response):
-            logger.debug(f"Response matches valid pattern '{pattern.pattern}'. Identified as valid: {response[:100]}...")
-            return False
-    
-    # Then check if it matches any error patterns
-    for pattern in ERROR_PATTERNS:
+            logger.debug(f"Response matches valid pattern '{pattern.pattern}'.")
+            is_valid_response_present = True
+            break
+            
+    # If a valid response is present, and the "Unknown command: 0" is also present,
+    # we consider it a valid response as per user's clarification for RPC.
+    if is_valid_response_present and UNKNOWN_COMMAND_PATTERN.search(response):
+        logger.debug(f"Valid response pattern found and 'Unknown command: 0' detected, but it's considered valid for RPC. Identified as valid: {response[:100]}...")
+        return False
+
+    # If no valid response patterns are present, or if a valid response is present
+    # but "Unknown command: 0" is not, then proceed to check for general errors.
+    for pattern in BASE_ERROR_PATTERNS:
         if pattern.search(response):
             logger.debug(f"Response matches error pattern '{pattern.pattern}'. Identified as error: {response[:100]}...")
             return True

@@ -373,17 +373,17 @@ class NodeTreePresenter(QObject):
             file_item = self.file_item_map.get(normalized_log_path)
             if file_item:
                 if command_success and log_success:
-                    if token_type == "FBC":
+                    if token_type in ["FBC", "RPC"]: # Apply to both FBC and RPC
                         if lines_written_by_command is None or lines_written_by_command == 0:
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (no new content for FBC)")
+                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (no new content for {token_type})")
                             self.view.update_node_color(file_item, "red")
                         elif lines_written_by_command < 10:
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to yellow (new content < 10 lines for FBC)")
+                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to yellow (new content < 10 lines for {token_type})")
                             self.view.update_node_color(file_item, "yellow")
                         else: # lines_written_by_command >= 10
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to green (new content >= 10 lines for FBC)")
+                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to green (new content >= 10 lines for {token_type})")
                             self.view.update_node_color(file_item, "green")
-                    else: # Existing logic for other file types (e.g., RPC, LOG)
+                    else: # Existing logic for other file types (e.g., LOG)
                         if total_line_count is None or total_line_count == 0:
                             logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (no content)")
                             self.view.update_node_color(file_item, "red")
