@@ -690,6 +690,60 @@ class NodeTreePresenter(QObject):
             logging.error(f"Unexpected error in RPC command setup: {str(e)}")
             self._report_error("RPC command setup failed", e)
             
+    def clear_subgroup_log_files(self, item):
+        """
+        Clear all log files associated with a subgroup.
+
+        Args:
+            item: The tree item representing the subgroup (e.g., FBC, RPC, LOG, LIS section)
+        """
+        if not item:
+            self._report_error("No item selected for clearing subgroup log files")
+            return
+        
+        # If item is a MockItem (from ContextMenuService), its data is directly accessible
+        if hasattr(item, 'data') and isinstance(item.data, dict):
+            item_data = item.data
+        else:
+            # Assume it's a QTreeWidgetItem and extract data
+            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        
+        if not item_data or item_data.get("type") != "section":
+            self._report_error("Selected item is not a subgroup section")
+            return
+
+        section_type = item_data.get("section_type")
+        node_name = item_data.get("node")
+
+        if not node_name or not section_type:
+            self._report_error("Could not determine node or section type for clearing log files")
+            return
+
+        logging.info(f"Clearing all {section_type} log files for node {node_name}...")
+        self.status_message_signal.emit(f"Clearing all {section_type} log files for node {node_name}...", 0)
+
+        # Iterate through the tokens in item_data
+        cleared_count = 0
+        tokens_to_clear = item_data.get("tokens", [])
+        
+        if not tokens_to_clear:
+            self._report_error(f"No tokens found to clear for {section_type} subgroup of node {node_name}")
+            return
+
+        for token_obj in tokens_to_clear:
+            if hasattr(token_obj, "log_path") and token_obj.log_path:
+                log_path = token_obj.log_path
+                try:
+                    self.bstool_service.clear_log(log_path)
+                    cleared_count += 1
+                    logging.debug(f"Cleared log file: {log_path}")
+                except Exception as e:
+                    self._report_error(f"Failed to clear log file {log_path}", e)
+            else:
+                logging.warning(f"Token object {token_obj} in section {section_type} does not have a valid log_path.")
+
+        self.status_message_signal.emit(f"Cleared {cleared_count} {section_type} log files for node {node_name}", 3000)
+            
     def process_bstool_command(self, log_file_path: str):
         """
         Process BsTool command for a log file.

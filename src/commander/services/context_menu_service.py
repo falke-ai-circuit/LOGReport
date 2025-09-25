@@ -112,6 +112,23 @@ class ContextMenuService:
                 menu.addAction(print_action)
                 added_actions = True
 
+                # Add action for clearing all subgroup log files
+                if self.context_menu_filter.should_show_command(
+                    node_name=node_name,
+                    section_type=section_type,
+                    command_type="clear_all_subgroup_files",
+                    command_category="subgroup"
+                ):
+                    clear_action = QAction(f"Clear All {section_type} Log Files for {node_name}", menu)
+                    if self.presenter:
+                        mock_subgroup_item = self._get_current_item_from_data(item_data)
+                        clear_action.triggered.connect(
+                            lambda: self.presenter.clear_subgroup_log_files(
+                                mock_subgroup_item
+                            )
+                        )
+                    menu.addAction(clear_action)
+                    added_actions = True
 
         # Handle token items (individual token files)
         elif item_data and isinstance(item_data, dict) and 'token' in item_data:
