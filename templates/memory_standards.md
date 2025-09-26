@@ -5,6 +5,9 @@
 ## 📋 Overview
 Memory entities require consistent hierarchical structuring for discoverability, reusability, and relationships | Defines naming conventions, hierarchical rules, and connection patterns
 
+### 🏛️ Mandatory 4-Layer Hierarchy
+**RULE:** Every entity MUST belong to the complete 4-layer hierarchy | **Structure:** Entity → Cluster (SubCluster) → Domain → Type (MemoryType) | **No Orphans:** All entities must have complete hierarchical placement | **Validation:** Entity without 4-layer path is invalid
+
 ## 🏗️ Hierarchical Structure
 
 ### Memory Types
@@ -47,7 +50,7 @@ Memory entities require consistent hierarchical structuring for discoverability,
 **Format:** `[Core Function]: [Technical Detail] | [Context/Usage] | [Key Connections]` | **Length:** 80-120 chars max | **Style:** Technical precision, no filler | **Links:** 2-4 meaningful connections | **Naming:** 3-25 chars PascalCase, clear purpose
 
 ### Hierarchical Connection Rules
-**Vertical:** Entity → SubCluster → Domain → MemoryType | **Horizontal:** Related entities same level | **Cross-Domain:** Entities across domains | **Pattern:** Implementation → Pattern entities
+**MANDATORY VERTICAL:** Entity → SubCluster → Domain → MemoryType (4-layer path REQUIRED for every entity) | **Horizontal:** Related entities same level | **Cross-Domain:** Entities across domains | **Pattern:** Implementation → Pattern entities | **Validation:** Entities without complete vertical path are invalid
 
 ## ✅/❌ Examples
 ```
@@ -69,14 +72,15 @@ Memory entities require consistent hierarchical structuring for discoverability,
 | **Implementation** | Entity implements pattern | `implements: [Pattern_Observer]` |
 | **Inheritance** | Entity extends another | `extends: [Component_BaseModal]` |
 | **Association** | Entities work together | `associates_with: [State_UserSession]` |
+| **Hierarchical** | **MANDATORY 4-layer parent-child** | **`belongs_to: [SubCluster→Domain→MemoryType]`** |
 
-**Depth Guidelines:** Min 4 levels | Max 6 levels | Optimal 4-5 levels | Consistent depth for similar entities
+**Depth Guidelines:** **MANDATORY Min 4 levels** | Max 6 levels | Optimal 4-5 levels | **NO EXCEPTIONS: Every entity must have complete 4-layer hierarchy**
 
 ## 🚀 Implementation Workflow
 **Phase 1:** Template compliance check | Hierarchy analysis | Domain mapping | **Phase 2:** Missing domain creation | Orphan identification | Connection planning | **Phase 3:** Entity transformation | Relationship establishment | Quality validation
 
 ## 📊 Quality Standards
-**Naming Compliance:** 95%+ template adherence | **Hierarchy Completeness:** All entities 4+ levels | **Connection Coverage:** 90%+ entities with 2+ connections | **Orphan Elimination:** 0 entities without placement
+**Naming Compliance:** 95%+ template adherence | **Hierarchy Completeness:** **100% entities MUST have 4-layer hierarchy** | **Connection Coverage:** 90%+ entities with 2+ connections | **Orphan Elimination:** **0 entities without complete Entity→Cluster→Domain→Type path**
 
 ### Validation Targets
 | Criterion | Target | Method |
@@ -85,7 +89,7 @@ Memory entities require consistent hierarchical structuring for discoverability,
 | **Reusability** | 3x pattern adoption | Usage tracking |
 | **Consistency** | 95%+ standard adherence | Automated validation |
 | **Connectivity** | 2.5+ avg connections | Relationship analysis |
-| **Hierarchy** | 4.2 avg levels | Structure analysis |
+| **Hierarchy** | **MANDATORY 4.0 levels** | **4-layer validation** |
 
 ## 🔧 Implementation Commands
 **Structure:** `memory.create_domains(missing, template)` | `memory.create_subclusters(missing, mapping)` | `memory.establish_hierarchy(entities, format)` | **Connectivity:** `memory.create_connections(orphans, targets)` | `memory.map_relationships(entities, types)` | `memory.validate_hierarchy(structure, rules)` | **Quality:** `memory.validate_compliance(entities, standards)` | `memory.analyze_connectivity(graph, targets)` | `memory.optimize_structure(hierarchy, metrics)`

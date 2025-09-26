@@ -136,6 +136,7 @@
 {"type":"entity","name":"Project.Domain.CodeChange","entityType":"Domain","observations":["Domain for code change related entities."]}
 {"type":"entity","name":"Project.Domain.Feature","entityType":"Domain","observations":["Domain for feature related entities."]}
 {"type":"entity","name":"Project.Domain.SystemComponent","entityType":"Domain","observations":["Domain for system component related entities."]}
+{"type":"entity","name":"Project.Report.Analysis.EntityLayerAnalysis_MemoryOptimization","entityType":"Report","observations":["Report detailing compliance gaps, condensation opportunities, and similar entity merging suggestions for project memory.","Identified verbose observations in SystemComponent entities for condensation.","Identified project-level entities promoted to global memory as redundant for merging/deletion.","Identified related problem/anomaly entities for consolidation.","Identified generic type entities for potential removal.","Generated commands for `add_observations`, `delete_entities`, and `create_relations` to optimize memory."]}
 {"type":"relation","from":"src/commander/session_manager.py","to":"SessionManager","relationType":"CONTAINS_CODE_FOR"}
 {"type":"relation","from":"NodeToken Validation Conflict","to":"SessionManager","relationType":"AFFECTS"}
 {"type":"relation","from":"HybridTokenHandling","to":"GLOBAL::HybridTokenResolution","relationType":"PROMOTED_TO"}
@@ -213,3 +214,4 @@
 {"type":"relation","from":"Project.Cluster.ArchitecturalPrinciple.ArchitecturalPrinciple_Cluster","to":"Project.Domain.Architecture","relationType":"HAS_DOMAIN"}
 {"type":"relation","from":"Project.Cluster.CodeChange.CodeChange_Cluster","to":"Project.Domain.CodeChange","relationType":"HAS_DOMAIN"}
 {"type":"relation","from":"Project.Cluster.Feature.Feature_Cluster","to":"Project.Domain.Feature","relationType":"HAS_DOMAIN"}
+{"type":"relation","from":"Project.System.Core.LOGReport_Project","to":"Project.Report.Analysis.EntityLayerAnalysis_MemoryOptimization","relationType":"HAS_REPORT"}
