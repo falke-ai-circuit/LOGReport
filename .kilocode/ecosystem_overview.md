@@ -754,7 +754,7 @@ If any file is lost, it can be 100% reconstructed using these principles:
 - **Global Workflows**: Files in `c:\Users\gorjovicgo\.kilocode\workflows\` are system-wide
 - **Centralized Templates**: `/templates/` directory contains cross-project templates
   - `templates/documentation/` - API docs, user guides, architecture templates
-  - `templates/blueprints/` - Workflow, mode, and contract blueprints
+  - `templates/` - Workflow templates, standards, and guidelines
   - `templates/architecture/` - Ecosystem and integration templates
 - **Integration Point**: Template system works across all MCP ecosystem components
 
