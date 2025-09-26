@@ -16,27 +16,39 @@ The LOGReport project implements a dual memory consolidation workflow that combi
 
 ## Promoted Global Patterns
 
-The LOGReport project has successfully promoted several key architectural patterns to global memory for reuse across projects:
+The LOGReport project has successfully contributed to and refined several key universal patterns in global memory, ensuring their reusability across diverse projects. The memory hierarchy compliance workflow has also been successfully implemented, ensuring adherence to the `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]` template and significantly enhancing knowledge organization and retrievability.
 
-### MVP (Model-View-Presenter) Pattern
-- **Description**: Separates presentation logic from UI components for better testability and maintainability
-- **Implementation**: Used throughout the Commander UI with dedicated presenter classes
-- **Benefits**: Enhanced modularity, easier testing, and clearer separation of concerns
+### Universal Architectural Patterns
 
-### Context Menu Filtering Pattern
-- **Description**: Dynamic UI customization through configuration-driven command visibility
-- **Implementation**: Configurable rules in `config/menu_filter_rules.json` control menu item visibility
-- **Benefits**: Flexible UI customization without code changes, improved user experience
+- **MVP (Model-View-Presenter) Pattern**: Separates presentation logic from UI components for better testability and maintainability.
+- **Dual Memory System**: Combines project-specific memory with cross-project global memory for balanced knowledge management.
+- **Service Layer Pattern**: Centralizes business logic in dedicated service classes for consistent processing and maintainability.
+- **Circuit Breaker Pattern**: Stateful mechanism to prevent cascading failures in service calls, improving system resilience.
+- **NodeManager Configuration Loading Pattern**: Robust configuration parsing and validation for application stability.
+- **Dynamic Configuration Reload Pattern**: Ensures application components trigger full configuration reloads upon external dependency changes.
+- **Circular Dependency Resolution Pattern**: Strategies for decoupling modules and improving reusability.
 
-### Service Layer Pattern
-- **Description**: Centralizes business logic in dedicated service classes
-- **Implementation**: FbcCommandService and RpcCommandService handle all command-related operations
-- **Benefits**: Consistent command processing, reduced code duplication, improved maintainability
+### Universal Design Patterns
 
-### Hybrid Token Resolution Pattern
-- **Description**: Multi-step token resolution with intelligent fallback mechanisms
-- **Implementation**: Handles tokens that may exist in multiple formats or locations
-- **Benefits**: Robust token handling, graceful degradation when primary tokens unavailable
+- **Context Menu Filtering Pattern**: Dynamic UI customization through configuration-driven command visibility.
+- **Hybrid Token Resolution Pattern**: Multi-step token resolution with intelligent fallback mechanisms for robust token handling.
+- **Composite Key Pattern**: Uses multiple attributes as a composite key for resource management, ensuring unique identification.
+- **Sequential Token Processing Pattern**: Processes batch operations through existing single-operation pipelines with isolated context.
+- **Stateful Fault Tolerance Pattern**: Stateful mechanism to prevent cascading failures in service calls.
+- **Heterogeneous Data Pipeline Pattern**: Processes diverse data types through a unified pipeline with isolated error handling.
+- **Multi-Level Error Handling Pattern**: Manages errors at multiple scopes (individual units and system-wide operations).
+- **UAL Identifier System**: Standardized asset referencing across contexts.
+- **External Tool Integration Pattern**: Integrates external command-line tools with a GUI application.
+- **Dynamic UI Presentation Pattern**: Dynamic UI feedback based on asynchronous operations.
+
+### Universal Best Practices
+
+- **API Contract Enforcement**: Standardized API development methodology requiring explicit interface definitions and comprehensive testing.
+
+### Universal Workflow Patterns
+
+- **Problem Solution Workflow**: Generic workflow for identifying, analyzing, solving, and validating issues.
+- **Memory Hierarchy Compliance Workflow**: Systematic workflow for ensuring memory hierarchy compliance within a knowledge graph system.
 
 ## UAL Identifier System
 

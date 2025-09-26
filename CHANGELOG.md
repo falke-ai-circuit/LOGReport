@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Memory Hierarchy Compliance Workflow
+- Implemented Memory Hierarchy Compliance Workflow, including entity renaming, cluster merging, domain creation, and establishing explicit hierarchical relations in project memory.
+- Refined global memory by deleting project-specific entities and generalizing universal patterns.
+- Updated README.md to reflect the enhanced memory consolidation workflow and promoted global patterns.
+- Updated CHANGELOG.md to include memory optimization and hierarchy compliance efforts.
+
 ### Memory Graph Optimization
 - Removed 5 deprecated entities: CommandExecution, logging module, Command Execution Flow, Static Analysis (MyPy), Comprehensive Type Hinting
 - Merged 3 duplicate entities into core components
