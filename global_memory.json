@@ -68,6 +68,46 @@
 {"type":"entity","name":"Global.MemoryType.ProblemResolution","entityType":"MemoryType","observations":["Memory type for problem resolution related entities, encompassing bug fixes and debugging solutions.","Promoted from project: LOGReport"]}
 {"type":"entity","name":"Global.MemoryType.CodeAnalysis","entityType":"MemoryType","observations":["Memory type for code analysis related entities, encompassing code anomalies and behaviors.","Promoted from project: LOGReport"]}
 {"type":"entity","name":"Global.Workflow.Memory.MemoryHierarchyCompliance_Workflow","entityType":"Workflow","observations":["The Memory Hierarchy Compliance Workflow has been successfully executed.","Encompassed 8 distinct phases from entity analysis to type promotion.","Involved extensive use of `mcp-analyze` and `mcp-code` specialists.","Ensured adherence to the `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]` template.","Significantly enhanced the organization and retrievability of knowledge within the MCP ecosystem.","Key artifacts generated include detailed analysis reports for each layer.","Demonstrated effective coordination and adaptation to tool outputs.","Promoted from project: LOGReport","A systematic workflow for ensuring memory hierarchy compliance within a knowledge graph system. Encompasses multiple phases from entity analysis to type promotion, ensuring adherence to a defined naming template and enhancing the organization and retrievability of knowledge."]}
+{"type":"entity","name":"GLOBAL.DesignPattern.Subprocess.SubprocessOutputTracing_Pattern","entityType":"DesignPattern","observations":["Universal pattern for enhancing subprocess output capture and logging."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.Command.CommandProcessing_SystemComponent","entityType":"SystemComponent","observations":["Universal system component for command processing functionality."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.UI.UIComponents_SystemComponent","entityType":"SystemComponent","observations":["Universal system component for UI-related functionality."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.Network.NetworkOperations_SystemComponent","entityType":"SystemComponent","observations":["Universal system component for network and connection functionality."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.DataModel.DataModel_SystemComponent","entityType":"SystemComponent","observations":["Universal system component for data model and management functionality."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.ErrorHandling.SystemStability_SystemComponent","entityType":"SystemComponent","observations":["Universal system component for error handling and stability functionality."]}
+{"type":"entity","name":"GLOBAL.UIPattern.Input.CommandInputAutoUpdate_Pattern","entityType":"UIPattern","observations":["Universal UI pattern for command input auto-update."]}
+{"type":"entity","name":"GLOBAL.PythonClass.Presenter.NodeTree_Presenter","entityType":"PythonClass","observations":["Universal Python class for NodeTree Presenter."]}
+{"type":"entity","name":"GLOBAL.PyQtSignal.UI.CommandGenerated_Signal","entityType":"PyQtSignal","observations":["Universal PyQt signal for command generation."]}
+{"type":"entity","name":"GLOBAL.ArchitecturalDecision.Command.TelnetCommand_Population","entityType":"ArchitecturalDecision","observations":["Universal architectural decision for Telnet command population."]}
+{"type":"entity","name":"GLOBAL.Workflow.ImplementationPlan.TelnetCommandPopulation_Plan","entityType":"ImplementationPlan","observations":["Universal implementation plan for Telnet command population."]}
+{"type":"entity","name":"GLOBAL.Test.TestStrategy.TelnetCommandPopulation_Strategy","entityType":"TestStrategy","observations":["Universal test strategy for Telnet command population."]}
+{"type":"entity","name":"GLOBAL.Test.TestFile.TestNodeClickTelnetCommandInput_File","entityType":"TestFile","observations":["Universal test file for node click Telnet command input."]}
+{"type":"entity","name":"GLOBAL.Test.TestCase.TestNodeSelectionEmitsLogFileSelected_Case","entityType":"TestCase","observations":["Universal test case for node selection emitting log file selected signal."]}
+{"type":"entity","name":"GLOBAL.Test.TestCase.TestTelnetTabReceivesLogFileAndPopulates_Case","entityType":"TestCase","observations":["Universal test case for Telnet tab receiving log file and populating command."]}
+{"type":"entity","name":"GLOBAL.CodeStructure.Method.NodeTreePresenterOnNode_Selected","entityType":"Method","observations":["Universal method for NodeTreePresenter on node selected."]}
+{"type":"entity","name":"GLOBAL.Feature.Command.TelnetCommand_Population","entityType":"Feature","observations":["Universal feature for Telnet command population."]}
+{"type":"entity","name":"GLOBAL.Documentation.Architecture.ArchitecturalDesign_Proposal","entityType":"Document","observations":["Universal document for architectural design proposal."]}
+{"type":"entity","name":"GLOBAL.ProblemResolution.BugFix.RPCCommandGeneration_Fix","entityType":"BugFix","observations":["Universal bug fix for RPC command generation."]}
+{"type":"entity","name":"GLOBAL.Feature.UI.BsToolLogFileActivation_Fix","entityType":"Feature","observations":["Universal feature for BsTool log file activation fix."]}
+{"type":"entity","name":"GLOBAL.Architecture.DesignPattern.SignalSlotUIBinding_Pattern","entityType":"DesignPattern","observations":["Universal design pattern for Signal/Slot UI binding."]}
+{"type":"entity","name":"GLOBAL.Architecture.ArchitecturalDesign.NodeColorDetermination_Logic","entityType":"ArchitecturalDesign","observations":["Universal architectural design for node color determination logic."]}
+{"type":"entity","name":"GLOBAL.UI.UIPattern.GUINodeColorUpdate_Pattern","entityType":"UIPattern","observations":["Universal UI pattern for GUI node color update."]}
+{"type":"entity","name":"GLOBAL.ProblemResolution.BugFix.IndentationError_Fix","entityType":"BugFix","observations":["Universal bug fix for indentation errors."]}
+{"type":"entity","name":"GLOBAL.ProblemResolution.DebuggingSolution.RPCColoring_Fix","entityType":"DebuggingSolution","observations":["Universal debugging solution for RPC coloring."]}
+{"type":"entity","name":"GLOBAL.ProblemResolution.DebuggingSolution.FBCColoring_Fix","entityType":"DebuggingSolution","observations":["Universal debugging solution for FBC coloring."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.File.FileClearing_Mechanism","entityType":"SystemComponent","observations":["Universal system component for file clearing mechanism."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.UI.ContextMenu_Generation","entityType":"SystemComponent","observations":["Universal system component for context menu generation."]}
+{"type":"entity","name":"GLOBAL.SystemComponent.UI.ContextMenu_Filtering","entityType":"SystemComponent","observations":["Universal system component for context menu filtering."]}
+{"type":"entity","name":"GLOBAL.Feature.File.SubgroupFileClearing_Command","entityType":"Feature","observations":["Universal feature for subgroup file clearing command."]}
+{"type":"entity","name":"GLOBAL.CodeStructure.Method.BsToolCommandServiceClear_Log","entityType":"Method","observations":["Universal method for BsToolCommandService clear log."]}
+{"type":"entity","name":"GLOBAL.Service.UI.ContextMenu_Service","entityType":"Service","observations":["Universal service for UI context menu."]}
+{"type":"entity","name":"GLOBAL.Service.UI.ContextMenuFilter_Service","entityType":"Service","observations":["Universal service for UI context menu filter."]}
+{"type":"entity","name":"GLOBAL.Configuration.ConfigurationFile.MenuFilterRules_Json","entityType":"ConfigurationFile","observations":["Universal configuration file for menu filter rules."]}
+{"type":"entity","name":"GLOBAL.DataModel.Node.Node_Token","entityType":"DataModel","observations":["Universal data model for node token."]}
+{"type":"entity","name":"GLOBAL.Architecture.ArchitecturalDesign.ClearAllSubgroupFiles_CommandDesign","entityType":"ArchitecturalDesign","observations":["Universal architectural design for clear all subgroup files command."]}
+{"type":"entity","name":"GLOBAL.CodeStructure.Method.NodeTreePresenterClearSubgroupLog_Files","entityType":"Method","observations":["Universal method for NodeTreePresenter clear subgroup log files."]}
+{"type":"entity","name":"GLOBAL.Modification.Service.ContextMenuServiceShowContextMenu_Extension","entityType":"Modification","observations":["Universal modification for ContextMenuService show context menu extension."]}
+{"type":"entity","name":"GLOBAL.Configuration.ConfigurationRule.ContextMenuFilterServiceClearSubgroup_Rule","entityType":"ConfigurationRule","observations":["Universal configuration rule for ContextMenuFilterService clear subgroup rule."]}
+{"type":"entity","name":"GLOBAL.ProblemResolution.BugFix.TypeErrorDictObjectNotCallableNodeTreePresenterClearSubgroupLog_Files","entityType":"BugFix","observations":["Universal bug fix for TypeError: 'dict' object not callable in NodeTreePresenterClearSubgroupLog_Files."]}
 {"type":"relation","relationType":"DEPENDS_ON"}
 {"type":"relation","relationType":"DEPENDS_ON"}
 {"type":"relation","relationType":"COMPOSES"}
