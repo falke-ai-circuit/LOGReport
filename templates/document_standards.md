@@ -1,9 +1,11 @@
 # 📝 Document Standards Template
 
-> **Purpose:** Comprehensive standards for document naming, formatting, and visual consistency across all documentation | **Format:** `[DocumentType]_[Subject]_[Version].md` | **Audience:** Documentation writers | **Solves:** Inconsistent document structure + poor naming conventions
+> **Purpose:** Comprehensive standards for document naming+formatting+visual consistency+metadata tracking across all documentation | **Format:** `[DocumentType]_[Subject]_[Version].md` | **Audience:** Documentation writers | **Solves:** Inconsistent document structure+poor naming conventions+missing metadata
 
 ## 📋 Document Naming Standards
-**Pattern:** `[DocumentType]_[Subject]_[Version].md` | **Versioning:** v1,v2,v3 | **Subjects:** lowercase_with_underscores | **Extensions:** .md only
+**Pattern:** `[DocumentType]_[Subject]_[Version].md` | **Versioning:** v1,v2,v3 | **Subjects:** lowercase_with_underscores | **Extensions:** .md only | **MANDATORY METADATA**: All documents must have complete metadata for tracking+obsolete detection
+
+### 📊 MANDATORY Document Metadata: created_date|last_modified|last_accessed|word_count|reference_count|document_hash|similarity_index|obsolete_check_date | **AUTO-GENERATED** by document system | Updated on every access/modification | Used for obsolete detection | **Template**: `metadata: {created_date: YYYY-MM-DD_HHMMSS, last_modified: YYYY-MM-DD_HHMMSS, last_accessed: YYYY-MM-DD_HHMMSS, word_count: integer, reference_count: integer, document_hash: "sha256_hash", similarity_index: float, obsolete_check_date: YYYY-MM-DD_HHMMSS}`
 
 ### Standard Types
 | Type | Pattern | Location | Example |
@@ -14,19 +16,7 @@
 | **TECH** | `TECH_[component]_[v].md` | `/docs/technical/` | `TECH_api_specs_v1.md` |
 | **GUIDE** | `GUIDE_[feature]_[v].md` | `/docs/user/` | `GUIDE_auth_setup_v1.md` |
 
-## 🎯 Format Standards
-
-### Typography Rules
-**H1:** `# Document Title` single per doc | **H2:** `## Section Name` major sections | **H3:** `### Subsection` max 3 levels | **Body:** Regular paragraphs | **Bold:** `**key concepts**` commands, filenames | **Code:** `inline code` for technical terms | **Links:** `[descriptive text](URL)` no raw URLs
-
-### Lists & Structure
-**Bullets:** `-` dash for main, `  -` nested (2 spaces) | **Numbered:** `1. 2. 3.` for sequences | **Mixed:** Combine when logical | **Spacing:** Single line between items | **Depth:** Max 2 levels
-
-### Tables & Data
-**Headers:** Always include, **bold headers** | **Alignment:** Left text, right numbers | **Spacing:** Blank line before/after | **Content:** Concise, abbreviations OK | **Complex:** Prefer tables over paragraphs
-
-### Code & Examples
-**Inline:** `code` for commands, variables | **Blocks:** ````language` with syntax highlighting | **Examples:** Concrete, working samples | **Output:** Show expected results when relevant
+## 🎯 Format Standards: H1(`# Document Title` single per doc) | H2(`## Section Name` major sections) | H3(`### Subsection` max 3 levels) | Body(Regular paragraphs) | Bold(`**key concepts**` commands+filenames) | Code(`inline code` technical terms) | Links(`[text](URL)` no raw URLs) | Lists: Bullets(`-` dash main, `  -` nested 2 spaces) | Numbered(`1. 2. 3.` sequences) | Mixed(combine when logical) | Spacing(single line between) | Depth(max 2 levels) | Tables: Headers(always include **bold**) | Alignment(left text, right numbers) | Spacing(blank line before/after) | Content(concise, abbreviations OK) | Complex(prefer tables over paragraphs) | Code: Inline(`code` commands+variables) | Blocks(````language` with syntax highlighting) | Examples(concrete working samples) | Output(show expected results when relevant)
 
 ### Visual Elements
 **Emojis:** Headers only (📋 📝 🔧 ⚙️ 🎯 ✅ ❌ ⚠️ 🏗️ 📐 🗺️) | **Separators:** `---` for major breaks | **Spacing:** Single between sections, double for major | **Line Length:** 80-100 chars | **Clean:** No trailing spaces
@@ -83,8 +73,4 @@ another-command
 ```
 ```
 
-## 📊 Quality Standards
-**Consistency:** Same type = same structure/format | **Clarity:** Technical accuracy + accessible language | **Completeness:** All necessary info, no redundancy | **Maintenance:** Version updates for significant changes
-
-### Success Metrics
-**Template Compliance:** 95%+ documents follow standards | **Search Efficiency:** 40% faster document discovery | **Consistency Score:** 90%+ structural similarity within types | **User Satisfaction:** Clear, navigable documentation
+## 📊 Quality Standards: Consistency(Same type=same structure/format) | Clarity(Technical accuracy+accessible language) | Completeness(All necessary info, no redundancy) | Maintenance(Version updates for significant changes) | Success Metrics: Template Compliance(95%+documents follow standards) | Search Efficiency(40% faster discovery) | Consistency Score(90%+structural similarity within types) | User Satisfaction(Clear navigable documentation)
