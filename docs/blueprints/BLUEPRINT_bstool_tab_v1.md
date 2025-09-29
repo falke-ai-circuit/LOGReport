@@ -19,57 +19,10 @@ This document outlines the blueprint for integrating `bstool.exe` into the LOGRe
 - **PyInstaller Spec File Modification**: The `LOGReporter.spec` file will be updated to include `bstool.exe` as a data file. This will ensure `bstool.exe` is placed in a predictable location within the bundled application's directory structure (e.g., `dist/LOGReporter/_internal/bstool.exe`).
 - **Access Path**: The `BsToolCommandService` will use a relative path to locate `bstool.exe` within the bundled application, ensuring it works correctly after deployment.
 
-#### PyInstaller Spec File Details
-The `LOGReporter.spec` file is modified to include `bstool.exe` in the `datas` array. This ensures that `bstool.exe` is copied to the `_internal` directory within the bundled application.
-
-```python
-# -*- mode: python ; coding: utf-8 -*-
-
-block_cipher = None
-
-added_files = [
-    ('path/to/bstool.exe', 'bstool.exe') # Example: Adjust 'path/to/bstool.exe' as needed
-]
-
-a = Analysis(
-    ['src/main.py'],
-    pathex=['.'],
-    binaries=[],
-    datas=added_files,
-    hiddenimports=[],
-    hookspath=[],
-    runtime_hooks=[],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
-    noarchive=False,
-)
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name='LOGReporter',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_info=None,
-    console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
-```
-After bundling, `bstool.exe` will be accessible at `_internal/bstool.exe` relative to the main executable.
+#### 📦 PyInstaller Spec File Details
+| Component | Modification | Purpose | Access Path |
+|---|---|---|---|
+| `LOGReporter.spec` | Add `('path/to/bstool.exe', 'bstool.exe')` to `datas` array | Bundles `bstool.exe` with `LOGReporter.exe` | `_internal/bstool.exe` (relative to main executable) |
 
 ### 3.2. Context Menu Integration (`ContextMenuService`)
 The existing `ContextMenuService` (`src/commander/services/context_menu_service.py`) will be extended to provide a new right-click action for `.log` files.

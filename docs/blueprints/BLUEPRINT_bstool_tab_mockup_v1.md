@@ -14,65 +14,21 @@ The tab will be organized into several vertical sections, similar to the Telnet 
 
 ---
 
-## Detailed UI Elements
+## 🎯 UI Elements Summary
 
-### 1. Connection/Execution Bar
-
-This horizontal bar will be at the top of the tab.
-
--   **Label:** `BsTool Path:`
--   **Input Field (BsTool Path):**
-    -   Type: `QLineEdit`
-    -   Placeholder: `e.g., C:\Program Files\BsTool\bstool.exe`
-    -   Width: Occupies significant horizontal space.
--   **Label:** `Env Var:`
--   **Static Display (Environment Variable):**
-    -   Type: `QLabel`
-    -   Content: `COMMUNICATION_LINE=AB01`
-    -   Width: Sufficient to display the fixed environment variable.
--   **Status Indicator:**
-    -   Type: `QLabel`
-    -   Content: A circular Unicode character (e.g., `●` for running, `○` for stopped, `◔` for starting, `✖` for error).
-    -   Color: Dynamically changes based on process state (e.g., green for running, gray for stopped, orange for starting, red for error).
-    -   Font Size: Larger than surrounding text for visibility.
-
-### 2. Output Display
-
-This section will occupy the majority of the tab's vertical space.
-
--   **Display Area:**
-    -   Type: `QTextEdit`
-    -   Read-only: `True`
-    -   Content: Displays all `stdout` and `stderr` output from the `bstool.exe` process.
-    -   Scrollbar: Vertical scrollbar will appear as content exceeds visible area.
-    -   Font: Monospaced font for clear console output readability.
-
-### 3. Command Input
-
-This horizontal bar will be located below the Output Display.
-
--   **Input Field (Command):**
-    -   Type: `QLineEdit`
-    -   Placeholder: `Enter command...`
-    -   Width: Occupies significant horizontal space.
--   **Execute Button:**
-    -   Type: `QPushButton`
-    -   Text: `Execute`
-    -   Initial State: Enabled (but commands will only be sent if `bstool.exe` is running).
-
-### 4. Action Buttons
-
-This horizontal bar will be at the bottom of the tab.
-
--   **Copy to Log Button:**
-    -   Type: `QPushButton`
-    -   Text: `Copy to Log`
--   **Clear Terminal Button:**
-    -   Type: `QPushButton`
-    -   Text: `Clear Terminal`
--   **Clear Log Button:**
-    -   Type: `QPushButton`
-    -   Text: `Clear Log`
+| Element | Type | Description | State/Content |
+|---|---|---|---|
+| **BsTool Path Label** | `QLabel` | Identifies path input | `BsTool Path:` |
+| **BsTool Path Input** | `QLineEdit` | User-editable path | `e.g., C:\\Program Files\\BsTool\\bstool.exe` |
+| **Env Var Label** | `QLabel` | Identifies environment variable | `Env Var:` |
+| **Env Var Display** | `QLabel` | Fixed environment variable | `COMMUNICATION_LINE=AB01` |
+| **Status Indicator** | `QLabel` | Process status | `●` (running) `○` (stopped) `◔` (starting) `✖` (error) |
+| **Output Display** | `QTextEdit` | `stdout`/`stderr` from `bstool.exe` | Read-only, monospaced font, scrollable |
+| **Command Input** | `QLineEdit` | User command entry | `Enter command...` |
+| **Execute Button** | `QPushButton` | Sends command to `bstool.exe` | Enabled (if `bstool.exe` running) |
+| **Copy to Log Button** | `QPushButton` | Copies output to log | `Copy to Log` |
+| **Clear Terminal Button** | `QPushButton` | Clears output display | `Clear Terminal` |
+| **Clear Log Button** | `QPushButton` | Clears associated log file | `Clear Log` |
 
 ---
 

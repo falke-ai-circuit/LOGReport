@@ -1,103 +1,34 @@
-# LOGReport Architecture Documentation
+# LOGReport Architecture Overview
 
 ## Core Components
-
-### NetworkSession (Base Class)
-- Abstract base class for all session types
-- Defines common interface for command execution and connection management
-- Enforces standardized error handling across all protocols
-- Provides connection health monitoring and retry mechanisms
-
-### NodeToken
-- Represents tokens and their attributes
-- Handles token validation and processing
-- Key properties: token_id, node_name, token_type (FBC/RPC)
-
-### Node
-- Manages node configurations and connections
-- Contains node metadata and status
-- Handles communication with physical nodes
-
-### CommanderWindow
-- Main UI orchestrator
-- Responsibilities:
-  - Command execution flow
-  - User interaction handling
-  - Log display and management
-  - Status updates
-
-### Command Services
-- Consolidated service layer for all command processing
-- Unified interface for FBC and RPC commands
-- Standardized error handling and response processing
-- Centralized command queuing and execution
-
-#### FbcCommandService
-- Implements FBC-specific command logic
-- Inherits from base CommandService
-- Manages FBC session state through NetworkSession
-
-#### RpcCommandService
-- Implements RPC-specific command execution
-- Inherits from base CommandService
-- Manages RPC session state through NetworkSession
-
-### Command Queue
-- Centralized command processing
-- Ensures thread-safe command execution
-- Manages command prioritization
-
-### TelnetOperations
-- Consolidated Telnet functionality across the application
-- Implements robust connection handling with retry logic
-- Standardized prompt pattern matching and response parsing
-- Centralized error handling for Telnet operations
-- Manages connection timeouts and session recovery
-
-### Log Writer
-- Handles all log file operations
-- Features:
-  - Size-based rotation (10MB max, 5 backups)
-  - Consistent log formatting
-  - Thread-safe operations
+| Component | Responsibilities | Key Features |
+|-----------|----------------|--------------|
+| NetworkSession (Base) | Common interface, error handling | Health monitoring, retries |
+| NodeToken | Token validation | id, name, type (FBC/RPC) |
+| Node | Config management | Metadata, status, comm |
+| CommanderWindow | UI orchestration | Cmd flow, interaction, logs |
+| Command Services | Processing layer | Unified FBC/RPC, errors, queue |
+| FbcCommandService | FBC logic | Inherits base, session state |
+| RpcCommandService | RPC execution | Inherits base, session state |
+| Command Queue | Thread-safe exec | Prioritization, state mgmt |
+| TelnetOperations | Connection handling | Retry, parsing, timeouts |
+| Log Writer | File ops | Rotation (10MB,5 backups), thread-safe |
 
 ## Architectural Principles
-
-### Hierarchical Service Taxonomy
-- Services organized in a hierarchical structure:
-  - Base CommandService for common functionality
-  - Protocol-specific services (FbcCommandService, RpcCommandService) for specialized logic
-  - NetworkSession as the foundation for all network operations
-- Clear inheritance and composition relationships
-- Reduced code duplication through shared base classes
-
-### Modular Design
-- Clear separation between:
-  - UI layer (CommanderWindow)
-  - Business logic (Command Services)
-  - Data access (Log Writer)
-- Minimal cross-component dependencies
-
-### Interface Contracts
-- Well-defined interfaces between components
-- Explicit service contracts for command execution
-- Standardized error handling
-
-### Thread Safety
-- Centralized command queue for thread management
-- Synchronized access to shared resources
-- Atomic operations for critical sections
+| Principle | Description | Benefits |
+|-----------|-------------|----------|
+| Hierarchical Services | Base→Protocol-specific | Reduced duplication |
+| Modular Design | UI|Logic|Data separation | Minimal deps |
+| Interface Contracts | Defined interfaces | Explicit, standardized errors |
+| Thread Safety | Queue sync, atomic ops | No races |
 
 ## Data Flow
-
-1. User initiates command via UI
-2. CommanderWindow validates and formats request
-3. Command added to Command Queue
-4. Appropriate Command Service processes request
-5. Results logged via Log Writer
-6. Status updates propagated back to UI
+1. UI initiates cmd
+2. Validate/format in CommanderWindow
+3. Queue cmd
+4. Service processes
+5. Log results
+6. Update UI
 
 ## Error Handling
-- Centralized error handling in CommanderWindow
-- Service-specific error recovery
-- Comprehensive logging of failures
+Centralized in CommanderWindow; service recovery; full logging.

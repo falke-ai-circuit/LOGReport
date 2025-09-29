@@ -1,59 +1,57 @@
 # Documentation Consolidation Blueprint
 
-## 1. Taxonomy Structure
+## Taxonomy
 ```plaintext
 docs/
-├── ARCHITECTURAL/        # System design and planning
-│   ├── system_blueprints/  # High-level designs
-│   ├── component_designs/  # Individual component specs
-│   └── roadmaps/           # Implementation plans
-├── USER/                 # Usage documentation
-│   ├── guides/             # How-to guides
-│   ├── references/         # Command/API references
-│   └── troubleshooting/    # Problem resolution
-└── TECHNICAL/            # Implementation details
-    ├── apis/              # API documentation
-    ├── testing/           # Test procedures
-    └── internals/         # System internals
+├── ARCHITECTURAL/
+│   ├── system_blueprints/
+│   ├── component_designs/
+│   └── roadmaps/
+├── USER/
+│   ├── guides/
+│   ├── references/
+│   └── troubleshooting/
+└── TECHNICAL/
+    ├── apis/
+    ├── testing/
+    └── internals/
 ```
 
-## 2. File Relocation Mapping
-| Current Location | New Location | Type |
-|------------------|--------------|------|
-| docs/architecture/ | ARCHITECTURAL/component_designs/ | ARCHITECTURAL |
-| docs/blueprints/ | ARCHITECTURAL/system_blueprints/ | ARCHITECTURAL |
-| docs/roadmaps/ | ARCHITECTURAL/roadmaps/ | ARCHITECTURAL |
+## Relocation Mapping
+| Current | New | Type |
+|--------|-----|------|
+| docs/architecture/ | ARCHITECTURAL/component_designs/ | ARCH |
+| docs/blueprints/ | ARCHITECTURAL/system_blueprints/ | ARCH |
+| docs/roadmaps/ | ARCHITECTURAL/roadmaps/ | ARCH |
 | docs/guides/ | USER/guides/ | USER |
-| docs/api/ | TECHNICAL/apis/ | TECHNICAL |
-| docs/testing/ | TECHNICAL/testing/ | TECHNICAL |
-| docs/token_processing.md | ARCHITECTURAL/component_designs/token_management/ | ARCHITECTURAL |
+| docs/api/ | TECHNICAL/apis/ | TECH |
+| docs/testing/ | TECHNICAL/testing/ | TECH |
+| docs/token_processing.md | ARCHITECTURAL/component_designs/token_management/ | ARCH |
 
-## 3. Merge Logic
-**Duplicate Resolution:**
-- For `token_processing.md` duplicates:
-  1. Compare both versions
-  2. Preserve unique content
-  3. Resolve conflicts by:
-     - Preferring newer timestamps
-     - Selecting more detailed sections
-     - Manual arbitration if needed
-  4. Save merged version in ARCHITECTURAL/component_designs/token_management/
+## Merge Logic
+| Duplicate | Resolution |
+|----------|------------|
+| token_processing.md | Compare versions; preserve unique; prefer newer/detailed; manual if needed; save merged |
 
-**Standardization Rules:**
-1. All filenames: lowercase_with_underscores
-2. Section headers: Title Case
-3. Metadata block at top: type, created, updated
+## Standardization
+- Filenames: lowercase_with_underscores
+- Headers: Title Case
+- Metadata: type, created, updated at top
 
-## 4. Validation Checklist
-- [ ] Content checksum verification
-- [ ] Internal link validation
-- [ ] Taxonomy compliance audit
-- [ ] Broken link scan
-- [ ] Accessibility test
-- [ ] Version history preservation
+## Validation Checklist
+| Item | Status |
+|------|--------|
+| Content checksum | [ ] |
+| Link validation | [ ] |
+| Taxonomy audit | [ ] |
+| Broken links | [ ] |
+| Accessibility | [ ] |
+| Version history | [ ] |
 
-## 5. Safety Measures
-- Dry-run mode for all operations
-- Pre-consolidation backup
-- Atomic operations with rollback
-- Progress logging with checkpointing
+## Safety Measures
+| Measure | Details |
+|---------|---------|
+| Dry-run | All ops |
+| Backup | Pre-consolidation |
+| Atomic | Rollback capable |
+| Logging | Progress/checkpoints |

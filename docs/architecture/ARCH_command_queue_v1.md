@@ -1,5 +1,6 @@
 # Command Queue Architecture
 
+## Flow Diagram
 ```mermaid
 graph TD
     A[UI Layer] -->|Commands| B(Command Queue)
@@ -15,38 +16,30 @@ graph TD
 ```
 
 ## Components
+| Component | Details |
+|-----------|---------|
+| Command Queue | Thread-safe FIFO (deque), atomic Lock, states (idle/processing/backpressure), max 1000 |
+| Worker Management | Dynamic pooling; lifecycle: dequeue→execute→signal→cleanup |
 
-### Command Queue
-- Thread-safe FIFO buffer using deque
-- Atomic operations via threading.Lock
-- State tracking (idle/processing/backpressure)
-- Max depth: 1000 commands
+## State Transitions
+| From | To | Trigger |
+|-----|----|---------|
+| Idle | Processing | Commands received |
+| Processing | Backpressure | Queue >800 |
+| Backpressure | Processing | Queue <200 |
+| Processing | Idle | Queue empty |
 
-### Worker Management
-- Dynamic thread pooling
-- Worker lifecycle:
-  1. Dequeue command
-  2. Execute via appropriate service
-  3. Emit completion signal
-  4. Cleanup resources
-
-### State Transitions
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> Processing: Commands received
-    Processing --> Backpressure: Queue > 800
-    Backpressure --> Processing: Queue < 200
-    Processing --> Idle: Queue empty
-```
-
-## Performance Characteristics
-- Throughput: 1500 commands/second
-- Latency: <50ms (p95)
-- Max queue depth: 1000 commands
-- Memory usage: <2MB per 1000 commands
+## Performance
+| Metric | Value |
+|--------|-------|
+| Throughput | 1500 cmd/s |
+| Latency | <50ms p95 |
+| Max Depth | 1000 |
+| Memory | <2MB/1000 cmd |
 
 ## Failure Handling
-- Automatic retries for transient errors
-- Dead letter queue for failed commands
-- Circuit breaker pattern for node outages
+| Strategy | Details |
+|----------|---------|
+| Retries | Transient errors |
+| Dead Letter | Failed cmds |
+| Circuit Breaker | Node outages |
