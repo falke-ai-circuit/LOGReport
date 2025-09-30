@@ -4,12 +4,19 @@ This document outlines the standardized process for managing and consolidating p
 
 ## ♻️ Step-by-Step Consolidation Plan
 
-### 1. 🔓 Memory Loading Step
+### 1. 🔓 Selective Memory Loading Step
 
-* Use **MCP server tools available on the `global_memory` server** to load global memory (persistent cross-project insights).
-* Use **MCP server tools available on the `project_memory` server** to load project-local memory (entities, structures, known issues).
-* These tools must be discovered, interpreted, and invoked within the server context using their appropriate invocation interfaces.
-* Verify successful loading of both memory contexts before proceeding.
+* **Selective Global Memory Loading**: Use **MCP server tools available on the `global_memory` server** with targeted loading:
+  * Query specific types|domains|clusters|entities based on current task context rather than loading entire global memory
+  * Use search/filter parameters to load only relevant hierarchy components: `load_by_type([type])` | `load_by_domain([domain])` | `load_by_cluster([cluster])`
+  * Implement progressive loading: Load Type→Domain→Cluster→Entity in sequence as needed
+  * Skip loading unrelated global patterns to reduce memory overhead
+* **Project Memory Loading**: Use **MCP server tools available on the `project_memory` server** to load project-local memory (entities, structures, known issues).
+* **Context-Aware Loading**: Determine what global memory components are needed based on:
+  * Current task requirements (debug→load debug patterns, refactor→load refactor patterns)
+  * Project memory references (load global components referenced by project entities)
+  * Active workflow phase (load only relevant global memory for current phase)
+* **Loading Validation**: Verify successful loading of relevant memory contexts before proceeding; avoid loading unnecessary global data.
 
 ### 2. 👤 Identity-Based Scoping
 
@@ -51,26 +58,32 @@ This document outlines the standardized process for managing and consolidating p
 * Document the consolidation plan with clear justifications for each proposed change.
 * Validate the plan with consistency checks before execution.
 
-### 6. 📅 Knowledge Tracking During Execution
+### 6. 📅 Selective Knowledge Tracking During Execution
 
 * While performing tasks, record new facts, structural inferences, behaviors, naming decisions, and task outcomes:
   * Use **tools from the `project_memory` MCP server** for project-specific knowledge
-  * Use **tools from the `global_memory` MCP server** for reusable abstractions or cross-project patterns
-* Track intermediate states and decisions for auditability.
+  * Use **tools from the `global_memory` MCP server** for reusable abstractions or cross-project patterns with selective targeting:
+    * Only update relevant global hierarchy components (type|domain|cluster|entity) based on current context
+    * Avoid updating unrelated global patterns to minimize unnecessary writes
+    * Use targeted global memory operations: `update_type()` | `update_domain()` | `update_cluster()` | `update_entity()`
+* **Progressive Loading During Execution**: Load additional global memory components on-demand as new patterns emerge
+* Track intermediate states and decisions for auditability with selective memory scope.
 * Handle any errors in knowledge recording without stopping the overall workflow.
 
-### 7. ✏️ Apply Memory Updates
+### 7. ✏️ Apply Selective Memory Updates
 
 * In `project_memory(...)` MCP server tools, apply changes:
   * Merge duplicates
   * Rename and re-cluster entities
   * Remove or add entities and observations based on documents and source code
   * Link configs, services, modules, or events logically
-* In `global_memory(...)` MCP server tools, promote:
-  * Generalized concepts
-  * Reusable structures
-  * Canonical workflows or naming patterns
-* Validate each update to ensure consistency and correctness.
+* In `global_memory(...)` MCP server tools, promote with selective targeting:
+  * Target specific hierarchy levels: type|domain|cluster|entity based on relevance
+  * Promote only universally applicable concepts to avoid global memory bloat
+  * Use selective promotion: `promote_to_type()` | `promote_to_domain()` | `promote_to_cluster()`
+  * Avoid updating irrelevant global patterns or distant hierarchy components
+* **Selective Update Strategy**: Update only loaded global memory components; leave unloaded components unchanged
+* Validate each update to ensure consistency and correctness within selective scope.
 
 ### 8. ✅ Validation Steps
 
@@ -81,23 +94,27 @@ This document outlines the standardized process for managing and consolidating p
 * Validate that all changes align with the original consolidation plan.
 * Handle validation failures with appropriate error reporting and recovery options.
 
-### 9. 🧹 Global Memory Cleanup
+### 9. 🧹 Selective Global Memory Cleanup
 
 * Once key insights are promoted to global memory:
-  * Re-analyze for duplication or overlap
-  * Use `sequential_thinking(...)` MCP server tools to clean, deduplicate, and restructure
-  * Finalize updates to global memory graph
-* Ensure global memory remains consistent and optimized.
+  * Re-analyze only the loaded/modified global memory components for duplication or overlap
+  * Use `sequential_thinking(...)` MCP server tools to clean, deduplicate, and restructure within selective scope
+  * Finalize updates only to actively used global memory hierarchy components
+  * Avoid unnecessary cleanup of unrelated global memory areas
+* **Selective Cleanup Strategy**: Target cleanup operations to specific type|domain|cluster|entity components that were actively loaded/modified
+* Ensure loaded global memory remains consistent and optimized without affecting unloaded components.
 * Handle any cleanup errors without affecting the overall process.
 
-### 10. 🚪 Session Closure
+### 10. 🚪 Session Closure with Selective Scope
 
-* Confirm all memory operations are completed:
+* Confirm all memory operations are completed within selective loading scope:
   * Verify all project-specific insights are properly recorded in `project_memory`
-  * Ensure all reusable patterns are correctly promoted to `global_memory`
-* Perform final consistency checks on both memory graphs.
-* Log session completion with timestamp and summary of operations performed.
-* Handle any last-minute errors or inconsistencies that might affect session closure.
+  * Ensure relevant reusable patterns are correctly promoted to loaded `global_memory` components
+  * Validate that unloaded global memory components remain unchanged and consistent
+* **Selective Validation**: Perform consistency checks only on loaded global memory hierarchy components
+* **Scope Documentation**: Log which global memory components were loaded/modified for session tracking
+* Log session completion with timestamp, selective scope summary, and operations performed on specific hierarchy levels.
+* Handle any last-minute errors or inconsistencies within the selective loading scope.
 
 ### 11. ⚠️ Error Handling and Recovery
 
