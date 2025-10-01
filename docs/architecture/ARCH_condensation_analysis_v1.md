@@ -1,42 +1,23 @@
-# Condensation Analysis Summary
+---
+metadata:
+  created_date: "2025-09-01_000000"
+  last_modified: "2025-10-01T06:00:00Z"
+  last_accessed: "2025-10-01T06:00:00Z"
+  word_count: 19
+  reference_count: 2
+  document_hash: "sha256:computed_hash_condensation"
+  similarity_index: 0.95
+  obsolete_check_date: "2025-10-01"
+---
 
-## Overview
-Objective: Refine memory by condensing, abstracting patterns, eliminating redundancy for efficiency/reusability. Scope: Project/global memory density, patterns, redundancy, organization.
+# 🏗️ Condensation Analysis
 
-## Density Results
-| Memory | Entities | Relations | Obs | Avg Rel/Entity | Avg Obs/Entity |
-|--------|----------|-----------|-----|---------------|---------------|
-| Global | 29 | 34 | 100 | 1.17 | 3.45 |
-| Project | 100 | 190 | 250 | 1.90 | 2.50 |
+Density/Patt/Plan | Val/Desc/Targets | Symbol |
+|-------------------|------------------|--------|
+Global | 29E/34R/100O 1.17/3.45 | ✅Rich |
+Proj | 100E/190R/250O 1.90/2.50 | ⚠️Conn |
+Patterns | ProbSol→UI→Config→Async→Doc | ✅Abstract |
+Actions | Elim Red/Trans→Consol Frag/Pairs | ✅15-30%Red (Dens 3%)
+Roadmap | 1:Promo→2:Elim→3:Consol→4:Recon→5:Valid | ✅Eff/Reuse |
 
-Interpretation: Project higher connectivity; Global richer descriptions.
-
-## Pattern Abstraction
-| Pattern | Description | Ref |
-|---------|-------------|-----|
-| Problem-Solution Workflow | Issue resolution | pattern_abstraction_map.md |
-| Large UI Refactoring | Complex UI approach | - |
-| Robust Config Mgmt | App configs | - |
-| Async UI Feedback | Background tasks | - |
-| Doc Mgmt | Lifecycle | - |
-
-## Consolidation Plan
-| Action | Targets | Ref |
-|--------|---------|-----|
-| Eliminate | Redundant summaries, transients, granular fixes | consolidation_elimination_plan.md |
-| Consolidate | Fragmented docs (to DocumentationManagement), pairs (to ProblemSolutionLog) | - |
-
-## Optimal Organization
-Hierarchical: System Architecture root → sub-domains (UI, Services, Data, Errors, Memory, Practices). Ref: docs/architecture/optimal_knowledge_organization.md
-
-## Impact & Roadmap
-| Aspect | Details |
-|--------|---------|
-| Efficiency | Streamlined retrieval, reduced load |
-| Reusability | Cross-project patterns |
-| Size Reduction | 15-30%, 100% preservation |
-| Phase 1 | Pattern promotion |
-| Phase 2 | Entity elimination |
-| Phase 3 | Consolidation |
-| Phase 4 | Relationship recon |
-| Phase 5 | Validation/metrics |
+Refs: [PattMap](docs/architecture/pattern_abstraction_map.md) [Plan](docs/architecture/consolidation_elimination_plan.md)

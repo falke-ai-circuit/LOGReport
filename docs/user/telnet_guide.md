@@ -42,3 +42,6 @@ print(response)
 - Always validate commands before sending
 - Use the command queue for bulk operations
 - Handle connection errors gracefully
+## Codebase Sync
+- Command Queue: [src/commander/services/queue_management_service.py:1](src/commander/services/queue_management_service.py:1) (thread-safe queue, progress tracking)
+- LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51) (write_to_log for responses)

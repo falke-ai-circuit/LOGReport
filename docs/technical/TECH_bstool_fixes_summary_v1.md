@@ -8,7 +8,7 @@ Summarizes fixes for RPC command generation and BsTool tab activation for `.log`
 
 ### RPC Command Generation Fix
 
-**File**: `src/commander/services/context_menu_service.py` (line 301)
+**File**: `src/commander/services/context_menu_service.py` (line 301) [src/commander/services/context_menu_service.py:301]
 
 **Issue**: RPC token commands included IP addresses in `token_id`.
 
@@ -24,13 +24,13 @@ Summarizes fixes for RPC command generation and BsTool tab activation for `.log`
 
 ### BsTool Log File Activation Fix
 
-**Files**: `src/commander/presenters/node_tree_presenter.py` (lines 662-696, 643-661)
+**Files**: `src/commander/presenters/node_tree_presenter.py` (lines 662-696, 643-661) [src/commander/presenters/node_tree_presenter.py:643]
 
 **Issue**: Selecting `.log` files did not generate commands or activate BsTool tab.
 
 **Fix**:
 - In `on_node_selected` for "LOG" type: Extract `node_id` using `_extract_node_id_from_log_path` (e.g., "AP01m_192-168-0-11.log" → "AP01"), generate command `-errlog {node_id}`, emit `command_generated_signal` with "BSTOOL" type.
-- In `process_bstool_command`: Emit command signal to populate UI and activate tab via `CommanderWindow._handle_command_generated`.
+- In `process_bstool_command`: Emit command signal to populate UI and activate tab via `CommanderWindow._handle_command_generated` [src/commander/ui/commander_window.py:1](src/commander/ui/commander_window.py:1).
 - Node ID extraction handles truncation (e.g., "AP01m" → "AP01").
 
 **Integration Notes**:

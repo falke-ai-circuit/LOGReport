@@ -229,3 +229,6 @@ Planned enhancements to token management include:
 - Configuration-based priority rules for token resolution
 - Improved UI for token management
 - Integration with external authentication systems
+## Codebase Sync
+- Token Utils: [src/commander/utils/token_utils.py:1](src/commander/utils/token_utils.py:1) (hybrid resolution, normalization)
+- Queue Management: [src/commander/services/queue_management_service.py:1](src/commander/services/queue_management_service.py:1) (for batch token processing)

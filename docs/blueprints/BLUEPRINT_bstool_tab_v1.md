@@ -43,8 +43,8 @@ The `BsToolCommandService` inherits from `QObject` and manages the execution of 
 ```python
 import subprocess
 import os
-from PyQt5.QtCore import QObject, pyqtSignal
-from src.commander.services.threading_service import ThreadingService # Assuming this path
+from PyQt6.QtCore import QObject, pyqtSignal
+from src.commander.services.threading_service import ThreadingService # Assuming this path [src/commander/services/threading_service.py:1]
 
 class BsToolCommandService(QObject):
     status_message_signal = pyqtSignal(str, int)

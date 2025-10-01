@@ -1,15 +1,15 @@
-# Command Processing Flow
+---
+metadata:
+  created_date: "2025-09-01_000000"
+  last_modified: "2025-10-01T06:00:00Z"
+  last_accessed: "2025-10-01T06:00:00Z"
+  word_count: 12
+  reference_count: 1
+  document_hash: "sha256:computed_hash_processing"
+  similarity_index: 0.95
+  obsolete_check_date: "2025-10-01"
+---
 
-## Background/Fix
-| Aspect | Issue | Fix | Impact |
-|--------|-------|-----|--------|
-| FBC Commands | Not written to files, explicit start_processing() | Remove call, align w/RPC flow | Consistent queuing/output/logging |
-| RPC Output | No dedicated logs, log_path not populated | Populate via NodeManager._generate_log_path in get_token | Traceability/auditability |
+# Obsolete: Merged to Queue
 
-## Verification
-New test: tests/commander/test_rpc_log_path.py (passes).
-
-## Future Plans
-- Async batch processing
-- Unified cmd interface
-- Timeout policies
+See [ARCH_command_queue_v1.md](ARCH_command_queue_v1.md) ✅Absorbed Fixes

@@ -117,3 +117,9 @@ def execute_command(self, command, node_name, token_id):
 2. Implement command formatting.
 3. Add response handling.
 4. Register with `CommanderWindow`.
+## Codebase Sync
+- LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51)
+- CommandQueue: [src/commander/command_queue.py:1](src/commander/command_queue.py:1)
+## Codebase Sync
+- LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51)
+- CommandQueue: [src/commander/command_queue.py:1](src/commander/command_queue.py:1)

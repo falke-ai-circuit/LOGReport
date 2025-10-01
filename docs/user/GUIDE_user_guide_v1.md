@@ -87,3 +87,6 @@ from commander.node_manager import NodeManager
 nm = NodeManager()
 nm.load_configuration()
 print(nm.get_all_nodes())
+## Codebase Sync
+- FbcCommandService: [src/commander/services/fbc_command_service.py:53](src/commander/services/fbc_command_service.py:53) (queue_fieldbus_command for FBC tokens)
+- Command Queue: [src/commander/services/queue_management_service.py:1](src/commander/services/queue_management_service.py:1) (thread-safe execution)

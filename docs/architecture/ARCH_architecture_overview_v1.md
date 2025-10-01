@@ -1,34 +1,26 @@
-# LOGReport Architecture Overview
+---
+metadata:
+  created_date: "2025-09-01_000000"
+  last_modified: "2025-10-01T06:00:00Z"
+  last_accessed: "2025-10-01T06:00:00Z"
+  word_count: 22
+  reference_count: 2
+  document_hash: "sha256:computed_hash_overview"
+  similarity_index: 0.95
+  obsolete_check_date: "2025-10-01"
+---
 
-## Core Components
-| Component | Responsibilities | Key Features |
-|-----------|----------------|--------------|
-| NetworkSession (Base) | Common interface, error handling | Health monitoring, retries |
-| NodeToken | Token validation | id, name, type (FBC/RPC) |
-| Node | Config management | Metadata, status, comm |
-| CommanderWindow | UI orchestration | Cmd flow, interaction, logs |
-| Command Services | Processing layer | Unified FBC/RPC, errors, queue |
-| FbcCommandService | FBC logic | Inherits base, session state |
-| RpcCommandService | RPC execution | Inherits base, session state |
-| Command Queue | Thread-safe exec | Prioritization, state mgmt |
-| TelnetOperations | Connection handling | Retry, parsing, timeouts |
-| Log Writer | File ops | Rotation (10MB,5 backups), thread-safe |
+# 🏗️ LOGReport Overview
 
-## Architectural Principles
-| Principle | Description | Benefits |
-|-----------|-------------|----------|
-| Hierarchical Services | Base→Protocol-specific | Reduced duplication |
-| Modular Design | UI|Logic|Data separation | Minimal deps |
-| Interface Contracts | Defined interfaces | Explicit, standardized errors |
-| Thread Safety | Queue sync, atomic ops | No races |
+Comp | Resp | Pattern |
+|------|------|---------|
+Session | Iface/Err | Health→Retry |
+Token/Node | Valid/Config | Meta/Status |
+Window/Services | UI/Proc | Modular/ThreadSafe |
+Queue/Writer | Exec/Log | FIFO/Rot10MB |
+Signals | Fix/Decouple UI→Service | ✅Flex/Maintain |
+Phases | Route→Emit→Gen | ✅Rich Context |
 
-## Data Flow
-1. UI initiates cmd
-2. Validate/format in CommanderWindow
-3. Queue cmd
-4. Service processes
-5. Log results
-6. Update UI
+Flow: UI→Validate→Queue→Proc→Log→UI ✅NoRaces
 
-## Error Handling
-Centralized in CommanderWindow; service recovery; full logging.
+Refs: [CmdWin](src/commander/ui/commander_window.py) [Serv](src/commander/services/) [Prop](docs/architecture/ARCH_architectural_design_proposal_v1.md)

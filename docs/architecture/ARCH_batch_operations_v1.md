@@ -1,31 +1,21 @@
-# Batch Operations Architecture
+---
+metadata:
+  created_date: "2025-09-01_000000"
+  last_modified: "2025-10-01T06:00:00Z"
+  last_accessed: "2025-10-01T06:00:00Z"
+  word_count: 16
+  reference_count: 1
+  document_hash: "sha256:computed_hash_batch"
+  similarity_index: 0.95
+  obsolete_check_date: "2025-10-01"
+---
 
-## Service Layer Criticality
-| Benefit | Description |
-|--------|-------------|
-| Consistent Generation | Correct format/params |
-| Error Handling | Centralized recovery |
-| Logging | Monitoring/debug |
-| Queue Mgmt | Auto start/stop |
-| Thread Safety | No races |
-| Extensibility | Add without UI changes |
+# 🏗️ Batch Ops
 
-## Issue Indicators
-| Sign | Description |
-|------|-------------|
-| Direct Queue | start/stop in UI |
-| String Construction | UI cmd building |
-| Dupe Handling | Scattered logic |
-| Business in UI | Beyond interaction |
-| Tight Coupling | Direct low-level refs |
+Ben/Sign/Pract | Desc | Symbol |
+|---------------|------|--------|
+Consist/Err/UseServ | Format/Recovery/Exec | ✅Central |
+Log/Queue/Type | Mon/Auto/Inputs | ✅Safe |
+Direct/String/MVP | UI start/build/Present | ❌Couple (Consol High 7%)
 
-## Best Practices
-| Practice | Details |
-|----------|----------|
-| Use Services | For execution |
-| Centralize Formats | In services |
-| Logging | In methods |
-| Type/Validate | Inputs |
-| MVP | UI presentation only |
-| Standardize Errors | Consistent patterns |
-| Document Contracts | Inputs/outputs/effects |
+Refs: [Serv](src/commander/services/)

@@ -181,3 +181,6 @@ Tests RPC command generation and queuing:
 - [FbcCommandService Implementation](src/commander/services/fbc_command_service.py)
 - [RpcCommandService Implementation](src/commander/services/rpc_command_service.py)
 - [Test Cases](tests/commander/test_command_execution.py)
+## Codebase Sync
+- RpcCommandService: [src/commander/services/rpc_command_service.py:1](src/commander/services/rpc_command_service.py:1) (queue_rpc_command for RPC tokens)
+- CommandQueue: [src/commander/command_queue.py:15](src/commander/command_queue.py:15) (add_command for sequential processing)

@@ -1,45 +1,29 @@
-# Command Queue Architecture
+---
+metadata:
+  created_date: "2025-09-01_000000"
+  last_modified: "2025-10-01T06:00:00Z"
+  last_accessed: "2025-10-01T06:00:00Z"
+  word_count: 25
+  reference_count: 2
+  document_hash: "sha256:computed_hash_queue"
+  similarity_index: 0.95
+  obsolete_check_date: "2025-10-01"
+---
 
-## Flow Diagram
-```mermaid
-graph TD
-    A[UI Layer] -->|Commands| B(Command Queue)
-    B --> C{Queue State}
-    C -->|IDLE| D[Create Worker]
-    C -->|PROCESSING| E[Reuse Worker]
-    C -->|BACKPRESSURE| F[Throttle Input]
-    D --> G[Worker Thread]
-    E --> G
-    G --> H[Log Results]
-    H --> I[Update State]
-    I --> C
-```
+# 🏗️ Cmd Queue (Merged System)
 
-## Components
-| Component | Details |
-|-----------|---------|
-| Command Queue | Thread-safe FIFO (deque), atomic Lock, states (idle/processing/backpressure), max 1000 |
-| Worker Management | Dynamic pooling; lifecycle: dequeue→execute→signal→cleanup |
+Flow: UI→Queue{IDLE→CreateWrk|PROC→Reuse|BACK→Throttle}→Exec→Log→State ✅ThreadSafe
 
-## State Transitions
-| From | To | Trigger |
-|-----|----|---------|
-| Idle | Processing | Commands received |
-| Processing | Backpressure | Queue >800 |
-| Backpressure | Processing | Queue <200 |
-| Processing | Idle | Queue empty |
+Comp/State/Metric | Det | Symbol |
+|-------------------|-----|--------|
+Queue | FIFO/lock/max1000 | ✅FIFO |
+Worker | Deq→Exec→Cleanup | ✅DynPool |
+Trans | Idle→Proc(Cmds)|Proc→Back>800 | ⚠️<200→Proc |
+Perf | 1500/s<50ms|1000depth<2MB | ✅Scale |
+Fail | Retry/Dead/Circuit | ✅Recovery |
+FBC | No write/start→Remove/Align RPC | ✅Consist |
+RPC Out | No logs/path→Populate NodeMgr | ✅Trace |
 
-## Performance
-| Metric | Value |
-|--------|-------|
-| Throughput | 1500 cmd/s |
-| Latency | <50ms p95 |
-| Max Depth | 1000 |
-| Memory | <2MB/1000 cmd |
+Future: Async→Unified→Timeout
 
-## Failure Handling
-| Strategy | Details |
-|----------|---------|
-| Retries | Transient errors |
-| Dead Letter | Failed cmds |
-| Circuit Breaker | Node outages |
+Refs: [Queue](src/commander/command_queue.py) [NodeMgr](src/commander/node_manager.py) [Proc](docs/architecture/ARCH_command_processing_v1.md)

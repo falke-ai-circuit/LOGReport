@@ -1,66 +1,35 @@
-# Unified Command System Architecture
+---
+metadata:
+  created_date: "2025-09-01_000000"
+  last_modified: "2025-10-01T06:00:00Z"
+  last_accessed: "2025-10-01T06:00:00Z"
+  word_count: 8
+  reference_count: 1
+  document_hash: "sha256:computed_hash_system"
+  similarity_index: 0.10
+  obsolete_check_date: "2025-10-01"
+---
+
+# 🏗️ Command System Architecture v1 (Integrated Queue)
 
 ## Overview
-This document outlines the architecture for command processing, focusing on consistent queuing, execution, and logging across different command types (e.g., FBC, RPC). It integrates command queue management with robust error handling and traceability.
+Integrated Command Queue system for sequential telnet command processing. Uses FIFO queue with threading, error handling, and session management. Replaces legacy direct execution with robust queue-based approach.
 
-## Command Queue Architecture
+## Key Components
+| Component | Description | Refs |
+|-----------|-------------|------|
+| CommandQueue | FIFO queue, thread-safe add/process [src/commander/command_queue.py:147-388](src/commander/command_queue.py:147) | add_command, start_processing |
+| CommandWorker | QRunnable for telnet exec, error detection [src/commander/command_queue.py:23-145](src/commander/command_queue.py:23) | run, signals.finished |
+| SessionManager | Telnet session handling [src/commander/session_manager.py:1](src/commander/session_manager.py:1) | get_or_create_session |
 
-### Flow Diagram
-```mermaid
-graph TD
-    A[UI Layer] -->|Commands| B(Command Queue)
-    B --> C{Queue State}
-    C -->|IDLE| D[Create Worker]
-    C -->|PROCESSING| E[Reuse Worker]
-    C -->|BACKPRESSURE| F[Throttle Input]
-    D --> G[Worker Thread]
-    E --> G
-    G --> H[Log Results]
-    H --> I[Update State]
-    I --> C
-```
+## Flow
+UI Action → add_command(cmd, token) → start_processing() → Worker.run() → telnet.send_command → log_write_completed → UI Update.
 
-### Components
-| Component | Details |
-|-----------|---------|
-| Command Queue | Thread-safe FIFO (deque), atomic Lock, states (idle/processing/backpressure), max 1000 |
-| Worker Management | Dynamic pooling; lifecycle: dequeue→execute→signal→cleanup |
+**Patterns:** Observer (pyqtSignal command_completed [148](src/commander/command_queue.py:148)) | Thread Pool (max 1 thread [165](src/commander/command_queue.py:165)).
 
-### State Transitions
-| From | To | Trigger |
-|-----|----|---------|
-| Idle | Processing | Commands received |
-| Processing | Backpressure | Queue >800 |
-| Backpressure | Processing | Queue <200 |
-| Processing | Idle | Queue empty |
+## Integration
+- NodeTreePresenter: Connects signals for node color updates post-command.
+- LogWriter: Handles output append [src/commander/log_writer.py:51](src/commander/log_writer.py:51).
+- Error Detection: utils/error_detection.py for response validation.
 
-### Performance
-| Metric | Value |
-|--------|-------|
-| Throughput | 1500 cmd/s |
-| Latency | <50ms p95 |
-| Max Depth | 1000 |
-| Memory | <2MB/1000 cmd |
-
-### Failure Handling
-| Strategy | Details |
-|----------|---------|
-| Retries | Transient errors |
-| Dead Letter | Failed cmds |
-| Circuit Breaker | Node outages |
-
-## Command Processing Flow
-
-### Background/Fixes
-| Aspect | Issue | Fix | Impact |
-|--------|-------|-----|--------|
-| FBC Commands | Not written to files, explicit start_processing() | Remove call, align w/RPC flow | Consistent queuing/output/logging |
-| RPC Output | No dedicated logs, log_path not populated | Populate via NodeManager._generate_log_path in get_token | Traceability/auditability |
-
-### Verification
-New test: tests/commander/test_rpc_log_path.py (passes).
-
-### Future Plans
-- Async batch processing
-- Unified cmd interface
-- Timeout policies
+See ARCH_cmd_queue_impl_v1.md for full details.

@@ -63,11 +63,11 @@ The `ContextMenuFilterService` class is responsible for:
 
 ### 3.2. ContextMenuService Integration
 
-**Note on `_get_current_item_from_data`**: This method is used to create a mock item from item data for compatibility with existing presenter methods that expect a `QTreeWidget` item structure. This ensures seamless integration without altering core UI component expectations.
+**Note on `_get_current_item_from_data`**: This method is used to create a mock item from item data for compatibility with existing presenter methods that expect a `QTreeWidget` item structure. This ensures seamless integration without altering core UI component expectations [src/commander/services/context_menu_service.py:1](src/commander/services/context_menu_service.py:1).
 
 The `ContextMenuService` integrates filtering through:
 
-1. **Rule Checking**: Before adding menu items, checking if they should be visible.
+1. **Rule Checking**: Before adding menu items, checking if they should be visible via ContextMenuFilterService [src/commander/services/context_menu_filter.py:1](src/commander/services/context_menu_filter.py:1).
 2. **Dynamic Menu Generation**: Only creating menu actions for visible commands.
 3. **Context Preservation**: Maintaining proper context information for rule evaluation.
 
@@ -240,3 +240,6 @@ Potential improvements to the system include:
 - [ContextMenuFilterService Implementation](src/commander/services/context_menu_filter.py)
 - [ContextMenuService Implementation](src/commander/services/context_menu_service.py)
 - [Configuration File](config/menu_filter_rules.json)
+## Codebase Sync
+- LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51)
+- CommandQueue: [src/commander/command_queue.py:1](src/commander/command_queue.py:1)

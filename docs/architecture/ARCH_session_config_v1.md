@@ -31,7 +31,8 @@ class SessionConfig:
 - `@dataclass` (from `dataclasses` module): Python decorator for automatically generating boilerplate methods for data classes.
 
 ## Cross-references
-- `SessionManager` (from `src/commander/session_manager.py`): Uses `SessionConfig` to create and manage sessions.
+- `SessionManager` (from `src/commander/session_manager.py:1`): Uses `SessionConfig` to create and manage sessions [src/commander/session_manager.py:249](src/commander/session_manager.py:249).
 - `TelnetSession` (from `src/commander/session_manager.py`): Uses `SessionConfig` for Telnet session parameters.
 - `VNCSession` (from `src/commander/session_manager.py`): Uses `SessionConfig` for VNC session parameters.
-- `TelnetService.connect` (from `src/commander/services/telnet_service.py`): Consumes `SessionConfig` for connection details.
+- `TelnetService.connect` (from `src/commander/services/telnet_service.py:1`): Consumes `SessionConfig` for connection details.
+- NodeManager ties: Active node context for session config [src/commander/node_manager.py:1](src/commander/node_manager.py:1).
