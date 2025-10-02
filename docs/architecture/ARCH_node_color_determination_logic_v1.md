@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 950
-  reference_count: 5
-  document_hash: "sha256:node_color_logic_v1"
-  similarity_index: 0.02
-  obsolete_check_date: "2025-10-01"
----
-
 # 🏗️ Architecture: Node Color Determination Logic
 
 ## 1. Objective
@@ -120,7 +108,3 @@ The color of a node will be determined by the following rules, applied within `N
 *   **Integration Tests:**
     *   Simulate an end-to-end flow: execute a command, write to a log file (with varying line counts), and verify the node color update in the UI.
     *   Ensure that the color changes are consistent with the defined logic.
-## Codebase Sync
-- LogWriter: [src/commander/log_writer.py:223](src/commander/log_writer.py:223) (get_file_line_count for line metrics in color updates)
-- CommandQueue: [src/commander/command_queue.py:15](src/commander/command_queue.py:15) (signal emission for color state)
- 🔗 [ARCH_node_color_determination_logic_v1](architecture/ARCH_node_color_determination_logic_v1.md)

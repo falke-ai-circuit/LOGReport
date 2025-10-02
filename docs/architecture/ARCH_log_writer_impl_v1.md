@@ -1,21 +1,71 @@
 ---
 metadata:
   created_date: "2025-10-01_075300"
-  last_modified: "2025-10-01T07:53:00Z"
-  last_accessed: "2025-10-01T07:53:00Z"
-  word_count: 280
-  reference_count: 8
-  document_hash: "sha256:arch_log_writer_impl_v1_hash"
-  similarity_index: 0.85
-  obsolete_check_date: "2025-10-01"
+  last_modified: "2025-10-02T17:16:00Z"  # Post-merge
+  word_count: 650  # Combined
+  reference_count: 12  # Aggregated
+  document_hash: "sha256:arch_log_writer_impl_merged_hash"
+  similarity_index: 0.75  # Post-merge
+  obsolete_check_date: "2025-10-02"
+  merge_sources: ["ARCH_log_writer_v1.md", "ARCH_log_writer_impl_v1.md"]  # Overview + impl uniques
 ---
 
-# ARCH_log_writer_impl_v1
+# ARCH_log_writer_impl_v1 (Merged Overview + Implementation) ✅Detailed
 
-## Overview
+## Overview (Merged from ARCH_log_writer_v1.md)
+# Log Writer Documentation ✅Standardized
+
+## Overview | Feature | Status |
+|----------|--------|
+| Log creation/writing | ✅Managed |
+| Standardized formats | ✅Supported |
+
+Key Features | Feature | Benefit |
+|----------|---------|
+| Standardized log files | ✅Consistent |
+| Command output append | ✅Traceable |
+| File rotation | ✅Size control |
+| Multi-type support (FBC/RPC/LOG/LIS) | ✅Versatile |
+| Token-based path res | ✅Context-aware |
+
+Log File Naming | Type | Format | Example |
+|------|--------|---------|
+| FBC | {node}_{ip}_{token}.fbc | AP01m_192-168-0-11_162.fbc |
+| RPC | {node}_{ip}_{token}.rpc | AP01r_192-168-0-27_363.rpc |
+| LOG | {node}_{ip}.log or {node}_{ip}_{token}.log | AL01_186_LOG.log |
+| LIS | {node}_{ip}_{token}.lis | AL01_186_LIS.lis |
+
+Directory Structure | Type | Path |
+|------|------|
+| FBC | {log_root}/FBC/{node}/ |
+| RPC | {log_root}/RPC/{node}/ |
+| LOG | {log_root}/LOG/ |
+| LIS | {log_root}/LIS/{node}/ |
+
+Important Methods | Method | Desc | Params |
+|--------|------|---------|
+| write_to_log | Write to log file, token path if avail | content, log_type, node_name=None, token=None |
+| write_to_app_log | App log write | message, level=INFO |
+| write_clipboard_content | Clipboard to log | content, log_type |
+| clear_log | Clear token logs | token_id |
+
+Log Formatting | Aspect | Detail |
+|--------|---------|
+| Timestamp | Each entry | ✅Prefixed |
+| Original output | Preserved | ✅Intact |
+| Line endings | Consistent | ✅Uniform |
+| Metadata headers | When appropriate | ✅Added |
+
+Token Integration | Case | Logic | Symbol |
+|------|--------|--------|
+| Token w/ log_path | Use direct | ✅Precise |
+| Token w/ token_id/ip | Generate filename | ✅Derived |
+| No token info | Fallback naming | ⚠️Basic |
+
+## Implementation (Core from ARCH_log_writer_impl_v1.md)
 Implements log writing service for LOGReport commander. Handles file writes, app logging, clipboard appends, clears. Thread-safe via Qt signals. Integrates NodeManager for token paths. Constraints: UTF-8, timestamped entries, error emission.
 
-## Components
+### Components
 | Component | Description | Key Methods | Refs |
 |-----------|-------------|-------------|------|
 | **LogWriter (QObject)** | Core service: writes to node/token logs, app.log. Emits log_write_completed (path, success, total_lines, lines_written). | `__init__(node_manager, log_root="logs")`: Setup dirs, app_logger (INFO, application.log). | [src/commander/log_writer.py:16-245](src/commander/log_writer.py:16) |
@@ -50,7 +100,8 @@ writer.clear_log("12345")
 writer.write_to_app_log("Connection failed", logging.ERROR)
 ```
 
-## References
+## References (Preserved)
 - [ARCH_logging_system_v1.md](ARCH_logging_system_v1.md)
 - [TECH_logging_v1.md](technical/TECH_logging_v1.md)
 - [src/commander/node_manager.py](src/commander/node_manager.py)
+- [src/commander/log_writer.py:16-245](src/commander/log_writer.py:16)

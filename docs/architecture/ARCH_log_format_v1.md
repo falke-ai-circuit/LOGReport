@@ -1,3 +1,13 @@
+---
+metadata:
+  created_date: "2025-10-02_000000"
+  last_modified: "2025-10-02T17:00:00Z"
+  word_count: 120
+  reference_count: 0
+  document_hash: "md5:log_format_hash"
+  obsolete_check_date: "2025-10-02"
+---
+
 # Log File Format Specification
 
 ## Structure

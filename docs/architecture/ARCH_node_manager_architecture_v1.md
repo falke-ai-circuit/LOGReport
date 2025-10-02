@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 350
-  reference_count: 3
-  document_hash: "sha256:node_manager_arch_v1"
-  similarity_index: 0.01
-  obsolete_check_date: "2025-10-01"
----
-
 # Node Manager Documentation
 
 ## Core Responsibilities
@@ -88,4 +76,3 @@ The manager provides these validation methods:
 - `validate_node_config()` - Checks config integrity
 - `validate_log_paths()` - Verifies log directories exist
 - `check_node_connectivity()` - Tests node availability
- 🔗 [ARCH_node_manager_architecture_v1](architecture/ARCH_node_manager_architecture_v1.md)

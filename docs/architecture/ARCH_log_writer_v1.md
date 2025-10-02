@@ -1,41 +1,58 @@
-# Log Writer Documentation
+---
+metadata:
+  created_date: "2025-10-02_000000"
+  last_modified: "2025-10-02T17:00:00Z"
+  word_count: 250
+  reference_count: 0
+  document_hash: "md5:log_writer_v1_hash"
+  obsolete_check_date: "2025-10-02"
+---
 
-## Overview
-Manages creation and writing to log files with standardized formats.
+# Log Writer Documentation ✅Standardized
 
-## Key Features
-- Creates standardized log files
-- Appends command outputs to logs
-- Handles file rotation
-- Supports multiple log types (FBC, RPC, LOG, LIS)
-- Uses token-based log path resolution when available
+## Overview | Feature | Status |
+|----------|--------|
+| Log creation/writing | ✅Managed |
+| Standardized formats | ✅Supported |
 
-## Log File Naming
-- FBC: `{node}_{ip}_{token}.fbc`
-- RPC: `{node}_{ip}_{token}.rpc`
-- LOG: `{node}_{ip}.log` or `{node}_{ip}_{token}.log`
-- LIS: `{node}_{ip}_{token}.lis`
+## Key Features | Feature | Benefit |
+|----------|---------|
+| Standardized log files | ✅Consistent |
+| Command output append | ✅Traceable |
+| File rotation | ✅Size control |
+| Multi-type support (FBC/RPC/LOG/LIS) | ✅Versatile |
+| Token-based path res | ✅Context-aware |
 
-## Directory Structure
-- FBC logs: `{log_root}/FBC/{node}/`
-- RPC logs: `{log_root}/RPC/{node}/`
-- LOG files: `{log_root}/LOG/`
-- LIS files: `{log_root}/LIS/{node}/`
+## Log File Naming | Type | Format | Example |
+|------|--------|---------|
+| FBC | {node}_{ip}_{token}.fbc | AP01m_192-168-0-11_162.fbc |
+| RPC | {node}_{ip}_{token}.rpc | AP01r_192-168-0-27_363.rpc |
+| LOG | {node}_{ip}.log or {node}_{ip}_{token}.log | AL01_186_LOG.log |
+| LIS | {node}_{ip}_{token}.lis | AL01_186_LIS.lis |
 
-## Important Methods
-- `write_to_log()`: Writes content to the appropriate log file, using token log_path when available
-- `write_to_app_log()`: Writes messages to the application log
-- `write_clipboard_content()`: Writes clipboard content to logs
-- `clear_log()`: Clears log files associated with a token
+## Directory Structure | Type | Path |
+|------|------|
+| FBC | {log_root}/FBC/{node}/ |
+| RPC | {log_root}/RPC/{node}/ |
+| LOG | {log_root}/LOG/ |
+| LIS | {log_root}/LIS/{node}/ |
 
-## Log Formatting
-- Includes timestamp for each entry
-- Preserves original command output
-- Enforces consistent line endings
-- Adds metadata headers when appropriate
+## Important Methods | Method | Desc | Params |
+|--------|------|---------|
+| write_to_log | Write to log file, token path if avail | content, log_type, node_name=None, token=None |
+| write_to_app_log | App log write | message, level=INFO |
+| write_clipboard_content | Clipboard to log | content, log_type |
+| clear_log | Clear token logs | token_id |
 
-## Token Integration
-The LogWriter now integrates with the token system to determine appropriate log file paths:
-- When a token with a `log_path` attribute is provided, that path is used directly
-- When a token with `token_id` and `ip_address` attributes is provided, filenames are generated using these identifiers
-- When no token information is available, fallback naming conventions are used
+## Log Formatting | Aspect | Detail |
+|--------|---------|
+| Timestamp | Each entry | ✅Prefixed |
+| Original output | Preserved | ✅Intact |
+| Line endings | Consistent | ✅Uniform |
+| Metadata headers | When appropriate | ✅Added |
+
+## Token Integration | Case | Logic | Symbol |
+|------|--------|--------|
+| Token w/ log_path | Use direct | ✅Precise |
+| Token w/ token_id/ip | Generate filename | ✅Derived |
+| No token info | Fallback naming | ⚠️Basic |

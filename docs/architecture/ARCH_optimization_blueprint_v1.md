@@ -1,70 +1,66 @@
-# Unified Optimization Blueprint
+---
+metadata:
+  created_date: "2025-10-02_000000"
+  last_modified: "2025-10-02T17:02:00Z"
+  word_count: 550
+  reference_count: 2
+  document_hash: "md5:optimization_blueprint_hash"
+  obsolete_check_date: "2025-10-02"
+---
+
+# Unified Optimization Blueprint ✅Condensed
 
 ## Condensation Analysis Summary
 
-### Overview
-Objective: Refine memory by condensing, abstracting patterns, eliminating redundancy for efficiency/reusability. Scope: Project/global memory density, patterns, redundancy, organization.
+### Overview | Field | Value |
+|--------|--------|
+| Objective | Refine memory: condense/abstract/elim redundancy | ✅Eff/Reuse |
+| Scope | Proj/global density, patterns, redun, org | ✅Full |
 
-### Density Results
-| Memory | Entities | Relations | Obs | Avg Rel/Entity | Avg Obs/Entity |
-|--------|----------|-----------|-----|---------------|---------------|
-| Global | 29 | 34 | 100 | 1.17 | 3.45 |
-| Project | 100 | 190 | 250 | 1.90 | 2.50 |
+### Density Results | Memory | Entities | Relations | Obs | Avg Rel/Entity | Avg Obs/Entity | Insight |
+|--------|----------|-----------|-----|---------------|---------------|---------|
+| Global | 29 | 34 | 100 | 1.17 | 3.45 | Rich desc ✅ |
+| Project | 100 | 190 | 250 | 1.90 | 2.50 | High conn ⚠️ |
 
-Interpretation: Project higher connectivity; Global richer descriptions.
-
-### Pattern Abstraction
-| Pattern | Description | Ref |
-|---------|-------------|-----|
-| Problem-Solution Workflow | Issue resolution | pattern_abstraction_map.md |
-| Large UI Refactoring | Complex UI approach | - |
+### Pattern Abstraction | Pattern | Desc | Ref |
+|---------|------|-----|
+| Problem-Solution Workflow | Issue res | pattern_abstraction_map.md |
+| Large UI Refactoring | Complex UI | - |
 | Robust Config Mgmt | App configs | - |
-| Async UI Feedback | Background tasks | - |
+| Async UI Feedback | Bg tasks | - |
 | Doc Mgmt | Lifecycle | - |
 
-### Consolidation Plan
-| Action | Targets | Ref |
-|--------|---------|-----|
-| Eliminate | Redundant summaries, transients, granular fixes | consolidation_elimination_plan.md |
-| Consolidate | Fragmented docs (to DocumentationManagement), pairs (to ProblemSolutionLog) | - |
+### Consolidation Plan | Action | Targets | Ref | Symbol |
+|--------|---------|-----|--------|
+| Eliminate | Redun summaries, transients, granular fixes | consolidation_elimination_plan.md | ✅Red 15-30% |
+| Consolidate | Frag docs (to DocMgmt), pairs (to ProbSolLog) | - | ✅Pair |
 
 ### Optimal Organization
-Hierarchical: System Architecture root → sub-domains (UI, Services, Data, Errors, Memory, Practices). Ref: docs/architecture/optimal_knowledge_organization.md
+Hier root → sub-dom (UI/Services/Data/Errors/Memory/Practices) | Ref: optimal_knowledge_organization.md ✅Hier
 
-### Impact & Roadmap
-| Aspect | Details |
-|--------|---------|
-| Efficiency | Streamlined retrieval, reduced load |
-| Reusability | Cross-project patterns |
-| Size Reduction | 15-30%, 100% preservation |
-| Phase 1 | Pattern promotion |
-| Phase 2 | Entity elimination |
-| Phase 3 | Consolidation |
-| Phase 4 | Relationship recon |
-| Phase 5 | Validation/metrics |
+### Impact & Roadmap | Aspect | Details | Phase |
+|--------|---------|--------|
+| Efficiency | Stream ret, red load | 1-5 |
+| Reusability | Cross-proj patterns | 1 |
+| Size Red | 15-30%, 100% pres | 2-3 |
+| Pattern promo | - | 1 |
+| Entity elim | - | 2 |
+| Consolidation | - | 3 |
+| Rel recon | - | 4 |
+| Valid/metrics | - | 5 |
 
 ## Documentation Consolidation Blueprint
 
 ### Taxonomy
 ```plaintext
 docs/
-├── ARCHITECTURAL/
-│   ├── system_blueprints/
-│   ├── component_designs/
-│   └── roadmaps/
-├── USER/
-│   ├── guides/
-│   ├── references/
-│   └── troubleshooting/
-└── TECHNICAL/
-    ├── apis/
-    ├── testing/
-    └── internals/
+├── ARCHITECTURAL/  # system_blueprints/ component_designs/ roadmaps/
+├── USER/  # guides/ references/ troubleshooting/
+└── TECHNICAL/  # apis/ testing/ internals/
 ```
 
-### Relocation Mapping
-| Current | New | Type |
-|--------|-----|------|
+### Relocation Mapping | Current | New | Type |
+|---------|-----|------|
 | docs/architecture/ | ARCHITECTURAL/component_designs/ | ARCH |
 | docs/blueprints/ | ARCHITECTURAL/system_blueprints/ | ARCH |
 | docs/roadmaps/ | ARCHITECTURAL/roadmaps/ | ARCH |
@@ -73,26 +69,22 @@ docs/
 | docs/testing/ | TECHNICAL/testing/ | TECH |
 | docs/token_processing.md | ARCHITECTURAL/component_designs/token_management/ | ARCH |
 
-### Merge Logic
-| Duplicate | Resolution |
-|----------|------------|
-| token_processing.md | Compare versions; preserve unique; prefer newer/detailed; manual if needed; save merged |
+### Merge Logic | Duplicate | Resolution |
+|-----------|------------|
+| token_processing.md | Compare vers; pres unique; pref newer/det; manual save merged ✅ |
 
 ### Documentation Management Configuration
-The `Document-export.yaml` file (`.kilocode/Document-export.yaml`) defines a custom mode for documentation management within the Kilocode environment. This configuration is crucial for:
-- **Automated Export**: Specifying rules and formats for exporting documentation.
-- **Content Transformation**: Defining transformations to apply during documentation generation.
-- **Mode Integration**: Integrating documentation-related functionalities directly into the development workflow.
+Document-export.yaml (.kilocode/) | Custom mode for doc mgmt | **Automated Export** rules/formats | **Content Trans** during gen | **Mode Int** dev workflow ✅Standard/Auto
 
-This file ensures that documentation consolidation and management processes are standardized and automated, aligning with the overall optimization blueprint.
+Aligns consol/mgmt with opt blueprint ✅Unified
 
-### Standardization
-- Filenames: lowercase_with_underscores
-- Headers: Title Case
-- Metadata: type, created, updated at top
+### Standardization | Aspect | Rule |
+|---------|------|
+| Filenames | lowercase_with_underscores |
+| Headers | Title Case |
+| Metadata | type, created, updated top |
 
-### Validation Checklist
-| Item | Status |
+### Validation Checklist | Item | Status |
 |------|--------|
 | Content checksum | [ ] |
 | Link validation | [ ] |
@@ -101,10 +93,9 @@ This file ensures that documentation consolidation and management processes are 
 | Accessibility | [ ] |
 | Version history | [ ] |
 
-### Safety Measures
-| Measure | Details |
+### Safety Measures | Measure | Details |
 |---------|---------|
 | Dry-run | All ops |
-| Backup | Pre-consolidation |
-| Atomic | Rollback capable |
-| Logging | Progress/checkpoints |
+| Backup | Pre-consol |
+| Atomic | Rollback |
+| Logging | Progress/checks |

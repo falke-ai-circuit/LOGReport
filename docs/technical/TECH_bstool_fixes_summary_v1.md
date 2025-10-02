@@ -55,3 +55,4 @@ Summarizes fixes for RPC command generation and BsTool tab activation for `.log`
 ## Future Enhancements
 
 For further details, refer to commit history or contact the development team.
+ 🔗 [BLUEPRINT_bstool_integration_v1](blueprints/BLUEPRINT_bstool_integration_v1.md)

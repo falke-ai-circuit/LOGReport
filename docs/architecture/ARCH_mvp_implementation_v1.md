@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 1250
-  reference_count: 8
-  document_hash: "sha256:mvp_impl_v1"
-  similarity_index: 0.03
-  obsolete_check_date: "2025-10-01"
----
-
 # MVP Implementation Guide
 
 ## Overview
@@ -296,5 +284,4 @@ Keep View components as simple as possible, containing only display and user inp
 Use Presenter as a conductor that orchestrates the interactions between View, Model, and Services.
 
 ### 7. Error Propagation
- 🔗 [ARCH_mvp_implementation_v1](architecture/ARCH_mvp_implementation_v1.md)
 Ensure errors are properly propagated from Services through Presenter to View for user feedback.

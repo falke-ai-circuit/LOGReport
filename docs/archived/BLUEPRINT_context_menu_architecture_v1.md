@@ -1,3 +1,9 @@
+---
+reason: 'superseded by v2'
+archived_date: '2025-10-02'
+original_path: 'docs/blueprints/BLUEPRINT_context_menu_architecture_v1.md'
+---
+
 # Context Menu Architecture
 
 This document details the architecture and implementation of the context menu system in the LOGReport application, with a focus on the filtering mechanism that controls command visibility and the service layer integration for batch operations.

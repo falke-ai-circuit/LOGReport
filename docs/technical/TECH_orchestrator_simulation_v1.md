@@ -43,3 +43,4 @@ metadata:
 **MANDATORY Pre-Execution Protocol** (From update_memory.md):
 - ✅ Check available MCP servers for memory and task management capabilities
 - ✅ Use
+ 🔗 [ARCH_orchestrator_simulation](architecture/orchestrator_simulation.md)

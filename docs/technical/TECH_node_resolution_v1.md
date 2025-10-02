@@ -217,3 +217,4 @@ Planned enhancements to the node resolution system include:
 - Caching mechanism for frequently accessed tokens
 - Health checks for resolved IP addresses
 - Integration with external DNS services for dynamic IP resolution
+ 🔗 [ARCH_node_resolution](architecture/node_resolution.md)

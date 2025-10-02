@@ -123,3 +123,4 @@ def execute_command(self, command, node_name, token_id):
 ## Codebase Sync
 - LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51)
 - CommandQueue: [src/commander/command_queue.py:1](src/commander/command_queue.py:1)
+ 🔗 [ARCH_command_queue_v1](architecture/ARCH_command_queue_v1.md)
