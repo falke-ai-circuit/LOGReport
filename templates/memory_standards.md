@@ -7,7 +7,7 @@ Memory entities require consistent hierarchical structuring for discoverability+
 
 ### 🏛️ MANDATORY 4-Layer Hierarchy: Entity→Cluster(SubCluster)→Domain→Type(MemoryType) | **NO ORPHANS** | **VALIDATION**: Entity without 4-layer path = invalid
 
-### 📊 MANDATORY Metadata: created_date|last_modified|last_accessed|reference_count|usage_count|access_log_enabled|hierarchy_path|content_hash|similarity_index|obsolete_check_date | **AUTO-GENERATED** by memory system | Updated on every access/modification | Used for obsolete detection | **Template**: `metadata: {created_date: YYYY-MM-DD_HHMMSS, last_modified: YYYY-MM-DD_HHMMSS, last_accessed: YYYY-MM-DD_HHMMSS, reference_count: integer, usage_count: integer, access_log_enabled: true, hierarchy_path: "Entity→Cluster→Domain→Type", content_hash: "sha256_hash", similarity_index: float, obsolete_check_date: YYYY-MM-DD_HHMMSS}`
+### 📊 MANDATORY Metadata: created_date|last_modified|last_accessed|reference_count|usage_count|hierarchy_path|content_hash|obsolete_check_date | **AUTO-GENERATED** by memory system | Updated on access/modification | Used for obsolete detection | **Template**: `metadata: {created_date: YYYY-MM-DD_HHMMSS, last_modified: YYYY-MM-DD_HHMMSS, last_accessed: YYYY-MM-DD_HHMMSS, reference_count: int, usage_count: int, hierarchy_path: "Entity→Cluster→Domain→Type", content_hash: "sha256", obsolete_check_date: YYYY-MM-DD_HHMMSS}`
 
 ## 🏗️ Hierarchical Structure
 

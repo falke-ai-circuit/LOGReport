@@ -1,0 +1,14 @@
+{
+  "CEPH+": {
+    "CURRENT": "Analysis of existing command structure and context menu completed. Commands (FBC, RPC, BSTool, LOG) are defined in respective services. Node-command association is in `src/nodes.json` and managed by `src/commander/node_manager.py`. Context menu generation is in `src/commander/services/context_menu_service.py`. Command execution is via `src/commander/command_queue.py`. Hierarchical command execution design document created.",
+    "EXPECTED": "A detailed design for a mechanism to identify all subcommands for a given node (e.g., FBC, RPC, LOG) and execute them sequentially. The design includes: 1. A structured way to define hierarchical commands (extending `nodes.json`). 2. How `ContextMenuService` will present these hierarchical commands. 3. The logic for sequential execution, including error handling and progress reporting. 4. Updates to `NodeToken` and `CommanderPresenter` for integration.",
+    "PROBLEM": "Need a robust design for hierarchical command execution to guide implementation, ensuring proper identification, sequencing, error handling, and UI integration.",
+    "HYPOTHESES": {
+      "H1": "Extend `nodes.json` to include a `hierarchical_commands` section for each node/token type. (Validated by design)",
+      "H2": "Create a new `HierarchicalCommandService` to manage the execution flow. (Validated by design)",
+      "H3": "Modify `ContextMenuService` to dynamically build nested menus based on the hierarchical command definitions. (Validated by design)",
+      "H4": "Implement a `SequentialCommandProcessor` (or enhance existing one) to handle the sequential execution with error handling and progress updates. (Validated by design, new service proposed)"
+    },
+    "EVIDENCE": "Analysis Report from task-3278, design_document_hierarchical_commands.md"
+  }
+}
