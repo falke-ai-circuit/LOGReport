@@ -219,7 +219,7 @@ The LogWriter component validates token IP addresses against those extracted fro
 
 ## Troubleshooting
 
-See the [Troubleshooting Guide](troubleshooting_guide.md) for common issues and solutions related to token management.
+See the [Troubleshooting Guide #Overview](troubleshooting_guide.md#Overview) for common issues and solutions related to token management.
 
 ## Future Improvements
 

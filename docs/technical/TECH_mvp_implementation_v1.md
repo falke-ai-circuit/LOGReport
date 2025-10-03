@@ -296,5 +296,5 @@ Keep View components as simple as possible, containing only display and user inp
 Use Presenter as a conductor that orchestrates the interactions between View, Model, and Services.
 
 ### 7. Error Propagation
- 🔗 [ARCH_mvp_implementation_v1](architecture/ARCH_mvp_implementation_v1.md)
+ 🔗 [ARCH_mvp_implementation_v1 #Overview](architecture/ARCH_mvp_implementation_v1.md#Overview)
 Ensure errors are properly propagated from Services through Presenter to View for user feedback.

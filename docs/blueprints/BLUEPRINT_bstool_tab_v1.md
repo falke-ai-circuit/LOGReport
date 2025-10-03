@@ -314,4 +314,4 @@ Enhanced logging in `_run_bstool_process` for diagnosing timeouts/missing output
 - LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51)
 - CommandQueue: [src/commander/command_queue.py:1](src/commander/command_queue.py:1)
 - ThreadingService: [src/commander/services/threading_service.py:1](src/commander/services/threading_service.py:1)
- 🔗 [ROADMAP_bstool_integration_v1](roadmaps/ROADMAP_bstool_integration_v1.md)
+ 🔗 [ROADMAP_bstool_integration_v1 #Overview](roadmaps/ROADMAP_bstool_integration_v1.md#Overview)

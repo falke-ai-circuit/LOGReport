@@ -141,4 +141,4 @@ Service classes are tested through dedicated unit tests in `tests/commander/test
 - [FbcCommandService Implementation](src/commander/services/fbc_command_service.py)
 - [RpcCommandService Implementation](src/commander/services/rpc_command_service.py)
 - [CommanderService Implementation](src/commander/services/commander_service.py)
-- [Batch Operations Architecture](../batch_operations.md)
+- [Batch Operations Architecture #Overview](../batch_operations.md#Overview)

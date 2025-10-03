@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 780
-  reference_count: 6
-  document_hash: "sha256:memory_first_workflow_v1"
-  similarity_index: 0.02
-  obsolete_check_date: "2025-10-01"
----
-
 # MCP Session Process Workflow
 
 This document outlines the standardized session process for managing and consolidating knowledge within both project-specific and global memory systems. This workflow ensures that insights are properly captured, validated, and shared across contexts following the SESSION PROCESS structure.

@@ -101,7 +101,7 @@ writer.write_to_app_log("Connection failed", logging.ERROR)
 ```
 
 ## References (Preserved)
-- [ARCH_logging_system_v1.md](ARCH_logging_system_v1.md)
-- [TECH_logging_v1.md](technical/TECH_logging_v1.md)
+- [ARCH_logging_system_v1 #Overview](ARCH_logging_system_v1.md#Overview)
+- [TECH_logging_v1 #Overview](technical/TECH_logging_v1.md#Overview)
 - [src/commander/node_manager.py](src/commander/node_manager.py)
 - [src/commander/log_writer.py:16-245](src/commander/log_writer.py:16)

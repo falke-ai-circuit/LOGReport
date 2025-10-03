@@ -58,7 +58,7 @@ Risks: Recursion depth (>10) → max_depth param; UI block → async signals; LO
 - Tools: pytest, mock (Qt items/services), nodes_test.json. Oracles: O1 sequential no-overlap (queue order), O2 filtering/integration (visible actions), O3 progress/status (signals emitted).
 
 ## Cross-References
-- [Service Layer](docs/technical/TECH_command_services_v1.md) 🔗 [Queue](docs/architecture/ARCH_command_system_v1.md)
-- [Menu Filtering](docs/blueprints/BLUEPRINT_context_menu_v1.md) 🔗 [Traversal](docs/technical/TECH_node_resolution_v1.md)
+- [Service Layer #Overview](docs/technical/TECH_command_services_v1.md#Overview) 🔗 [Queue #Overview](docs/architecture/ARCH_command_system_v1.md#Overview)
+- [Menu Filtering #Overview](docs/blueprints/BLUEPRINT_context_menu_v1.md#Overview) 🔗 [Traversal #Overview](docs/technical/TECH_node_resolution_v1.md#Overview)
 
 Metadata: {type: BLUEPRINT, created: 2025-10-01, updated: 2025-10-01, word_count: 450, similarity_hash: SHA256:abc123, obsolete_check: false}

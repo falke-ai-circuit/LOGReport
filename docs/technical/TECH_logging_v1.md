@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 420
-  reference_count: 4
-  document_hash: "sha256:logging_v1"
-  similarity_index: 0.02
-  obsolete_check_date: "2025-10-01"
----
-
 # Logging Architecture
 
 ## Overview

@@ -164,5 +164,5 @@ Ensures events from LogProcessor/ReportGenerator logged console/file ✅Traceabl
 ## Codebase Sync (Additional Preserved Refs)
 - LogWriter: [src/commander/log_writer.py:51](src/commander/log_writer.py:51)
 - CommandQueue: [src/commander/command_queue.py:1](src/commander/command_queue.py:1)
-- Recent Changes: [ROADMAP_recent_changes_v1.md](docs/roadmaps/ROADMAP_recent_changes_v1.md)
+- Recent Changes: [ROADMAP_recent_changes_v1 #Overview](docs/roadmaps/ROADMAP_recent_changes_v1.md#Overview)
 - ARCH_logging_system_v1.md (self-ref for overview)

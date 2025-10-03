@@ -2,7 +2,7 @@
 
 > **Purpose:** Standardized entity naming+hierarchical structuring | **Format:** `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]` | **Audience:** MCP developers | **Solves:** Chaotic naming+poor hierarchy
 
-**MANDATORY 4-Layer Hierarchy**: Entity→Cluster→Domain→Type | **NO ORPHANS** | **VALIDATION**: Entity without 4-layer path = invalid | **METADATA**: created_date|last_modified|last_accessed|reference_count|usage_count|hierarchy_path|content_hash|obsolete_check_date (AUTO-GENERATED+updated on access+used for obsolete detection) | **Template**: `metadata: {created_date: YYYY-MM-DD_HHMMSS, last_modified: YYYY-MM-DD_HHMMSS, last_accessed: YYYY-MM-DD_HHMMSS, reference_count: int, usage_count: int, hierarchy_path: "Entity→Cluster→Domain→Type", content_hash: "sha256", obsolete_check_date: YYYY-MM-DD_HHMMSS}`
+**MANDATORY 4-Layer Hierarchy**: Entity→Cluster→Domain→Type | **NO ORPHANS** | **VALIDATION**: Entity without 4-layer path = invalid | **METADATA (ALL 8 REQUIRED)**: created_date|last_modified|last_accessed|reference_count|usage_count|hierarchy_path|content_hash|obsolete_check_date (AUTO-GENERATED+updated on access) | **Format**: Pipe-separated string embedded in observations: `"<observation_text> | metadata: created:YYYY-MM-DD_HHMMSS|modified:YYYY-MM-DD_HHMMSS|accessed:YYYY-MM-DD_HHMMSS|refs:N|usage:N|path:E→C→D→T|hash:sha256:X|obs_check:YYYY-MM-DD_HHMMSS"` | **VALIDATION**: Reject entities missing any of 8 metadata fields
 
 ## 🏗️ Memory Types+Domains
 
@@ -24,7 +24,7 @@
 
 ## 📝 Content+Connection Standards
 
-**Format**: `[Core Function]: [Technical Detail] | [Context/Usage] | [Key Connections]` | **Length**: 80-120 chars | **Style**: Technical precision+no filler | **Links**: 2-4 connections | **Naming**: 3-25 chars PascalCase+clear purpose
+**Format**: `[Core Function]: [Technical Detail] | [Context/Usage] | [Key Connections]` | **Length**: 80-120 chars **ENFORCED** (reject >120) | **Style**: Technical precision+no filler | **Links**: 2-4 connections | **Naming**: 3-25 chars PascalCase+clear purpose | **TEMPLATE VALIDATION**: Entity name MUST match `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]` (reject non-compliant) | **ENTITYTYPE VALIDATION**: entityType JSON field MUST match EntityType suffix in name (no spaces, PascalCase)
 
 **MANDATORY CONNECTIONS**: Entity→SubCluster→Domain→MemoryType (4-layer REQUIRED) | Horizontal(related entities same level) | Cross-Domain(entities across domains) | Pattern(Implementation→Pattern entities) | **VALIDATION**: No complete vertical path = invalid
 
@@ -40,7 +40,7 @@
 
 **Phases**: 1(Template compliance+hierarchy analysis+domain mapping) | 2(Missing domain creation+orphan identification+connection planning) | 3(Entity transformation+relationship establishment+quality validation)
 
-**Quality**: Naming(95%+template adherence) | **Hierarchy(100% entities MUST have 4-layer)** | Connection(90%+entities with 2+connections) | **Orphan(0 without complete Entity→Cluster→Domain→Type)** | Discoverability(85%+search success) | Reusability(3x pattern adoption) | Consistency(95%+standard adherence) | Connectivity(2.5+avg connections) | **Hierarchy Depth(MANDATORY 4.0 levels)**
+**Quality**: Naming(95%+template adherence **ENFORCED at creation**) | **Hierarchy(100% entities MUST have 4-layer **ENFORCED**)** | Connection(90%+entities with 2+connections) | **Orphan(0 without complete Entity→Cluster→Domain→Type **ENFORCED**)** | Observation Length(95%+ within 80-120 chars **ENFORCED**) | EntityType Match(100% name suffix=entityType field **ENFORCED**) | Metadata Complete(100% all 8 fields **ENFORCED**) | Discoverability(85%+search success) | Reusability(3x pattern adoption) | Consistency(95%+standard adherence) | Connectivity(2.5+avg connections) | **Hierarchy Depth(MANDATORY 4.0 levels)**
 
 **Operations**: Structure(`create_domains|create_subclusters|establish_hierarchy`) | Connectivity(`create_connections|map_relationships|validate_hierarchy`) | Quality(`validate_compliance|analyze_connectivity|optimize_structure`)
 

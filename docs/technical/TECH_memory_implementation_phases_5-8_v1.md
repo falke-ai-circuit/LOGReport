@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 220
-  reference_count: 2
-  document_hash: "sha256:memory_impl_phases_v1"
-  similarity_index: 0.01
-  obsolete_check_date: "2025-10-01"
----
-
 # Memory Implementation Phases 5-8 Summary
 
 ## Overview

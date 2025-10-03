@@ -1,15 +1,3 @@
----
-metadata:
-  created_date: "2025-10-01_062000"
-  last_modified: "2025-10-01T06:20:00Z"
-  last_accessed: "2025-10-01T06:20:00Z"
-  word_count: 850
-  reference_count: 5
-  document_hash: "sha256:codebase_impl_plan_v1"
-  similarity_index: 0.02
-  obsolete_check_date: "2025-10-01"
----
-
 # 📐 Blueprint: Codebase Implementation Plan - Batch 3 Roadmaps (v1.0)
 
 ## I. Overview

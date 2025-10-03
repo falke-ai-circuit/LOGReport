@@ -123,4 +123,4 @@ The color of a node will be determined by the following rules, applied within `N
 ## Codebase Sync
 - LogWriter: [src/commander/log_writer.py:223](src/commander/log_writer.py:223) (get_file_line_count for line metrics in color updates)
 - CommandQueue: [src/commander/command_queue.py:15](src/commander/command_queue.py:15) (signal emission for color state)
- 🔗 [ARCH_node_color_determination_logic_v1](architecture/ARCH_node_color_determination_logic_v1.md)
+ 🔗 [ARCH_node_color_determination_logic_v1 #Overview](architecture/ARCH_node_color_determination_logic_v1.md#Overview)

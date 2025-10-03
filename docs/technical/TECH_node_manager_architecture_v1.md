@@ -88,4 +88,4 @@ The manager provides these validation methods:
 - `validate_node_config()` - Checks config integrity
 - `validate_log_paths()` - Verifies log directories exist
 - `check_node_connectivity()` - Tests node availability
- 🔗 [ARCH_node_manager_architecture_v1](architecture/ARCH_node_manager_architecture_v1.md)
+ 🔗 [ARCH_node_manager_architecture_v1 #Overview](architecture/ARCH_node_manager_architecture_v1.md#Overview)
