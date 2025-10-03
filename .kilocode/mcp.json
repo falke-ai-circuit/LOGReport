@@ -12,14 +12,14 @@
       "alwaysAllow": [
         "delete_relations",
         "delete_observations",
-        "search_nodes",
         "update_entities",
         "add_observations",
         "open_nodes",
         "create_relations",
         "delete_entities",
         "read_graph",
-        "create_entities"
+        "create_entities",
+        "search_nodes"
       ],
       "disabled": false
     },

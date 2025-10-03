@@ -19,4 +19,4 @@ This file contains a list of pending tasks and improvements for the LOGReport pr
 :e:hw:1a2 AP03_m2	-               // FBC2
 :e:hw:1a3 AP03_m3       -               // FBC3
 - example AP03_main should be token 1a1,1a2,1a3 ( so AP0XX has FBC RPC and LOG as default ticked on and if its APXX_main that should be APXXm in nodelist with tokens that are taken from :e:hw:token ) right now thats not the case for parsing, ALXX on the other hand is this -:e:hw:21 AL01		pxe:sys-csg2	// AL01 LIS
-and this should be defined in nodes as AL nodename and 21 token and by default all LIS nodes have LOG and LIS on ) please adjust accordingly
+and this should be defined in nodes as AL nodename and 21 token and by default all LIS nodes have LOG and LIS on ) there should also be a button in node configurator window that will let me load the sys file and then parse it and write correct nodes and fields as already existing nodes like in nodes.json
