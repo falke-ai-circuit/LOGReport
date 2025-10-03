@@ -14,4 +14,9 @@ This file contains a list of pending tasks and improvements for the LOGReport pr
 
 [X]We should add a command to clear all files under selected subgroup, and also possibility to trigger all subgroups commands for clearing from node rightclick ( EXAMPLE: FBC subgroup   shoul had second command clear all .fbc logs or similar so user doesnt have to click on every file separately and then clear every log file, if command is under node then it should trigger subgroup commands and sequentially clear all files)
 
-[ ]We should add posibility to execute all node related commands when rightclicked on node ( example: AP01m when executing all node commands should sequentially execute all FBC and RPC and LOG subcommands hierarchically, so clicking on AP01m and executing all commands would trigger all subcommands one after another )
+[ ]We should add parsing of special sys files to create Nodes configuration in Node configuration window, user will give example sys file and define what should be what from file.
+:e:hw:1a1 AP03_main	pxe:sys-csg2	// AP03 Main PCS
+:e:hw:1a2 AP03_m2	-               // FBC2
+:e:hw:1a3 AP03_m3       -               // FBC3
+- example AP03_main should be token 1a1,1a2,1a3 ( so AP0XX has FBC RPC and LOG as default ticked on and if its APXX_main that should be APXXm in nodelist with tokens that are taken from :e:hw:token ) right now thats not the case for parsing, ALXX on the other hand is this -:e:hw:21 AL01		pxe:sys-csg2	// AL01 LIS
+and this should be defined in nodes as AL nodename and 21 token and by default all LIS nodes have LOG and LIS on ) please adjust accordingly
