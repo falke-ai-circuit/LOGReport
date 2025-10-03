@@ -30,33 +30,44 @@
 ## Phase Details
 
 ### Phase 1: Current Mode Assessment
-**Scope**: Configuration inventory, compliance gaps, inheritance patterns
+**Scope**: Configuration inventory, compliance gaps, inheritance patterns, orchestrator log analysis
 ```
 BATCH_PROCESS(modes[3-5]):
 → Load export files (analyze-export.yaml, debug-export.yaml, etc.)
+→ Load orchestrator log files: orchestrator_[workflow]_[timestamp].md
 → Assess configuration consistency
+→ Compare mode instructions vs logged specialist behavior
 → Identify missing icons and instructions
 → Map inheritance patterns and gaps
+→ Analyze delegation rationale vs actual results
+→ Calculate rule adherence from logged actions: target ≥85%
 ```
 
 ### Phase 2: External Best Practices Evaluation
-**Scope**: Community insights, documentation standards, proven patterns
+**Scope**: Community insights, documentation standards, proven patterns, orchestrator log retrospective
 ```
 RESEARCH_CRITERIA:
 → Official KiloCode documentation (kilocode.ai/docs)
 → Community discussions (Reddit, GitHub)
 → Mode usage patterns and feedback
 → Cross-project successful configurations
+→ Orchestrator log retrospective analysis
+→ Compare mode instructions vs real-world delegation results
+→ Identify instruction gaps causing BLOCKERS or redelegations
+→ Map METRICS/LEARNINGS patterns across logged workflows
 ```
 
 ### Phase 3: Implementation Planning
-**Scope**: Enhancement prioritization, update commands, batch organization
+**Scope**: Enhancement prioritization, update commands, batch organization, log-driven improvements
 ```
 PLANNING_OUTPUT:
 → Base template extraction requirements
 → Mode boundary enforcement rules
 → Configuration standardization commands
 → Validation criteria definition
+→ Log-driven instruction refinements
+→ Prioritize improvements addressing logged BLOCKERS/redelegations
+→ Update mode definitions based on METRICS/LEARNINGS analysis
 ```
 
 ### Phase 4: Base Template Application
@@ -108,8 +119,9 @@ PHASE_ID: [1-3/6] Analysis
 BATCH_ID: [batch_number/total_batches]
 MODE: [mode_name → standardized_configuration]
 ANALYSIS: [config_gap|boundary_violation|instruction_inconsistency|missing_integration]
-RECOMMENDATION: [apply_template|enforce_boundary|standardize_config|add_integration]
-RATIONALE: [consistency_improvement|boundary_clarity|memory_alignment]
+LOG_ANALYSIS: [rule_adherence_%|redelegation_count|blocker_patterns|metrics_summary]
+RECOMMENDATION: [apply_template|enforce_boundary|standardize_config|add_integration|refine_instructions_per_log]
+RATIONALE: [consistency_improvement|boundary_clarity|memory_alignment|log_driven_refinement]
 PRIORITY: [critical|high|medium|low]
 IMPLEMENTATION_READINESS: [ready_for_execution|needs_refinement|requires_validation]
 ```
@@ -119,11 +131,11 @@ IMPLEMENTATION_READINESS: [ready_for_execution|needs_refinement|requires_validat
 PHASE_ID: [4-6/6] Implementation  
 BATCH_ID: [batch_number/total_batches]
 MODE: [mode_name → updated_configuration]
-ACTION: [apply_template|enforce_boundary|standardize|validate]
+ACTION: [apply_template|enforce_boundary|standardize|validate|refine_instructions]
 CONFIG_COMMAND: [specific configuration update command executed]
 EXECUTION_STATUS: [planned|in_progress|completed|validated]
-IMPACT: [consistency_improved|boundaries_enforced|integration_enhanced]
-VALIDATION: [config_verified|transitions_working|memory_integrated]
+IMPACT: [consistency_improved|boundaries_enforced|integration_enhanced|log_insights_applied]
+VALIDATION: [config_verified|transitions_working|memory_integrated|log_compliance_improved]
 ```
 
 ## MCP Integration
