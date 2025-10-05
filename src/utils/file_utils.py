@@ -36,10 +36,11 @@ def parse_sys_file(file_path: str) -> List[Dict]:
     nodes_data = {}
 
     # Regex patterns
-    ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})\s+pxe:sys-csg2.*")
-    ap_main_m_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})_main\s+pxe:sys-csg2.*")
-    ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})_reserve\s+pxe:sys-csg2.*")
-    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})(_m\d|_r\d)\s+.*")
+    ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})\s+pxe:sys-csg2.*")
+    ap_main_m_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_main\s+pxe:sys-csg2.*")
+    ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_reserve\s+pxe:sys-csg2.*")
+    al_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AL\d{2})\s+.*")
+    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+((?:AP|AL)\d{2})((?:_m\d|_r\d|_t\d)+)\s+.*")
     
     lines = []
     try:
@@ -81,29 +82,33 @@ def parse_sys_file(file_path: str) -> List[Dict]:
                 "tokens": [],
                 "types": ["FBC", "RPC", "LOG"]
             }
+        elif al_match := al_main_node_regex.match(line):
+            lid, node_name = al_match.groups()
+            nodes_data[node_name] = {
+                "name": node_name,
+                "ip": "",
+                "tokens": [],
+                "types": ["FBC", "RPC", "LOG", "LIS"]
+            }
 
     # Second pass: Extract tokens and assign to the correct node
     for line in lines:
         token_match = token_entry_regex.match(line)
         if token_match:
-            token_lid, ap_prefix, suffix = token_match.groups()
+            token_lid, node_prefix, suffix = token_match.groups()
             
             parent_node_name = None
             if suffix.startswith("_m"):
-                # This is a sub-node like AP01_m2 or AP02_m2
-                # Check for APXXm (e.g., AP02m) first, then APXX (e.g., AP01)
-                if f"{ap_prefix}m" in nodes_data:
-                    parent_node_name = f"{ap_prefix}m"
-                elif ap_prefix in nodes_data:
-                    parent_node_name = ap_prefix
+                if f"{node_prefix}m" in nodes_data:
+                    parent_node_name = f"{node_prefix}m"
+                elif node_prefix in nodes_data:
+                    parent_node_name = node_prefix
             elif suffix.startswith("_r"):
-                # This is a sub-node like AP02_r2
-                if f"{ap_prefix}r" in nodes_data:
-                    parent_node_name = f"{ap_prefix}r"
-            else:
-                # This is a main node entry like AP01, AP04, AP05, AP06
-                if ap_prefix in nodes_data:
-                    parent_node_name = ap_prefix
+                if f"{node_prefix}r" in nodes_data:
+                    parent_node_name = f"{node_prefix}r"
+            else: # For main nodes (APXX or ALXX)
+                if node_prefix in nodes_data:
+                    parent_node_name = node_prefix
             
             if parent_node_name and token_lid not in nodes_data[parent_node_name]["tokens"]:
                 nodes_data[parent_node_name]["tokens"].append(token_lid)
