@@ -106,6 +106,9 @@
 {"type":"entity","name":"Global.UI.RuleBasedMenuFiltering_Pattern","entityType":"UIPattern","observations":["Visibility control for menus using rule-based filtering configs (62 chars). Reusability: 88%. Cross-project: Dynamic UIs. obs_check_date: 2025-10-02, hash: SHA-256(RuleBasedMenuFiltering), reference_count: 6"]}
 {"type":"entity","name":"Global.Workflow.PhaseImplementationWorkflow_Pattern","entityType":"WorkflowPattern","observations":["Cycle-based execution workflow for phased implementations (65 chars). Reusability: 80%. Cross-project: Dev cycles. obs_check_date: 2025-10-02, hash: SHA-256(PhaseImplementationWorkflow), reference_count: 2"]}
 {"type":"entity","name":"Global.Memory.MemoryOptimizationWorkflow_Pattern","entityType":"WorkflowPattern","observations":["Knowledge condensation and reuse workflow for memory optimization (68 chars). Reusability: 85%. Cross-project: KG systems. obs_check_date: 2025-10-02, hash: SHA-256(MemoryOptimizationWorkflow), reference_count: 4"]}
+{"type":"entity","name":"Global.UIPattern.Testing.PyQt6IntegrationTesting_Pattern","entityType":"UIPattern","observations":["Pattern for integration testing PyQt6 UI components, including mocking QFileDialog and QMessageBox, simulating button clicks, and verifying UI and internal data model updates (including nodes.json persistence). Reusability: 85% (transferable to other PyQt6 projects)."]}
+{"type":"entity","name":"Global.Approach.DataProcessing.RegexBasedExtraction_Approach","entityType":"Approach","observations":["Approach for extracting structured data from text files using regular expressions for pattern matching and data extraction. Ensures compatibility with internal data formats. Reusability: 90% (applicable to various text parsing tasks)."]}
+{"type":"entity","name":"Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern","entityType":"DataProcessingPattern","observations":["Pattern for parsing sys files to extract node configuration (name, IP, tokens, types) and merging into an existing node list, handling duplicates. Reusability: 80% (applicable to similar configuration file parsing)."]}
 {"type":"relation","relationType":"DEPENDS_ON"}
 {"type":"relation","relationType":"DEPENDS_ON"}
 {"type":"relation","relationType":"COMPOSES"}
@@ -215,3 +218,7 @@
 {"type":"relation","from":"Global.CodeStructure.Method.NodeTreePresenterOnNode_Selected","to":"Global.Domain.UI","relationType":"BELONGS_TO_DOMAIN"}
 {"type":"relation","from":"Global.Architecture.ArchitecturalDesign.NodeColorDetermination_Logic","to":"Global.Domain.UI","relationType":"BELONGS_TO_DOMAIN"}
 {"type":"relation","from":"Global.Feature.File.SubgroupFileClearing_Command","to":"Global.Domain.Command","relationType":"BELONGS_TO_DOMAIN"}
+{"type":"relation","from":"Global.UIPattern.Testing.PyQt6IntegrationTesting_Pattern","to":"Global.Domain.UI","relationType":"BELONGS_TO_DOMAIN"}
+{"type":"relation","from":"Global.Approach.DataProcessing.RegexBasedExtraction_Approach","to":"Global.Domain.DataModel","relationType":"BELONGS_TO_DOMAIN"}
+{"type":"relation","from":"Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern","to":"Global.Domain.DataModel","relationType":"BELONGS_TO_DOMAIN"}
+{"type":"relation","from":"Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern","to":"Global.PatternCluster.Data.DataManagement_Patterns","relationType":"BELONGS_TO"}

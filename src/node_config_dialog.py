@@ -356,6 +356,12 @@ class NodeConfigDialog(QDialog):
         self.create_files_btn.clicked.connect(self.create_files)
         btn_layout.addWidget(self.create_files_btn)
         
+        # Add Load Sys File button
+        self.load_sys_file_btn = QPushButton("Load Sys File")
+        self.load_sys_file_btn.setMinimumWidth(180)
+        self.load_sys_file_btn.clicked.connect(self.load_sys_file)
+        btn_layout.addWidget(self.load_sys_file_btn)
+
         right_layout.addLayout(btn_layout)
         
         # Close button
@@ -531,4 +537,56 @@ Generated on $DATETIME."""
                 self,
                 "File Creation Failed",
                 f"Error creating files: {str(e)}"
+            )
+
+    def load_sys_file(self):
+        """Load and parse a system file to populate node configuration"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select System File",
+            os.path.expanduser("~"),  # Start in home directory
+            "System Files (*.txt *.sys);;All Files (*)"
+        )
+        if not file_path:
+            return
+
+        try:
+            from utils.file_utils import parse_sys_file
+            parsed_nodes = parse_sys_file(file_path)
+
+            if not parsed_nodes:
+                QMessageBox.information(
+                    self,
+                    "No Nodes Found",
+                    "No valid nodes were found in the selected system file."
+                )
+                return
+
+            # Merge with existing nodes, avoiding duplicates
+            added_count = 0
+            skipped_count = 0
+            for new_node in parsed_nodes:
+                # Check if a node with the same name already exists
+                if any(node['name'] == new_node['name'] for node in self.nodes_data):
+                    skipped_count += 1
+                else:
+                    self.nodes_data.append(new_node)
+                    added_count += 1
+            
+            self.populate_node_list()
+            if self.nodes_data:
+                self.node_list.setCurrentRow(0)
+
+            QMessageBox.information(
+                self,
+                "Sys File Loaded",
+                f"Successfully loaded {added_count} nodes from sys file.\n"
+                f"{skipped_count} duplicate nodes were skipped."
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error Loading Sys File",
+                f"Failed to load and parse system file: {str(e)}"
             )
