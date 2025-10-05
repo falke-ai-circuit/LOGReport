@@ -1,0 +1,63 @@
+// HW     LID           PARAMETER          COMMENT
+
+:e:hw:161 AP01		pxe:sys-csg2	// AP01 PCS
+:e:hw:162 AP01_m2	-               // FBC2
+:e:hw:163 AP01_m3       -               // FBC3
+
+:e:hw:181 AP02_main	pxe:sys-csg2	// AP02 Main PCS
+:e:hw:182 AP02_m2	-               // FBC2
+:e:hw:183 AP02_m3       -               // FBC3
+
+:e:hw:381 AP02_reserve	pxe:sys-csg2	// AP02 Reserve PCS
+:e:hw:382 AP02_r2	-               // FBC2
+:e:hw:383 AP02_r3       -               // FBC3
+
+:e:hw:1a1 AP03_main	pxe:sys-csg2	// AP03 Main PCS
+:e:hw:1a2 AP03_m2	-               // FBC2
+:e:hw:1a3 AP03_m3       -               // FBC3
+
+:e:hw:3a1 AP03_reserve	pxe:sys-csg2	// AP03 Reserve PCS
+:e:hw:3a2 AP03_r2	-               // FBC2
+:e:hw:3a3 AP03_r3       -               // FBC3
+
+:e:hw:1c1 AP04		pxe:sys-csg2	// AP04 PCS
+:e:hw:1c2 AP04_m2	-               // FBC2
+:e:hw:1c3 AP04_m3       -               // FBC3
+
+:e:hw:1e1 AP05		pxe:sys-csg2	// AP05 PCS
+:e:hw:1e2 AP05_m2	-               // FBC2
+:e:hw:1e3 AP05_m3       -               // FBC3
+
+:e:hw:201 AP06		pxe:sys-csg2	// AP06 PCS
+:e:hw:202 AP06_m2	-               // FBC2
+:e:hw:203 AP06_m3       -               // FBC3
+
+:e:hw:221 AP07_main	pxe:sys-csg2	// AP07 Main PCS
+:e:hw:222 AP07_m2	-               // FBC2
+
+:e:hw:421 AP07_reserve	pxe:sys-csg2	// AP07 Reserve PCS
+:e:hw:422 AP07_r2	-               // FBC2
+
+:e:hw:21 AL01		pxe:sys-csg2	// AL01 LIS
+:e:hw:41 AL02		pxe:sys-csg2	// AL02 LIS
+
+:e:hw:2e1 AL03		pxe:sys-csg2	// AL03 LIS
+:e:hw:2e2 AL08		-		// AL08 LIS
+
+:e:hw:301 AL04		pxe:sys-csg2	// AL04 LIS
+:e:hw:302 AL05		-		// AL05 LIS
+
+:e:hw:321 AL06		pxe:sys-csg2	// AL06 LIS
+:e:hw:322 AL07		-		// AL07 LIS
+
+:e:hw:f721 A1OF		- 		// A1OF DNAview Server
+:e:hw:fc23 A1O9		-		// A1O9 OPS
+:e:hw:463  A1O8		-		// A1O8 OPS
+:e:hw:fca3 A1O5		-		// A1O5 OPS
+:e:hw:543  A1O4		-		// A1O4 OPS
+:e:hw:563  A1O3		-		// A1O3 OPS
+:e:hw:583  A1O2		-		// A1O2 OPS
+:e:hw:5a3  A1O1		-		// A1O1 OPS
+
+:e:hw:566 A1A1_main	-		// A1O1 Main ALS
+:e:hw:586 A1A1_reserve	-		// A1O1 Reserve ALS

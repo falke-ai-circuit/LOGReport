@@ -51,7 +51,7 @@ def parse_sys_file(content):
     ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})\s+pxe:sys-csg2.*")
     ap_main_m_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})_main\s+pxe:sys-csg2.*")
     ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})_reserve\s+pxe:sys-csg2.*")
-    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})(_m|_r)\s+.*")
+    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{3})\s+(AP\d{2})(_m\d|_r\d)\s+.*")
 
     lines = content.splitlines()
     

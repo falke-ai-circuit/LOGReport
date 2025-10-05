@@ -1,69 +1,50 @@
-# Analysis Report: Sys File Parsing Logic for Multi-Token Extraction and Type-Based Default Node Configuration
+# Sys File Parsing Analysis Report
 
 ## Objective
-Analyze existing sys file parsing logic to support multi-token extraction and type-based default node configuration.
+Investigate and identify the root causes of incorrect sys file parsing for AP-based nodes (AP02m, AP02r) using AB01_sys and nodes.json, and propose solutions.
 
-## Current State (CEPH+ v1.0)
-The existing sys file parser (`src/utils/file_utils.py::parse_sys_file`) and mapping logic (`src/node_config_dialog.py::NodeConfigDialog.load_sys_file`) handle single token extraction and basic type assignment (RPC/LOG for 'pxe:', FBC/LIS for '-'). Duplicates are skipped.
+## CEPH+ - Canonical Problem Pack
+**CURRENT:** AB01_sys contains AP02_main and AP02_reserve entries. nodes.json has existing AP02m/AP02r configs. Current parsing logic (ARCH_sys_file_parsing_v1.md, project memory) incorrectly parses AP-based nodes. AP02m has an invented IP, incorrect tokens (181, 182, 183 instead of 182, 183). AP02r is not detected. IP addresses should not be extracted from sys file.
+**EXPECTED:** AP02m: no IP, tokens 182, 183. AP02r: detected, no IP, tokens 382, 383.
+**PROBLEM:** Existing sys file parsing logic incorrectly extracts IP addresses, misidentifies tokens, and fails to detect certain AP-based nodes from AB01_sys, leading to incorrect node configurations.
+**HYPOTHESES:**
+H1: Regex patterns for AP0XX_main/AP0XX_reserve are incorrect/incomplete.
+H2: Token assignment logic for AP-based nodes is flawed.
+H3: Parsing logic for AP0XX_reserve is missing/flawed.
+H4: IP address assignment logic is not correctly preventing IP insertion or defaults to incorrect IP.
 
-## Expected Behavior
-The parser should extract multiple tokens (e.g., 1a1, 1a2, 1a3 for AP03_main) and apply default types (FBC RPC and LOG for AP nodes, LOG and LIS for AL nodes) based on node name patterns.
+## Investigation Findings
 
-## Problem
-The current parser does not correctly extract multiple tokens or apply default types based on node name patterns (AP/AL).
+### Discrepancies Identified
+1.  **AP02m (AP02_main):**
+    *   **IP Address:** The current parsing logic assigns an invented IP address (e.g., "192.168.1.181") to AP02m, which contradicts the requirement that IP addresses should not be extracted from the sys file.
+    *   **Tokens:** The `AB01_sys` file shows `AP02_main` with LID `181`, followed by `AP02_m2` (LID `182`) and `AP02_m3` (LID `183`). The current parsing logic incorrectly includes `181` as a token for AP02m, resulting in tokens `[181, 182, 183]` instead of the expected `[182, 183]`.
+2.  **AP02r (AP02_reserve):**
+    *   **Detection:** The `AP02_reserve` entry in `AB01_sys` (LID `381`, followed by `AP02_r2` with `382` and `AP02_r3` with `383`) is not detected by the current parsing logic. Consequently, AP02r is not added to the node configurations.
 
-## Evidence
-User examples:
-*   `:e:hw:1a1 AP03_main pxe:sys-csg2 // AP03 Main PCS` (AP03_main -> AP03m, tokens 1a1,1a2,1a3, FBC RPC, LOG)
-*   `:e:hw:21 AL01 pxe:sys-csg2 // AL01 LIS` (AL01 -> AL, token 21, LOG, LIS)
+### Root Causes (Confirmed from Code Analysis)
+The primary root causes were identified by analyzing the `parse_sys_file` function in `src/utils/file_utils.py`:
 
-## Analysis Findings
+1.  **Hardcoded IP Address Assignment (H4 Confirmed):**
+    *   The code explicitly assigns an IP address using `node_ip = f"192.168.1.{token_raw}"` for both `AP0XX_main` and `ALXX` entries. This directly violates the requirement to not extract IP addresses from the sys file.
+2.  **Incorrect Token Collection for Main Nodes (H2 Confirmed):**
+    *   For `AP0XX_main` entries, the LID from the main line itself (e.g., `181` for `AP02_main`) is added to the `tokens` list. The requirement is that only LIDs from the `_m2` and `_m3` (or `_r2`, `_r3`) lines should be considered tokens for the node.
+3.  **Missing Parsing Logic for Reserve Nodes (H3 Confirmed):**
+    *   There is no dedicated `elif` block or regex pattern within `parse_sys_file` to specifically handle `AP0XX_reserve` entries. The current logic only accounts for `AP0XX_main` and `ALXX` entries, causing `AP02_reserve` and its associated tokens (`382`, `383`) to be entirely missed during parsing.
 
-### 1. `src/utils/file_utils.py::parse_sys_file`
-*   **Current Regex**: `r'^:e:hw:(\d+)\s+(.+?)\s+(.+?)\s*(// (.+))?$'`
-    *   The `(\d+)` group for `lid_str` is restrictive, only matching digits. This prevents the extraction of alphanumeric tokens like `1a1`.
-*   **IP Address Generation**: `node_ip = f"192.168.1.{lid}"`
-    *   This relies on `lid` being an integer, which conflicts with alphanumeric tokens.
-*   **Token Extraction**: Currently extracts a single token from `param` if it starts with `pxe:`.
-    *   Does not support generating multiple tokens based on node name patterns.
-*   **Type Assignment**: Hardcoded `if/elif` logic based on `param` value (`pxe:` or `-`).
-    *   Does not dynamically assign types based on node name patterns (AP/AL).
+## Proposed Solutions
 
-### 2. `src/node_config_dialog.py::NodeConfigDialog.load_sys_file`
-*   This method calls `parse_sys_file` and appends the returned nodes to `self.nodes_data`.
-*   It handles duplicate node names but does not contain logic for multi-token generation or type-based default assignment.
-*   The core modifications are required within `parse_sys_file` or a new utility function it calls.
+Based on the identified root causes, the following solutions are proposed:
 
-## Proposed Changes and Recommendations
-
-To address the requirements, the following changes are recommended, primarily within `src/utils/file_utils.py::parse_sys_file` or a new helper function:
-
-1.  **Update Regex for Alphanumeric Tokens**:
-    *   **Current**: `r'^:e:hw:(\d+)\s+(.+?)\s+(.+?)\s*(// (.+))?$'`
-    *   **Proposed**: `r'^:e:hw:([\w\d]+)\s+(.+?)\s+(.+?)\s*(// (.+))?$'`
-    *   **Rationale**: This change allows `lid_str` to capture alphanumeric values (e.g., `1a1`), which can then be used as a base token ID.
-
-2.  **Conditional IP Address Generation**:
-    *   **Logic**: After extracting `lid_str`, check if it's purely numeric.
-        *   If `lid_str.isnumeric()`: `lid = int(lid_str)`, then `node_ip = f"192.168.1.{lid}"`.
-        *   If `lid_str` is alphanumeric: A default IP (e.g., `192.168.1.0` or a placeholder) or an IP derived from a numeric part of the `hw` or `name` should be assigned. The problem statement implies `1a1` is a token, not necessarily the LID for IP. Further clarification might be needed on how IP should be derived for alphanumeric `lid_str` values. For the purpose of this analysis, we assume `lid_str` is primarily a token identifier.
-
-3.  **Node Name Normalization**:
-    *   **Logic**: Introduce a helper function, e.g., `normalize_node_name(name)`, to convert node names like `AP03_main` to `AP03m` or `AL01` to `AL`. This normalized name will be used for type assignment.
-    *   **Example**: `AP03_main` -> `AP03m`, `AL01` -> `AL`.
-
-4.  **Multi-token Generation Function**:
-    *   **Function**: Create a new helper function, e.g., `generate_tokens_from_pattern(node_name, base_token_id) -> List[str]`.
-    *   **Logic**: This function would take the normalized `node_name` and a `base_token_id` (which could be the alphanumeric `lid_str` or a value from `param`).
-        *   For "AP" nodes (e.g., `AP03m`): If `base_token_id` is `1a1`, generate `['1a1', '1a2', '1a3']`. The exact pattern for generating `1a2`, `1a3` from `1a1` needs to be defined (e.g., incrementing the numeric part, or a fixed set of suffixes).
-        *   For "AL" nodes (e.g., `AL`): If `base_token_id` is `21`, generate `['21']`.
-    *   **Integration**: Call this function to populate the `tokens` list in the `node` dictionary.
-
-5.  **Type-Based Default Configuration**:
-    *   **Logic**: After normalizing the node name, apply conditional logic to assign default types:
-        *   If `normalized_name.startswith('AP')`: `types = ['FBC', 'RPC', 'LOG']`
-        *   If `normalized_name.startswith('AL')`: `types = ['LOG', 'LIS']`
-    *   **Integration**: This logic replaces the existing `if param.startswith('pxe:')` and `elif param == '-'` blocks for type assignment.
+1.  **Remove IP Address Assignment:**
+    *   Modify the `parse_sys_file` function to ensure that the `ip` field for all parsed nodes is always an empty string, as per the requirement. This involves removing or commenting out lines that assign an IP address.
+2.  **Refine Token Collection Logic:**
+    *   Adjust the logic for `AP0XX_main` entries to prevent the LID from the main line (e.g., `181`) from being added to the `tokens` list. Only LIDs from subsequent `_m2` and `_m3` lines should be collected.
+3.  **Add Parsing Logic for Reserve Nodes:**
+    *   Implement a new `elif` block within `parse_sys_file` to specifically detect and process `AP0XX_reserve` entries. This logic should:
+        *   Derive the node name (e.g., `AP02r`).
+        *   Initialize its `ip` as an empty string.
+        *   Collect tokens only from subsequent `_r2` and `_r3` lines.
 
 ## Conclusion
-The existing `sys` file parsing logic requires significant modifications to its regex, IP address handling, token extraction, and type assignment mechanisms to support multi-token extraction and type-based default node configuration. The proposed changes involve updating the regex, introducing conditional logic for IP generation, normalizing node names, implementing a multi-token generation function, and dynamically assigning types based on node name patterns. These changes will ensure accurate and flexible node configuration as per the requirements.
+The investigation successfully identified the root causes of the incorrect sys file parsing for AP-based nodes. The proposed solutions directly address these issues, ensuring that AP02m and AP02r are correctly parsed without IP addresses and with the accurate set of tokens, aligning with the specified requirements.
