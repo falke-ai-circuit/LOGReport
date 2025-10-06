@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
+from src.utils.file_utils import parse_sys_file
 import pytest
-from typing import List, Dict
 
 # Sys file content provided in the problem description
 sys_file_content_ap = """
@@ -63,97 +63,6 @@ sys_file_content_al = """
 :e:hw:533 AL08_t2       -               // LIS Token 2
 :e:hw:534 AL08_t3       -               // LIS Token 3
 """
-
-def parse_sys_file(file_path: str) -> List[Dict]:
-    nodes_data = {}
-
-    # Regex patterns
-    ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})\s+pxe:sys-csg2.*")
-    ap_main_m_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_main\s+pxe:sys-csg2.*")
-    ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_reserve\s+pxe:sys-csg2.*")
-    al_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AL\d{2})\s+.*")
-    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+((?:AP|AL)\d{2})((?:_m\d|_r\d|_t\d)+)\s+.*")
-    
-    lines = []
-    try:
-        # For testing purposes, we'll treat file_path as content if it's not a real path
-        if Path(file_path).exists():
-            with open(file_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-        else:
-            lines = file_path.splitlines() # Assume file_path is content for testing
-    except Exception as e:
-        raise Exception(f"Error reading file {file_path}: {str(e)}")
-
-    # First pass: Identify main nodes and initialize their data
-    for line in lines:
-        match_ap = ap_main_node_regex.match(line)
-        match_ap_main = ap_main_m_node_regex.match(line)
-        match_ap_reserve = ap_reserve_r_node_regex.match(line)
-
-        if match_ap:
-            lid, node_name_prefix = match_ap.groups()
-            full_node_name = node_name_prefix
-            nodes_data[full_node_name] = {
-                "name": full_node_name,
-                "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG"]
-            }
-        elif match_ap_main:
-            lid, node_name_prefix = match_ap_main.groups()
-            full_node_name = f"{node_name_prefix}m"
-            nodes_data[full_node_name] = {
-                "name": full_node_name,
-                "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG"]
-            }
-        elif match_ap_reserve:
-            lid, node_name_prefix = match_ap_reserve.groups()
-            full_node_name = f"{node_name_prefix}r"
-            nodes_data[full_node_name] = {
-                "name": full_node_name,
-                "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG"]
-            }
-        elif al_match := al_main_node_regex.match(line):
-            lid, node_name = al_match.groups()
-            nodes_data[node_name] = {
-                "name": node_name,
-                "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG", "LIS"]
-            }
-
-    # Second pass: Extract tokens and assign to the correct node
-    for line in lines:
-        token_match = token_entry_regex.match(line)
-        if token_match:
-            token_lid, node_prefix, suffix = token_match.groups()
-            
-            parent_node_name = None
-            if suffix.startswith("_m"):
-                if f"{node_prefix}m" in nodes_data:
-                    parent_node_name = f"{node_prefix}m"
-                elif node_prefix in nodes_data:
-                    parent_node_name = node_prefix
-            elif suffix.startswith("_r"):
-                if f"{node_prefix}r" in nodes_data:
-                    parent_node_name = f"{node_prefix}r"
-            else: # For main nodes (APXX or ALXX)
-                if node_prefix in nodes_data:
-                    parent_node_name = node_prefix
-            
-            if parent_node_name and token_lid not in nodes_data[parent_node_name]["tokens"]:
-                nodes_data[parent_node_name]["tokens"].append(token_lid)
-    
-    # Sort tokens for consistent output
-    for node_name in nodes_data:
-        nodes_data[node_name]["tokens"].sort()
-
-    return list(nodes_data.values())
 
 @pytest.fixture
 def sample_sys_file_content_ap():
@@ -260,7 +169,7 @@ def test_sys_file_parsing_al01(sample_sys_file_content_al):
     assert al01_node["name"] == "AL01"
     assert al01_node["ip"] == ""
     assert al01_node["tokens"] == ["502", "503"]
-    assert al01_node["types"] == ["FBC", "RPC", "LOG", "LIS"]
+    assert al01_node["types"] == ["LOG", "LIS"]
 
 def test_sys_file_parsing_al02(sample_sys_file_content_al):
     parsed_data = parse_sys_file(sample_sys_file_content_al)
@@ -269,7 +178,7 @@ def test_sys_file_parsing_al02(sample_sys_file_content_al):
     assert al02_node["name"] == "AL02"
     assert al02_node["ip"] == ""
     assert al02_node["tokens"] == ["512"]
-    assert al02_node["types"] == ["FBC", "RPC", "LOG", "LIS"]
+    assert al02_node["types"] == ["LOG", "LIS"]
 
 def test_sys_file_parsing_al03(sample_sys_file_content_al):
     parsed_data = parse_sys_file(sample_sys_file_content_al)
@@ -278,7 +187,7 @@ def test_sys_file_parsing_al03(sample_sys_file_content_al):
     assert al03_node["name"] == "AL03"
     assert al03_node["ip"] == ""
     assert al03_node["tokens"] == []
-    assert al03_node["types"] == ["FBC", "RPC", "LOG", "LIS"]
+    assert al03_node["types"] == ["LOG", "LIS"]
 
 def test_sys_file_parsing_al08(sample_sys_file_content_al):
     parsed_data = parse_sys_file(sample_sys_file_content_al)
@@ -287,7 +196,7 @@ def test_sys_file_parsing_al08(sample_sys_file_content_al):
     assert al08_node["name"] == "AL08"
     assert al08_node["ip"] == ""
     assert al08_node["tokens"] == ["532", "533", "534"]
-    assert al08_node["types"] == ["FBC", "RPC", "LOG", "LIS"]
+    assert al08_node["types"] == ["LOG", "LIS"]
 
 def test_all_nodes_present(sample_sys_file_content_ap, sample_sys_file_content_al):
     parsed_data_ap = parse_sys_file(sample_sys_file_content_ap)
@@ -323,4 +232,4 @@ def test_default_types_assigned(sample_sys_file_content_ap, sample_sys_file_cont
     for node in parsed_data_ap:
         assert node["types"] == ["FBC", "RPC", "LOG"]
     for node in parsed_data_al:
-        assert node["types"] == ["FBC", "RPC", "LOG", "LIS"]
+        assert node["types"] == ["LOG", "LIS"]

@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QFileDialog, QInputDialog, QCheckBox
 )
 from PyQt6.QtCore import Qt
+from pathlib import Path
 
 class NodeConfigDialog(QDialog):
     def __init__(self, parent=None):
@@ -551,8 +552,13 @@ Generated on $DATETIME."""
             return
 
         try:
-            from utils.file_utils import parse_sys_file
-            parsed_nodes = parse_sys_file(file_path)
+            from utils.file_utils import parse_sys_file, read_text_file
+            
+            # Read the content of the selected file
+            file_content_lines = read_text_file(Path(file_path))
+            file_content = "\n".join(file_content_lines)
+            
+            parsed_nodes = parse_sys_file(file_content)
 
             if not parsed_nodes:
                 QMessageBox.information(
