@@ -31,9 +31,19 @@ def read_text_file(filepath: Path, encodings=None) -> List[str]:
 
 
 def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> List[Dict]:
+    """
+    Parse a sys file and extract node configurations.
+    
+    Args:
+        file_content: The content of the sys file
+        sys_file_path: Optional path to the sys file. If provided and the file is a 
+                      token-specific file (e.g., 181.sys), IP address will be extracted.
+    
+    Returns:
+        List of node dictionaries with name, ip, tokens, and types
+    """
     nodes_data = {}
     extracted_ip = ""
-    nodes_data = {}
 
     # Regex patterns
     ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})\s+pxe:sys-csg2.*")
@@ -45,14 +55,21 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
     
     lines = file_content.splitlines()
 
-    # Extract IP address if sys_file_path is provided (indicating a token-specific sys file)
+    # Extract IP address only if sys_file_path is provided and it's a token-specific file
+    # Token-specific files have numeric names like 181.sys, 41.sys
     if sys_file_path:
-        for line in lines:
-            if ip_match := ip_address_regex.match(line):
-                extracted_ip = ip_match.group(1)
-                break # Assume only one IP address per file
+        file_stem = sys_file_path.stem
+        is_token_file = file_stem.isdigit() or (file_stem.lower().startswith(('0x', 'x')) and len(file_stem) <= 5)
+        
+        if is_token_file:
+            for line in lines:
+                if ip_match := ip_address_regex.match(line):
+                    extracted_ip = ip_match.group(1)
+                    break  # Assume only one IP address per file
 
     # First pass: Identify main nodes and initialize their data
+    # The main LID (e.g., 181 for AP02_main) is stored separately for IP lookup
+    # but NOT added to the tokens list - only subordinate tokens are added
     for line in lines:
         match_ap = ap_main_node_regex.match(line)
         match_ap_main = ap_main_m_node_regex.match(line)
@@ -64,8 +81,9 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
             nodes_data[full_node_name] = {
                 "name": full_node_name,
                 "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG"]
+                "tokens": [],  # Main LID not included - only for IP lookup
+                "types": ["FBC", "RPC", "LOG"],
+                "_main_token": lid  # Store for IP lookup but not in tokens list
             }
         elif match_ap_main:
             lid, node_name_prefix = match_ap_main.groups()
@@ -73,8 +91,9 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
             nodes_data[full_node_name] = {
                 "name": full_node_name,
                 "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG"]
+                "tokens": [],  # Main LID not included - only for IP lookup
+                "types": ["FBC", "RPC", "LOG"],
+                "_main_token": lid  # Store for IP lookup but not in tokens list
             }
         elif match_ap_reserve:
             lid, node_name_prefix = match_ap_reserve.groups()
@@ -82,16 +101,18 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
             nodes_data[full_node_name] = {
                 "name": full_node_name,
                 "ip": "",
-                "tokens": [],
-                "types": ["FBC", "RPC", "LOG"]
+                "tokens": [],  # Reserve LID not included - only for IP lookup
+                "types": ["FBC", "RPC", "LOG"],
+                "_main_token": lid  # Store for IP lookup but not in tokens list
             }
         elif al_match := al_main_node_regex.match(line):
             lid, node_name = al_match.groups()
             nodes_data[node_name] = {
                 "name": node_name,
                 "ip": "",
-                "tokens": [lid], # Extract LID as a token for AL nodes
-                "types": ["LOG", "LIS"]
+                "tokens": [lid],  # For AL nodes, main token IS in tokens list (single token)
+                "types": ["LOG", "LIS"],
+                "_main_token": lid  # Store for IP lookup as well
             }
 
     # Second pass: Extract tokens and assign to the correct node
@@ -101,7 +122,7 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
             ap_main_m_node_regex.match(line) or
             ap_reserve_r_node_regex.match(line) or
             al_main_node_regex.match(line)):
-            continue # Skip this line, it's a main node definition
+            continue  # Skip this line, it's a main node definition
 
         token_match = token_entry_regex.match(line)
         if token_match:
@@ -119,7 +140,7 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
             elif suffix and suffix.startswith("_t"):
                 if node_prefix in nodes_data:
                     parent_node_name = node_prefix
-            elif not suffix and node_prefix in nodes_data: # Handle nodes without suffix (e.g., AP01, AL03)
+            elif not suffix and node_prefix in nodes_data:  # Handle nodes without suffix
                 parent_node_name = node_prefix
             
             if parent_node_name and token_lid not in nodes_data[parent_node_name]["tokens"]:
@@ -133,11 +154,23 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
     for node_name in nodes_data:
         nodes_data[node_name]["tokens"].sort()
 
-    # Assign extracted IP to all nodes if available
-    if extracted_ip:
-        for node_name in nodes_data:
-            nodes_data[node_name]["ip"] = extracted_ip
+    # If this is a token-specific file and we extracted an IP, return a minimal node for IP mapping
+    # This allows the caller to extract just the IP without getting node structure
+    if extracted_ip and sys_file_path:
+        file_stem = sys_file_path.stem
+        is_token_file = file_stem.isdigit() or (file_stem.lower().startswith(('0x', 'x')) and len(file_stem) <= 5)
+        
+        if is_token_file:
+            # Return a single "dummy" node with just the IP for mapping purposes
+            return [{
+                "name": f"_token_{file_stem}",
+                "ip": extracted_ip,
+                "tokens": [file_stem],
+                "types": []
+            }]
 
+    # Convert nodes_data to list and keep _main_token for caller to use
+    # Don't remove it yet - let the caller decide
     return list(nodes_data.values())
 
 def merge_node_data(existing_nodes: List[Dict], new_nodes: List[Dict]) -> List[Dict]:
@@ -145,38 +178,69 @@ def merge_node_data(existing_nodes: List[Dict], new_nodes: List[Dict]) -> List[D
     Merges new node data into existing node data.
     Preserves existing nodes not present in new_nodes.
     Updates existing nodes with new data if names match.
+    Handles both old format (tokens as strings) and new format (tokens as objects).
     """
     merged_nodes = {node["name"]: node for node in existing_nodes}
 
     for new_node in new_nodes:
         node_name = new_node["name"]
         if node_name in merged_nodes:
-            # Update existing node with new data, preserving IP if not empty in existing
+            # Update existing node with new data
             existing_node = merged_nodes[node_name]
             new_ip = new_node.get("ip", "")
             
-            # Preserve existing IP if new IP is empty or not provided
-            if existing_node.get("ip") and not new_ip:
-                new_node["ip"] = existing_node["ip"]
-            elif existing_node.get("ip_address") and not new_ip: # Handle 'ip_address' key
-                new_node["ip_address"] = existing_node["ip_address"]
+            # Update IP: prefer non-empty new IP, otherwise keep existing
+            if new_ip:
+                existing_node["ip"] = new_ip
+            elif not existing_node.get("ip"):
+                existing_node["ip"] = ""
             
-            # Merge tokens, ensuring no duplicates and preserving existing token structure
-            existing_tokens = { (t.get("token_id"), t.get("token_type")) : t for t in existing_node.get("tokens", []) }
-            for new_token in new_node.get("tokens", []):
-                token_key = (new_token.get("token_id"), new_token.get("token_type"))
-                if token_key not in existing_tokens:
-                    existing_tokens[token_key] = new_token
-            new_node["tokens"] = list(existing_tokens.values())
-
+            # Merge tokens (handle both formats)
+            new_tokens = new_node.get("tokens", [])
+            existing_tokens = existing_node.get("tokens", [])
+            
+            # Check format of tokens
+            if new_tokens:
+                if isinstance(new_tokens[0], str):
+                    # Old format: tokens are strings
+                    # Merge string tokens
+                    existing_token_ids = set()
+                    if existing_tokens and isinstance(existing_tokens[0], str):
+                        existing_token_ids = set(existing_tokens)
+                    elif existing_tokens and isinstance(existing_tokens[0], dict):
+                        # Existing is new format, extract token_ids
+                        existing_token_ids = {t.get("token_id") for t in existing_tokens}
+                    
+                    for token_id in new_tokens:
+                        if token_id not in existing_token_ids:
+                            if existing_tokens and isinstance(existing_tokens[0], dict):
+                                # Can't mix formats, skip
+                                pass
+                            else:
+                                existing_tokens.append(token_id)
+                                existing_token_ids.add(token_id)
+                    
+                    existing_node["tokens"] = existing_tokens
+                else:
+                    # New format: tokens are objects with token_id and token_type
+                    existing_token_keys = set()
+                    if existing_tokens and isinstance(existing_tokens[0], dict):
+                        existing_token_keys = {(t.get("token_id"), t.get("token_type")) for t in existing_tokens}
+                    
+                    for new_token in new_tokens:
+                        token_key = (new_token.get("token_id"), new_token.get("token_type"))
+                        if token_key not in existing_token_keys:
+                            existing_tokens.append(new_token)
+                            existing_token_keys.add(token_key)
+                    
+                    existing_node["tokens"] = existing_tokens
+            
             # Merge types, ensuring no duplicates
             existing_types = set(existing_node.get("types", []))
             new_types = set(new_node.get("types", []))
-            new_node["types"] = list(existing_types.union(new_types))
-            new_node["types"].sort() # Sort for consistent output
-
-            # Update the merged node
-            merged_nodes[node_name].update(new_node)
+            merged_types = list(existing_types.union(new_types))
+            merged_types.sort()
+            existing_node["types"] = merged_types
         else:
             # Add new node
             merged_nodes[node_name] = new_node

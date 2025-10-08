@@ -541,98 +541,128 @@ Generated on $DATETIME."""
             )
 
     def load_sys_file(self):
-        """Load and parse a system file to populate node configuration"""
-        file_path, _ = QFileDialog.getOpenFileName(
+        """Load and parse system files to populate node configuration"""
+        file_paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select System File",
+            "Select System Files (Main sys file and/or token-specific sys files)",
             os.path.expanduser("~"),  # Start in home directory
             "System Files (*.txt *.sys);;All Files (*)"
         )
-        if not file_path:
+        if not file_paths:
             return
 
         try:
             from utils.file_utils import parse_sys_file, read_text_file, merge_node_data
             
-            # Read the content of the initial sys file
-            initial_file_content_lines = read_text_file(Path(file_path))
-            initial_file_content = "\n".join(initial_file_content_lines)
+            all_parsed_nodes = []
+            main_sys_files = []  # Files like AB01_sys
+            token_sys_files = []  # Files like 181.sys, 41.sys
             
-            # Parse the initial sys file
-            initial_parsed_nodes = parse_sys_file(initial_file_content, Path(file_path))
-
-            if not initial_parsed_nodes:
+            # Categorize files into main and token-specific sys files
+            for file_path in file_paths:
+                file_name = Path(file_path).stem  # Get filename without extension
+                # Token-specific files are typically numeric (e.g., 181, 41)
+                if file_name.isdigit() or (file_name.lower().startswith(('0x', 'x')) and len(file_name) <= 5):
+                    token_sys_files.append(file_path)
+                else:
+                    main_sys_files.append(file_path)
+            
+            # Parse main sys files first (these define nodes and their tokens)
+            for file_path in main_sys_files:
+                try:
+                    file_content_lines = read_text_file(Path(file_path))
+                    file_content = "\n".join(file_content_lines)
+                    
+                    # Parse without sys_file_path to avoid IP extraction in main files
+                    parsed_nodes = parse_sys_file(file_content, None)
+                    
+                    if parsed_nodes:
+                        all_parsed_nodes = merge_node_data(all_parsed_nodes, parsed_nodes)
+                except Exception as e:
+                    QMessageBox.warning(
+                        self,
+                        "Error Loading Main Sys File",
+                        f"Failed to load and parse '{Path(file_path).name}': {str(e)}"
+                    )
+            
+            # Parse token-specific sys files (these contain IP addresses)
+            # Create a mapping of token_id -> IP address
+            token_ip_map = {}
+            for file_path in token_sys_files:
+                try:
+                    file_name = Path(file_path).stem
+                    # Convert hex to decimal if needed
+                    if file_name.lower().startswith(('0x', 'x')):
+                        token_id = file_name
+                    else:
+                        token_id = file_name
+                    
+                    file_content_lines = read_text_file(Path(file_path))
+                    file_content = "\n".join(file_content_lines)
+                    
+                    # Parse with sys_file_path to extract IP
+                    parsed_nodes = parse_sys_file(file_content, Path(file_path))
+                    
+                    # Extract IP from parsed nodes (it will be in all nodes from this file)
+                    if parsed_nodes and parsed_nodes[0].get("ip"):
+                        token_ip_map[token_id] = parsed_nodes[0]["ip"]
+                        
+                except Exception as e:
+                    QMessageBox.warning(
+                        self,
+                        "Error Loading Token Sys File",
+                        f"Failed to load and parse '{Path(file_path).name}': {str(e)}"
+                    )
+            
+            # Auto-discover token sys files if main sys files were loaded
+            if main_sys_files and not token_sys_files:
+                for main_file_path in main_sys_files:
+                    base_dir = Path(main_file_path).parent
+                    
+                    # Get all nodes from already parsed data
+                    for node in all_parsed_nodes:
+                        # Use _main_token for IP lookup (not in tokens list)
+                        main_token = node.get("_main_token")
+                        if main_token:
+                            # Try to find corresponding token sys file
+                            token_sys_file_path = base_dir / f"{main_token}.sys"
+                            
+                            if token_sys_file_path.exists() and main_token not in token_ip_map:
+                                try:
+                                    token_file_content_lines = read_text_file(token_sys_file_path)
+                                    token_file_content = "\n".join(token_file_content_lines)
+                                    
+                                    # Parse the token-specific sys file to extract IP
+                                    token_parsed_nodes = parse_sys_file(token_file_content, token_sys_file_path)
+                                    
+                                    # Extract IP and map it
+                                    if token_parsed_nodes and token_parsed_nodes[0].get("ip"):
+                                        token_ip_map[main_token] = token_parsed_nodes[0]["ip"]
+                                        
+                                except Exception as e:
+                                    # Silently skip auto-discovered files that fail
+                                    pass
+            
+            # Assign IPs to nodes based on their _main_token (not first token in tokens list)
+            for node in all_parsed_nodes:
+                main_token = node.get("_main_token")
+                if main_token and main_token in token_ip_map:
+                    node["ip"] = token_ip_map[main_token]
+                # Remove internal _main_token field before saving
+                if "_main_token" in node:
+                    del node["_main_token"]
+            
+            if not all_parsed_nodes:
                 QMessageBox.information(
                     self,
                     "No Nodes Found",
-                    "No valid nodes were found in the selected system file."
+                    "No valid nodes were found in the selected system files."
                 )
                 return
 
-            all_parsed_nodes = initial_parsed_nodes[:] # Start with nodes from the initial file
-
-            # Iterate through initially parsed nodes to find token-specific sys files
-            for node in initial_parsed_nodes:
-                if node.get("tokens"):
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    # Use the first token for AP-based nodes as per requirement
-                    # Ensure tokens list is not empty before accessing the first element
-                    if node["tokens"]:
-                        token_id = node["tokens"] # Correctly extract the first token
-                    else:
-                        QMessageBox.warning(
-                            self,
-                            "Missing Token",
-                            f"Node '{node.get('name', 'Unnamed')}' has no tokens to load a sys file."
-                        )
-                        continue
-
-                    token_sys_file_name = f"{token_id}.sys"
-                    
-                    # Construct path for the token-specific sys file
-                    # Assume token sys files are in the same directory as the initial sys file
-                    token_sys_file_path = Path(file_path).parent / token_sys_file_name
-
-                    if token_sys_file_path.exists():
-                        try:
-                            token_file_content_lines = read_text_file(token_sys_file_path)
-                            token_file_content = "\n".join(token_file_content_lines)
-                            
-                            # Parse the token-specific sys file, which will extract the IP
-                            token_parsed_nodes = parse_sys_file(token_file_content, token_sys_file_path)
-                            
-                            # Merge the token-specific parsed nodes into the main list
-                            all_parsed_nodes = merge_node_data(all_parsed_nodes, token_parsed_nodes)
-                        except Exception as e:
-                            QMessageBox.warning(
-                                self,
-                                "Error Loading Token Sys File",
-                                f"Failed to load and parse token sys file '{token_sys_file_name}': {str(e)}"
-                            )
-                    else:
-                        QMessageBox.information(
-                            self,
-                            "Token Sys File Missing",
-                            f"Token sys file '{token_sys_file_name}' not found for node '{node.get('name', 'Unnamed')}'."
-                        )
-
-            # Merge all parsed nodes with existing nodes_data
-            self.nodes_data = merge_node_data(self.nodes_data, all_parsed_nodes)
+            # OVERWRITE mode: Replace existing nodes_data instead of merging
+            # This gives a clean slate when loading new sys files
+            self.nodes_data = all_parsed_nodes
             
             self.populate_node_list()
             if self.nodes_data:
@@ -641,7 +671,11 @@ Generated on $DATETIME."""
             QMessageBox.information(
                 self,
                 "Sys Files Loaded",
-                f"Successfully loaded and merged node configurations from sys files."
+                f"Successfully loaded node configurations (overwrite mode).\n"
+                f"Main files: {len(main_sys_files)}\n"
+                f"Token files: {len(token_sys_files)}\n"
+                f"Auto-discovered: {len(token_ip_map) - len(token_sys_files)}\n"
+                f"Total nodes: {len(all_parsed_nodes)}"
             )
 
         except Exception as e:

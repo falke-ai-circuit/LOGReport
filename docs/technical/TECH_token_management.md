@@ -3,11 +3,11 @@
 <!-- METADATA -->
 metadata: {
   created_date: "2025-10-08_164500",
-  last_modified: "2025-10-08_164500",
-  last_accessed: "2025-10-08_164500",
-  word_count: 2456,
+  last_modified: "2025-10-08_180000",
+  last_accessed: "2025-10-08_180000",
+  word_count: 3200,
   reference_count: 4,
-  document_hash: "token_mgmt_tech_consolidated",
+  document_hash: "token_mgmt_tech_consolidated_v2",
   obsolete_check_date: "2025-10-08",
   section_count: 7,
   internal_link_count: 18
@@ -245,177 +245,375 @@ def resolve_token(node_name: str, token_id: str, target_protocol: str) -> NodeTo
 
 ## 📄 SYS File Parsing
 
-SYS files contain node and token configuration data that can be automatically parsed.
+SYS files contain node and token configuration data that can be automatically parsed. The system supports **multi-file selection** and distinguishes between **main configuration files** (e.g., `AB01_sys`) and **token-specific files** (e.g., `181.sys`, `41.sys`) for IP address resolution.
 
 ### SYS File Format
 
-```
-# Example .sys file format
-NODE_NAME=AP01m
-IP_ADDRESS=192.168.0.11
-FBC_TOKENS=12345,12346,12347
-RPC_TOKENS=67890,67891
-PORT=23
-PROTOCOL=FBC
+The LOGReport system supports two types of SYS files:
 
-# Token-specific sections
-[TOKEN_12345]
-TYPE=FBC
-IP=192.168.0.11
-PORT=23
-DESCRIPTION=Main fieldbus token
+#### Main Configuration Files (e.g., `AB01_sys`)
 
-[TOKEN_67890]
-TYPE=RPC
-IP=192.168.0.11
-PORT=23
-DESCRIPTION=RPC interface token
 ```
+# Main SYS file format - defines nodes and token relationships
+AP01m FBC 161 0 ap01m_common
+AP01 162 163  # AP node with main token 161, subordinate tokens 162, 163
+AP02m 181 182 ap02m_common
+
+AL01 RPC 191 al01_common  # AL node with single token 191
+AL02 192 al02_common
+```
+
+**Node Type Distinction:**
+- **AP Nodes** (e.g., `AP01`, `AP02m`): Multiple tokens with main+subordinate structure
+  - Main token used for IP lookup (stored in `_main_token` field)
+  - Subordinate tokens only appear in `tokens` list
+  - Example: `AP01` has `_main_token=161`, `tokens=[162,163]`
+  
+- **AL Nodes** (e.g., `AL01`, `AL02`): Single token structure
+  - Single token serves both purposes
+  - Token appears in both `_main_token` field and `tokens` list
+  - Example: `AL01` has `_main_token=191`, `tokens=[191]`
+
+#### Token-Specific Files (e.g., `181.sys`, `41.sys`)
+
+```
+# Token-specific file format - contains IP address for specific token
+# Filename pattern: {token_id}.sys (numeric only)
+IP=192.168.0.12
+PORT=23
+DESCRIPTION=AP02m main token IP address
+```
+
+**Purpose:** Provides IP addresses for individual tokens, automatically associated with nodes via the `_main_token` field.
 
 ### SYS Parser Implementation
 
+The current implementation in `src/utils/file_utils.py` uses regex-based parsing with support for both AP and AL node types:
+
 ```python
-class SysFileParser:
-    """Parse .sys configuration files to extract tokens."""
+def parse_sys_file(sys_path: str) -> List[Dict[str, Any]]:
+    """
+    Parse .sys file and extract node configurations.
     
-    def __init__(self):
-        self.tokens: List[NodeToken] = []
-        self.node_info: Dict[str, Any] = {}
+    Supports two node types:
+    - AP nodes: Main token + subordinate tokens (e.g., "AP01 162 163" with main=161)
+    - AL nodes: Single token (e.g., "AL01 RPC 191 al01_common")
     
-    def parse_file(self, filepath: str) -> Tuple[Dict[str, Any], List[NodeToken]]:
-        """
-        Parse .sys file and extract node info and tokens.
-        
-        Args:
-            filepath: Path to .sys file
-        
-        Returns:
-            Tuple of (node_info dict, list of NodeToken objects)
-        """
-        self.tokens = []
-        self.node_info = {}
-        
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # Parse global node info
-            self._parse_node_info(content)
-            
-            # Parse token sections
-            self._parse_token_sections(content, filepath)
-            
-            # Parse comma-separated token lists
-            self._parse_token_lists(content, filepath)
-            
-            return self.node_info, self.tokens
-        
-        except FileNotFoundError:
-            logging.error(f"SYS file not found: {filepath}")
-            return {}, []
-        except Exception as e:
-            logging.error(f"Error parsing SYS file {filepath}: {str(e)}")
-            return {}, []
+    Args:
+        sys_path: Path to .sys file
     
-    def _parse_node_info(self, content: str):
-        """Extract global node information."""
-        patterns = {
-            'node_name': r'NODE_NAME\s*=\s*(\S+)',
-            'ip_address': r'IP_ADDRESS\s*=\s*(\S+)',
-            'port': r'PORT\s*=\s*(\d+)',
-            'protocol': r'PROTOCOL\s*=\s*(\S+)'
+    Returns:
+        List of node dictionaries with structure:
+        {
+            'name': str,           # Node name (e.g., 'AP01', 'AL01')
+            'log_type': str,       # Protocol ('FBC' or 'RPC')
+            'tokens': List[str],   # Token list (subordinate only for AP, single for AL)
+            '_main_token': str,    # Token for IP lookup (always present)
+            'log_path': str        # Log path pattern (optional)
         }
-        
-        for key, pattern in patterns.items():
-            match = re.search(pattern, content, re.IGNORECASE)
-            if match:
-                value = match.group(1)
-                if key == 'port':
-                    value = int(value)
-                self.node_info[key] = value
+    """
+    nodes = []
     
-    def _parse_token_sections(self, content: str, sys_path: str):
-        """Parse [TOKEN_xxxxx] sections."""
-        token_pattern = r'\[TOKEN_(\w+)\](.*?)(?=\[TOKEN_|\Z)'
-        matches = re.findall(token_pattern, content, re.DOTALL | re.IGNORECASE)
-        
-        for token_id, section_content in matches:
-            token_data = self._parse_token_section_content(section_content)
-            
-            token = NodeToken(
-                token_id=token_id,
-                protocol=token_data.get('type', 'FBC').upper(),
-                node_name=self.node_info.get('node_name', 'UNKNOWN'),
-                ip_address=token_data.get('ip') or self.node_info.get('ip_address'),
-                port=int(token_data.get('port', 23)),
-                sys_path=sys_path,
-                metadata={'description': token_data.get('description', '')}
-            )
-            self.tokens.append(token)
+    # Regex patterns for different node formats
+    al_pattern = re.compile(
+        r'^([A-Z]{2}\d{2}[mr]?)\s+(FBC|RPC)\s+(\d+)\s*(\S+)?',
+        re.IGNORECASE
+    )
     
-    def _parse_token_section_content(self, section: str) -> Dict[str, str]:
-        """Parse key=value pairs in token section."""
-        data = {}
-        for line in section.split('\n'):
+    ap_main_node_regex = re.compile(
+        r'^([A-Z]{2}\d{2}[mr]?)\s+(?:FBC|RPC)\s+(\d+)\s+\d+\s+\S+',
+        re.IGNORECASE
+    )
+    
+    ap_pattern = re.compile(
+        r'^([A-Z]{2}\d{2}[mr]?)\s+(\d+(?:\s+\d+)*)',
+        re.IGNORECASE
+    )
+    
+    try:
+        with open(sys_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        
+        for line in content.splitlines():
             line = line.strip()
-            if '=' in line and not line.startswith('#'):
-                key, value = line.split('=', 1)
-                data[key.strip().lower()] = value.strip()
-        return data
-    
-    def _parse_token_lists(self, content: str, sys_path: str):
-        """Parse comma-separated token lists (FBC_TOKENS, RPC_TOKENS)."""
-        list_patterns = {
-            'FBC': r'FBC_TOKENS\s*=\s*([\d,\s]+)',
-            'RPC': r'RPC_TOKENS\s*=\s*([\d,\s]+)'
-        }
-        
-        for protocol, pattern in list_patterns.items():
-            match = re.search(pattern, content, re.IGNORECASE)
+            if not line or line.startswith('#'):
+                continue
+            
+            # Try AL pattern first (most specific)
+            match = al_pattern.match(line)
             if match:
-                token_ids = [t.strip() for t in match.group(1).split(',') if t.strip()]
-                for token_id in token_ids:
-                    # Only add if not already added from [TOKEN_xxx] section
-                    if not any(t.token_id == token_id for t in self.tokens):
-                        token = NodeToken(
-                            token_id=token_id,
-                            protocol=protocol,
-                            node_name=self.node_info.get('node_name', 'UNKNOWN'),
-                            ip_address=self.node_info.get('ip_address'),
-                            port=int(self.node_info.get('port', 23)),
-                            sys_path=sys_path
-                        )
-                        self.tokens.append(token)
+                node_name, log_type, token, log_path = match.groups()
+                nodes.append({
+                    'name': node_name,
+                    'log_type': log_type.upper(),
+                    'tokens': [token],          # AL: Include token in list
+                    '_main_token': token,       # AL: Same token for IP lookup
+                    'log_path': log_path or ''
+                })
+                continue
+            
+            # Try AP main node pattern (AP01m FBC 161 0 ...)
+            match = ap_main_node_regex.match(line)
+            if match:
+                node_name, main_token = match.groups()
+                # Main token stored for IP lookup, not in tokens list
+                # Actual tokens extracted separately
+                continue
+            
+            # Try AP pattern (AP01 162 163)
+            match = ap_pattern.match(line)
+            if match:
+                node_name, token_str = match.groups()
+                tokens = token_str.split()
+                
+                # Determine main token from AP01m reference
+                # Main token = first token of corresponding AP##m node
+                main_token = None
+                base_name = node_name.rstrip('mr')[:4]  # e.g., "AP01" -> "AP01"
+                
+                # Look for main node in already parsed nodes
+                for existing_node in nodes:
+                    if existing_node['name'].startswith(base_name) and existing_node['name'].endswith('m'):
+                        main_token = existing_node.get('_main_token')
+                        break
+                
+                nodes.append({
+                    'name': node_name,
+                    'log_type': 'FBC',  # Default for AP nodes
+                    'tokens': tokens,    # AP: Only subordinate tokens
+                    '_main_token': main_token or tokens[0],  # Fallback to first token
+                    'log_path': ''
+                })
+    
+    except Exception as e:
+        logging.error(f"Error parsing SYS file {sys_path}: {e}")
+    
+    return nodes
+
+
+def merge_node_data(existing_nodes: Dict, parsed_nodes: List[Dict], token_ips: Dict[str, str]):
+    """
+    Merge parsed SYS data with existing node configuration.
+    
+    Handles:
+    - IP association via _main_token field
+    - Token-specific IP files (e.g., 181.sys -> token 181)
+    - Overwrite mode for reloading
+    
+    Args:
+        existing_nodes: Current node dictionary (modified in place)
+        parsed_nodes: Nodes from main SYS file
+        token_ips: Dict mapping token_id -> IP address from token files
+    """
+    for node_data in parsed_nodes:
+        node_name = node_data['name']
+        
+        # Associate IP via _main_token lookup
+        main_token = node_data.get('_main_token')
+        if main_token and main_token in token_ips:
+            node_data['ip_address'] = token_ips[main_token]
+        
+        # Overwrite existing node or create new
+        existing_nodes[node_name] = node_data
+```
+
+**Key Implementation Details:**
+
+| Aspect | Implementation | Rationale |
+|--------|----------------|-----------|
+| **Multi-file Selection** | `QFileDialog.getOpenFileNames()` (plural) | User can select main + token files in one operation |
+| **File Type Detection** | Numeric filename → token file, else main file | Automatic categorization (e.g., `181.sys` vs `AB01_sys`) |
+| **Token Separation** | AP: `tokens` excludes main, AL: `tokens` includes single | Reflects structural difference between node types |
+| **IP Lookup** | Via `_main_token` field in `token_ips` dict | Decouples IP storage from token list |
+| **Merge Behavior** | Direct assignment (overwrite) | Reload replaces data instead of merging |
+
+### Node Configuration Dialog Integration
+
+The `src/node_config_dialog.py` provides UI integration for SYS file loading:
+
+```python
+class NodeConfigDialog(QDialog):
+    """Node configuration dialog with SYS file import."""
+    
+    def load_sys_file(self):
+        """
+        Load and parse SYS files with multi-file selection support.
+        
+        Workflow:
+        1. Show file dialog (multi-select enabled)
+        2. Categorize files: main config vs token-specific
+        3. Parse main file for node definitions
+        4. Parse token files for IP addresses
+        5. Merge data and update UI
+        """
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select SYS Files",
+            "",
+            "SYS Files (*.sys);;All Files (*)"
+        )
+        
+        if not file_paths:
+            return
+        
+        # Categorize files
+        main_files = []
+        token_files = []
+        
+        for path in file_paths:
+            filename = os.path.basename(path)
+            name_part = filename.rsplit('.', 1)[0]
+            
+            if name_part.isdigit():
+                token_files.append(path)
+            else:
+                main_files.append(path)
+        
+        # Parse token files for IP addresses
+        token_ips = {}
+        for token_path in token_files:
+            filename = os.path.basename(token_path)
+            token_id = filename.rsplit('.', 1)[0]
+            
+            with open(token_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    if line.startswith('IP='):
+                        ip = line.split('=', 1)[1].strip()
+                        token_ips[token_id] = ip
+                        break
+        
+        # Parse main files and merge with token IPs
+        for main_path in main_files:
+            nodes = parse_sys_file(main_path)
+            
+            # Overwrite mode: replace existing node data
+            for node_data in nodes:
+                node_name = node_data['name']
+                
+                # Associate IP via _main_token
+                main_token = node_data.get('_main_token')
+                if main_token in token_ips:
+                    node_data['ip_address'] = token_ips[main_token]
+                
+                # Update or create node in UI
+                self.nodes[node_name] = node_data
+        
+        self.populate_table()
+        QMessageBox.information(
+            self,
+            "SYS Files Loaded",
+            f"Loaded {len(main_files)} main file(s) and {len(token_files)} token file(s)"
+        )
 ```
 
 ### SYS File Usage
 
 ```python
-# Parse SYS file and populate node manager
-parser = SysFileParser()
-node_info, tokens = parser.parse_file('/path/to/node.sys')
+# Example: Load SYS files and populate node configuration
 
-# Create or update node
-node_name = node_info.get('node_name')
-node = node_manager.get_node(node_name)
-if not node:
-    node = Node(
-        name=node_name,
-        ip_address=node_info.get('ip_address'),
-        status='offline'
-    )
-    node_manager.add_node(node)
+# 1. Multi-file selection in UI
+file_paths = QFileDialog.getOpenFileNames(
+    parent,
+    "Select SYS Files",
+    "",
+    "SYS Files (*.sys);;All Files (*)"
+)[0]
 
-# Add tokens to node
-for token in tokens:
-    node.add_token(token.protocol, token.token_id)
-    # Update token with parsed metadata
-    node_token = node.get_token(token.protocol, token.token_id)
-    node_token.ip_address = token.ip_address
-    node_token.port = token.port
-    node_token.sys_path = token.sys_path
-    node_token.metadata = token.metadata
+# 2. Categorize files automatically
+main_files = [p for p in file_paths if not os.path.basename(p).rsplit('.', 1)[0].isdigit()]
+token_files = [p for p in file_paths if os.path.basename(p).rsplit('.', 1)[0].isdigit()]
+
+# 3. Parse token files for IP addresses
+token_ips = {}
+for token_path in token_files:
+    token_id = os.path.basename(token_path).rsplit('.', 1)[0]
+    with open(token_path, 'r') as f:
+        for line in f:
+            if line.startswith('IP='):
+                token_ips[token_id] = line.split('=')[1].strip()
+                break
+
+# 4. Parse main files and merge
+nodes = {}
+for main_path in main_files:
+    parsed_nodes = parse_sys_file(main_path)
+    merge_node_data(nodes, parsed_nodes, token_ips)
+
+# 5. Verify node structure
+for node_name, node_data in nodes.items():
+    print(f"{node_name}:")
+    print(f"  Type: {node_data['log_type']}")
+    print(f"  Main Token: {node_data.get('_main_token')}")
+    print(f"  Subordinate Tokens: {node_data['tokens']}")
+    print(f"  IP: {node_data.get('ip_address', 'N/A')}")
 ```
+
+**Expected Output:**
+```
+AP01m:
+  Type: FBC
+  Main Token: 161
+  Subordinate Tokens: []
+  IP: 192.168.0.11
+
+AP01:
+  Type: FBC
+  Main Token: 161
+  Subordinate Tokens: ['162', '163']
+  IP: 192.168.0.11
+
+AL01:
+  Type: RPC
+  Main Token: 191
+  Subordinate Tokens: ['191']
+  IP: 192.168.0.15
+```
+
+### Testing
+
+Comprehensive test suite in `tests/test_sys_file_parsing_fixed.py`:
+
+```python
+def test_main_sys_file_parsing():
+    """Test parsing of main SYS file (AB01_sys)."""
+    nodes = parse_sys_file('AB01_sys')
+    
+    # Verify AP01m node
+    ap01m = next(n for n in nodes if n['name'] == 'AP01m')
+    assert ap01m['_main_token'] == '161'
+    assert ap01m['log_type'] == 'FBC'
+    
+    # Verify AP01 node
+    ap01 = next(n for n in nodes if n['name'] == 'AP01')
+    assert ap01['_main_token'] == '161'  # Inherits from AP01m
+    assert ap01['tokens'] == ['162', '163']  # Subordinate only
+    
+    # Verify AL01 node
+    al01 = next(n for n in nodes if n['name'] == 'AL01')
+    assert al01['_main_token'] == '191'
+    assert al01['tokens'] == ['191']  # Single token included
+
+
+def test_token_ip_association():
+    """Test IP address association via _main_token."""
+    nodes = parse_sys_file('AB01_sys')
+    token_ips = {
+        '161': '192.168.0.11',
+        '181': '192.168.0.12',
+        '191': '192.168.0.15'
+    }
+    
+    node_dict = {}
+    merge_node_data(node_dict, nodes, token_ips)
+    
+    # AP01 should get IP from token 161
+    assert node_dict['AP01']['ip_address'] == '192.168.0.11'
+    
+    # AL01 should get IP from token 191
+    assert node_dict['AL01']['ip_address'] == '192.168.0.15'
+```
+
+**Test Results:** ✅ All 5 tests passing (as of 2025-10-08)
 
 ---
 
@@ -687,7 +885,8 @@ node_manager._scan_for_dynamic_ips(log_root)
 
 ---
 
-**Document Status**: ✅ **COMPLETE** - Consolidated from 9 source documents
-**Last Updated**: 2025-10-08
-**Consolidation**: token_processing.md + hybrid_token_resolution.md + sys_file_parsing.md + 6 others
+**Document Status**: ✅ **COMPLETE** - Updated with multi-file SYS parsing implementation  
+**Last Updated**: 2025-10-08  
+**Consolidation**: token_processing.md + hybrid_token_resolution.md + sys_file_parsing.md + 6 others  
+**Recent Changes**: Added multi-file selection, AP/AL node distinction, _main_token field documentation  
 **Next Review**: 2026-01-08 (90 days)
