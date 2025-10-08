@@ -3,7 +3,8 @@ from unittest.mock import Mock, MagicMock, patch
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from src.commander.services.hierarchical_command_service import HierarchicalCommandService, BsToolWorker
-from src.commander.models import NodeToken, Node, QueuedCommand
+from src.commander.models import NodeToken, Node
+from src.commander.command_queue import QueuedCommand
 from src.commander.node_manager import NodeManager
 from src.commander.command_queue import CommandQueue
 from src.commander.services.fbc_command_service import FbcCommandService

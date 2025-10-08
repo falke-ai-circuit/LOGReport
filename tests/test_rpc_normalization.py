@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 import sys
-import os
-
-# Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-from commander.utils.token_utils import normalize_token, is_rpc_token, is_fbc_token
+from src.commander.utils.token_utils import normalize_token, is_rpc_token, is_fbc_token
 
 def test_rpc_normalization():
     """Test RPC token normalization"""

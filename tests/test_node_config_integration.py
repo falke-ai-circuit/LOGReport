@@ -132,7 +132,7 @@ class TestNodeConfigIntegration:
 
     @patch('PyQt6.QtWidgets.QFileDialog.getExistingDirectory')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_files_from_directory')
-    @patch('src.node_config_parser.SysFileParser._parse_single_sys_file_content')
+    @patch('src.sys_file_loader.SysFileParser._parse_single_sys_file_content')
     @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
     @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
     def test_load_sys_directory_success(self, mock_parse_single_sys_file_content, mock_load_sys_files_from_directory, mock_getExistingDirectory, node_config_dialog, mock_sys_file_content_ap, mock_sys_file_content_al):
@@ -171,7 +171,7 @@ class TestNodeConfigIntegration:
 
     @patch('PyQt6.QtWidgets.QFileDialog.getExistingDirectory')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_files_from_directory')
-    @patch('src.node_config_parser.SysFileParser._parse_single_sys_file_content')
+    @patch('src.sys_file_loader.SysFileParser._parse_single_sys_file_content')
     @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
     @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
     def test_load_sys_directory_no_valid_nodes_found(self, mock_parse_single_sys_file_content, mock_load_sys_files_from_directory, mock_getExistingDirectory, node_config_dialog):

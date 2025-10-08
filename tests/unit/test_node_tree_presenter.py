@@ -4,15 +4,15 @@ Unit tests for NodeTreePresenter
 import pytest
 from unittest.mock import MagicMock, patch
 from PyQt6.QtGui import QColor
-from commander.presenters.node_tree_presenter import NodeTreePresenter
-from commander.node_manager import NodeManager
-from commander.session_manager import SessionManager
-from commander.log_writer import LogWriter
-from commander.command_queue import CommandQueue
-from commander.services.fbc_command_service import FbcCommandService
-from commander.services.rpc_command_service import RpcCommandService
-from commander.services.context_menu_service import ContextMenuService
-from commander.services.bstool_service import BsToolService
+from src.commander.presenters.node_tree_presenter import NodeTreePresenter
+from src.commander.node_manager import NodeManager
+from src.commander.session_manager import SessionManager
+from src.commander.log_writer import LogWriter
+from src.commander.command_queue import CommandQueue
+from src.commander.services.fbc_command_service import FbcCommandService
+from src.commander.services.rpc_command_service import RpcCommandService
+from src.commander.services.context_menu_service import ContextMenuService
+from src.commander.services.bstool_command_service import BsToolCommandService
 
 class TestNodeTreePresenter:
     """Test suite for NodeTreePresenter class"""

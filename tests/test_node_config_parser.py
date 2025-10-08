@@ -2,7 +2,7 @@ import unittest
 import os
 import json
 from unittest.mock import patch, mock_open
-from src.node_config_parser import SysFileParser
+from src.sys_file_loader import SysFileParser
 
 class TestSysFileParser(unittest.TestCase):
 

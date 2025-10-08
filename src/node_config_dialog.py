@@ -590,6 +590,8 @@ Generated on $DATETIME."""
                     # Ensure tokens list is not empty before accessing the first element
                     # Use the first token for AP-based nodes as per requirement
                     # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
                     if node["tokens"]:
                         token_id = node["tokens"] # Correctly extract the first token
                     else:

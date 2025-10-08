@@ -2,8 +2,7 @@ import pytest
 import os
 import json
 from unittest.mock import patch, mock_open
-from src.sys_file_loader import SysFileLoader
-from src.node_config_parser import SysFileParser
+from src.sys_file_loader import SysFileLoader, SysFileParser
 
 # Fixture for a valid configuration
 @pytest.fixture
@@ -126,7 +125,7 @@ AP01 tokens: 163, 164
         assert self.loader.detect_tokens_from_content("") == {}
 
     # Test cases for parse_token_sys_files method
-    @patch("src.node_config_parser.SysFileParser.parse_sys_files")
+    @patch("src.sys_file_loader.SysFileParser.parse_sys_files")
     def test_parse_token_sys_files_success(self, mock_parse_sys_files, tmp_path):
         token_ids = ["162", "163"]
         (tmp_path / "162.sys").write_text("token 162 content")
@@ -143,7 +142,7 @@ AP01 tokens: 163, 164
         mock_parse_sys_files.assert_called_once_with(expected_paths)
         assert result == [{"name": "Node162"}, {"name": "Node163"}]
 
-    @patch("src.node_config_parser.SysFileParser.parse_sys_files")
+    @patch("src.sys_file_loader.SysFileParser.parse_sys_files")
     def test_parse_token_sys_files_non_existent_token_file(self, mock_parse_sys_files, tmp_path, capsys):
         token_ids = ["162", "999"] # 999.sys does not exist
         (tmp_path / "162.sys").write_text("token 162 content")
@@ -161,7 +160,7 @@ AP01 tokens: 163, 164
         captured = capsys.readouterr()
         assert f"Warning: Token sys file not found for token ID: 999 at {os.path.join(str(tmp_path), '999.sys')}" in captured.out
 
-    @patch("src.node_config_parser.SysFileParser.parse_sys_files")
+    @patch("src.sys_file_loader.SysFileParser.parse_sys_files")
     def test_parse_token_sys_files_empty_token_ids(self, mock_parse_sys_files, tmp_path):
         token_ids = []
         result = self.loader.parse_token_sys_files(token_ids, str(tmp_path))

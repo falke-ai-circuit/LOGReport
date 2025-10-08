@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from PyQt5.QtWidgets import QApplication, QPushButton
 from PyQt5.QtGui import QColor
 from src.commander.ui.commander_window import CommanderWindow
-from src.commander.ui.vnc_tab import VncTab
+from src.commander.ui.vnc_tab import VNCTab
 
 @pytest.fixture(scope="module")
 def app():
@@ -20,8 +20,8 @@ def commander_window(app):
 
 @pytest.fixture
 def vnc_tab(commander_window):
-    """Fixture for VncTab instance."""
-    tab = VncTab(commander_window)
+    """Fixture for VNCTab instance."""
+    tab = VNCTab(commander_window)
     return tab
 
 class TestButtonStyling:

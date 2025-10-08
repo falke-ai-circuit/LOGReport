@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 from src.commander.services.telnet_service import TelnetService
 from src.commander.telnet_client import TelnetClient
-from src.commander.models import SessionConfig, NodeToken, Node
+from src.commander.session_manager import SessionConfig
+from src.commander.models import NodeToken, Node
 
 @pytest.fixture
 def mock_session_manager():
