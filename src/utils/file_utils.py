@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 import re
 import json
 
@@ -30,7 +30,9 @@ def read_text_file(filepath: Path, encodings=None) -> List[str]:
     raise ValueError(f"Could not read {filepath} with any supported encoding")
 
 
-def parse_sys_file(file_content: str) -> List[Dict]:
+def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> List[Dict]:
+    nodes_data = {}
+    extracted_ip = ""
     nodes_data = {}
 
     # Regex patterns
@@ -39,8 +41,16 @@ def parse_sys_file(file_content: str) -> List[Dict]:
     ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_reserve\s+pxe:sys-csg2.*")
     al_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AL\d{2})\s+pxe:sys-csg2.*")
     token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+((?:AP|AL)\d{2})(_main|_reserve|_t\d+|_m\d+|_r\d+)?\s+.*")
+    ip_address_regex = re.compile(r"set XD_IP_ADDR=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
     
     lines = file_content.splitlines()
+
+    # Extract IP address if sys_file_path is provided (indicating a token-specific sys file)
+    if sys_file_path:
+        for line in lines:
+            if ip_match := ip_address_regex.match(line):
+                extracted_ip = ip_match.group(1)
+                break # Assume only one IP address per file
 
     # First pass: Identify main nodes and initialize their data
     for line in lines:
@@ -122,6 +132,11 @@ def parse_sys_file(file_content: str) -> List[Dict]:
     # Sort tokens for consistent output
     for node_name in nodes_data:
         nodes_data[node_name]["tokens"].sort()
+
+    # Assign extracted IP to all nodes if available
+    if extracted_ip:
+        for node_name in nodes_data:
+            nodes_data[node_name]["ip"] = extracted_ip
 
     return list(nodes_data.values())
 

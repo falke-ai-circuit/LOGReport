@@ -552,15 +552,16 @@ Generated on $DATETIME."""
             return
 
         try:
-            from utils.file_utils import parse_sys_file, read_text_file
+            from utils.file_utils import parse_sys_file, read_text_file, merge_node_data
             
-            # Read the content of the selected file
-            file_content_lines = read_text_file(Path(file_path))
-            file_content = "\n".join(file_content_lines)
+            # Read the content of the initial sys file
+            initial_file_content_lines = read_text_file(Path(file_path))
+            initial_file_content = "\n".join(initial_file_content_lines)
             
-            parsed_nodes = parse_sys_file(file_content)
+            # Parse the initial sys file
+            initial_parsed_nodes = parse_sys_file(initial_file_content, Path(file_path))
 
-            if not parsed_nodes:
+            if not initial_parsed_nodes:
                 QMessageBox.information(
                     self,
                     "No Nodes Found",
@@ -568,16 +569,68 @@ Generated on $DATETIME."""
                 )
                 return
 
-            # Merge with existing nodes, avoiding duplicates
-            added_count = 0
-            skipped_count = 0
-            for new_node in parsed_nodes:
-                # Check if a node with the same name already exists
-                if any(node['name'] == new_node['name'] for node in self.nodes_data):
-                    skipped_count += 1
-                else:
-                    self.nodes_data.append(new_node)
-                    added_count += 1
+            all_parsed_nodes = initial_parsed_nodes[:] # Start with nodes from the initial file
+
+            # Iterate through initially parsed nodes to find token-specific sys files
+            for node in initial_parsed_nodes:
+                if node.get("tokens"):
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    # Use the first token for AP-based nodes as per requirement
+                    # Ensure tokens list is not empty before accessing the first element
+                    if node["tokens"]:
+                        token_id = node["tokens"] # Correctly extract the first token
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Missing Token",
+                            f"Node '{node.get('name', 'Unnamed')}' has no tokens to load a sys file."
+                        )
+                        continue
+
+                    token_sys_file_name = f"{token_id}.sys"
+                    
+                    # Construct path for the token-specific sys file
+                    # Assume token sys files are in the same directory as the initial sys file
+                    token_sys_file_path = Path(file_path).parent / token_sys_file_name
+
+                    if token_sys_file_path.exists():
+                        try:
+                            token_file_content_lines = read_text_file(token_sys_file_path)
+                            token_file_content = "\n".join(token_file_content_lines)
+                            
+                            # Parse the token-specific sys file, which will extract the IP
+                            token_parsed_nodes = parse_sys_file(token_file_content, token_sys_file_path)
+                            
+                            # Merge the token-specific parsed nodes into the main list
+                            all_parsed_nodes = merge_node_data(all_parsed_nodes, token_parsed_nodes)
+                        except Exception as e:
+                            QMessageBox.warning(
+                                self,
+                                "Error Loading Token Sys File",
+                                f"Failed to load and parse token sys file '{token_sys_file_name}': {str(e)}"
+                            )
+                    else:
+                        QMessageBox.information(
+                            self,
+                            "Token Sys File Missing",
+                            f"Token sys file '{token_sys_file_name}' not found for node '{node.get('name', 'Unnamed')}'."
+                        )
+
+            # Merge all parsed nodes with existing nodes_data
+            self.nodes_data = merge_node_data(self.nodes_data, all_parsed_nodes)
             
             self.populate_node_list()
             if self.nodes_data:
@@ -585,14 +638,13 @@ Generated on $DATETIME."""
 
             QMessageBox.information(
                 self,
-                "Sys File Loaded",
-                f"Successfully loaded {added_count} nodes from sys file.\n"
-                f"{skipped_count} duplicate nodes were skipped."
+                "Sys Files Loaded",
+                f"Successfully loaded and merged node configurations from sys files."
             )
 
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Error Loading Sys File",
-                f"Failed to load and parse system file: {str(e)}"
+                "Error Loading Sys Files",
+                f"Failed to load and parse system files: {str(e)}"
             )

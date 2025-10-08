@@ -1,0 +1,276 @@
+{"type": "entity", "name": "Global.DesignPattern.DataManagement.CompositeKey_Pattern", "entityType": "DesignPattern", "observations": ["Ptrn: using multiple attributes as a composite key for resource mgmt", "Example: (token_id, protocol) for log file mgmt in Commander app", "Ensures unique identification when single attributes are not sufficient", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.DesignPattern.ErrorHandling.Delegation_Pattern", "entityType": "DesignPattern", "observations": ["Ptrn: error delegation", "Defined in: src/commander/services/error_reporting/delegation_pattern.md", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.UI.UI_Patterns_Cluster", "entityType": "Cluster", "observations": ["Grouping of UI patterns", "Created by analyze_user", "Univ template: Semantic UI patterns cluster for dynamic visibility+interactio...", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.BestPractice.API.APIContract_Enforcement", "entityType": "GlobalBestPractice", "observations": ["entityType: BestPractice", "'Reduces errors 72%'; promote to patterns.", "is_a: ArchitecturalPattern (2 relations).", "upd:2025-09-30,refs:2"]}
+{"type": "entity", "name": "Global.ArchitecturalPattern.Memory.DualMemory_System", "entityType": "Architectural Pattern", "observations": ["Combines project-specific memory w/cross-project global memory", "Uses project_memory MCP server for context-specific knowledge", "Uses global_memory MCP server for reusable patterns", "upd:2025-10-08,refs:5"]}
+{"type": "entity", "name": "Global.DesignPattern.Identification.UALIdentifier_System", "entityType": "Design Pattern", "observations": ["Standardized asset referencing across contexts", "Format: ual://[context]/[entity-type]/[entity-name]", "Resolved viaappropriate MCP memory servers", "upd:2025-10-08,refs:3"]}
+{"type": "entity", "name": "Global.SecurityPattern.DataIntegrity.Cryptographic_Verification", "entityType": "Security Pattern", "observations": ["Ensures memory integrity viaSHA-256 hashing", "Uses Merkle trees for rel verification", "Includes rollback procedures for failed verifications", "upd:2025-10-08,refs:4"]}
+{"type": "entity", "name": "Global.DesignPattern.Service.ServiceLayer_Pattern", "entityType": "DesignPattern", "observations": ["Encapsulates business logic in service classes w/clear interfaces", "Promotes separation of concerns between UI+business logic", "Improves testability viadependency injection", "upd:2025-10-08,refs:6"]}
+{"type": "entity", "name": "Global.DesignPattern.FaultTolerance.StatefulFaultTolerance_Pattern", "entityType": "DesignPattern", "observations": ["From CircuitBreaker impl in src/commander/utils/circuit_breaker.py", "Core concept: Stateful mech to prevent cascading failures in service calls", "Key properties: failureThreshold (default 3), recoveryTimeout (default 60s), ...", "upd:2025-10-08,refs:5"]}
+{"type": "entity", "name": "Global.DesignPattern.DataProcessing.HeterogeneousDataPipeline_Pattern", "entityType": "DesignPattern", "observations": ["From Token Proc Pipeline in src/commander/services/sequential_command_process...", "Core concept: Proc pipeline for heterogeneous data units w/fault isolation", "Key properties: tokenNormalization, typeBasedProc, isolatedExecution, circuit...", "upd:2025-10-08,refs:4"]}
+{"type": "entity", "name": "Global.DesignPattern.FaultTolerance.CircuitBreaker_Pattern", "entityType": "DesignPattern", "observations": ["Stateful mech to prevent cascading failures in service calls", "Core concept: Prevents system overload by temporarily breaking circuit after ...", "Key properties: failureThreshold, recoveryTimeout, stateTransitions (CLOSED->...", "upd:2025-10-08,refs:7"]}
+{"type": "entity", "name": "Global.ArchitecturalPattern.Dependency.CircularDependencyResolution_Pattern", "entityType": "Architectural Pattern", "observations": ["Decoupling modules by moving shared logic to a common utility|by using interf...", "Independent validation functions improve module reuse+reduce coupling.", "entityType: ArchitecturalPattern", "upd:2025-10-08,refs:3"]}
+{"type": "entity", "name": "Global.DesignPattern.UI.ContextMenuFiltering_Pattern", "entityType": "DesignPattern", "observations": ["Reuse score: 4.8/5.0", "Concept:: Dynamically control UI element visibility based on contextual criteria", "Univ app: Any user interface that needs to adapt options based on selection c...", "upd:2025-10-08,refs:5"]}
+{"type": "entity", "name": "Global.Utility.Logging.LoggingService_Pattern", "entityType": "UtilityPattern", "observations": ["Robust, configurable logging mech w/file rotation.", "From LogWriter component in LOGReport project.", "size-based log rotation, UTF-8 encoding, timestamp+protocol annotation.", "upd:2025-10-08,refs:4"]}
+{"type": "entity", "name": "Global.NetworkClient.Management.NetworkClientManagement_Pattern", "entityType": "NetworkClientPattern", "observations": ["Generic network client w/robust connection mgmt+protocol-specific parsing.", "From TelnetClient component in LOGReport project.", "enhanced error handling, prompt detection, connection stability.", "upd:2025-10-08,refs:6"]}
+{"type": "entity", "name": "Global.DataModel.Standardization.StandardizedDataModel_Pattern", "entityType": "DataModelPattern", "observations": ["Standardized, type-hinted data model w/enforced attribute consistency.", "From NodeToken data model in LOGReport project.", "standardized attribute names, comprehensive type hinting, automated unit test...", "upd:2025-10-08,refs:5"]}
+{"type": "entity", "name": "Global.Concurrency.StateManagement.AsynchronousStateManagement_Pattern", "entityType": "ConcurrencyPattern", "observations": ["Thread-safe state mgmt for asynchronous proc queues.", "From CommandQueue Proc State feature in LOGReport project.", "thread-safe proc flag, tracking command execution state.", "upd:2025-10-08,refs:4"]}
+{"type": "entity", "name": "Global.KnowledgeGraphManagement.SchemaEvolution.KnowledgeGraphSchemaEvolution_Pattern", "entityType": "KnowledgeGraphManagementPattern", "observations": ["Ptrn: managing knowledge graph schema evolution+rel mapping.", "From RelMapping documentation in LOGReport project.", "refactoring generic rels to domain-specific ones, maintaining backward compat...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.DesignPattern.ErrorHandling.ErrorHandlingDelegation_Pattern", "entityType": "DesignPattern", "observations": ["Standardized error reporting interface, decouples error detection from handling.", "Univ Applicability: Any system requiring robust error mgmt.", "Domain Xfer: Highly transferable.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.ArchitecturalPattern.Command.UnifiedCommandExecution_Pattern", "entityType": "ArchitecturalPattern", "observations": ["Unified arch for command execution, treats batch proc as sequential.", "Univ Applicability: Systems needing consistent command proc.", "Domain Xfer: Transferable to various command-driven systems.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.DesignPattern.Command.BatchCommandProcessing_Pattern", "entityType": "DesignPattern", "observations": ["Processes token groups as sequential commands, uses service layer abstraction...", "Univ Applicability: Any system needing sequential batch proc.", "Domain Xfer: Highly transferable.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.DesignPattern.Subprocess.SubprocessOutputTracing_Pattern", "entityType": "DesignPattern", "observations": ["Enhancing subprocess output capture+logging to diagnose issues.", "Univ Applicability: Any app interacting w/external executables.", "Domain Xfer: Highly transferable.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.DesignPattern.UI.ContextMenuFilterService_Pattern", "entityType": "UIPattern", "observations": ["Centralized service for managing context menu item visibility.", "Univ Applicability: Any GUI app needing dynamic UI customization.", "Domain Xfer: Transferable to various GUI frameworks.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.BestPractice.API.APIContractEnforcement_Pattern", "entityType": "BestPractice", "observations": ["Ptrn: API contract enforcement.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.PatternCluster.Data.DataManagement_Patterns", "entityType": "PatternCluster", "observations": ["Univ patterns+system components for data modeling, proc,+mgmt, ensuring integ...", "Univ template: Data modeling/proc patterns (template: [Domain].[SubCluster].P...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.PatternCluster.ProblemResolution.ProblemResolution_Patterns", "entityType": "PatternCluster", "observations": ["Univ patterns+solutions for problem diagnosis, bug fixing,+system debugging, ...", "Univ template: Problem diagnosis/fixing patterns (template: [Domain].[SubClus...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.PatternCluster.Workflow.Workflow_Patterns", "entityType": "PatternCluster", "observations": ["Univ patterns+workflows for systematic process mgmt+execution, inclmemory opt...", "Univ template: Systematic process mgmt patterns (template: [Domain].[SubClust...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.ArchitecturePattern.Service.ServiceLayer_Pattern", "entityType": "ArchitecturalPattern", "observations": ["Encapsulates business logic", "Promoted from project_memory by analyze_user", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.UIPattern.Input.CommandInputAutoUpdate_Pattern", "entityType": "UIPattern", "observations": ["Univ UI ptrn: command input auto-update.", "reuse: 85%", "entityType: UIPattern", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.PythonClass.Presenter.NodeTree_Presenter", "entityType": "PythonClass", "observations": ["Univ Python class for NodeTree Presenter.", "reuse: 80%", "entityType: PythonClass", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.PyQtSignal.UI.CommandGenerated_Signal", "entityType": "PyQtSignal", "observations": ["Univ PyQt signal for command generation.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Test.TestCase.TestNodeSelectionEmitsLogFileSelected_Case", "entityType": "TestCase", "observations": ["Univ test case for node selection emitting log file selected signal.", "reuse: 75%", "entityType: TestCase", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.CodeStructure.Method.NodeTreePresenterOnNode_Selected", "entityType": "Method", "observations": ["Univ method for NodeTreePresenter on node selected.", "reuse: 82%", "entityType: Method", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.Feature.Command.TelnetCommand_Population", "entityType": "Feature", "observations": ["Univ feature for Telnet command population.", "reuse: 80%", "entityType: Feature", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.Documentation.Architecture.ArchitecturalDesign_Proposal", "entityType": "Document", "observations": ["Univ document for architectural design proposal.", "reuse: 78%", "entityType: Document", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.Architecture.DesignPattern.SignalSlotUIBinding_Pattern", "entityType": "DesignPattern", "observations": ["Univ design ptrn: Signal/Slot UI binding.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Architecture.ArchitecturalDesign.NodeColorDetermination_Logic", "entityType": "ArchitecturalDesign", "observations": ["Univ architectural design for node color determination logic.", "reuse: 85%", "entityType: ArchitecturalDesign", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.SystemComponent.File.FileClearing_Mechanism", "entityType": "SystemComponent", "observations": ["Univ system component for file clearing mech.", "reuse: 82%", "entityType: SystemComponent", "upd:2025-10-02,refs:0"]}
+{"type": "entity", "name": "Global.CoordinationPattern.Workflow.MultiPhaseDelegation_Pattern", "entityType": "CoordinationPattern", "observations": ["Systematic delegation of complex, multi-phase tasks to specialized MCP modes.", "Iterative execution w/context preservation+dynamic adjustment based on specia...", "Effective handling of blockers viafocused branch workflows+re-coordination.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Approach.Memory.HierarchicalMemoryOptimization_Approach", "entityType": "Approach", "observations": ["Layer-by-layer analysis+impl (Entity → Cluster → Domain → Type) for both Proj...", "Focus on maximum entity condensation, similar entity merging,+hierarchical co...", "Distillation of project memory into univ patterns for cross-project reuse.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Workflow.Memory.ProjectMemoryReRun_Learnings", "entityType": "WorkflowLearnings", "observations": ["Successfully re-executed Project Memory phases (1-8) of the 'Update Memory Wo...", "Re-validated+re-optimized the project-specific knowledge graph.", "Confirmed consistency+compliance w/memory standards after the initial full run.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.UIPattern.Testing.PyQt6IntegrationTesting_Pattern", "entityType": "UIPattern", "observations": ["Ptrn: integ testing PyQt6 UI components, inclmocking QFileDialog+QMessageBox,...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Approach.DataProcessing.RegexBasedExtraction_Approach", "entityType": "Approach", "observations": ["Approach for extracting structured data from text files using regular express...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern", "entityType": "DataProcessingPattern", "observations": ["Ptrn: parsing sys files to extract node config (name, IP, tokens, types)+merg...", "Updated to correctly parse AL-based nodes, setting log types to LOG+LIS only.", "Updated to accurately extract single tokens for AL nodes using an adjusted re...", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Approach", "entityType": "Domain", "observations": ["Domain for Approach-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.ArchitecturalPattern", "entityType": "Domain", "observations": ["Domain for ArchitecturalPattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Architecture", "entityType": "Domain", "observations": ["Domain for Architecture-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.ArchitecturePattern", "entityType": "Domain", "observations": ["Domain for ArchitecturePattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.BestPractice", "entityType": "Domain", "observations": ["Domain for BestPractice-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Cluster", "entityType": "Domain", "observations": ["Domain for Cluster-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.CodeStructure", "entityType": "Domain", "observations": ["Domain for CodeStructure-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Concurrency", "entityType": "Domain", "observations": ["Domain for Concurrency-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.CoordinationPattern", "entityType": "Domain", "observations": ["Domain for CoordinationPattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.DataModel", "entityType": "Domain", "observations": ["Domain for DataModel-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.DataProcessingPattern", "entityType": "Domain", "observations": ["Domain for DataProcessingPattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.DesignPattern", "entityType": "Domain", "observations": ["Domain for DesignPattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Documentation", "entityType": "Domain", "observations": ["Domain for Documentation-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Feature", "entityType": "Domain", "observations": ["Domain for Feature-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.KnowledgeGraphManagement", "entityType": "Domain", "observations": ["Domain for KnowledgeGraphManagement-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.NetworkClient", "entityType": "Domain", "observations": ["Domain for NetworkClient-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.PatternCluster", "entityType": "Domain", "observations": ["Domain for PatternCluster-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.PyQtSignal", "entityType": "Domain", "observations": ["Domain for PyQtSignal-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.PythonClass", "entityType": "Domain", "observations": ["Domain for PythonClass-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.SecurityPattern", "entityType": "Domain", "observations": ["Domain for SecurityPattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.SystemComponent", "entityType": "Domain", "observations": ["Domain for SystemComponent-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Test", "entityType": "Domain", "observations": ["Domain for Test-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.UIPattern", "entityType": "Domain", "observations": ["Domain for UIPattern-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Utility", "entityType": "Domain", "observations": ["Domain for Utility-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Workflow", "entityType": "Domain", "observations": ["Domain for Workflow-related patterns+entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Approach.DataProcessing", "entityType": "Cluster", "observations": ["Cluster for DataProcessing patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Approach.Memory", "entityType": "Cluster", "observations": ["Cluster for Memory patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.ArchitecturalPattern.Command", "entityType": "Cluster", "observations": ["Cluster for Command patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.ArchitecturalPattern.Dependency", "entityType": "Cluster", "observations": ["Cluster for Dependency patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.ArchitecturalPattern.Memory", "entityType": "Cluster", "observations": ["Cluster for Memory patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Architecture.ArchitecturalDesign", "entityType": "Cluster", "observations": ["Cluster for ArchitecturalDesign patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Architecture.DesignPattern", "entityType": "Cluster", "observations": ["Cluster for DesignPattern patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.ArchitecturePattern.Service", "entityType": "Cluster", "observations": ["Cluster for Service patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.BestPractice.API", "entityType": "Cluster", "observations": ["Cluster for API patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Cluster.UI", "entityType": "Cluster", "observations": ["Cluster for UI patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.CodeStructure.Method", "entityType": "Cluster", "observations": ["Cluster for Method patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Concurrency.StateManagement", "entityType": "Cluster", "observations": ["Cluster for StateManagement patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.CoordinationPattern.Workflow", "entityType": "Cluster", "observations": ["Cluster for Workflow patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DataModel.Standardization", "entityType": "Cluster", "observations": ["Cluster for Standardization patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DataProcessingPattern.Configuration", "entityType": "Cluster", "observations": ["Cluster for Configuration patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.Command", "entityType": "Cluster", "observations": ["Cluster for Command patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.DataManagement", "entityType": "Cluster", "observations": ["Cluster for DataManagement patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.DataProcessing", "entityType": "Cluster", "observations": ["Cluster for DataProcessing patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.ErrorHandling", "entityType": "Cluster", "observations": ["Cluster for ErrorHandling patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.FaultTolerance", "entityType": "Cluster", "observations": ["Cluster for FaultTolerance patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.Identification", "entityType": "Cluster", "observations": ["Cluster for Identification patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.Service", "entityType": "Cluster", "observations": ["Cluster for Service patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.Subprocess", "entityType": "Cluster", "observations": ["Cluster for Subprocess patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.DesignPattern.UI", "entityType": "Cluster", "observations": ["Cluster for UI patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Documentation.Architecture", "entityType": "Cluster", "observations": ["Cluster for Architecture patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Feature.Command", "entityType": "Cluster", "observations": ["Cluster for Command patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.KnowledgeGraphManagement.SchemaEvolution", "entityType": "Cluster", "observations": ["Cluster for SchemaEvolution patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.NetworkClient.Management", "entityType": "Cluster", "observations": ["Cluster for Management patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.PatternCluster.Data", "entityType": "Cluster", "observations": ["Cluster for Data patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.PatternCluster.ProblemResolution", "entityType": "Cluster", "observations": ["Cluster for ProblemResolution patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.PatternCluster.Workflow", "entityType": "Cluster", "observations": ["Cluster for Workflow patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.PyQtSignal.UI", "entityType": "Cluster", "observations": ["Cluster for UI patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.PythonClass.Presenter", "entityType": "Cluster", "observations": ["Cluster for Presenter patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.SecurityPattern.DataIntegrity", "entityType": "Cluster", "observations": ["Cluster for DataIntegrity patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.SystemComponent.File", "entityType": "Cluster", "observations": ["Cluster for File patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Test.TestCase", "entityType": "Cluster", "observations": ["Cluster for TestCase patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.UIPattern.Input", "entityType": "Cluster", "observations": ["Cluster for Input patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.UIPattern.Testing", "entityType": "Cluster", "observations": ["Cluster for Testing patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Utility.Logging", "entityType": "Cluster", "observations": ["Cluster for Logging patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Workflow.Memory", "entityType": "Cluster", "observations": ["Cluster for Memory patterns.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Approach", "entityType": "Type", "observations": ["Type classification for Approach entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Architectural Pattern", "entityType": "Type", "observations": ["Type classification for Architectural Pattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.ArchitecturalDesign", "entityType": "Type", "observations": ["Type classification for ArchitecturalDesign entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.ArchitecturalPattern", "entityType": "Type", "observations": ["Type classification for ArchitecturalPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.BestPractice", "entityType": "Type", "observations": ["Type classification for BestPractice entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Cluster", "entityType": "Type", "observations": ["Type classification for Cluster entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.ConcurrencyPattern", "entityType": "Type", "observations": ["Type classification for ConcurrencyPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.CoordinationPattern", "entityType": "Type", "observations": ["Type classification for CoordinationPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.DataModelPattern", "entityType": "Type", "observations": ["Type classification for DataModelPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.DataProcessingPattern", "entityType": "Type", "observations": ["Type classification for DataProcessingPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Design Pattern", "entityType": "Type", "observations": ["Type classification for Design Pattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.DesignPattern", "entityType": "Type", "observations": ["Type classification for DesignPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Document", "entityType": "Type", "observations": ["Type classification for Document entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Feature", "entityType": "Type", "observations": ["Type classification for Feature entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.GlobalBestPractice", "entityType": "Type", "observations": ["Type classification for GlobalBestPractice entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.KnowledgeGraphManagementPattern", "entityType": "Type", "observations": ["Type classification for KnowledgeGraphManagementPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Method", "entityType": "Type", "observations": ["Type classification for Method entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.NetworkClientPattern", "entityType": "Type", "observations": ["Type classification for NetworkClientPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.PatternCluster", "entityType": "Type", "observations": ["Type classification for PatternCluster entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.PyQtSignal", "entityType": "Type", "observations": ["Type classification for PyQtSignal entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.PythonClass", "entityType": "Type", "observations": ["Type classification for PythonClass entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.Security Pattern", "entityType": "Type", "observations": ["Type classification for Security Pattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.SystemComponent", "entityType": "Type", "observations": ["Type classification for SystemComponent entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.TestCase", "entityType": "Type", "observations": ["Type classification for TestCase entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.UIPattern", "entityType": "Type", "observations": ["Type classification for UIPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.UtilityPattern", "entityType": "Type", "observations": ["Type classification for UtilityPattern entities.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Global.Type.WorkflowLearnings", "entityType": "Type", "observations": ["Type classification for WorkflowLearnings entities.", "upd:2025-10-08,refs:0"]}
+{"type": "relation", "from": "Global.DesignPattern.DataManagement.CompositeKey_Pattern", "to": "Global.PatternCluster.Data.DataManagement_Patterns", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.DesignPattern.DataProcessing.HeterogeneousDataPipeline_Pattern", "to": "Global.PatternCluster.Data.DataManagement_Patterns", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.DataModel.Standardization.StandardizedDataModel_Pattern", "to": "Global.PatternCluster.Data.DataManagement_Patterns", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.BestPractice.API.APIContract_Enforcement", "to": "Global.PatternCluster.ProblemResolution.ProblemResolution_Patterns", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.BestPractice.API.APIContractEnforcement_Pattern", "to": "Global.PatternCluster.ProblemResolution.ProblemResolution_Patterns", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.PyQtSignal.UI.CommandGenerated_Signal", "to": "Global.Cluster.UI.UI_Patterns_Cluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Architecture.DesignPattern.SignalSlotUIBinding_Pattern", "to": "Global.Cluster.UI.UI_Patterns_Cluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.UI.UIPattern.GUINodeColorUpdate_Pattern", "to": "Global.Cluster.UI.UI_Patterns_Cluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.SystemComponent.UI.ContextMenu_Generation", "to": "Global.Cluster.UI.UI_Patterns_Cluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.SystemComponent.UI.ContextMenu_Filtering", "to": "Global.DesignPattern.UI.ContextMenuFiltering_Pattern", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern", "to": "Global.PatternCluster.Data.DataManagement_Patterns", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.DesignPattern.DataManagement.CompositeKey_Pattern", "to": "Global.Cluster.DesignPattern.DataManagement", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.DataManagement", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.ErrorHandling.Delegation_Pattern", "to": "Global.Cluster.DesignPattern.ErrorHandling", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.ErrorHandling", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.BestPractice.API.APIContract_Enforcement", "to": "Global.Cluster.BestPractice.API", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.BestPractice.API", "to": "Global.Domain.BestPractice", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.BestPractice", "to": "Global.Type.GlobalBestPractice", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.ArchitecturalPattern.Memory.DualMemory_System", "to": "Global.Cluster.ArchitecturalPattern.Memory", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.ArchitecturalPattern.Memory", "to": "Global.Domain.ArchitecturalPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.ArchitecturalPattern", "to": "Global.Type.Architectural Pattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.Identification.UALIdentifier_System", "to": "Global.Cluster.DesignPattern.Identification", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.Identification", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.Design Pattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.SecurityPattern.DataIntegrity.Cryptographic_Verification", "to": "Global.Cluster.SecurityPattern.DataIntegrity", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.SecurityPattern.DataIntegrity", "to": "Global.Domain.SecurityPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.SecurityPattern", "to": "Global.Type.Security Pattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.Service.ServiceLayer_Pattern", "to": "Global.Cluster.DesignPattern.Service", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.Service", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.FaultTolerance.StatefulFaultTolerance_Pattern", "to": "Global.Cluster.DesignPattern.FaultTolerance", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.FaultTolerance", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.DataProcessing.HeterogeneousDataPipeline_Pattern", "to": "Global.Cluster.DesignPattern.DataProcessing", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.DataProcessing", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.FaultTolerance.CircuitBreaker_Pattern", "to": "Global.Cluster.DesignPattern.FaultTolerance", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.FaultTolerance", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.ArchitecturalPattern.Dependency.CircularDependencyResolution_Pattern", "to": "Global.Cluster.ArchitecturalPattern.Dependency", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.ArchitecturalPattern.Dependency", "to": "Global.Domain.ArchitecturalPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.ArchitecturalPattern", "to": "Global.Type.Architectural Pattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.UI.ContextMenuFiltering_Pattern", "to": "Global.Cluster.DesignPattern.UI", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.UI", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Utility.Logging.LoggingService_Pattern", "to": "Global.Cluster.Utility.Logging", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Utility.Logging", "to": "Global.Domain.Utility", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Utility", "to": "Global.Type.UtilityPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.NetworkClient.Management.NetworkClientManagement_Pattern", "to": "Global.Cluster.NetworkClient.Management", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.NetworkClient.Management", "to": "Global.Domain.NetworkClient", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.NetworkClient", "to": "Global.Type.NetworkClientPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DataModel.Standardization.StandardizedDataModel_Pattern", "to": "Global.Cluster.DataModel.Standardization", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DataModel.Standardization", "to": "Global.Domain.DataModel", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DataModel", "to": "Global.Type.DataModelPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Concurrency.StateManagement.AsynchronousStateManagement_Pattern", "to": "Global.Cluster.Concurrency.StateManagement", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Concurrency.StateManagement", "to": "Global.Domain.Concurrency", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Concurrency", "to": "Global.Type.ConcurrencyPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.KnowledgeGraphManagement.SchemaEvolution.KnowledgeGraphSchemaEvolution_Pattern", "to": "Global.Cluster.KnowledgeGraphManagement.SchemaEvolution", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.KnowledgeGraphManagement.SchemaEvolution", "to": "Global.Domain.KnowledgeGraphManagement", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.KnowledgeGraphManagement", "to": "Global.Type.KnowledgeGraphManagementPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.ErrorHandling.ErrorHandlingDelegation_Pattern", "to": "Global.Cluster.DesignPattern.ErrorHandling", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.ErrorHandling", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.ArchitecturalPattern.Command.UnifiedCommandExecution_Pattern", "to": "Global.Cluster.ArchitecturalPattern.Command", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.ArchitecturalPattern.Command", "to": "Global.Domain.ArchitecturalPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.ArchitecturalPattern", "to": "Global.Type.ArchitecturalPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.Command.BatchCommandProcessing_Pattern", "to": "Global.Cluster.DesignPattern.Command", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.Command", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.Subprocess.SubprocessOutputTracing_Pattern", "to": "Global.Cluster.DesignPattern.Subprocess", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.Subprocess", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DesignPattern.UI.ContextMenuFilterService_Pattern", "to": "Global.Cluster.DesignPattern.UI", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DesignPattern.UI", "to": "Global.Domain.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DesignPattern", "to": "Global.Type.UIPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.BestPractice.API.APIContractEnforcement_Pattern", "to": "Global.Cluster.BestPractice.API", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.BestPractice.API", "to": "Global.Domain.BestPractice", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.BestPractice", "to": "Global.Type.BestPractice", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.PatternCluster.Data.DataManagement_Patterns", "to": "Global.Cluster.PatternCluster.Data", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.PatternCluster.Data", "to": "Global.Domain.PatternCluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.PatternCluster", "to": "Global.Type.PatternCluster", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.PatternCluster.ProblemResolution.ProblemResolution_Patterns", "to": "Global.Cluster.PatternCluster.ProblemResolution", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.PatternCluster.ProblemResolution", "to": "Global.Domain.PatternCluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.PatternCluster", "to": "Global.Type.PatternCluster", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.PatternCluster.Workflow.Workflow_Patterns", "to": "Global.Cluster.PatternCluster.Workflow", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.PatternCluster.Workflow", "to": "Global.Domain.PatternCluster", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.PatternCluster", "to": "Global.Type.PatternCluster", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.ArchitecturePattern.Service.ServiceLayer_Pattern", "to": "Global.Cluster.ArchitecturePattern.Service", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.ArchitecturePattern.Service", "to": "Global.Domain.ArchitecturePattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.ArchitecturePattern", "to": "Global.Type.ArchitecturalPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.UIPattern.Input.CommandInputAutoUpdate_Pattern", "to": "Global.Cluster.UIPattern.Input", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.UIPattern.Input", "to": "Global.Domain.UIPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.UIPattern", "to": "Global.Type.UIPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.PythonClass.Presenter.NodeTree_Presenter", "to": "Global.Cluster.PythonClass.Presenter", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.PythonClass.Presenter", "to": "Global.Domain.PythonClass", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.PythonClass", "to": "Global.Type.PythonClass", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.PyQtSignal.UI.CommandGenerated_Signal", "to": "Global.Cluster.PyQtSignal.UI", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.PyQtSignal.UI", "to": "Global.Domain.PyQtSignal", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.PyQtSignal", "to": "Global.Type.PyQtSignal", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Test.TestCase.TestNodeSelectionEmitsLogFileSelected_Case", "to": "Global.Cluster.Test.TestCase", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Test.TestCase", "to": "Global.Domain.Test", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Test", "to": "Global.Type.TestCase", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.CodeStructure.Method.NodeTreePresenterOnNode_Selected", "to": "Global.Cluster.CodeStructure.Method", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.CodeStructure.Method", "to": "Global.Domain.CodeStructure", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.CodeStructure", "to": "Global.Type.Method", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Feature.Command.TelnetCommand_Population", "to": "Global.Cluster.Feature.Command", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Feature.Command", "to": "Global.Domain.Feature", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Feature", "to": "Global.Type.Feature", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Documentation.Architecture.ArchitecturalDesign_Proposal", "to": "Global.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Documentation.Architecture", "to": "Global.Domain.Documentation", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Documentation", "to": "Global.Type.Document", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Architecture.DesignPattern.SignalSlotUIBinding_Pattern", "to": "Global.Cluster.Architecture.DesignPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Architecture.DesignPattern", "to": "Global.Domain.Architecture", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Architecture", "to": "Global.Type.DesignPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Architecture.ArchitecturalDesign.NodeColorDetermination_Logic", "to": "Global.Cluster.Architecture.ArchitecturalDesign", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Architecture.ArchitecturalDesign", "to": "Global.Domain.Architecture", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Architecture", "to": "Global.Type.ArchitecturalDesign", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.SystemComponent.File.FileClearing_Mechanism", "to": "Global.Cluster.SystemComponent.File", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.SystemComponent.File", "to": "Global.Domain.SystemComponent", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.SystemComponent", "to": "Global.Type.SystemComponent", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.CoordinationPattern.Workflow.MultiPhaseDelegation_Pattern", "to": "Global.Cluster.CoordinationPattern.Workflow", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.CoordinationPattern.Workflow", "to": "Global.Domain.CoordinationPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.CoordinationPattern", "to": "Global.Type.CoordinationPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Approach.Memory.HierarchicalMemoryOptimization_Approach", "to": "Global.Cluster.Approach.Memory", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Approach.Memory", "to": "Global.Domain.Approach", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Approach", "to": "Global.Type.Approach", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Workflow.Memory.ProjectMemoryReRun_Learnings", "to": "Global.Cluster.Workflow.Memory", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Workflow.Memory", "to": "Global.Domain.Workflow", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Workflow", "to": "Global.Type.WorkflowLearnings", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.UIPattern.Testing.PyQt6IntegrationTesting_Pattern", "to": "Global.Cluster.UIPattern.Testing", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.UIPattern.Testing", "to": "Global.Domain.UIPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.UIPattern", "to": "Global.Type.UIPattern", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.Approach.DataProcessing.RegexBasedExtraction_Approach", "to": "Global.Cluster.Approach.DataProcessing", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.Approach.DataProcessing", "to": "Global.Domain.Approach", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.Approach", "to": "Global.Type.Approach", "relationType": "IS_A"}
+{"type": "relation", "from": "Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern", "to": "Global.Cluster.DataProcessingPattern.Configuration", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Cluster.DataProcessingPattern.Configuration", "to": "Global.Domain.DataProcessingPattern", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Domain.DataProcessingPattern", "to": "Global.Type.DataProcessingPattern", "relationType": "IS_A"}

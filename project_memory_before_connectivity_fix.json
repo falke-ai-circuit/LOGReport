@@ -159,213 +159,97 @@
 {"type": "entity", "name": "SysFileParser", "entityType": "Component", "observations": ["Component responsible for extracting node names, tokens,+assigning default ty...", "Documentation updated in `docs/technical/ARCH_sys_file_parsing_v1.md` to refl...", "upd:2025-10-08,refs:0"]}
 {"type": "entity", "name": "IPExtractionFromSysFile_Pattern", "entityType": "CodingPattern", "observations": ["Implemented IP address extraction from `[tokenid].sys` files.", "Used regex `set XD_IP_ADDR=(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})` to find IP a...", "Modified `parse_sys_file` to accept an optional `sys_file_path` parameter."]}
 {"type": "entity", "name": "ParseSysFile_Function_Update", "entityType": "CodeModification", "observations": ["Updated `src/utils/file_utils.py::parse_sys_file` function signature.", "Added `sys_file_path: Optional[Path] = None` parameter.", "Integrated IP extraction logic based on `sys_file_path` presence."]}
-{"type": "entity", "name": "Project.Cluster.Analysis.CodeAnalysis", "entityType": "Cluster", "observations": ["Analysis.CodeAnalysis cluster w/8 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Changes.Code", "entityType": "Cluster", "observations": ["Changes.Code cluster w/1 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Changes.Fixes", "entityType": "Cluster", "observations": ["Changes.Fixes cluster w/3 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Configuration.Rules", "entityType": "Cluster", "observations": ["Configuration.Rules cluster w/1 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.Architecture", "entityType": "Cluster", "observations": ["Documentation.Architecture cluster w/5 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.General", "entityType": "Cluster", "observations": ["Documentation.General cluster w/2 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.Optimization", "entityType": "Cluster", "observations": ["Documentation.Optimization cluster w/3 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.Project", "entityType": "Cluster", "observations": ["Documentation.Project cluster w/9 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.Commands", "entityType": "Cluster", "observations": ["Features.Commands cluster w/3 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.DataProcessing", "entityType": "Cluster", "observations": ["Features.DataProcessing cluster w/2 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.UI", "entityType": "Cluster", "observations": ["Features.UI cluster w/2 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Components", "entityType": "Cluster", "observations": ["Implementation.Components cluster w/3 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.DataModels", "entityType": "Cluster", "observations": ["Implementation.DataModels cluster w/2 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Methods", "entityType": "Cluster", "observations": ["Implementation.Methods cluster w/3 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Misc", "entityType": "Cluster", "observations": ["Implementation.Misc cluster w/44 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Services", "entityType": "Cluster", "observations": ["Implementation.Services cluster w/6 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.UI", "entityType": "Cluster", "observations": ["Implementation.UI cluster w/4 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Workflows", "entityType": "Cluster", "observations": ["Implementation.Workflows cluster w/6 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Meta.Types", "entityType": "Cluster", "observations": ["Meta.Types cluster w/44 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Patterns.UI", "entityType": "Cluster", "observations": ["Patterns.UI cluster w/1 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Solutions.Debugging", "entityType": "Cluster", "observations": ["Solutions.Debugging cluster w/1 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Testing.Strategies", "entityType": "Cluster", "observations": ["Testing.Strategies cluster w/8 entities.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Domain.Core", "entityType": "Domain", "observations": ["Core domain w/13 clusters.", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Project.Domain.Support", "entityType": "Domain", "observations": ["Support domain w/9 clusters.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Architecture.All", "entityType": "Cluster", "observations": ["Consolidated Architecture.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Changes.All", "entityType": "Cluster", "observations": ["Consolidated Changes.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Configuration.All", "entityType": "Cluster", "observations": ["Consolidated Configuration.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Documentation.All", "entityType": "Cluster", "observations": ["Consolidated Documentation.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Features.All", "entityType": "Cluster", "observations": ["Consolidated Features.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.Code", "entityType": "Cluster", "observations": ["Consolidated Implementation.Code.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Patterns.All", "entityType": "Cluster", "observations": ["Consolidated Patterns.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Solutions.All", "entityType": "Cluster", "observations": ["Consolidated Solutions.All.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Domain.Core", "entityType": "Domain", "observations": ["Domain: Core.", "upd:2025-10-08,refs:0"]}
+{"type": "entity", "name": "Project.Domain.Support", "entityType": "Domain", "observations": ["Domain: Support.", "upd:2025-10-08,refs:0"]}
 {"type": "entity", "name": "Project.Type.ProjectEntity", "entityType": "Type", "observations": ["Unified type for all project entities.", "upd:2025-10-08,refs:0"]}
-{"type": "relation", "from": "Project.SystemComponent.Service.LogWriter", "to": "Project.Cluster.Implementation.Services", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.SystemComponent.DataModel.NodeToken", "to": "Project.Cluster.Implementation.DataModels", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Feature.Command.TelnetCommand_Population", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Document.Architecture.ArchitecturalDesign_Proposal", "to": "Project.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.SystemComponent.File.FileClearing_Mechanism", "to": "Project.Cluster.Implementation.Components", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.SystemComponent.UI.ContextMenu_Generation", "to": "Project.Cluster.Implementation.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.SystemComponent.UI.ContextMenu_Filtering", "to": "Project.Cluster.Implementation.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Feature.File.SubgroupFileClearing_Command", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Method.Service.BsToolCommandServiceClear_Log", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Overview.Project_Overview", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Features.Project_Features", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Requirements.Project_Requirements", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Installation.Project_Installation", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Usage.Project_Usage", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Architecture.Architectural_Overview", "to": "Project.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Architecture.Design_Principles", "to": "Project.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Tasks.Project_Tasks", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ProblemResolution", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeAnalysis", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Architecture.MemoryOptimizationReport_Document", "to": "Project.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Report.Analysis.Phase2ClusterLayer_Analysis_20250928", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeChange", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Test", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.UI", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Architecture", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Documentation", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Configuration", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponentType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.UIPatternType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.BugFixType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.FeatureType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.DocumentType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ArchitecturalDecisionType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ImplementationPlanType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.TestStrategyType", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ServiceType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ConfigurationFileType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.DataModelType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ModificationType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ConfigurationRuleType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ReportType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.PythonClassType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.PyQtSignalType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.MethodType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.TestFileType", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.TestCaseType", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ArchitecturalPrincipleType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.DebuggingSolutionType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.WorkflowType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Workflow", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Analysis.Phase2_Report", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Optimization.TokenManagement_Consolidation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Optimization.Changelog_Consolidation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Optimization.CommandProcessing_Consolidation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_ClipboardMechanism", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_ContextMenuArchitecture", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_ContextMenuFiltering", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_DocumentationReviewProcess", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_IntegrationPoints", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_MemoryConsolidation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_BsToolTabMockup", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_BsToolTab", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_ClipboardMechanism", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_ContextMenuArchitecture", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_ContextMenuFiltering", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_DocumentationReviewProcess", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_IntegrationPoints", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_MemoryConsolidation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ROADMAP_bstool_integration_v1.md", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ROADMAP_commander_module_v1.md", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ROADMAP_documentation_consolidation_v1.md", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ROADMAP_task_management_v1.md", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ROADMAP_vnc_integration_v1.md", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.CodeAnalysis.CodeAnomaly.UI.BsToolTabAppendOutput_Deviation", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Architecture.ArchitecturalPrinciple.Core.DesignPrinciples_ArchitecturalPrinciple", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.System.Project_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.UI.SystemComponent_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Service.SystemComponent_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.CodeStructure.PythonClass_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.CodeStructure.PyQtSignal_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.CodeStructure.Method_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.UI.Service_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Configuration.ConfigurationFile_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.CodeChange.Modification_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Configuration.ConfigurationRule_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Report_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Document_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Workflow.Workflow_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Architecture.ArchitecturalPrinciple_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Feature.Feature_Cluster", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Workflow.Memory.ProjectCycleImplementation_Phases5-8", "to": "Project.Cluster.Implementation.Workflows", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.CodeAnalysis.ServiceBehavior.BsToolCommandServiceRunBsToolProcess_Timeout", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.System.Core.Project.LOGReport_Project", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.ValidationPattern.MemoryHierarchyValidation_Pattern", "to": "Project.Cluster.Patterns.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "UltraCondensedARCH", "to": "Project.Cluster.Documentation.General", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "CommandQueuePattern", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.DocumentationOptimization.CmdFlowOverlap_Pattern", "to": "Project.Cluster.Documentation.Optimization", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.DocumentationOptimization.HighLevelConsolidation_Pattern", "to": "Project.Cluster.Documentation.Optimization", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.DocumentationOptimization.DensityRedundancy_Pattern", "to": "Project.Cluster.Documentation.Optimization", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.DocumentationOptimization.Batch1Redundancy_Insight", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Documentation.Index.Index_Pattern_Phase9", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Phase9.Documentation_Index_Learnings", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Doc-Code Sync Patterns", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeAnalysis.Cluster.CodeBehavior.BsToolTimeout_CodeBehavior", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeChange.Cluster.Node.NodenameTruncation_CodeChange", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Workflow.Cluster.Anomaly.MetaMindTaskProgression_WorkflowAnomaly", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Architecture.Cluster.Refactoring.CommanderMVP_Refactoring", "to": "Project.Cluster.Changes.Code", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.System.Cluster.Core.LOGReport_Project", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.UI.BsToolTab_SystemComponent", "to": "Project.Cluster.Implementation.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.BsToolCommandService_SystemComponent", "to": "Project.Cluster.Implementation.Services", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.UI.CommanderWindow_SystemComponent", "to": "Project.Cluster.Implementation.Services", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.SessionManager_SystemComponent", "to": "Project.Cluster.Implementation.Services", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.TelnetClient_SystemComponent", "to": "Project.Cluster.Implementation.Services", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.LogWriter_SystemComponent", "to": "Project.Cluster.Implementation.Services", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.DataModel.Cluster.DataModel.NodeToken_DataModel", "to": "Project.Cluster.Implementation.DataModels", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeStructure.Cluster.Method.NodeSelected_Method", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Feature.Cluster.Command.TelnetCommand_Population_Feature", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Documentation.Cluster.Architecture.ArchitecturalDesign_Document", "to": "Project.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.BugFix.Cluster.Command.RPCCommandGeneration_BugFix", "to": "Project.Cluster.Changes.Fixes", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.Feature.Cluster.UI.BsToolLogFileActivation_Feature", "to": "Project.Cluster.Features.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.ProblemResolution.Cluster.Debug.FBCColoring_DebuggingSolution", "to": "Project.Cluster.Solutions.Debugging", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.File.FileClearing_SystemComponent", "to": "Project.Cluster.Implementation.Components", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.UI.ContextMenu_Generation_SystemComponent", "to": "Project.Cluster.Implementation.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeStructure.Cluster.Method.NodeTreePresenterOnNode_Selected_Method", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Workflow.Memory.Cycle1_Phase1-4_Analysis", "to": "Project.Cluster.Implementation.Workflows", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryAnalysis.ClusterLayerInsights", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.SystemComp.MergedGroup1_SystemComponent", "to": "Project.Cluster.Implementation.Components", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.BugFix.MergedGroup1_BugFix", "to": "Project.Cluster.Changes.Fixes", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.BugFix.MergedGroup2_BugFix", "to": "Project.Cluster.Changes.Fixes", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Report.MergedGroup1_Report", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Report.MergedGroup2_Report", "to": "Project.Cluster.Analysis.CodeAnalysis", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Workflow.MergedGroup1_Workflow", "to": "Project.Cluster.Implementation.Workflows", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Doc.MergedGroup1_Doc", "to": "Project.Cluster.Documentation.Project", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.SystemType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.MemoryType.CodeStructureType", "to": "Project.Cluster.Meta.Types", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "SysFileParsingLogic", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "SysFileRegexPatterns", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "NodeDataInternalFormatMapping", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "SysFileParsingOptimizationOpportunities", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Sys File Parsing Regex Patterns", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Feature.DataProcessing.SysFileParsing", "to": "Project.Cluster.Features.DataProcessing", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Feature.UI.SysFileUIIntegration", "to": "Project.Cluster.Features.UI", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Test.Strategy.SysFileParsingTestStrategy", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Test.Strategy.SysFileUIIntegrationTestStrategy", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Approach.DataProcessing.RegexBasedSysFileExtraction", "to": "Project.Cluster.Implementation.Workflows", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Approach.UI.PyQt6IntegrationTesting", "to": "Project.Cluster.Implementation.Workflows", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Feature.DataProcessing.SysFileParsing_Feature", "to": "Project.Cluster.Features.DataProcessing", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "parse_sys_file", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "file_utils.py", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "test_sys_file_parser.py", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Approach.DataProcessing.RegexBasedExtraction_Approach", "to": "Project.Cluster.Implementation.Workflows", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern", "to": "Project.Cluster.Configuration.Rules", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ALNodeParsingAnalysis_Report", "to": "Project.Cluster.Documentation.General", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "IncorrectALLogTypeAssignment_RootCause", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "MissingALTokenExtraction_RootCause", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "FixALLogTypeAssignment_Recommendation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "FixALTokenExtraction_Recommendation", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "testing_methodology", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "SysFileParser", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "IPExtractionFromSysFile_Pattern", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "ParseSysFile_Function_Update", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.Services", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.DataModels", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Features.Commands", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Documentation.Architecture", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.Components", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.UI", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.Methods", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Documentation.Project", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Meta.Types", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Analysis.CodeAnalysis", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Testing.Strategies", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.Misc", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.Workflows", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Patterns.UI", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Documentation.General", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Documentation.Optimization", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Changes.Code", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Changes.Fixes", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Features.UI", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Solutions.Debugging", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Features.DataProcessing", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Configuration.Rules", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.SystemComponent.Service.LogWriter", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Implementation.Code", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Domain.Core", "to": "Project.Type.ProjectEntity", "relationType": "IS_A"}
+{"type": "relation", "from": "Project.SystemComponent.DataModel.NodeToken", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.Command.TelnetCommand_Population", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Features.All", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Document.Architecture.ArchitecturalDesign_Proposal", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Documentation.All", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Domain.Support", "to": "Project.Type.ProjectEntity", "relationType": "IS_A"}
+{"type": "relation", "from": "Project.SystemComponent.File.FileClearing_Mechanism", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.SystemComponent.UI.ContextMenu_Generation", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.SystemComponent.UI.ContextMenu_Filtering", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.File.SubgroupFileClearing_Command", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Method.Service.BsToolCommandServiceClear_Log", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Overview.Project_Overview", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Features.Project_Features", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Requirements.Project_Requirements", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Installation.Project_Installation", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Usage.Project_Usage", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Architecture.Architectural_Overview", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Architecture.Design_Principles", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Tasks.Project_Tasks", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Architecture.MemoryOptimizationReport_Document", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Report.Analysis.Phase2ClusterLayer_Analysis_20250928", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Analysis.Phase2_Report", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Optimization.TokenManagement_Consolidation", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Optimization.Changelog_Consolidation", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Optimization.CommandProcessing_Consolidation", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_ClipboardMechanism", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_ContextMenuArchitecture", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_ContextMenuFiltering", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_DocumentationReviewProcess", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_IntegrationPoints", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.NamingViolation_MemoryConsolidation", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_BsToolTabMockup", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_BsToolTab", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_ClipboardMechanism", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_ContextMenuArchitecture", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_ContextMenuFiltering", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_DocumentationReviewProcess", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_IntegrationPoints", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Blueprint.CondensationOpportunity_MemoryConsolidation", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.CodeAnalysis.CodeAnomaly.UI.BsToolTabAppendOutput_Deviation", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Architecture.ArchitecturalPrinciple.Core.DesignPrinciples_ArchitecturalPrinciple", "to": "Project.Cluster.Architecture.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Architecture.All", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Workflow.Memory.ProjectCycleImplementation_Phases5-8", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.CodeAnalysis.ServiceBehavior.BsToolCommandServiceRunBsToolProcess_Timeout", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.System.Core.Project.LOGReport_Project", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Documentation.Index.Index_Pattern_Phase9", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.CodeAnalysis.Cluster.CodeBehavior.BsToolTimeout_CodeBehavior", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.CodeChange.Cluster.Node.NodenameTruncation_CodeChange", "to": "Project.Cluster.Changes.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Changes.All", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.Workflow.Cluster.Anomaly.MetaMindTaskProgression_WorkflowAnomaly", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.Architecture.Cluster.Refactoring.CommanderMVP_Refactoring", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.System.Cluster.Core.LOGReport_Project", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.UI.BsToolTab_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.BsToolCommandService_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.UI.CommanderWindow_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.SessionManager_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.TelnetClient_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.Service.LogWriter_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.DataModel.Cluster.DataModel.NodeToken_DataModel", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.CodeStructure.Cluster.Method.NodeSelected_Method", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.Feature.Cluster.Command.TelnetCommand_Population_Feature", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.Documentation.Cluster.Architecture.ArchitecturalDesign_Document", "to": "Project.Cluster.Documentation.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.BugFix.Cluster.Command.RPCCommandGeneration_BugFix", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.Feature.Cluster.UI.BsToolLogFileActivation_Feature", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.ProblemResolution.Cluster.Debug.FBCColoring_DebuggingSolution", "to": "Project.Cluster.Solutions.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Solutions.All", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.File.FileClearing_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.SystemComponent.Cluster.UI.ContextMenu_Generation_SystemComponent", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.MemoryType.CodeStructure.Cluster.Method.NodeTreePresenterOnNode_Selected_Method", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Workflow.Memory.Cycle1_Phase1-4_Analysis", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.DataProcessing.SysFileParsing", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.UI.SysFileUIIntegration", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Test.Strategy.SysFileParsingTestStrategy", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Test.Strategy.SysFileUIIntegrationTestStrategy", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Approach.DataProcessing.RegexBasedSysFileExtraction", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Approach.UI.PyQt6IntegrationTesting", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.DataProcessing.SysFileParsing_Feature", "to": "Project.Cluster.Features.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Approach.DataProcessing.RegexBasedExtraction_Approach", "to": "Project.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern", "to": "Project.Cluster.Configuration.All", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Configuration.All", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
