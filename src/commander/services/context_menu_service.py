@@ -67,8 +67,34 @@ class ContextMenuService:
         added_actions = False
         logging.debug(f"Context menu processing item data: {item_data}")
 
+        # Handle node items (hierarchical execution)
+        if item_data and isinstance(item_data, dict) and item_data.get('type') == 'node':
+            node_name = item_data.get('node_name')
+            
+            if node_name:
+                # Check if node hierarchical commands should be shown
+                if self.context_menu_filter.should_show_command(
+                    node_name=node_name,
+                    section_type=None,
+                    command_type="execute_all_hierarchical",
+                    command_category="node"
+                ):
+                    logging.debug(f"Adding hierarchical command option for node {node_name}")
+                    
+                    # Create action for executing all commands hierarchically
+                    hierarchical_action = QAction(f"Execute All Commands Hierarchically for {node_name}", menu)
+                    if self.presenter:
+                        # Connect action to presenter method
+                        hierarchical_action.triggered.connect(
+                            lambda: self.presenter.process_node_hierarchical_commands(node_name)
+                        )
+                    menu.addAction(hierarchical_action)
+                    added_actions = True
+                else:
+                    logging.debug(f"Hierarchical command filtered out for node {node_name}")
+
         # Handle section items (FBC/RPC subgroups)
-        if item_data and isinstance(item_data, dict) and 'section_type' in item_data:
+        elif item_data and isinstance(item_data, dict) and 'section_type' in item_data:
             section_type = item_data.get("section_type")
             node_name = item_data.get("node")
 
@@ -214,9 +240,12 @@ class ContextMenuService:
                 added_actions = True
 
         if added_actions:
-            # Show menu at cursor position
-            menu.exec(position)
-            logging.debug(f"Context menu displayed with {len(menu.actions())} actions")
+            # Show menu at cursor position (only if position is provided)
+            if position:
+                menu.exec(position)
+                logging.debug(f"Context menu displayed with {len(menu.actions())} actions")
+            else:
+                logging.debug(f"Context menu prepared with {len(menu.actions())} actions (not shown - no position)")
         else:
             logging.debug("Context menu - no applicable actions for this item")
 

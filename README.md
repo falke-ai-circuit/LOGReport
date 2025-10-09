@@ -84,7 +84,8 @@ The project implements cryptographic verification to ensure memory integrity and
 
 Right-clicking on FBC or RPC group nodes in the Commander window triggers batch commands on all child log files within that group.
 
-### Implementation Details
+### Subgroup-Level Execution
+
 Implemented in [`CommanderWindow.process_all_fbc_subgroup_commands()`](src/commander/command_queue.py:71) and [`process_all_rpc_subgroup_commands()`](src/commander/command_queue.py:95) methods:
 1. Retrieve child log files via `NodeManager`
 2. Dispatch commands through dedicated services:
@@ -95,6 +96,31 @@ Implemented in [`CommanderWindow.process_all_fbc_subgroup_commands()`](src/comma
            self.rpc_service.queue_rpc_command(log)
    ```
 3. Includes error handling and sequential processing
+
+### Node-Level Hierarchical Execution
+
+**NEW in v1.1**: Right-clicking on a node itself provides the option to **Execute All Commands Hierarchically**, which orchestrates a complete three-phase workflow:
+
+1. **Phase 1**: Execute all FBC commands for the node
+2. **Phase 2**: Execute all RPC commands for the node  
+3. **Phase 3**: Process all LOG files with BsTool
+
+**Example Usage**:
+```
+AP01m (192.168.0.11) → Right-click → "Execute All Commands Hierarchically for AP01m"
+  ├─ Phase 1/3: Executing 5 FBC commands...
+  ├─ Phase 2/3: Executing 5 RPC commands...
+  └─ Phase 3/3: Processing 3 LOG files...
+  ✓ Hierarchical execution complete for AP01m: 13 commands processed
+```
+
+**Benefits**:
+- **Efficiency**: Execute all node commands with a single action
+- **Consistency**: Ensures commands execute in proper order
+- **Automation**: Reduces manual effort for multi-protocol testing
+- **Configuration**: Can be controlled via `config/menu_filter_rules.json`
+
+See: [Hierarchical Command System](docs/architecture/ARCH_command_system.md#node-level-hierarchical-execution)
 
 ## Documentation
 

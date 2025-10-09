@@ -670,6 +670,218 @@ The `HierarchicalCommandService` orchestrates complex multi-step workflows with 
 
 ### Hierarchical Architecture
 
+The LOGReport system supports hierarchical command execution at multiple levels:
+
+1. **Token Level**: Individual token commands (FBC, RPC)
+2. **Subgroup Level**: All tokens within a subgroup (e.g., all FBC tokens)
+3. **Node Level**: All subgroups within a node (FBC → RPC → LOG)
+
+### Node-Level Hierarchical Execution
+
+Right-clicking on a node provides the option to **Execute All Commands Hierarchically**, which orchestrates a complete command workflow:
+
+```
+Node (AP01m) Right-Click
+    ↓
+Execute All Commands Hierarchically
+    ↓
+Phase 1: FBC Subgroup Commands
+    ├─→ Process token 162.fbc
+    ├─→ Process token 163.fbc
+    └─→ ... (all FBC tokens)
+    ↓
+Phase 2: RPC Subgroup Commands
+    ├─→ Process token 162.rpc
+    ├─→ Process token 163.rpc
+    └─→ ... (all RPC tokens)
+    ↓
+Phase 3: LOG/BsTool Commands
+    └─→ Process log files with BsTool
+```
+
+### Implementation
+
+```python
+class NodeTreePresenter:
+    """Presenter handling node-level hierarchical command execution."""
+    
+    def process_node_hierarchical_commands(self, node_name: str):
+        """
+        Execute all commands hierarchically for a node.
+        
+        This method orchestrates a three-phase execution:
+        1. Execute all FBC commands for the node
+        2. Execute all RPC commands for the node
+        3. Process all LOG files with BsTool
+        
+        Args:
+            node_name: Name of the node to process hierarchically
+        
+        Example:
+            >>> presenter.process_node_hierarchical_commands("AP01m")
+            # Phase 1/3: Executing 5 FBC commands...
+            # Phase 2/3: Executing 5 RPC commands...
+            # Phase 3/3: Processing 3 LOG files...
+            # Hierarchical execution complete for AP01m: 13 commands processed
+        """
+        logging.info(f"Starting hierarchical command execution for node {node_name}...")
+        self.status_message_signal.emit(f"Starting hierarchical execution for node {node_name}...", 0)
+        
+        try:
+            # Get the node
+            node = self.node_manager.get_node(node_name)
+            if not node:
+                self._report_error(f"Node {node_name} not found")
+                return
+            
+            # Phase 1: Execute all FBC commands
+            fbc_tokens = self._get_tokens_for_node(node, "FBC")
+            if fbc_tokens:
+                self.status_message_signal.emit(
+                    f"Phase 1/3: Executing {len(fbc_tokens)} FBC commands...", 0
+                )
+                for token in fbc_tokens:
+                    self.fbc_service.queue_fieldbus_command(
+                        node_name, token.token_id
+                    )
+                self.command_queue.start_processing()
+            
+            # Phase 2: Execute all RPC commands
+            rpc_tokens = self._get_tokens_for_node(node, "RPC")
+            if rpc_tokens:
+                self.status_message_signal.emit(
+                    f"Phase 2/3: Executing {len(rpc_tokens)} RPC commands...", 0
+                )
+                for token in rpc_tokens:
+                    self.rpc_service.queue_rpc_command(
+                        node_name, token.token_id, "print"
+                    )
+            
+            # Phase 3: Process LOG files with BsTool
+            log_tokens = self._get_tokens_for_node(node, "LOG")
+            if log_tokens:
+                self.status_message_signal.emit(
+                    f"Phase 3/3: Processing {len(log_tokens)} LOG files...", 0
+                )
+                for token in log_tokens:
+                    if hasattr(token, 'log_path') and token.log_path:
+                        node_id = self._extract_node_id_from_log_path(token.log_path)
+                        if node_id:
+                            bstool_command_args = f"-errlog {node_id}"
+                            self.command_generated_signal.emit(
+                                bstool_command_args, "BSTOOL"
+                            )
+            
+            # Completion message
+            total_commands = len(fbc_tokens) + len(rpc_tokens) + len(log_tokens)
+            self.status_message_signal.emit(
+                f"Hierarchical execution complete for {node_name}: {total_commands} commands processed",
+                5000
+            )
+            
+        except Exception as e:
+            self._report_error(f"Error in hierarchical execution for {node_name}", e)
+    
+    def _get_tokens_for_node(self, node, token_type: str):
+        """
+        Get all tokens of a specific type for a node.
+        
+        Args:
+            node: Node object
+            token_type: Type of tokens to retrieve (FBC, RPC, LOG, etc.)
+            
+        Returns:
+            List of tokens of the specified type
+        """
+        all_tokens = []
+        for token_list in node.tokens.values():
+            if isinstance(token_list, list):
+                for token in token_list:
+                    if isinstance(token, NodeToken):
+                        all_tokens.append(token)
+            else:
+                if isinstance(token_list, NodeToken):
+                    all_tokens.append(token_list)
+        
+        # Filter tokens by type
+        return [t for t in all_tokens if t.token_type == token_type]
+```
+
+### Context Menu Integration
+
+The hierarchical command option is available through the node context menu:
+
+```python
+class ContextMenuService:
+    """Service for handling context menu operations."""
+    
+    def show_context_menu(self, menu: QMenu, item_data: Dict[str, Any], position) -> bool:
+        """Show context menu for a tree item."""
+        
+        # Handle node items (hierarchical execution)
+        if item_data and item_data.get('type') == 'node':
+            node_name = item_data.get('node_name')
+            
+            if self.context_menu_filter.should_show_command(
+                node_name=node_name,
+                section_type=None,
+                command_type="execute_all_hierarchical",
+                command_category="node"
+            ):
+                hierarchical_action = QAction(
+                    f"Execute All Commands Hierarchically for {node_name}", 
+                    menu
+                )
+                hierarchical_action.triggered.connect(
+                    lambda: self.presenter.process_node_hierarchical_commands(node_name)
+                )
+                menu.addAction(hierarchical_action)
+                
+        return True
+```
+
+### Configuration
+
+The hierarchical command visibility can be controlled through `config/menu_filter_rules.json`:
+
+```json
+{
+  "rules": [
+    {
+      "description": "Show 'Execute All Commands Hierarchically' for all nodes",
+      "action": "show",
+      "command_type": "execute_all_hierarchical",
+      "command_category": "node"
+    },
+    {
+      "description": "Hide hierarchical commands for specific nodes",
+      "node_name": "TestNode",
+      "action": "hide",
+      "command_type": "execute_all_hierarchical",
+      "command_category": "node"
+    }
+  ]
+}
+```
+
+### Benefits
+
+1. **Efficiency**: Execute all node commands with a single action
+2. **Consistency**: Ensures commands execute in proper order (FBC → RPC → LOG)
+3. **Automation**: Reduces manual effort for multi-protocol testing
+4. **Error Isolation**: Each phase handles errors independently
+5. **Progress Tracking**: Clear status messages for each phase
+
+See: [Context Menu System](../blueprints/BLUEPRINT_context_menu.md#node-level-commands)
+
+---
+
+## 🌲 Hierarchical Command Execution (Legacy)
+
+The `HierarchicalCommandService` orchestrates complex multi-step workflows with nested sub-commands.
+
+### Legacy Hierarchical Architecture (Pre-v1.1)
+
 ```python
 class HierarchicalCommandService(QObject):
     """Execute hierarchical commands with FBC/RPC/LOG/BsTool sub-commands."""

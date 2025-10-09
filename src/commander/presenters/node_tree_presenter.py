@@ -574,6 +574,115 @@ class NodeTreePresenter(QObject):
             
         self.status_message_signal.emit(f"Queued {len(tokens)} commands for node {node_name}", 3000)
         
+    def process_node_hierarchical_commands(self, node_name: str):
+        """
+        Execute all commands hierarchically for a node.
+        This method orchestrates FBC commands, then RPC commands, then LOG/BsTool commands.
+
+        Args:
+            node_name: Name of the node to process hierarchically
+        """
+        logging.info(f"Starting hierarchical command execution for node {node_name}...")
+        self.status_message_signal.emit(f"Starting hierarchical execution for node {node_name}...", 0)
+        
+        try:
+            # Get the node
+            node = self.node_manager.get_node(node_name)
+            if not node:
+                self._report_error(f"Node {node_name} not found for hierarchical processing")
+                return
+            
+            # Phase 1: Execute all FBC commands
+            fbc_tokens = self._get_tokens_for_node(node, "FBC")
+            if fbc_tokens:
+                logging.info(f"Phase 1: Processing {len(fbc_tokens)} FBC tokens for node {node_name}")
+                self.status_message_signal.emit(f"Phase 1/3: Executing {len(fbc_tokens)} FBC commands...", 0)
+                
+                telnet_client = getattr(self, 'active_telnet_client', None)
+                for token in fbc_tokens:
+                    self.fbc_service.queue_fieldbus_command(node_name, token.token_id, telnet_client)
+                    self.node_status[node_name] = {"command_success": False, "log_success": False}
+                
+                # Start processing FBC commands
+                self.command_queue.start_processing()
+            else:
+                logging.info(f"No FBC tokens found for node {node_name}")
+            
+            # Phase 2: Execute all RPC commands
+            rpc_tokens = self._get_tokens_for_node(node, "RPC")
+            if rpc_tokens:
+                logging.info(f"Phase 2: Processing {len(rpc_tokens)} RPC tokens for node {node_name}")
+                self.status_message_signal.emit(f"Phase 2/3: Executing {len(rpc_tokens)} RPC commands...", 0)
+                
+                telnet_client = getattr(self, 'active_telnet_client', None)
+                for token in rpc_tokens:
+                    self.rpc_service.queue_rpc_command(node_name, token.token_id, "print", telnet_client)
+            else:
+                logging.info(f"No RPC tokens found for node {node_name}")
+            
+            # Phase 3: Process LOG files with BsTool (optional)
+            log_tokens = self._get_tokens_for_node(node, "LOG")
+            if log_tokens:
+                logging.info(f"Phase 3: Processing {len(log_tokens)} LOG files with BsTool for node {node_name}")
+                self.status_message_signal.emit(f"Phase 3/3: Processing {len(log_tokens)} LOG files...", 0)
+                
+                for token in log_tokens:
+                    if hasattr(token, 'log_path') and token.log_path:
+                        try:
+                            # Generate BsTool command for this log file
+                            node_id = self._extract_node_id_from_log_path(token.log_path)
+                            if node_id:
+                                bstool_command_args = f"-errlog {node_id}"
+                                self.command_generated_signal.emit(bstool_command_args, "BSTOOL")
+                        except Exception as e:
+                            logging.error(f"Error processing LOG file {token.log_path}: {str(e)}")
+            else:
+                logging.info(f"No LOG tokens found for node {node_name}")
+            
+            # Completion message
+            total_commands = len(fbc_tokens) + len(rpc_tokens) + len(log_tokens)
+            self.status_message_signal.emit(
+                f"Hierarchical execution complete for {node_name}: {total_commands} commands processed", 
+                5000
+            )
+            logging.info(f"Hierarchical command execution completed for node {node_name}: {total_commands} total commands")
+            
+        except Exception as e:
+            self._report_error(f"Error in hierarchical command execution for node {node_name}", e)
+    
+    def _get_tokens_for_node(self, node, token_type: str):
+        """
+        Get all tokens of a specific type for a node.
+        
+        Args:
+            node: Node object
+            token_type: Type of tokens to retrieve (FBC, RPC, LOG, etc.)
+            
+        Returns:
+            List of tokens of the specified type
+        """
+        try:
+            # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
+            all_tokens = []
+            for token_list in node.tokens.values():
+                # Ensure token_list is actually a list before extending
+                if isinstance(token_list, list):
+                    # Only add NodeToken objects to all_tokens
+                    for token in token_list:
+                        if isinstance(token, NodeToken):
+                            all_tokens.append(token)
+                else:
+                    # If it's not a list but is a NodeToken, add it
+                    if isinstance(token_list, NodeToken):
+                        all_tokens.append(token_list)
+            
+            # Filter tokens by type
+            filtered_tokens = [t for t in all_tokens if t.token_type == token_type]
+            return filtered_tokens
+        except Exception as e:
+            logging.error(f"Error getting {token_type} tokens for node {node.name}: {str(e)}")
+            return []
+        
     def _extract_node_id_from_log_path(self, log_file_path: str) -> str:
         """
         Extract node ID from log file path.

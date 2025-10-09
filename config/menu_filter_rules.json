@@ -27,10 +27,16 @@
       "action": "show",
       "command_type": "clear_all_subgroup_files",
       "command_category": "subgroup"
+    },
+    {
+      "description": "Show 'Execute All Commands Hierarchically' for all nodes",
+      "action": "show",
+      "command_type": "execute_all_hierarchical",
+      "command_category": "node"
     }
   ],
   "metadata": {
-    "version": "1.0",
+    "version": "1.1",
     "description": "Context menu filtering rules"
   }
 }

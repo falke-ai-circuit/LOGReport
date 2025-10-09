@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Node-Level Hierarchical Command Execution
+- [FEATURE] Implemented node-level hierarchical command execution allowing users to right-click on a node and execute all FBC, RPC, and LOG commands in a single orchestrated workflow
+- [FEATURE] Added three-phase execution model: Phase 1 (FBC commands), Phase 2 (RPC commands), Phase 3 (LOG/BsTool processing)
+- [FEATURE] Created `process_node_hierarchical_commands()` method in `NodeTreePresenter` to orchestrate hierarchical execution with proper error handling and status reporting
+- [FEATURE] Extended `ContextMenuService` to detect node-level right-clicks and display "Execute All Commands Hierarchically" option
+- [FEATURE] Added `_get_tokens_for_node()` helper method to retrieve all tokens of a specific type for hierarchical processing
+- [CONFIGURATION] Added node-level filtering rule to `config/menu_filter_rules.json` for controlling hierarchical command visibility
+- [TEST] Created comprehensive test suite `test_node_hierarchical_commands.py` with 10 test cases covering menu display, execution order, error handling, and status messages
+- [DOCUMENTATION] Updated `ARCH_command_system.md` with detailed node-level hierarchical execution architecture and implementation examples
+- [DOCUMENTATION] Enhanced README.md with hierarchical execution feature description, usage examples, and benefits
+- [IMPROVEMENT] Hierarchical execution provides efficiency gains by executing all node commands with a single action, ensuring consistent command order (FBC → RPC → LOG)
+- [IMPROVEMENT] Added clear phase-based status messages for user feedback during hierarchical execution
+
 ### Memory Hierarchy Compliance Workflow
 - Implemented Memory Hierarchy Compliance Workflow, including entity renaming, cluster merging, domain creation, and establishing explicit hierarchical relations in project memory.
 - Refined global memory by deleting project-specific entities and generalizing universal patterns.
