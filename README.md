@@ -137,6 +137,7 @@ Additional documentation for key components and features:
 - [Changelog Management](docs/changelog/management.md) - Versioning and change tracking
 - [Task Management System](docs/roadmaps/task_management.md) - Workflow and prioritization
 - [Memory Consolidation](docs/blueprints/memory_consolidation.md) - Dual memory architecture
+- **[Code Graph Guide](docs/technical/CODEGRAPH_GUIDE.md)** - Automated codebase structure mapping
 
 ### System Blueprints
 - [Context Menu Filtering](docs/blueprints/context_menu_filtering.md) - Dynamic UI configuration
@@ -147,3 +148,18 @@ Additional documentation for key components and features:
 ### API References
 - [Token Processing](docs/api_token_utilities.md) - FBC/RPC handling
 - [Node Management](docs/node_manager_configuration.md) - Device tree configuration
+
+## Code Structure Analysis
+
+The project maintains an automatically-generated **code graph** (`codegraph.json`) that provides a complete hierarchical representation of the `src/` codebase:
+
+- **749 entities**: Modules (70), Classes (83), Methods (524), Functions (38)
+- **5,114 relations**: IMPORTS, CALLS, INHERITS, BELONGS_TO hierarchies
+- **6-layer structure**: Type → Domain → Cluster → Module → Class → Method
+
+Generate the code graph:
+```powershell
+python scripts\generate_codegraph.py
+```
+
+See [Code Graph Guide](docs/technical/CODEGRAPH_GUIDE.md) for detailed usage and query examples.

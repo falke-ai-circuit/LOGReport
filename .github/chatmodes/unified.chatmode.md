@@ -49,14 +49,15 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **Memory Strategy**: 
 - **Global Memory** (`global_memory.json`): Cross-project patterns using `Global.*` entities (read complete for universal solutions)
 - **Project Memory** (`project_memory.json`): Project-specific using `Project.*` entities (search specific, load cluster on miss)
+- **Code Graph** (`codegraph.json`): Actual codebase structure with 749 entities, 5,114 relations (modules, classes, methods, imports, calls, inheritance)
 - **File Memory**: README, CHANGELOG, TODO, docs/ (project documentation)
 - **Session Memory**: Previous workflow logs in logs/ (recent context)
 
 **4-Layer Hierarchy Reading**: `[Type].[Domain].[Cluster].[EntityType]_[Name]`
-- **Type**: Project (project-specific) | Global (universal patterns)
-- **Domain**: Feature | UI | Service | Architecture | Configuration | Test | Documentation
-- **Cluster**: Command | ContextMenu | NodeTree | Memory | etc.
-- **EntityType**: Feature | Method | Pattern | Configuration | TestSuite | Service | etc.
+- **Type**: Project (project-specific) | Global (universal patterns) | Code (codebase structure)
+- **Domain**: Feature | UI | Service | Architecture | Configuration | Test | Documentation | Commander | Core
+- **Cluster**: Command | ContextMenu | NodeTree | Memory | Services | Presenters | etc.
+- **EntityType**: Feature | Method | Pattern | Configuration | TestSuite | Service | Class | Module | Function
 
 **Actions**: 
 1. **Load global_memory.json** → search `Global.*` entities for cross-project solutions
@@ -70,48 +71,54 @@ NEXT: [proceed_to_next_phase|alternative_action]
    - Methods: `Project.Method.[Domain].*`
    - Configurations: `Project.Configuration.*`
    - Tests: `Project.Test.*`
+
+3. **Load codegraph.json** → understand actual codebase structure
+   - Modules: `Code.Module.*` for file locations
+   - Classes: `Code.Class.*` for class definitions and inheritance
+   - Methods/Functions: `Code.Method.*`, `Code.Function.*` for implementation details
+   - Relations: IMPORTS (dependencies), CALLS (invocations), INHERITS (hierarchies), BELONGS_TO (structure)
    
-3. **Review file memory** for project-specific documentation
+4. **Review file memory** for project-specific documentation
    - README.md → project overview, setup, features
    - CHANGELOG.md → recent changes, versions
    - TODO.md → pending tasks
    - docs/ → architecture, blueprints, technical guides
    
-4. **Search session memory** (logs/workflow_*.md) for recent workflow patterns and solutions
+5. **Search session memory** (logs/workflow_*.md) for recent workflow patterns and solutions
    
-5. **Validate hierarchy compliance** and identify reusable solutions
+6. **Validate hierarchy compliance** and identify reusable solutions
 
-**Completion**: Standard format + `MEMORY: [global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count]]`
+**Completion**: Standard format + `MEMORY: [global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | codegraph:[modules:N classes:N methods:N] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count]]`
 
 ### Phase 2: ASSESS
 **Objective**: Validate environment and prerequisites  
-**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → identify gaps → create initial CEPH  
+**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → identify gaps → **query codegraph.json for relevant modules/classes** (find existing implementations, dependencies, test coverage) → create initial CEPH  
 **CEPH**: `CURRENT: [facts + state + environment + constraints] | EXPECTED: [target + acceptance_criteria] | PROBLEM: [one_sentence + scope] | HYPOTHESES: [H1:cause→prediction→test] | EVIDENCE: [logs + metrics + existing_code]`  
-**Completion**: Standard format + `CEPH: [initial context created]`
+**Completion**: Standard format + `CEPH: [initial context created]` + `CODEGRAPH_REFS: [modules:[list] classes:[list] relevant_relations:[count]]`
 
 ### Phase 3: ANALYZE
 **Objective**: Investigate patterns and root causes  
 **Mindset**: Analyzer - uncover hidden relationships  
-**Actions**: Map architecture + dependencies → analyze dataflow + relationships + patterns + tech debt → identify edge cases + inefficiencies → discover root causes → find optimization opportunities → evolve CEPH  
-**Completion**: Standard format + `CEPH: [updated with analysis insights]` + `LEARNINGS: [pattern:[domain_insights] | approach:[methodology]]`
+**Actions**: Map architecture + dependencies → **trace codegraph.json relations** (IMPORTS for dependencies, CALLS for invocation chains, INHERITS for class hierarchies) → analyze dataflow + relationships + patterns + tech debt → identify edge cases + inefficiencies → discover root causes → find optimization opportunities → evolve CEPH  
+**Completion**: Standard format + `CEPH: [updated with analysis insights]` + `LEARNINGS: [pattern:[domain_insights] | approach:[methodology]]` + `CODEGRAPH_ANALYSIS: [dependency_chains:[count] call_paths:[key_flows] inheritance_depth:[max] interconnected_modules:[list]]`
 
 ### Phase 4: ARCHITECT
 **Objective**: Design system architecture and implementation plan  
 **Mindset**: Architect - create strategic blueprints  
-**Actions**: Design architecture + component structure → plan data models + interfaces → establish patterns → document decisions (Mermaid if helpful) → consider scalability + maintainability + security → create roadmap → evolve CEPH  
-**Completion**: Standard format + `CEPH: [updated with expected behavior]` + `LEARNINGS: [pattern:[architectural_insights] | approach:[design_methodology]]`
+**Actions**: Design architecture + component structure → **assess codegraph.json for impact analysis** (identify affected modules, classes calling target methods, inheritance implications) → plan data models + interfaces → establish patterns → document decisions (Mermaid if helpful) → consider scalability + maintainability + security → create roadmap → evolve CEPH  
+**Completion**: Standard format + `CEPH: [updated with expected behavior]` + `LEARNINGS: [pattern:[architectural_insights] | approach:[design_methodology]]` + `IMPACT_ANALYSIS: [affected_modules:[list] downstream_dependencies:[count] test_surface:[classes]]`
 
 ### Phase 5: IMPLEMENT
 **Objective**: Build solution following architecture  
 **Mindset**: Coder - write clean, modular, maintainable code  
-**Actions**: Implement features per architecture → write clean code (<500 lines/file) → follow conventions → handle errors + logging → preserve existing behavior → create unit tests → evolve CEPH  
-**Completion**: Standard format + `CEPH: [updated with actual implementation]` + `LEARNINGS: [pattern:[coding_insights] | approach:[implementation_techniques]]` + `ARTIFACTS: [type:file_path:description]`
+**Actions**: Implement features per architecture → **reference codegraph.json for existing patterns** (check similar method signatures, parameter patterns, decorator usage, class structures) → write clean code (<500 lines/file) → follow conventions → handle errors + logging → preserve existing behavior → create unit tests → evolve CEPH  
+**Completion**: Standard format + `CEPH: [updated with actual implementation]` + `LEARNINGS: [pattern:[coding_insights] | approach:[implementation_techniques]]` + `ARTIFACTS: [type:file_path:description]` + `CODE_PATTERNS_USED: [similar_methods:[list] reused_structures:[count]]`
 
 ### Phase 6: DEBUG
 **Objective**: Fix issues and validate hypotheses  
 **Mindset**: Debugger - systematic problem diagnosis  
-**Actions**: Form 5-7 hypotheses → distill to 1-2 most likely → add strategic logging → validate hypotheses → fix root causes → verify no regressions → re-run tests → evolve CEPH  
-**Completion**: Standard format + `CEPH: [updated with debugging evidence]` + `LEARNINGS: [pattern:[debugging_insights] | approach:[diagnostic_methods]]`
+**Actions**: Form 5-7 hypotheses → distill to 1-2 most likely → **trace codegraph.json execution paths** (CALLS relations to understand invocation flow, BELONGS_TO to locate implementations, IMPORTS to check dependencies) → add strategic logging → validate hypotheses → fix root causes → verify no regressions → re-run tests → evolve CEPH  
+**Completion**: Standard format + `CEPH: [updated with debugging evidence]` + `LEARNINGS: [pattern:[debugging_insights] | approach:[diagnostic_methods]]` + `EXECUTION_TRACE: [call_chain:[methods] affected_classes:[list] dependency_issues:[count]]`
 
 ### Phase 7: TEST ⚠️ MANDATORY
 **Objective**: Validate solution comprehensively  
@@ -119,15 +126,16 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **🚨 CRITICAL**: Tests NOT optional | 100% pass required | Failed tests = incomplete
 
 **Actions**:
-1. Create comprehensive test file (unit + integration + edge cases)
-2. Run: `python -m pytest <test_file> -v` (use .venv if applicable)
-3. Verify ALL tests pass (9/9, not 5/9)
-4. If ANY fail → return to DEBUG → fix → re-run → repeat until 100% pass
-5. Create manual integration test for critical workflows
-6. Test actual scenarios (not just mocks)
-7. Proceed to LEARN only after 100% pass
+1. **Map test surface using codegraph.json** (identify all methods needing tests, check existing test patterns via Code.Method relations, find untested code paths)
+2. Create comprehensive test file (unit + integration + edge cases)
+3. Run: `python -m pytest <test_file> -v` (use .venv if applicable)
+4. Verify ALL tests pass (9/9, not 5/9)
+5. If ANY fail → return to DEBUG → fix → re-run → repeat until 100% pass
+6. Create manual integration test for critical workflows
+7. Test actual scenarios (not just mocks)
+8. Proceed to LEARN only after 100% pass
 
-**Completion**: Standard format + `CEPH: [validated with test evidence]` + `LEARNINGS: [pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS: [test:file_path:coverage_info]` + `METRICS: [coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]`
+**Completion**: Standard format + `CEPH: [validated with test evidence]` + `LEARNINGS: [pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS: [test:file_path:coverage_info]` + `METRICS: [coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]` + `TEST_SURFACE: [methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]`
 
 ### Phase 8: LEARN
 **Objective**: Persist learnings to memory systems  
@@ -169,21 +177,37 @@ Final: CURRENT:[achieved] EXPECTED:[met] EVIDENCE:[tests + validation]
 ## 4-Layer Memory System
 
 **Template**: `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`  
-**Files**: `project_memory.json` (Project.*) | `global_memory.json` (Pattern.*)  
+**Files**: `project_memory.json` (Project.*) | `global_memory.json` (Global.*) | `codegraph.json` (Code.*)  
 **Hierarchy**: Type → Domain → SubCluster → Entity (MANDATORY 4 levels, no orphans)
 
 ### Memory Operations
 | Phase | Action | Strategy |
 |-------|--------|----------|
-| **REMEMBER (1)** | Load knowledge | `global_memory.json` (Pattern.* complete) + `project_memory.json` (Project.* specific→cluster→full) + docs/ + logs/ |
+| **REMEMBER (1)** | Load knowledge | `global_memory.json` (Global.* complete) + `project_memory.json` (Project.* specific→cluster→full) + `codegraph.json` (Code.* structure) + docs/ + logs/ |
+| **ASSESS (2)** | Query codebase | Search `codegraph.json` for existing implementations, dependencies, test files |
+| **ANALYZE (3)** | Map dependencies | Trace IMPORTS, CALLS, INHERITS relations in `codegraph.json` |
+| **ARCHITECT (4)** | Impact analysis | Identify affected modules/classes, downstream dependencies via `codegraph.json` |
+| **IMPLEMENT (5)** | Code patterns | Reference `codegraph.json` for similar method signatures, class structures, conventions |
+| **DEBUG (6)** | Trace execution | Follow CALLS chains, locate implementations via BELONGS_TO in `codegraph.json` |
+| **TEST (7)** | Test surface | Map all methods needing tests, identify coverage gaps using `codegraph.json` |
 | **LEARN (8)** | Persist learnings | Extract patterns → add to memory files → validate 4-layer + metadata → 80-120 char observations |
 | **LOG (10)** | Workflow file only | Create `logs/workflow_*.md` (reconstruct session, NOT memory persistence) |
 
 ### Structure Components
-- **Type**: Project \| Pattern \| Tool \| Config
-- **Domain**: Frontend \| Backend \| Architecture \| Data \| DevOps \| Integration
-- **SubCluster**: UI \| API \| Testing \| Database \| CI \| etc.
-- **EntityType**: Component \| Service \| Pattern \| Workflow \| Model \| Handler \| Tool \| Config
+- **Type**: Project \| Global \| Code \| Tool \| Config
+- **Domain**: Frontend \| Backend \| Architecture \| Data \| DevOps \| Integration \| Commander \| Core \| Services
+- **SubCluster**: UI \| API \| Testing \| Database \| CI \| Command \| ContextMenu \| NodeTree \| etc.
+- **EntityType**: Component \| Service \| Pattern \| Workflow \| Model \| Handler \| Tool \| Config \| Module \| Class \| Method \| Function
+
+### Code Graph Usage by Phase
+| Phase | Usage | Query Examples |
+|-------|-------|----------------|
+| **ASSESS** | Find references | `Code.Module.*context_menu*` → locate files, `IMPORTS` → dependencies |
+| **ANALYZE** | Trace flows | `CALLS` → invocation chains, `INHERITS` → class hierarchies, `BELONGS_TO` → structure |
+| **ARCHITECT** | Impact analysis | Find all classes calling method X, modules importing Y, downstream effects |
+| **IMPLEMENT** | Pattern matching | Similar methods with params/decorators, class structures, naming conventions |
+| **DEBUG** | Execution trace | Follow `CALLS` from error point, check `IMPORTS` for dependency issues |
+| **TEST** | Coverage gaps | List all `Code.Method.*` in module, check existing test files, find untested paths |
 
 ### Validation
 ✅ 4-layer path + 80-120 char obs + 8 metadata (created\|modified\|accessed\|refs\|usage\|path\|hash\|obs_check) + hierarchy connections  
