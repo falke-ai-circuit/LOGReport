@@ -47,25 +47,41 @@ NEXT: [proceed_to_next_phase|alternative_action]
 ### Phase 1: REMEMBER
 **Objective**: Load existing knowledge from 4-layer memory structure  
 **Memory Strategy**: 
-- **Global Memory** (`global_memory.json`): Cross-project patterns using `Pattern.*` entities (read complete for universal solutions)
+- **Global Memory** (`global_memory.json`): Cross-project patterns using `Global.*` entities (read complete for universal solutions)
 - **Project Memory** (`project_memory.json`): Project-specific using `Project.*` entities (search specific, load cluster on miss)
 - **File Memory**: README, CHANGELOG, TODO, docs/ (project documentation)
 - **Session Memory**: Previous workflow logs in logs/ (recent context)
 
-**4-Layer Hierarchy**: `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`
-- **Entity**: Specific knowledge units (Components, Services, Patterns, Workflows)
-- **Cluster**: Grouped entities (UI, API, Testing, etc.)
-- **Domain**: Major areas (Frontend, Backend, Architecture, Data, etc.)
-- **Type**: Memory classification (Project, Pattern, Tool, Config)
+**4-Layer Hierarchy Reading**: `[Type].[Domain].[Cluster].[EntityType]_[Name]`
+- **Type**: Project (project-specific) | Global (universal patterns)
+- **Domain**: Feature | UI | Service | Architecture | Configuration | Test | Documentation
+- **Cluster**: Command | ContextMenu | NodeTree | Memory | etc.
+- **EntityType**: Feature | Method | Pattern | Configuration | TestSuite | Service | etc.
 
 **Actions**: 
-1. Load global_memory.json → search `Pattern.*` entities for cross-project solutions
-2. Load project_memory.json → search `Project.*` entities by domain/cluster (if miss → load cluster context)
-3. Review README, CHANGELOG, TODO, docs/ for project-specific documentation
-4. Search logs/ for recent workflow patterns and solutions
-5. Identify reusable solutions and validate 4-layer hierarchy compliance
+1. **Load global_memory.json** → search `Global.*` entities for cross-project solutions
+   - Patterns: `Global.UIPattern.*`, `Global.DesignPattern.*`, `Global.ArchitecturalPattern.*`
+   - Look for similar problems solved in other contexts
+   - Check reusability scores and domain transferability
+   
+2. **Load project_memory.json** → search `Project.*` entities by domain/cluster (if miss → load cluster context)
+   - Features: `Project.Feature.[Domain].*`
+   - Services: `Project.SystemComponent.Service.*`
+   - Methods: `Project.Method.[Domain].*`
+   - Configurations: `Project.Configuration.*`
+   - Tests: `Project.Test.*`
+   
+3. **Review file memory** for project-specific documentation
+   - README.md → project overview, setup, features
+   - CHANGELOG.md → recent changes, versions
+   - TODO.md → pending tasks
+   - docs/ → architecture, blueprints, technical guides
+   
+4. **Search session memory** (logs/workflow_*.md) for recent workflow patterns and solutions
+   
+5. **Validate hierarchy compliance** and identify reusable solutions
 
-**Completion**: Standard format + `MEMORY: [global_entities:[Pattern.*] | project_entities:[Project.*] | clusters_loaded:[Domain.SubCluster]]`
+**Completion**: Standard format + `MEMORY: [global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count]]`
 
 ### Phase 2: ASSESS
 **Objective**: Validate environment and prerequisites  
@@ -114,9 +130,10 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **Completion**: Standard format + `CEPH: [validated with test evidence]` + `LEARNINGS: [pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS: [test:file_path:coverage_info]` + `METRICS: [coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]`
 
 ### Phase 8: LEARN
-**Objective**: Persist learnings to memory systems (4-layer hierarchy)  
-**Actions**: Extract learnings from phases → add to `project_memory.json` (`Project.*` entities) + `global_memory.json` (`Pattern.*` entities) → validate 4-layer path (Type.Domain.Cluster.EntityType_Name) → add metadata (created|modified|accessed|refs|usage|path|hash|obs_check) → keep observations 80-120 chars  
-**Completion**: Standard format + `MEMORY: [project_entities:[count] | global_patterns:[count] | hierarchy_compliance:[100%]]` + `LEARNINGS: [pattern:[memory_persistence] | approach:[knowledge_capture]]`
+**Objective**: Persist learnings to memory systems  
+**Mindset**: Knowledge Curator - extract and store patterns  
+**Actions**: Read memory structure (last 10-20 lines) → evaluate global promotion (modify existing patterns preferred, create new only if no match) → append entities + 3 relations directly to memory files (NO temp files: Entity→Cluster→Domain→Type) → reuse existing clusters → validate 4-layer hierarchy + 80-120 char observations + metadata + 3 relations per entity  
+**Completion**: Standard format + `MEMORY: [project_entities:[count] clusters:[Domain.Cluster] | global_patterns:[count:modified/new] | files:[list]]`
 
 ### Phase 9: DOCUMENT
 **Objective**: Update project documentation  

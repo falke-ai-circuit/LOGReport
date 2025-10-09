@@ -79,26 +79,26 @@ class ContextMenuService:
                     command_type="execute_all_hierarchical",
                     command_category="node"
                 ):
-                    logging.debug(f"Adding hierarchical command option for node {node_name}")
+                    logging.debug(f"Adding print commands option for node {node_name}")
                     
-                    # Create action for executing all commands hierarchically
-                    hierarchical_action = QAction(f"Execute All Commands Hierarchically for {node_name}", menu)
+                    # Create action for executing all print commands
+                    print_action = QAction(f"Execute All Print Commands for {node_name}", menu)
                     if self.presenter:
                         # Connect action to presenter method
-                        hierarchical_action.triggered.connect(
-                            lambda: self.presenter.process_node_hierarchical_commands(node_name)
+                        print_action.triggered.connect(
+                            lambda: self.presenter.process_node_print_commands(node_name)
                         )
-                    menu.addAction(hierarchical_action)
+                    menu.addAction(print_action)
                     added_actions = True
                 else:
                     logging.debug(f"Hierarchical command filtered out for node {node_name}")
 
-        # Handle section items (FBC/RPC subgroups)
+        # Handle section items (FBC/RPC/LOG subgroups)
         elif item_data and isinstance(item_data, dict) and 'section_type' in item_data:
             section_type = item_data.get("section_type")
             node_name = item_data.get("node")
 
-            if section_type in ["FBC", "RPC"] and node_name:
+            if section_type in ["FBC", "RPC", "LOG"] and node_name:
                 # Use context menu filter service to determine visibility
                 if not self.context_menu_filter.should_show_command(
                     node_name=node_name,
@@ -132,6 +132,12 @@ class ContextMenuService:
                     elif section_type == "RPC":
                         print_action.triggered.connect(
                             lambda: self.presenter.process_all_rpc_subgroup_commands(
+                                self._get_current_item_from_data(item_data, tokens)
+                            )
+                        )
+                    elif section_type == "LOG":
+                        print_action.triggered.connect(
+                            lambda: self.presenter.process_all_log_subgroup_commands(
                                 self._get_current_item_from_data(item_data, tokens)
                             )
                         )

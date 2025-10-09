@@ -573,6 +573,166 @@ class NodeTreePresenter(QObject):
             self.rpc_service.queue_rpc_command(node_name, token.token_id, "print", telnet_client)
             
         self.status_message_signal.emit(f"Queued {len(tokens)} commands for node {node_name}", 3000)
+    
+    def process_all_log_subgroup_commands(self, item):
+        """
+        Process all LOG subgroup commands by printing/displaying all LOG files.
+        This method mirrors process_all_fbc_subgroup_commands and process_all_rpc_subgroup_commands
+        but for LOG files (no BsTool execution, just display).
+
+        Args:
+            item: The tree item representing the LOG subgroup
+        """
+        if not item:
+            self._report_error("No item selected for LOG subgroup processing")
+            return
+        
+        # If item is a MockItem (from ContextMenuService), its data is directly accessible
+        if hasattr(item, 'data') and isinstance(item.data, dict):
+            item_data = item.data
+        else:
+            # Assume it's a QTreeWidgetItem and extract data
+            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        
+        if not item_data or item_data.get("type") != "section":
+            self._report_error("Selected item is not a subgroup section")
+            return
+
+        section_type = item_data.get("section_type")
+        node_name = item_data.get("node")
+
+        if not node_name or section_type != "LOG":
+            self._report_error("Could not determine node or LOG section type")
+            return
+        
+        logging.info(f"Processing LOG subgroup for node {node_name}...")
+        self.status_message_signal.emit(f"Printing all LOG files for node {node_name}...", 0)
+        
+        # Get tokens from item_data or from node
+        tokens = item_data.get("tokens", [])
+        
+        # If no tokens in item_data, retrieve from node
+        if not tokens:
+            node = self.node_manager.get_node(node_name)
+            if not node:
+                self._report_error(f"Node {node_name} not found")
+                return
+                
+            # Find all LOG tokens in the node
+            all_tokens = []
+            for token_list in node.tokens.values():
+                if isinstance(token_list, list):
+                    for token in token_list:
+                        if isinstance(token, NodeToken):
+                            all_tokens.append(token)
+                else:
+                    if isinstance(token_list, NodeToken):
+                        all_tokens.append(token_list)
+            tokens = [t for t in all_tokens if t.token_type == "LOG"]
+        
+        if not tokens:
+            self.status_message_signal.emit(f"No LOG files found in node {node_name}", 3000)
+            return
+            
+        logging.info(f"Printing {len(tokens)} LOG files for node {node_name}...")
+        
+        # Process all LOG tokens by emitting log file selected signal (display)
+        printed_count = 0
+        for token in tokens:
+            if hasattr(token, 'log_path') and token.log_path:
+                try:
+                    filename = os.path.basename(token.log_path)
+                    self.log_file_selected_signal.emit(filename)
+                    printed_count += 1
+                    logging.debug(f"Printed LOG file: {filename}")
+                except Exception as e:
+                    logging.error(f"Error printing LOG file {token.log_path}: {str(e)}")
+            else:
+                logging.warning(f"Token object {token} does not have a valid log_path")
+        
+        self.status_message_signal.emit(
+            f"Printed {printed_count} LOG files for node {node_name}", 
+            3000
+        )
+    
+    def process_node_print_commands(self, node_name: str):
+        """
+        Execute only PRINT commands hierarchically for a node.
+        This method orchestrates Print-based subgroup commands:
+        - Phase 1: Print All FBC Tokens
+        - Phase 2: Print All RPC Tokens
+        - Phase 3: Print All LOG (no BsTool execution)
+
+        Args:
+            node_name: Name of the node to process print commands for
+        """
+        logging.info(f"Starting print command execution for node {node_name}...")
+        self.status_message_signal.emit(f"Starting print command execution for node {node_name}...", 0)
+        
+        try:
+            # Get the node
+            node = self.node_manager.get_node(node_name)
+            if not node:
+                self._report_error(f"Node {node_name} not found for print command processing")
+                return
+            
+            # Phase 1: Execute all FBC print commands
+            fbc_tokens = self._get_tokens_for_node(node, "FBC")
+            if fbc_tokens:
+                logging.info(f"Phase 1: Processing {len(fbc_tokens)} FBC tokens for node {node_name}")
+                self.status_message_signal.emit(f"Phase 1/3: Printing {len(fbc_tokens)} FBC tokens...", 0)
+                
+                telnet_client = getattr(self, 'active_telnet_client', None)
+                for token in fbc_tokens:
+                    self.fbc_service.queue_fieldbus_command(node_name, token.token_id, telnet_client)
+                    self.node_status[node_name] = {"command_success": False, "log_success": False}
+                
+                # Start processing FBC commands
+                self.command_queue.start_processing()
+            else:
+                logging.info(f"No FBC tokens found for node {node_name}")
+            
+            # Phase 2: Execute all RPC print commands
+            rpc_tokens = self._get_tokens_for_node(node, "RPC")
+            if rpc_tokens:
+                logging.info(f"Phase 2: Processing {len(rpc_tokens)} RPC tokens for node {node_name}")
+                self.status_message_signal.emit(f"Phase 2/3: Printing {len(rpc_tokens)} RPC tokens...", 0)
+                
+                telnet_client = getattr(self, 'active_telnet_client', None)
+                for token in rpc_tokens:
+                    self.rpc_service.queue_rpc_command(node_name, token.token_id, "print", telnet_client)
+            else:
+                logging.info(f"No RPC tokens found for node {node_name}")
+            
+            # Phase 3: Print all LOG files (no BsTool execution)
+            log_tokens = self._get_tokens_for_node(node, "LOG")
+            if log_tokens:
+                logging.info(f"Phase 3: Printing {len(log_tokens)} LOG files for node {node_name}")
+                self.status_message_signal.emit(f"Phase 3/3: Printing {len(log_tokens)} LOG files...", 0)
+                
+                # For LOG files, we "print" by opening them (no BsTool processing)
+                for token in log_tokens:
+                    if hasattr(token, 'log_path') and token.log_path:
+                        try:
+                            # Just emit the log file selected signal (display/print)
+                            filename = os.path.basename(token.log_path)
+                            self.log_file_selected_signal.emit(filename)
+                            logging.debug(f"Printed LOG file: {filename}")
+                        except Exception as e:
+                            logging.error(f"Error printing LOG file {token.log_path}: {str(e)}")
+            else:
+                logging.info(f"No LOG tokens found for node {node_name}")
+            
+            # Completion message
+            total_commands = len(fbc_tokens) + len(rpc_tokens) + len(log_tokens)
+            self.status_message_signal.emit(
+                f"Print command execution complete for {node_name}: {total_commands} print commands processed", 
+                5000
+            )
+            logging.info(f"Print command execution completed for node {node_name}: {total_commands} total commands")
+            
+        except Exception as e:
+            self._report_error(f"Error in print command execution for node {node_name}", e)
         
     def process_node_hierarchical_commands(self, node_name: str):
         """

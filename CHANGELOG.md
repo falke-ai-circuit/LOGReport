@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Node-Level Print Command Execution
+- [FEATURE] Renamed node context menu from "Execute All Commands Hierarchically" to "Execute All Print Commands for [nodename]"
+- [FEATURE] Implemented `process_node_print_commands()` method that executes ONLY print-based commands (FBC print, RPC print, LOG display) - excludes BsTool processing
+- [FEATURE] Added LOG subgroup support with "Print All LOG Tokens for [nodename]" context menu option (previously missing)
+- [FEATURE] Created `process_all_log_subgroup_commands()` method in `NodeTreePresenter` to handle LOG subgroup print operations
+- [FEATURE] Extended context menu service to support LOG subgroups alongside FBC and RPC subgroups
+- [CONFIGURATION] Updated `config/menu_filter_rules.json` to include LOG subgroup in filter rules (version 1.2)
+- [TEST] Created comprehensive test suite `test_node_print_commands.py` with 5 test cases validating print-only execution and LOG subgroup support
+- [DOCUMENTATION] Updated context menu labels and descriptions to reflect print-only execution workflow
+- [IMPROVEMENT] Print command execution provides focused workflow for displaying/printing data without triggering BsTool processing
+- [IMPROVEMENT] Three-phase print execution: Phase 1 (Print FBC tokens), Phase 2 (Print RPC tokens), Phase 3 (Display LOG files)
+
 ### Node-Level Hierarchical Command Execution
 - [FEATURE] Implemented node-level hierarchical command execution allowing users to right-click on a node and execute all FBC, RPC, and LOG commands in a single orchestrated workflow
 - [FEATURE] Added three-phase execution model: Phase 1 (FBC commands), Phase 2 (RPC commands), Phase 3 (LOG/BsTool processing)
