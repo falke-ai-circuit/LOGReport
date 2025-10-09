@@ -3438,3 +3438,253 @@ Error: int from fbc rupi counters 1640000
 2025-10-08 23:14:58,763 - root - DEBUG - Context menu processing item data: {'node_name': 'AP01m', 'type': 'node'}
 2025-10-08 23:14:58,763 - root - DEBUG - Adding hierarchical command option for node AP01m
 2025-10-08 23:15:02,225 - root - DEBUG - Context menu displayed with 1 actions
+2025-10-09 09:11:38,282 - root - DEBUG - TokenValidator initialized
+2025-10-09 09:11:38,283 - root - DEBUG - TokenRateLimiter initialized with max_tokens_per_second=100
+2025-10-09 09:11:38,366 - root - INFO - Loading configuration from: D:\_APP\LOGReport\src\nodes.json
+2025-10-09 09:11:38,377 - root - DEBUG - Normalized token: 162 -> 162
+2025-10-09 09:11:38,377 - root - DEBUG - Normalized token: 163 -> 163
+2025-10-09 09:11:38,377 - root - DEBUG - Normalized token: 164 -> 164
+2025-10-09 09:11:38,378 - root - INFO - Processed node 'AP01m': 3 tokens, 0 skipped
+2025-10-09 09:11:38,378 - root - DEBUG - Normalized token: 362 -> 362
+2025-10-09 09:11:38,378 - root - DEBUG - Normalized token: 363 -> 363
+2025-10-09 09:11:38,378 - root - INFO - Processed node 'AP01r': 2 tokens, 0 skipped
+2025-10-09 09:11:38,378 - root - DEBUG - Normalized token: 360 -> 360
+2025-10-09 09:11:38,378 - root - DEBUG - Normalized token: 361 -> 361
+2025-10-09 09:11:38,378 - root - INFO - Processed node 'AP01r': 2 tokens, 0 skipped
+2025-10-09 09:11:38,378 - root - DEBUG - Normalized token: 451 -> 451
+2025-10-09 09:11:38,378 - root - INFO - Processed node 'AL03': 1 tokens, 0 skipped
+2025-10-09 09:11:38,379 - root - INFO - Configuration parsing complete: 4 nodes processed, 0 nodes skipped
+2025-10-09 09:11:38,379 - root - INFO - Configuration loaded successfully
+2025-10-09 09:11:38,379 - commander.services.threading_service - DEBUG - ThreadingService initialized
+2025-10-09 09:11:38,379 - commander.services.threading_service - DEBUG - Created new threading lock
+2025-10-09 09:11:38,390 - root - INFO - Loaded 4 context menu filtering rules from config\menu_filter_rules.json
+2025-10-09 09:11:38,801 - commander.services.threading_service - DEBUG - ThreadingService initialized
+2025-10-09 09:11:38,801 - commander.services.threading_service - DEBUG - Created new threading lock
+2025-10-09 09:11:38,801 - root - DEBUG - LoggingService initialized
+2025-10-09 09:11:38,802 - commander.services.threading_service - DEBUG - ThreadingService initialized
+2025-10-09 09:11:38,802 - commander.services.threading_service - DEBUG - Created new threading lock
+2025-10-09 09:11:38,802 - root - DEBUG - TelnetService initialized
+2025-10-09 09:11:38,802 - root - DEBUG - ContextMenuService initialized
+2025-10-09 09:11:38,802 - root - DEBUG - NodeTreePresenter initialized
+2025-10-09 09:11:38,803 - root - DEBUG - NodeTreePresenter initialized
+2025-10-09 09:11:38,804 - root - INFO - Loading configuration from: D:\_APP\LOGReport\nodes_test.json
+2025-10-09 09:11:38,805 - root - DEBUG - Normalized token: 162 -> 162
+2025-10-09 09:11:38,805 - root - DEBUG - Normalized token: 163 -> 163
+2025-10-09 09:11:38,805 - root - DEBUG - Normalized token: 164 -> 164
+2025-10-09 09:11:38,805 - root - INFO - Processed node 'AP01m': 3 tokens, 0 skipped
+2025-10-09 09:11:38,805 - root - DEBUG - Normalized token: 362 -> 362
+2025-10-09 09:11:38,806 - root - DEBUG - Normalized token: 363 -> 363
+2025-10-09 09:11:38,806 - root - INFO - Processed node 'AP01r': 2 tokens, 0 skipped
+2025-10-09 09:11:38,806 - root - DEBUG - Normalized token: 182 -> 182
+2025-10-09 09:11:38,806 - root - DEBUG - Normalized token: 183 -> 183
+2025-10-09 09:11:38,806 - root - INFO - Processed node 'AP02m': 2 tokens, 0 skipped
+2025-10-09 09:11:38,806 - root - DEBUG - Normalized token: 382 -> 382
+2025-10-09 09:11:38,806 - root - DEBUG - Normalized token: 383 -> 383
+2025-10-09 09:11:38,806 - root - INFO - Processed node 'AP02r': 2 tokens, 0 skipped
+2025-10-09 09:11:38,807 - root - DEBUG - Normalized token: 2a2 -> 2a2
+2025-10-09 09:11:38,807 - root - DEBUG - Normalized token: 2a3 -> 2a3
+2025-10-09 09:11:38,807 - root - INFO - Processed node 'AP03m': 2 tokens, 0 skipped
+2025-10-09 09:11:38,807 - root - DEBUG - Normalized token: 186 -> 186
+2025-10-09 09:11:38,807 - root - INFO - Processed node 'AL01': 1 tokens, 0 skipped
+2025-10-09 09:11:38,807 - root - DEBUG - Normalized token: 386 -> 386
+2025-10-09 09:11:38,808 - root - INFO - Processed node 'AL02': 1 tokens, 0 skipped
+2025-10-09 09:11:38,808 - root - INFO - Configuration parsing complete: 7 nodes processed, 0 nodes skipped
+2025-10-09 09:11:38,808 - root - INFO - Configuration loaded successfully
+2025-10-09 09:11:38,857 - root - DEBUG - Added node with placeholder: AP01m
+2025-10-09 09:11:38,858 - root - DEBUG - Added node with placeholder: AP01r
+2025-10-09 09:11:38,858 - root - DEBUG - Added node with placeholder: AP02m
+2025-10-09 09:11:38,858 - root - DEBUG - Added node with placeholder: AP02r
+2025-10-09 09:11:38,858 - root - DEBUG - Added node with placeholder: AP03m
+2025-10-09 09:11:38,859 - root - DEBUG - Added node with placeholder: AL01
+2025-10-09 09:11:38,859 - root - DEBUG - Added node with placeholder: AL02
+2025-10-09 09:11:40,097 - root - DEBUG - Context menu processing item data: {'node_name': 'AP01m', 'type': 'node'}
+2025-10-09 09:11:40,097 - root - DEBUG - Adding hierarchical command option for node AP01m
+2025-10-09 09:11:43,491 - root - DEBUG - Context menu displayed with 1 actions
+2025-10-09 09:11:43,491 - root - DEBUG - Item expanded: AP01m (192.168.0.11)
+2025-10-09 09:11:43,491 - root - DEBUG - Removed placeholder for node: AP01m (192.168.0.11)
+2025-10-09 09:11:43,491 - root - DEBUG - _load_node_children: Loading children for node: AP01m
+2025-10-09 09:11:43,492 - root - DEBUG - Scanning for FBC files with pattern: C:/Users/gorjovicgo/_DIA\FBC\AP01m\AP01m_*.fbc
+2025-10-09 09:11:43,492 - root - DEBUG - Found 5 files matching pattern
+2025-10-09 09:11:43,492 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_0-0-0-0_163.fbc | Extracted token: 163
+2025-10-09 09:11:43,492 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\FBC\AP01m\AP01m_0-0-0-0_163.fbc to file_item_map. Current map size: 1
+2025-10-09 09:11:43,493 - root - DEBUG - Found FBC file: AP01m_0-0-0-0_163.fbc
+2025-10-09 09:11:43,493 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_0-0-0-0_164.fbc | Extracted token: 164
+2025-10-09 09:11:43,493 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\FBC\AP01m\AP01m_0-0-0-0_164.fbc to file_item_map. Current map size: 2
+2025-10-09 09:11:43,493 - root - DEBUG - Found FBC file: AP01m_0-0-0-0_164.fbc
+2025-10-09 09:11:43,493 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11_162.fbc | Extracted token: 162
+2025-10-09 09:11:43,493 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\FBC\AP01m\AP01m_192-168-0-11_162.fbc to file_item_map. Current map size: 3
+2025-10-09 09:11:43,493 - root - DEBUG - Found FBC file: AP01m_192-168-0-11_162.fbc
+2025-10-09 09:11:43,494 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11_163.fbc | Extracted token: 163
+2025-10-09 09:11:43,494 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\FBC\AP01m\AP01m_192-168-0-11_163.fbc to file_item_map. Current map size: 4
+2025-10-09 09:11:43,494 - root - DEBUG - Found FBC file: AP01m_192-168-0-11_163.fbc
+2025-10-09 09:11:43,494 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11_164.fbc | Extracted token: 164
+2025-10-09 09:11:43,494 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\FBC\AP01m\AP01m_192-168-0-11_164.fbc to file_item_map. Current map size: 5
+2025-10-09 09:11:43,494 - root - DEBUG - Found FBC file: AP01m_192-168-0-11_164.fbc
+2025-10-09 09:11:43,494 - root - DEBUG - Scanning for FBC files with pattern: C:/Users/gorjovicgo/_DIA\FBC\AP01m\AP01m_*.log
+2025-10-09 09:11:43,495 - root - DEBUG - Found 0 files matching pattern
+2025-10-09 09:11:43,495 - root - DEBUG - Scanning for FBC files with pattern: C:/Users/gorjovicgo/_DIA\FBC\AP01m\AP01m_*.txt
+2025-10-09 09:11:43,495 - root - DEBUG - Found 0 files matching pattern
+2025-10-09 09:11:43,495 - root - DEBUG - Total FBC files found: 5
+2025-10-09 09:11:43,495 - root - DEBUG - Scanning for RPC files with pattern: C:/Users/gorjovicgo/_DIA\RPC\AP01m\AP01m_*.rpc
+2025-10-09 09:11:43,496 - root - DEBUG - Found 3 files matching pattern
+2025-10-09 09:11:43,496 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11_162.rpc | Extracted token: 192-168-0-11_162
+2025-10-09 09:11:43,496 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\RPC\AP01m\AP01m_192-168-0-11_162.rpc to file_item_map. Current map size: 6
+2025-10-09 09:11:43,496 - root - DEBUG - Found RPC file: AP01m_192-168-0-11_162.rpc
+2025-10-09 09:11:43,496 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11_163.rpc | Extracted token: 192-168-0-11_163
+2025-10-09 09:11:43,497 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\RPC\AP01m\AP01m_192-168-0-11_163.rpc to file_item_map. Current map size: 7
+2025-10-09 09:11:43,497 - root - DEBUG - Found RPC file: AP01m_192-168-0-11_163.rpc
+2025-10-09 09:11:43,497 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11_164.rpc | Extracted token: 192-168-0-11_164
+2025-10-09 09:11:43,497 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\RPC\AP01m\AP01m_192-168-0-11_164.rpc to file_item_map. Current map size: 8
+2025-10-09 09:11:43,497 - root - DEBUG - Found RPC file: AP01m_192-168-0-11_164.rpc
+2025-10-09 09:11:43,497 - root - DEBUG - Scanning for RPC files with pattern: C:/Users/gorjovicgo/_DIA\RPC\AP01m\AP01m_*.log
+2025-10-09 09:11:43,497 - root - DEBUG - Found 0 files matching pattern
+2025-10-09 09:11:43,497 - root - DEBUG - Scanning for RPC files with pattern: C:/Users/gorjovicgo/_DIA\RPC\AP01m\AP01m_*.txt
+2025-10-09 09:11:43,498 - root - DEBUG - Found 0 files matching pattern
+2025-10-09 09:11:43,498 - root - DEBUG - Total RPC files found: 3
+2025-10-09 09:11:43,498 - root - DEBUG - LOG SECTION DEBUG: Scanning directory: C:/Users/gorjovicgo/_DIA\LOG
+2025-10-09 09:11:43,498 - root - DEBUG - LOG SECTION DEBUG: Using pattern: C:/Users/gorjovicgo/_DIA\LOG\AP01m_*.log
+2025-10-09 09:11:43,498 - root - DEBUG - Scanning for LOG files with pattern: C:/Users/gorjovicgo/_DIA\LOG\AP01m_*.log
+2025-10-09 09:11:43,498 - root - DEBUG - Found 1 files matching pattern
+2025-10-09 09:11:43,499 - root - DEBUG - LOG SECTION DEBUG: Processing file: AP01m_192-168-0-11.log | Extracted token: AP01m_192-168-0-11
+2025-10-09 09:11:43,499 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LOG\AP01m_192-168-0-11.log to file_item_map. Current map size: 9
+2025-10-09 09:11:43,499 - root - DEBUG - Found LOG file: AP01m_192-168-0-11.log
+2025-10-09 09:11:43,499 - root - DEBUG - Total LOG files found: 1
+2025-10-09 09:11:43,499 - root - DEBUG - Directory not found: C:/Users/gorjovicgo/_DIA\LIS\AP01m
+2025-10-09 09:11:43,499 - root - DEBUG - _load_node_children: Processing sections for node: AP01m
+2025-10-09 09:11:43,499 - root - DEBUG - _load_node_children: Processing FBC section
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Section data: items=5
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Adding 5 files to FBC section
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Added FBC section with 5 items
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Added FBC subsection to node tree
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Processing RPC section
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Section data: items=3
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Adding 3 files to RPC section
+2025-10-09 09:11:43,500 - root - DEBUG - _load_node_children: Added RPC section with 3 items
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Added RPC subsection to node tree
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Processing LOG section
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Section data: items=1
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Adding 1 files to LOG section
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Added LOG section with 1 items
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Added LOG subsection to node tree
+2025-10-09 09:11:43,501 - root - DEBUG - _load_node_children: Processing LIS section
+2025-10-09 09:11:43,502 - root - DEBUG - _load_node_children: Section data: items=0
+2025-10-09 09:11:43,502 - root - DEBUG - _load_node_children: No items found for LIS section
+2025-10-09 09:11:43,502 - root - DEBUG - _load_node_children: Added LIS subsection to node tree
+2025-10-09 09:11:43,502 - root - DEBUG - Item expanded: AP01m (192.168.0.11)
+2025-10-09 09:11:44,814 - root - DEBUG - Context menu processing item data: {'node': 'AP01m', 'section_type': 'FBC', 'type': 'section'}
+2025-10-09 09:11:44,815 - root - DEBUG - Context menu processing FBC subgroup for node AP01m
+2025-10-09 09:11:44,815 - root - DEBUG - Found 3 FBC tokens for node AP01m
+2025-10-09 09:11:44,816 - root - DEBUG - Tokens: ['162', '163', '164']
+2025-10-09 09:11:44,816 - root - INFO - Processing FBC subgroup for node AP01m with 3 tokens
+2025-10-09 09:11:44,816 - root - DEBUG - Creating mock item from data: {'node': 'AP01m', 'section_type': 'FBC', 'type': 'section'}
+2025-10-09 09:11:44,817 - root - DEBUG - Found 3 FBC tokens for node AP01m
+2025-10-09 09:11:44,817 - root - DEBUG - Created mock item with 3 tokens
+2025-10-09 09:11:46,410 - root - DEBUG - Context menu displayed with 2 actions
+2025-10-09 09:11:46,803 - root - DEBUG - Context menu processing item data: {'node': 'AP01m', 'section_type': 'RPC', 'type': 'section'}
+2025-10-09 09:11:46,803 - root - DEBUG - Context menu processing RPC subgroup for node AP01m
+2025-10-09 09:11:46,803 - root - DEBUG - Found 3 RPC tokens for node AP01m
+2025-10-09 09:11:46,803 - root - DEBUG - Tokens: ['162', '163', '164']
+2025-10-09 09:11:46,804 - root - INFO - Processing RPC subgroup for node AP01m with 3 tokens
+2025-10-09 09:11:46,804 - root - DEBUG - Creating mock item from data: {'node': 'AP01m', 'section_type': 'RPC', 'type': 'section'}
+2025-10-09 09:11:46,804 - root - DEBUG - Found 3 RPC tokens for node AP01m
+2025-10-09 09:11:46,804 - root - DEBUG - Created mock item with 3 tokens
+2025-10-09 09:11:47,990 - root - DEBUG - Context menu displayed with 2 actions
+2025-10-09 09:11:47,990 - root - DEBUG - Item expanded: LOG
+2025-10-09 09:11:47,990 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:11:47,991 - root - DEBUG - Item expanded: LOG
+2025-10-09 09:11:47,991 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:11:48,520 - root - DEBUG - Context menu processing item data: {'node': 'AP01m', 'section_type': 'LOG', 'type': 'section'}
+2025-10-09 09:11:48,520 - root - DEBUG - Context menu - no applicable actions for this item
+2025-10-09 09:11:49,307 - root - DEBUG - Context menu processing item data: {'node': 'AP01m', 'section_type': 'LOG', 'type': 'section'}
+2025-10-09 09:11:49,308 - root - DEBUG - Context menu - no applicable actions for this item
+2025-10-09 09:11:49,750 - root - DEBUG - Context menu processing item data: {'node': 'AP01m', 'section_type': 'LOG', 'type': 'section'}
+2025-10-09 09:11:49,750 - root - DEBUG - Context menu - no applicable actions for this item
+2025-10-09 09:11:51,813 - root - DEBUG - Context menu processing item data: {'node_name': 'AP01m', 'type': 'node'}
+2025-10-09 09:11:51,813 - root - DEBUG - Adding hierarchical command option for node AP01m
+2025-10-09 09:11:53,444 - root - DEBUG - Context menu displayed with 1 actions
+2025-10-09 09:11:53,444 - root - DEBUG - Item expanded: FBC
+2025-10-09 09:11:53,445 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:11:53,445 - root - DEBUG - Item expanded: FBC
+2025-10-09 09:11:53,445 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:11:59,493 - root - DEBUG - Item expanded: RPC
+2025-10-09 09:11:59,493 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:11:59,493 - root - DEBUG - Item expanded: RPC
+2025-10-09 09:11:59,493 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:01,120 - root - DEBUG - Item expanded: FBC
+2025-10-09 09:12:01,121 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:01,121 - root - DEBUG - Item expanded: FBC
+2025-10-09 09:12:01,122 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:03,124 - root - DEBUG - Item expanded: LOG
+2025-10-09 09:12:03,124 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:03,124 - root - DEBUG - Item expanded: LOG
+2025-10-09 09:12:03,124 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:48,835 - root - DEBUG - Item expanded: AL01 (192.168.0.52)
+2025-10-09 09:12:48,835 - root - DEBUG - Removed placeholder for node: AL01 (192.168.0.52)
+2025-10-09 09:12:48,836 - root - DEBUG - _load_node_children: Loading children for node: AL01
+2025-10-09 09:12:48,836 - root - DEBUG - Directory not found: C:/Users/gorjovicgo/_DIA\FBC\AL01
+2025-10-09 09:12:48,836 - root - DEBUG - Directory not found: C:/Users/gorjovicgo/_DIA\RPC\AL01
+2025-10-09 09:12:48,836 - root - DEBUG - LOG SECTION DEBUG: Scanning directory: C:/Users/gorjovicgo/_DIA\LOG
+2025-10-09 09:12:48,836 - root - DEBUG - LOG SECTION DEBUG: Using pattern: C:/Users/gorjovicgo/_DIA\LOG\AL01_*.log
+2025-10-09 09:12:48,837 - root - DEBUG - Scanning for LOG files with pattern: C:/Users/gorjovicgo/_DIA\LOG\AL01_*.log
+2025-10-09 09:12:48,837 - root - DEBUG - Found 1 files matching pattern
+2025-10-09 09:12:48,837 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52.log | Extracted token: AL01_192-168-0-52
+2025-10-09 09:12:48,837 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LOG\AL01_192-168-0-52.log to file_item_map. Current map size: 10
+2025-10-09 09:12:48,837 - root - DEBUG - Found LOG file: AL01_192-168-0-52.log
+2025-10-09 09:12:48,838 - root - DEBUG - Total LOG files found: 1
+2025-10-09 09:12:48,838 - root - DEBUG - Scanning for LIS files with pattern: C:/Users/gorjovicgo/_DIA\LIS\AL01\AL01_*.lis
+2025-10-09 09:12:48,838 - root - DEBUG - Found 6 files matching pattern
+2025-10-09 09:12:48,838 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52_exe1_5irb_5orb.lis | Extracted token: exe1_5irb_5orb
+2025-10-09 09:12:48,838 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LIS\AL01\AL01_192-168-0-52_exe1_5irb_5orb.lis to file_item_map. Current map size: 11
+2025-10-09 09:12:48,838 - root - DEBUG - Found LIS file: AL01_192-168-0-52_exe1_5irb_5orb.lis
+2025-10-09 09:12:48,839 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52_exe2_5irb_5orb.lis | Extracted token: exe2_5irb_5orb
+2025-10-09 09:12:48,839 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LIS\AL01\AL01_192-168-0-52_exe2_5irb_5orb.lis to file_item_map. Current map size: 12
+2025-10-09 09:12:48,839 - root - DEBUG - Found LIS file: AL01_192-168-0-52_exe2_5irb_5orb.lis
+2025-10-09 09:12:48,839 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52_exe3_5irb_5orb.lis | Extracted token: exe3_5irb_5orb
+2025-10-09 09:12:48,839 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LIS\AL01\AL01_192-168-0-52_exe3_5irb_5orb.lis to file_item_map. Current map size: 13
+2025-10-09 09:12:48,839 - root - DEBUG - Found LIS file: AL01_192-168-0-52_exe3_5irb_5orb.lis
+2025-10-09 09:12:48,839 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52_exe4_5irb_5orb.lis | Extracted token: exe4_5irb_5orb
+2025-10-09 09:12:48,840 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LIS\AL01\AL01_192-168-0-52_exe4_5irb_5orb.lis to file_item_map. Current map size: 14
+2025-10-09 09:12:48,840 - root - DEBUG - Found LIS file: AL01_192-168-0-52_exe4_5irb_5orb.lis
+2025-10-09 09:12:48,840 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52_exe5_5irb_5orb.lis | Extracted token: exe5_5irb_5orb
+2025-10-09 09:12:48,840 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LIS\AL01\AL01_192-168-0-52_exe5_5irb_5orb.lis to file_item_map. Current map size: 15
+2025-10-09 09:12:48,840 - root - DEBUG - Found LIS file: AL01_192-168-0-52_exe5_5irb_5orb.lis
+2025-10-09 09:12:48,840 - root - DEBUG - LOG SECTION DEBUG: Processing file: AL01_192-168-0-52_exe6_5irb_5orb.lis | Extracted token: exe6_5irb_5orb
+2025-10-09 09:12:48,840 - root - DEBUG - _create_file_item: Added C:\Users\gorjovicgo\_DIA\LIS\AL01\AL01_192-168-0-52_exe6_5irb_5orb.lis to file_item_map. Current map size: 16
+2025-10-09 09:12:48,840 - root - DEBUG - Found LIS file: AL01_192-168-0-52_exe6_5irb_5orb.lis
+2025-10-09 09:12:48,840 - root - DEBUG - Total LIS files found: 6
+2025-10-09 09:12:48,840 - root - DEBUG - _load_node_children: Processing sections for node: AL01
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Processing FBC section
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Section data: items=0
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: No items found for FBC section
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Added FBC subsection to node tree
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Processing RPC section
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Section data: items=0
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: No items found for RPC section
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Added RPC subsection to node tree
+2025-10-09 09:12:48,841 - root - DEBUG - _load_node_children: Processing LOG section
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Section data: items=1
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Adding 1 files to LOG section
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Added LOG section with 1 items
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Added LOG subsection to node tree
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Processing LIS section
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Section data: items=6
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Adding 6 files to LIS section
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Added LIS section with 6 items
+2025-10-09 09:12:48,842 - root - DEBUG - _load_node_children: Added LIS subsection to node tree
+2025-10-09 09:12:48,842 - root - DEBUG - Item expanded: AL01 (192.168.0.52)
+2025-10-09 09:12:49,787 - root - DEBUG - Item expanded: FBC
+2025-10-09 09:12:49,787 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:49,787 - root - DEBUG - Item expanded: FBC
+2025-10-09 09:12:49,787 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:50,830 - root - DEBUG - Item expanded: RPC
+2025-10-09 09:12:50,831 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:50,831 - root - DEBUG - Item expanded: RPC
+2025-10-09 09:12:50,831 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:51,760 - root - DEBUG - Item expanded: LOG
+2025-10-09 09:12:51,760 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:51,760 - root - DEBUG - Item expanded: LOG
+2025-10-09 09:12:51,761 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:54,955 - root - DEBUG - Item expanded: LIS
+2025-10-09 09:12:54,956 - root - DEBUG - Expanded item is not a node or has no placeholder
+2025-10-09 09:12:54,956 - root - DEBUG - Item expanded: LIS
+2025-10-09 09:12:54,956 - root - DEBUG - Expanded item is not a node or has no placeholder

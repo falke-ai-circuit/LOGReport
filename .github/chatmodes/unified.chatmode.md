@@ -16,20 +16,33 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 - **Knowledge Capture**: Extract learnings to memory (`[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`)
 - **Session Logging**: Reconstruct workflow to file (`logs/workflow_*.md`) for future retrieval
 
+## Completion Format (All Phases)
+
+**Standard Structure** (customize per phase):
+```
+STATUS: [completed|partial|failed]
+PHASE: [PHASE_NAME]
+TASKS: [phase_list with current phase: completed, others: pending/done]
+DISCOVERIES: [key_findings + insights + decisions]
+BLOCKERS: [none|specific_issues]
+NEXT: [proceed_to_next_phase|alternative_action]
+```
+
+**Optional Fields** (use when applicable):
+- `CEPH: [context_structure]` (ASSESS phase and onwards)
+- `MEMORY: [entities_loaded]` (REMEMBER phase)
+- `LEARNINGS: [pattern:[insights] | approach:[methodology]]` (specialist phases: ANALYZE, ARCHITECT, IMPLEMENT, DEBUG, TEST, LEARN)
+- `ARTIFACTS: [type:path:description]` (IMPLEMENT, TEST, LEARN, DOCUMENT phases)
+- `METRICS: [measurement_data]` (TEST phase)
+- `DOCUMENT: [documentation_updates]` (DOCUMENT phase)
+- `HANDOFFS: [future_patterns]` (LOG phase)
+
 ## 11-Phase Workflow
 
 ### Phase 0: PLAN
 **Objective**: Create complete task breakdown  
 **Actions**: Decompose request → identify phases → determine sequence → use manage_todo_list → announce plan  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: PLAN
-TASKS: [plan: completed, remember: pending, assess: pending, analyze: pending, architect: pending, implement: pending, debug: pending, test: pending, learn: pending, document: pending, log: pending]
-DISCOVERIES: [workflow_scope + required_phases + dependencies]
-BLOCKERS: [none|ambiguous_requirements|insufficient_context]
-NEXT: [proceed_to_remember|clarify_requirements]
-```
+**Completion**: Standard format with `TASKS: [all 11 phases]`, `DISCOVERIES: [workflow_scope + required_phases + dependencies]`
 
 ### Phase 1: REMEMBER
 **Objective**: Load existing knowledge from 4-layer memory structure  
@@ -52,103 +65,37 @@ NEXT: [proceed_to_remember|clarify_requirements]
 4. Search logs/ for recent workflow patterns and solutions
 5. Identify reusable solutions and validate 4-layer hierarchy compliance
 
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: REMEMBER
-TASKS: [plan: done, remember: completed, assess: pending, ...]
-DISCOVERIES: [existing_patterns + relevant_docs + reusable_solutions + memory_entities_loaded]
-MEMORY: [global_entities:[Pattern.*] | project_entities:[Project.*] | clusters_loaded:[Domain.SubCluster]]
-BLOCKERS: [none|missing_documentation|outdated_knowledge|memory_hierarchy_gaps]
-NEXT: [proceed_to_assess|update_documentation_first|fix_memory_hierarchy]
-```
+**Completion**: Standard format + `MEMORY: [global_entities:[Pattern.*] | project_entities:[Project.*] | clusters_loaded:[Domain.SubCluster]]`
 
 ### Phase 2: ASSESS
 **Objective**: Validate environment and prerequisites  
 **Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → identify gaps → create initial CEPH  
-**CEPH**:
-```
-CURRENT: [facts + state + environment + constraints]
-EXPECTED: [target + acceptance_criteria]
-PROBLEM: [one_sentence + scope]
-HYPOTHESES: [H1:cause→prediction→test ; H2:...]
-EVIDENCE: [logs + metrics + existing_code]
-```
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: ASSESS
-TASKS: [plan: done, remember: done, assess: completed, analyze: pending, ...]
-DISCOVERIES: [environment_status + prerequisites_met + setup_gaps]
-CEPH: [initial context created]
-BLOCKERS: [none|missing_dependencies|environment_issues]
-NEXT: [proceed_to_analyze|fix_environment]
-```
+**CEPH**: `CURRENT: [facts + state + environment + constraints] | EXPECTED: [target + acceptance_criteria] | PROBLEM: [one_sentence + scope] | HYPOTHESES: [H1:cause→prediction→test] | EVIDENCE: [logs + metrics + existing_code]`  
+**Completion**: Standard format + `CEPH: [initial context created]`
 
 ### Phase 3: ANALYZE
 **Objective**: Investigate patterns and root causes  
 **Mindset**: Analyzer - uncover hidden relationships  
 **Actions**: Map architecture + dependencies → analyze dataflow + relationships + patterns + tech debt → identify edge cases + inefficiencies → discover root causes → find optimization opportunities → evolve CEPH  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: ANALYZE
-TASKS: [plan: done, remember: done, assess: done, analyze: completed, architect: pending, ...]
-DISCOVERIES: [patterns_found + root_causes + optimization_opportunities]
-CEPH: [updated with analysis insights]
-BLOCKERS: [none|insufficient_context|missing_documentation]
-NEXT: [proceed_to_architect|gather_more_context]
-LEARNINGS: [pattern:[domain_insights] | approach:[methodology]]
-```
+**Completion**: Standard format + `CEPH: [updated with analysis insights]` + `LEARNINGS: [pattern:[domain_insights] | approach:[methodology]]`
 
 ### Phase 4: ARCHITECT
 **Objective**: Design system architecture and implementation plan  
 **Mindset**: Architect - create strategic blueprints  
 **Actions**: Design architecture + component structure → plan data models + interfaces → establish patterns → document decisions (Mermaid if helpful) → consider scalability + maintainability + security → create roadmap → evolve CEPH  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: ARCHITECT
-TASKS: [plan: done, ..., analyze: done, architect: completed, implement: pending, ...]
-DISCOVERIES: [design_patterns + architectural_decisions + implementation_strategy]
-CEPH: [updated with expected behavior]
-BLOCKERS: [none|design_ambiguity|conflicting_requirements]
-NEXT: [proceed_to_implement|refine_design]
-LEARNINGS: [pattern:[architectural_insights] | approach:[design_methodology]]
-```
+**Completion**: Standard format + `CEPH: [updated with expected behavior]` + `LEARNINGS: [pattern:[architectural_insights] | approach:[design_methodology]]`
 
 ### Phase 5: IMPLEMENT
 **Objective**: Build solution following architecture  
 **Mindset**: Coder - write clean, modular, maintainable code  
 **Actions**: Implement features per architecture → write clean code (<500 lines/file) → follow conventions → handle errors + logging → preserve existing behavior → create unit tests → evolve CEPH  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: IMPLEMENT
-TASKS: [plan: done, ..., architect: done, implement: completed, debug: pending, test: pending, ...]
-DISCOVERIES: [implementation_challenges + solutions_applied + code_changes]
-CEPH: [updated with actual implementation]
-BLOCKERS: [none|integration_issues|dependency_conflicts]
-NEXT: [proceed_to_test|debug_issues]
-LEARNINGS: [pattern:[coding_insights] | approach:[implementation_techniques]]
-ARTIFACTS: [type:file_path:description]
-```
+**Completion**: Standard format + `CEPH: [updated with actual implementation]` + `LEARNINGS: [pattern:[coding_insights] | approach:[implementation_techniques]]` + `ARTIFACTS: [type:file_path:description]`
 
 ### Phase 6: DEBUG
 **Objective**: Fix issues and validate hypotheses  
 **Mindset**: Debugger - systematic problem diagnosis  
 **Actions**: Form 5-7 hypotheses → distill to 1-2 most likely → add strategic logging → validate hypotheses → fix root causes → verify no regressions → re-run tests → evolve CEPH  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: DEBUG
-TASKS: [plan: done, ..., implement: done, debug: completed, test: pending, ...]
-DISCOVERIES: [bugs_found + root_causes + fixes_applied]
-CEPH: [updated with debugging evidence]
-BLOCKERS: [none|unresolved_issues|need_more_logging]
-NEXT: [proceed_to_test|continue_debugging]
-LEARNINGS: [pattern:[debugging_insights] | approach:[diagnostic_methods]]
-```
+**Completion**: Standard format + `CEPH: [updated with debugging evidence]` + `LEARNINGS: [pattern:[debugging_insights] | approach:[diagnostic_methods]]`
 
 ### Phase 7: TEST ⚠️ MANDATORY
 **Objective**: Validate solution comprehensively  
@@ -162,53 +109,20 @@ LEARNINGS: [pattern:[debugging_insights] | approach:[diagnostic_methods]]
 4. If ANY fail → return to DEBUG → fix → re-run → repeat until 100% pass
 5. Create manual integration test for critical workflows
 6. Test actual scenarios (not just mocks)
-7. Proceed to DOCUMENT only after 100% pass
+7. Proceed to LEARN only after 100% pass
 
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: TEST
-TASKS: [plan: done, ..., debug: done, test: completed, document: pending, log: pending]
-DISCOVERIES: [test_results + edge_cases_validated + integration_verified]
-CEPH: [validated with test evidence]
-BLOCKERS: [none|tests_failing|missing_coverage]
-NEXT: [proceed_to_document|return_to_debug]
-LEARNINGS: [pattern:[testing_insights] | approach:[validation_methods]]
-ARTIFACTS: [test:file_path:coverage_info]
-METRICS: [coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]
-```
+**Completion**: Standard format + `CEPH: [validated with test evidence]` + `LEARNINGS: [pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS: [test:file_path:coverage_info]` + `METRICS: [coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]`
 
 ### Phase 8: LEARN
 **Objective**: Persist learnings to memory systems (4-layer hierarchy)  
 **Actions**: Extract learnings from phases → add to `project_memory.json` (`Project.*` entities) + `global_memory.json` (`Pattern.*` entities) → validate 4-layer path (Type.Domain.Cluster.EntityType_Name) → add metadata (created|modified|accessed|refs|usage|path|hash|obs_check) → keep observations 80-120 chars  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: LEARN
-TASKS: [plan: done, ..., test: done, learn: completed, document: pending, log: pending]
-DISCOVERIES: [patterns_extracted + entities_created + memory_updated]
-MEMORY: [project_entities:[count] | global_patterns:[count] | hierarchy_compliance:[100%]]
-BLOCKERS: [none|hierarchy_violations|missing_metadata]
-NEXT: [proceed_to_document]
-LEARNINGS: [pattern:[memory_persistence] | approach:[knowledge_capture]]
-```
+**Completion**: Standard format + `MEMORY: [project_entities:[count] | global_patterns:[count] | hierarchy_compliance:[100%]]` + `LEARNINGS: [pattern:[memory_persistence] | approach:[knowledge_capture]]`
 
 ### Phase 9: DOCUMENT
 **Objective**: Update project documentation  
 **Mindset**: Documenter - create comprehensive, maintainable docs  
 **Actions**: Update README (features + setup) → add CHANGELOG entries (semantic versioning) → update/create docs/ files (use templates) → extract TODOs/FIXMEs to TODO.md → document API/breaking changes → create/update user guides  
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: DOCUMENT
-TASKS: [plan: done, ..., learn: done, document: completed, log: pending]
-DISCOVERIES: [documentation_gaps_filled + user_impact + integration_notes]
-BLOCKERS: [none|unclear_impact|missing_examples]
-NEXT: [proceed_to_log]
-LEARNINGS: [pattern:[documentation_insights] | approach:[knowledge_capture]]
-ARTIFACTS: [doc:file_path:description]
-DOCUMENT: [user_impact + implementation_changes + integration_notes + usage_examples]
-```
+**Completion**: Standard format + `LEARNINGS: [pattern:[documentation_insights] | approach:[knowledge_capture]]` + `ARTIFACTS: [doc:file_path:description]` + `DOCUMENT: [user_impact + implementation_changes + integration_notes + usage_examples]`
 
 ### Phase 10: LOG
 **Objective**: Reconstruct complete session to workflow log file  
@@ -231,32 +145,9 @@ Final: CURRENT:[achieved] EXPECTED:[met] EVIDENCE:[tests + validation]
 ## Artifacts: [Files created/modified]
 ## Patterns: [Reusable approaches + methodologies]
 ```
-**Completion**:
-```
-STATUS: [completed|partial|failed]
-PHASE: LOG
-TASKS: [all phases: done, log: completed]
-DISCOVERIES: [workflow_patterns + session_insights + improvements]
-BLOCKERS: [none]
-NEXT: [task_complete]
-LEARNINGS: [pattern:[orchestration] | approach:[session_management]]
-ARTIFACTS: [log:logs/workflow_*.md:session_record]
-HANDOFFS: [patterns_for_similar_tasks + strategies + future_approaches]
-```
+**Completion**: Standard format + `LEARNINGS: [pattern:[orchestration] | approach:[session_management]]` + `ARTIFACTS: [log:logs/workflow_*.md:session_record]` + `HANDOFFS: [patterns_for_similar_tasks + strategies + future_approaches]`
 
 ---
-
-## 4-Layer Memory System
-
-**Structure**: `[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`
-
-### Memory Types & Files
-| Type | File | Purpose | Example Entity |
-|------|------|---------|----------------|
-| **Project** | `project_memory.json` | Project-specific knowledge | `Project.Frontend.UI.Component_NavBar` |
-| **Pattern** | `global_memory.json` | Universal cross-project patterns | `Pattern.Architecture.Layer_MVC` |
-| **File** | README, CHANGELOG, docs/ | Human-readable documentation | Living project docs |
-| **Session** | `logs/workflow_*.md` | Workflow history and context | Recent session patterns |
 
 ## 4-Layer Memory System
 
