@@ -17,6 +17,7 @@ from ..log_writer import LogWriter
 from ..command_queue import CommandQueue
 from ..services.fbc_command_service import FbcCommandService
 from ..services.rpc_command_service import RpcCommandService
+from ..services.sequential_command_processor import SequentialCommandProcessor
 from ..icons import get_node_online_icon, get_node_offline_icon, get_token_icon
 import os
 import re
@@ -64,8 +65,28 @@ class NodeTreePresenter(QObject):
         self.context_menu_service = context_menu_service
         self.bstool_service = bstool_service
         
+        # Initialize sequential processor
+        self.sequential_processor = SequentialCommandProcessor(
+            command_queue=command_queue,
+            fbc_service=fbc_service,
+            rpc_service=rpc_service,
+            session_manager=session_manager,
+            logging_service=log_writer,
+            parent=self
+        )
+        
+        # Connect sequential processor signals
+        self.sequential_processor.status_message.connect(self.status_message_signal.emit)
+        self.sequential_processor.execution_state_changed.connect(self.view.update_control_buttons)
+        self.sequential_processor.current_file_processing.connect(self._highlight_current_file)
+        
         # Connect view signals to presenter methods
         self.view.item_expanded.connect(self.handle_item_expanded)
+        
+        # Connect control button signals
+        self.view.pause_clicked.connect(self._handle_pause)
+        self.view.resume_clicked.connect(self._handle_resume)
+        self.view.cancel_clicked.connect(self._handle_cancel)
         
         # Dictionary to track command and log write status for each node
         # Key: node_name, Value: {"command_success": Optional[bool], "log_success": Optional[bool], "line_count": Optional[int]}
@@ -325,6 +346,14 @@ class NodeTreePresenter(QObject):
         self.node_status[log_path]["command_success"] = success
         logging.debug(f"handle_command_completed: Log Path: {log_path}, Command Success: {success}, Token Type: {token.token_type}")
         self._check_and_update_node_color(log_path)
+        
+        # Check if we're in sequential node processing mode and queue is idle
+        # This triggers processing of the next node when all commands for current node are done
+        if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
+            # Use QTimer to check processing state after a short delay
+            # This ensures the command_queue has time to update its _is_processing flag
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(100, self._check_sequential_processing_continuation)
             
     def handle_log_write_completed(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int):
         """
@@ -737,8 +766,8 @@ class NodeTreePresenter(QObject):
     def process_all_nodes_print_commands(self):
         """
         Execute print commands for all nodes sequentially.
-        Iterates through all nodes and calls process_node_print_commands for each.
-        Provides progress updates and aggregate statistics.
+        Calls process_node_print_commands() for each node, just like right-click.
+        Monitors command_queue.is_processing to chain node processing.
         """
         logging.info("Starting print command execution for ALL nodes...")
         self.status_message_signal.emit("Starting print command execution for ALL nodes...", 0)
@@ -751,38 +780,65 @@ class NodeTreePresenter(QObject):
                 self._report_error("No nodes available to process")
                 return
             
-            total_nodes = len(all_nodes)
-            successful_nodes = 0
-            failed_nodes = 0
+            # Store nodes to process
+            self._nodes_to_process = list(all_nodes)
+            self._current_node_index = 0
+            self._total_nodes_to_process = len(self._nodes_to_process)
             
-            logging.info(f"Found {total_nodes} nodes to process")
-            self.status_message_signal.emit(f"Processing {total_nodes} nodes...", 0)
-            
-            # Process each node sequentially
-            for index, node in enumerate(all_nodes, start=1):
-                node_name = node.name
-                logging.info(f"Processing node {index}/{total_nodes}: {node_name}")
-                self.status_message_signal.emit(
-                    f"Processing node {index}/{total_nodes}: {node_name}...", 
-                    0
-                )
-                
-                try:
-                    # Call the existing per-node print command handler
-                    self.process_node_print_commands(node_name)
-                    successful_nodes += 1
-                except Exception as e:
-                    logging.error(f"Failed to process node {node_name}: {str(e)}")
-                    failed_nodes += 1
-                    # Continue with next node even if this one fails
-            
-            # Final summary message
-            summary = f"Print all nodes complete: {successful_nodes} successful, {failed_nodes} failed (total: {total_nodes})"
-            logging.info(summary)
-            self.status_message_signal.emit(summary, 8000)
+            # Start processing first node
+            # Subsequent nodes will be triggered by _check_sequential_processing_continuation
+            # called from handle_command_completed when queue becomes idle
+            self._process_next_node_in_sequence()
             
         except Exception as e:
             self._report_error("Error in bulk print command execution for all nodes", e)
+    
+    def _process_next_node_in_sequence(self):
+        """
+        Process the next node in the all-nodes sequence.
+        Called after each node's command queue finishes processing.
+        Executes process_node_print_commands() for each node sequentially.
+        """
+        if self._current_node_index >= len(self._nodes_to_process):
+            # All nodes processed
+            self.status_message_signal.emit(
+                f"Print all nodes complete: {self._total_nodes_to_process} nodes processed",
+                8000
+            )
+            logging.info(f"Print all nodes complete: {self._total_nodes_to_process} nodes processed")
+            # Clear processing flags
+            self._nodes_to_process = []
+            return
+        
+        node = self._nodes_to_process[self._current_node_index]
+        node_name = node.name
+        
+        logging.info(f"Processing node {self._current_node_index + 1}/{self._total_nodes_to_process}: {node_name}")
+        self.status_message_signal.emit(
+            f"Processing node {self._current_node_index + 1}/{self._total_nodes_to_process}: {node_name}...",
+            0
+        )
+        
+        # Increment index for next iteration
+        self._current_node_index += 1
+        
+        # Execute the same logic as right-click "Execute All Print Commands"
+        # This properly queues FBC, RPC, and LOG commands through the command queue
+        self.process_node_print_commands(node_name)
+    
+    def _check_sequential_processing_continuation(self):
+        """
+        Check if sequential node processing should continue to the next node.
+        Called via QTimer after each command completes to allow command_queue to update state.
+        """
+        # Only proceed if we're in sequential processing mode
+        if not hasattr(self, '_nodes_to_process') or not self._nodes_to_process:
+            return
+        
+        # Check if command queue is idle (all commands for current node are done)
+        if not self.command_queue.is_processing:
+            logging.debug(f"Sequential processing: Queue idle, proceeding to next node")
+            self._process_next_node_in_sequence()
         
     def process_node_hierarchical_commands(self, node_name: str):
         """
@@ -1160,3 +1216,96 @@ class NodeTreePresenter(QObject):
                               else ('xdg-open', log_path))
         except Exception as e:
             self.status_message_signal.emit(f"Error opening log file: {str(e)}", 5000)
+    
+    def _handle_pause(self):
+        """Handle pause button click."""
+        self.sequential_processor.pause()
+    
+    def _handle_resume(self):
+        """Handle resume button click."""
+        self.sequential_processor.resume()
+    
+    def _handle_cancel(self):
+        """Handle cancel button click."""
+        self.sequential_processor.cancel()
+    
+    def _highlight_current_file(self, node_name: str, token, file_path: str):
+        """
+        Highlight the currently processing file in the tree.
+        
+        Args:
+            node_name: Name of the node being processed
+            token: Token object being processed
+            file_path: Path to the log file being created
+        """
+        try:
+            logging.debug(f"_highlight_current_file: node={node_name}, token={token.token_id}, path={file_path}")
+            
+            # Normalize the file path
+            normalized_path = os.path.normpath(file_path)
+            
+            # Look up the item in file_item_map
+            file_item = self.file_item_map.get(normalized_path)
+            
+            if not file_item:
+                logging.debug(f"_highlight_current_file: Item not found in file_item_map for {normalized_path}")
+                logging.debug(f"_highlight_current_file: Available keys: {list(self.file_item_map.keys())}")
+                # Item might not be loaded yet - try to expand the node to load children
+                self._expand_to_file(node_name, token.token_type)
+                # Try again after expansion
+                file_item = self.file_item_map.get(normalized_path)
+                
+            if file_item:
+                # Expand all parent items
+                parent = file_item.parent()
+                while parent:
+                    self.view.expandItem(parent)
+                    parent = parent.parent()
+                
+                # Set as current item and scroll to it
+                self.view.setCurrentItem(file_item)
+                self.view.scrollToItem(file_item)
+                
+                logging.debug(f"_highlight_current_file: Successfully highlighted {normalized_path}")
+            else:
+                logging.warning(f"_highlight_current_file: Could not find tree item for {normalized_path}")
+                
+        except Exception as e:
+            logging.error(f"_highlight_current_file: Error highlighting file: {str(e)}")
+    
+    def _expand_to_file(self, node_name: str, token_type: str):
+        """
+        Expand tree to make sure the section containing the file is loaded.
+        
+        Args:
+            node_name: Name of the node
+            token_type: Type of token (FBC, RPC, LOG, LIS)
+        """
+        try:
+            # Find the node item in the tree
+            root = self.view.node_tree
+            for i in range(root.topLevelItemCount()):
+                node_item = root.topLevelItem(i)
+                item_data = node_item.data(0, Qt.ItemDataRole.UserRole)
+                
+                if item_data and item_data.get("type") == "node":
+                    item_node_name = item_data.get("node_name", "")
+                    # Match the node name (handle formats like "AP01m (192.168.0.11)")
+                    if item_node_name.startswith(node_name):
+                        # Expand the node to load children if not already loaded
+                        if not node_item.isExpanded():
+                            self.view.expandItem(node_item)
+                            # Trigger lazy loading
+                            self.handle_item_expanded(node_item)
+                        
+                        # Find and expand the section item
+                        for j in range(node_item.childCount()):
+                            section_item = node_item.child(j)
+                            if section_item.text(0) == token_type:
+                                if not section_item.isExpanded():
+                                    self.view.expandItem(section_item)
+                                break
+                        break
+                        
+        except Exception as e:
+            logging.error(f"_expand_to_file: Error expanding tree: {str(e)}")

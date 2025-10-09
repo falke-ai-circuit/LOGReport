@@ -19,6 +19,9 @@ class NodeTreeView(QWidget):
     set_log_root_clicked = pyqtSignal()
     item_expanded = pyqtSignal(object)  # QTreeWidgetItem
     print_all_nodes_clicked = pyqtSignal()  # Triggered when "Print All Nodes" button is clicked
+    pause_clicked = pyqtSignal()  # Triggered when "Pause" button is clicked
+    resume_clicked = pyqtSignal()  # Triggered when "Resume" button is clicked
+    cancel_clicked = pyqtSignal()  # Triggered when "Cancel" button is clicked
     
     def __init__(self):
         super().__init__()
@@ -46,10 +49,30 @@ class NodeTreeView(QWidget):
         
         layout.addWidget(self.node_tree, 1)  # Add stretch factor
         
-        # Print All Nodes Button (at bottom)
+        # Print All Nodes Button
         self.print_all_nodes_btn = QPushButton("Print All Nodes")
         self.print_all_nodes_btn.setToolTip("Execute print commands for all nodes sequentially (FBC → RPC → LOG)")
         layout.addWidget(self.print_all_nodes_btn)
+        
+        # Control buttons layout (Pause, Resume, Cancel)
+        control_layout = QHBoxLayout()
+        self.pause_btn = QPushButton("Pause")
+        self.resume_btn = QPushButton("Resume")
+        self.cancel_btn = QPushButton("Cancel")
+        
+        self.pause_btn.setToolTip("Pause sequential processing")
+        self.resume_btn.setToolTip("Resume paused processing")
+        self.cancel_btn.setToolTip("Cancel sequential processing")
+        
+        # Initially disable control buttons (enabled when processing starts)
+        self.pause_btn.setEnabled(False)
+        self.resume_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(False)
+        
+        control_layout.addWidget(self.pause_btn)
+        control_layout.addWidget(self.resume_btn)
+        control_layout.addWidget(self.cancel_btn)
+        layout.addLayout(control_layout)
         
         # Apply styling
         self.setStyleSheet(STYLESHEETS.get_application_stylesheet())
@@ -58,6 +81,9 @@ class NodeTreeView(QWidget):
         self.load_nodes_btn.clicked.connect(self.load_nodes_clicked.emit)
         self.set_log_root_btn.clicked.connect(self.set_log_root_clicked.emit)
         self.print_all_nodes_btn.clicked.connect(self.print_all_nodes_clicked.emit)
+        self.pause_btn.clicked.connect(self.pause_clicked.emit)
+        self.resume_btn.clicked.connect(self.resume_clicked.emit)
+        self.cancel_btn.clicked.connect(self.cancel_clicked.emit)
         self.node_tree.itemClicked.connect(self._on_item_clicked)
         self.node_tree.itemDoubleClicked.connect(self._on_item_double_clicked)
         self.node_tree.itemExpanded.connect(self._on_item_expanded)
@@ -79,6 +105,14 @@ class NodeTreeView(QWidget):
     def clear(self):
         """Clear the node tree"""
         self.node_tree.clear()
+    
+    def expandItem(self, item):
+        """Expand a tree item"""
+        self.node_tree.expandItem(item)
+    
+    def scrollToItem(self, item):
+        """Scroll to make item visible"""
+        self.node_tree.scrollToItem(item)
         
     def add_top_level_item(self, item):
         """Add a top level item to the tree"""
@@ -122,6 +156,32 @@ class NodeTreeView(QWidget):
         color = QColor(color_name)
         item.setForeground(0, color)
         logging.debug(f"NodeTreeView.update_node_color: Updated color for item {item.text(0)} to {color_name}")
+    
+    def update_control_buttons(self, execution_state):
+        """
+        Update control button states based on execution state.
+        
+        Args:
+            execution_state: ExecutionState enum value
+        """
+        from ..services.sequential_command_processor import ExecutionState
+        
+        if execution_state == ExecutionState.IDLE:
+            self.pause_btn.setEnabled(False)
+            self.resume_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(False)
+        elif execution_state == ExecutionState.RUNNING:
+            self.pause_btn.setEnabled(True)
+            self.resume_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(True)
+        elif execution_state == ExecutionState.PAUSED:
+            self.pause_btn.setEnabled(False)
+            self.resume_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(True)
+        elif execution_state == ExecutionState.CANCELLED:
+            self.pause_btn.setEnabled(False)
+            self.resume_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(False)
         
 def setHeaderLabels(self, labels):
     """Set header labels"""

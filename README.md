@@ -122,6 +122,57 @@ AP01m (192.168.0.11) → Right-click → "Execute All Commands Hierarchically fo
 
 See: [Hierarchical Command System](docs/architecture/ARCH_command_system.md#node-level-hierarchical-execution)
 
+### Sequential Processing with Execution Controls
+
+**NEW in v1.2**: The Commander window now supports bulk sequential execution of print commands across **all nodes** with full pause/resume/cancel controls:
+
+**Print All Nodes Button**:
+- Executes print commands for **all nodes** sequentially (one node at a time)
+- Reuses the proven right-click "Execute All Print Commands" mechanism for each node
+- Properly queues FBC and RPC commands through service layer
+- Updates log files and visual feedback (colors) for each node
+
+**Execution Controls**:
+- **Pause**: Temporarily stops execution after current command completes
+- **Resume**: Continues from paused state
+- **Cancel**: Stops execution and resets to idle state
+
+**Visual Tracking**:
+- Tree automatically expands to show currently executing node
+- Current log file highlighted during command execution
+- Status bar shows progress: "Processing node 3/15: AP03m..."
+
+**Example Usage**:
+```
+Commander Window Toolbar:
+  [Print All Nodes] [Pause] [Resume] [Cancel]
+  
+Status: "Processing node 3/15: AP03m..."
+  ✓ AP01m [5/5 commands] - Logs written, colors updated
+  ✓ AP02m [5/5 commands] - Logs written, colors updated
+  ► AP03m [2/5 commands] - Currently executing...
+  ○ AP04m [pending]
+  ... (12 more nodes)
+```
+
+**Technical Details**:
+- **Sequential Chaining**: Uses `command_queue.is_processing` property to detect when each node's commands complete
+- **QTimer Pattern**: 100ms delay after each command ensures reliable state detection
+- **Service Integration**: Leverages `FbcCommandService` and `RpcCommandService` for proper command queuing
+- **State Machine**: ExecutionState enum (IDLE/RUNNING/PAUSED/CANCELLED) manages control flow
+
+**Benefits**:
+- **Efficiency**: Process all nodes with one click instead of individual right-clicks
+- **Control**: Pause/resume execution without losing progress
+- **Safety**: Cancel anytime to abort remaining operations
+- **Visibility**: Real-time visual feedback on execution status
+
+**Implementation**:
+- See: [Pause Resume Cancel Controls](docs/implementation/pause_resume_cancel_controls.md) - Full implementation guide
+- See: [Print All Nodes Execution Fix](docs/implementation/print_all_nodes_execution_fix.md) - Technical architecture and chaining mechanism
+
+See: [Hierarchical Command System](docs/architecture/ARCH_command_system.md#node-level-hierarchical-execution)
+
 ## Documentation
 
 Additional documentation for key components and features:

@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QGroupBox, QRadioButton, QPushButton, QLineEdit,
     QLabel, QFormLayout, QMessageBox, QButtonGroup,
-    QFileDialog, QInputDialog, QCheckBox
+    QFileDialog, QInputDialog, QCheckBox, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from pathlib import Path
 
 class NodeConfigDialog(QDialog):
@@ -220,11 +221,57 @@ class NodeConfigDialog(QDialog):
             )
             
     def populate_node_list(self):
-        """Populate node list widget with node names"""
+        """Populate node list widget with node names and color code based on validation"""
         self.node_list.clear()
         for node in self.nodes_data:
             name = node.get('name', 'Unnamed node')
-            self.node_list.addItem(name)
+            item = QListWidgetItem(name)
+            
+            # Validate node and set color
+            is_complete = self.validate_node(node)
+            if is_complete:
+                item.setForeground(QColor("green"))
+            else:
+                item.setForeground(QColor("red"))
+            
+            self.node_list.addItem(item)
+    
+    def validate_node(self, node: dict) -> bool:
+        """
+        Validate if a node has all required information.
+        
+        A node is considered complete if it has:
+        - A non-empty name
+        - An IP address
+        - At least one token (if FBC or RPC types are selected)
+        - At least one type selected
+        
+        Args:
+            node: Dictionary containing node data
+            
+        Returns:
+            True if node is complete, False otherwise
+        """
+        # Check for name
+        if not node.get('name', '').strip():
+            return False
+        
+        # Check for IP address
+        if not node.get('ip', '').strip():
+            return False
+        
+        # Check for types
+        types = node.get('types', [])
+        if not types:
+            return False
+        
+        # Check for tokens if FBC or RPC types are selected
+        if any(t in ['FBC', 'RPC'] for t in types):
+            tokens = node.get('tokens', [])
+            if not tokens:
+                return False
+        
+        return True
             
     def on_node_selected(self):
         """Called when user selects a node from the list"""
@@ -400,6 +447,15 @@ class NodeConfigDialog(QDialog):
                 "tokens": tokens,
                 "types": selected_types
             }
+            
+            # Update the color in the list based on validation
+            is_complete = self.validate_node(self.nodes_data[selected])
+            item = self.node_list.item(selected)
+            if item:
+                if is_complete:
+                    item.setForeground(QColor("green"))
+                else:
+                    item.setForeground(QColor("red"))
             
     def generate_examples(self):
         """Generate examples and optionally save current changes if node selected"""
@@ -613,6 +669,42 @@ Generated on $DATETIME."""
                         "Error Loading Token Sys File",
                         f"Failed to load and parse '{Path(file_path).name}': {str(e)}"
                     )
+            
+            # STANDALONE TOKENID.SYS MODE: If only token files were selected, match to existing nodes
+            if token_sys_files and not main_sys_files and self.nodes_data:
+                # Match tokens to existing nodes and update IPs
+                updated_count = 0
+                for token_id, ip_address in token_ip_map.items():
+                    # Search through existing nodes for this token
+                    for node in self.nodes_data:
+                        # Check if this token is in the node's token list or _main_token
+                        node_tokens = node.get('tokens', [])
+                        main_token = node.get('_main_token', '')
+                        
+                        if token_id in node_tokens or token_id == main_token:
+                            # Update the node's IP address
+                            node['ip'] = ip_address
+                            updated_count += 1
+                            break
+                
+                if updated_count > 0:
+                    self.populate_node_list()
+                    if self.node_list.currentRow() >= 0:
+                        self.on_node_selected()  # Refresh the current node display
+                    
+                    QMessageBox.information(
+                        self,
+                        "Token IPs Updated",
+                        f"Successfully updated IP addresses for {updated_count} node(s) from {len(token_sys_files)} token file(s)."
+                    )
+                else:
+                    QMessageBox.information(
+                        self,
+                        "No Matches Found",
+                        f"Loaded {len(token_sys_files)} token file(s), but no matching nodes found.\n"
+                        "Load a main sys file (e.g., AB01_sys) first to define nodes."
+                    )
+                return
             
             # Auto-discover token sys files if main sys files were loaded
             if main_sys_files and not token_sys_files:

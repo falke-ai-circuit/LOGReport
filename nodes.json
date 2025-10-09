@@ -1,7 +1,7 @@
 [
     {
         "name": "AP01",
-        "ip_address": "",
+        "ip_address": "192.168.0.11",
         "tokens": [
             {
                 "token_id": "162",
@@ -85,7 +85,7 @@
     },
     {
         "name": "AP02r",
-        "ip_address": "",
+        "ip_address": "192.168.0.28",
         "tokens": [
             {
                 "token_id": "382",
@@ -295,7 +295,7 @@
     },
     {
         "name": "AP06",
-        "ip_address": "",
+        "ip_address": "192.168.0.16",
         "tokens": [
             {
                 "token_id": "202",
@@ -337,7 +337,7 @@
     },
     {
         "name": "AP07m",
-        "ip_address": "",
+        "ip_address": "192.168.0.17",
         "tokens": [
             {
                 "token_id": "222",
@@ -361,7 +361,7 @@
     },
     {
         "name": "AP07r",
-        "ip_address": "",
+        "ip_address": "192.168.0.33",
         "tokens": [
             {
                 "token_id": "422",
@@ -385,7 +385,7 @@
     },
     {
         "name": "AL01",
-        "ip_address": "",
+        "ip_address": "192.168.0.1",
         "tokens": [
             {
                 "token_id": "21",

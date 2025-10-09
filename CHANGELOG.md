@@ -2,6 +2,42 @@
 
 ## [Unreleased]
 
+### Sequential Execution Controls (2025-01-20)
+- [FIX] **Print All Nodes execution bug** - Fixed critical issue where only first node's commands executed when using "Print All Nodes" button
+- [IMPROVEMENT] Refactored `process_all_nodes_print_commands()` to reuse proven `process_node_print_commands()` mechanism instead of custom sequential processor
+- [IMPROVEMENT] Implemented QTimer-based command chaining using `command_queue.is_processing` property to detect when each node's commands complete
+- [IMPROVEMENT] Added `_check_sequential_processing_continuation()` method to bridge command completion and next node processing
+- [TECHNICAL] Uses 100ms QTimer delay to ensure CommandQueue state updates before checking if queue is idle
+- [TECHNICAL] Properly queues FBC and RPC commands through `fbc_service.queue_fieldbus_command()` and `rpc_service.queue_rpc_command()`
+- [TEST] All 27 existing tests pass (18 unit + 9 integration) - no regressions introduced
+- [DOCUMENTATION] Created comprehensive technical guide `print_all_nodes_execution_fix.md` documenting architecture, implementation, and chaining mechanism
+- [RESULT] All nodes now execute commands correctly, log files are written, and colors update as expected
+
+### Pause/Resume/Cancel Controls (2025-01-19)
+- [FEATURE] Implemented pause/resume/cancel controls for sequential command execution in Commander window
+- [FEATURE] Added three control buttons to Commander toolbar: Pause, Resume, Cancel
+- [FEATURE] Created ExecutionState enum (IDLE/RUNNING/PAUSED/CANCELLED) for state machine management
+- [FEATURE] Enhanced SequentialCommandProcessor with pause/resume/cancel methods
+- [FEATURE] Implemented visual tree tracking - automatically expands tree and highlights current file during execution
+- [FEATURE] Added real-time status messages showing progress: "Processing node 3/15: AP03m..."
+- [FIX] Fixed 9 LogWriter API mismatches (incorrect logging levels, missing methods)
+- [IMPROVEMENT] Refactored LogWriter API calls from unsupported methods to `write_to_log()` and `write_to_app_log()`
+- [IMPROVEMENT] Created `_generate_log_path()` method to replace non-existent `open_log_for_token()` method
+- [TEST] Created comprehensive test suite `test_pause_resume_cancel.py` with 18 unit tests covering state transitions, process control, signal emission, edge cases
+- [TEST] Created integration test suite `test_sequential_integration.py` with 9 tests covering realistic execution, pause/resume cycles, cancellation, visual tracking
+- [TEST] All 27 tests passing (100% success rate)
+- [DOCUMENTATION] Created implementation guide `pause_resume_cancel_controls.md` with architecture, state machine, signal flow diagrams
+- [DOCUMENTATION] Created LogWriter API refactoring guide `logwriter_api_refactoring.md` documenting all 9 API fixes
+
+### Node Configuration Enhancements (2025-10-09)
+- [FEATURE] Implemented visual node validation with color coding in Node Configurator: green for complete nodes (all required fields), red for incomplete nodes
+- [FEATURE] Added `validate_node()` method to check node completeness: name (required), IP address (required), types (required), tokens (required for FBC/RPC types)
+- [FEATURE] Enhanced standalone tokenid.sys file loading - when loading only token files (e.g., "162.sys"), automatically matches token to existing nodes and updates IP addresses
+- [FEATURE] Real-time color updates as users edit node properties in the configuration dialog
+- [IMPROVEMENT] Node list now provides immediate visual feedback on configuration status, eliminating need to manually check each field
+- [IMPROVEMENT] Standalone token file support enables incremental IP address updates without reloading entire configuration
+- [TEST] Created comprehensive test suite `test_node_config_validation.py` with 13 test cases covering validation logic, color coding, and standalone token matching
+
 ### Node-Level Print Command Execution
 - [FEATURE] Renamed node context menu from "Execute All Commands Hierarchically" to "Execute All Print Commands for [nodename]"
 - [FEATURE] Implemented `process_node_print_commands()` method that executes ONLY print-based commands (FBC print, RPC print, LOG display) - excludes BsTool processing

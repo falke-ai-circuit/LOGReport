@@ -7,6 +7,7 @@ import logging
 import gc
 import weakref
 from typing import List, Optional, Callable
+from enum import Enum
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QCoreApplication
 from typing import Tuple
 import datetime
@@ -24,6 +25,14 @@ from ..utils.circuit_breaker import CircuitBreaker
 from ..constants import DEFAULT_TIMEOUT
 
 
+class ExecutionState(Enum):
+    """Execution states for sequential command processing."""
+    IDLE = "idle"
+    RUNNING = "running"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+
+
 class SequentialCommandProcessor(QObject):
     """Processor for sequential execution of FBC/RPC commands with resource management."""
 
@@ -31,6 +40,8 @@ class SequentialCommandProcessor(QObject):
     status_message = pyqtSignal(str, int)  # message, duration
     progress_updated = pyqtSignal(int, int)  # current, total
     processing_finished = pyqtSignal(int, int)  # success_count, total_count
+    current_file_processing = pyqtSignal(str, object, str)  # node_name, token, file_path
+    execution_state_changed = pyqtSignal(object)  # ExecutionState
 
     def __init__(self, command_queue: CommandQueue, fbc_service: FbcCommandService,
                  rpc_service: RpcCommandService, session_manager: SessionManager,
@@ -63,6 +74,9 @@ class SequentialCommandProcessor(QObject):
         self._telnet_client = None
         self._batch_id = None  # Store batch ID
         self._action = "print"  # Default action
+        
+        # Execution state management
+        self._execution_state = ExecutionState.IDLE
         
         # Safety mechanisms
         self._circuit_breaker = CircuitBreaker(failure_threshold=3, timeout=60)
@@ -132,6 +146,8 @@ class SequentialCommandProcessor(QObject):
         self._action = action
         self._batch_id = self._generate_batch_id()  # Add batch ID for logging
         self._processing_start_time = time.time()  # Track overall processing time
+        self._execution_state = ExecutionState.RUNNING  # Set state to RUNNING
+        self.execution_state_changed.emit(self._execution_state)  # Notify state change
 
         if not tokens:
             self.logger.info("SequentialCommandProcessor: No tokens to process")
@@ -141,11 +157,10 @@ class SequentialCommandProcessor(QObject):
         self.status_message.emit(f"Processing {len(tokens)} tokens sequentially...", 0)
         self.logger.info(f"SequentialCommandProcessor: Starting sequential processing of {len(tokens)} tokens for node {node_name}")
 
-        # Start batch logging
-        self.logging_service.start_batch_logging(
-            batch_id=self._batch_id,
-            node_name=node_name,
-            token_count=len(tokens)
+        # Log batch start
+        self.logging_service.write_to_app_log(
+            f"Batch {self._batch_id}: Starting sequential processing - Node: {node_name}, Tokens: {len(tokens)}",
+            level=logging.INFO
         )
                 
         # Process the first token to start the chain
@@ -153,6 +168,16 @@ class SequentialCommandProcessor(QObject):
 
     def _process_next_token(self) -> None:
         """Process the next token in the sequence."""
+        # Check execution state first
+        if self._execution_state == ExecutionState.PAUSED:
+            self.logger.info("SequentialCommandProcessor: Processing paused, waiting for resume")
+            return  # Wait for resume() to be called
+        
+        if self._execution_state == ExecutionState.CANCELLED:
+            self.logger.info("SequentialCommandProcessor: Processing cancelled, finishing")
+            self._finish_processing()
+            return
+        
         # Check if we've processed all tokens
         if self._current_token_index >= self._total_commands:
             self._finish_processing()
@@ -189,14 +214,11 @@ class SequentialCommandProcessor(QObject):
             if not node_ip or not self._is_valid_ip(node_ip):
                 node_ip = "0.0.0.0"  # Default for invalid IPs
                 self.logger.warning(f"Invalid node IP for token {token.token_id}, using default")                
-            # Generate unique log path and open log
-            log_path = self.logging_service.open_log_for_token(
-                token_id=token.token_id,
-                node_name=self._node_name,
-                node_ip=node_ip,
-                protocol=token.token_type,
-                batch_id=self._batch_id
-            )
+            # Generate log path using local helper method
+            log_path = self._generate_log_path(token, self._node_name, token.token_type)
+            
+            # Emit signal for tree highlighting (before processing command)
+            self.current_file_processing.emit(self._node_name, token, log_path)
             
             # Write standardized header with token metadata
             header = (
@@ -207,7 +229,7 @@ class SequentialCommandProcessor(QObject):
                 f"  Protocol: {token.token_type}\n"
                 f"  Batch ID: {self._batch_id}"
             )
-            self.logging_service.log(header)
+            self.logging_service.write_to_app_log(header, level=logging.INFO)
             
             # Prepare token based on type
             if token.token_type == "FBC":
@@ -337,11 +359,10 @@ class SequentialCommandProcessor(QObject):
         self.status_message.emit(f"Processing {len(tokens)} tokens sequentially...", 0)
         self.logger.info(f"SequentialCommandProcessor: Starting sequential processing of {len(tokens)} tokens for node {node_name}")
 
-        # Start batch logging
-        self.logging_service.start_batch_logging(
-            batch_id=self._batch_id,
-            node_name=node_name,
-            token_count=len(tokens)
+        # Log batch start
+        self.logging_service.write_to_app_log(
+            f"Batch {self._batch_id}: Starting sequential processing - Node: {node_name}, Tokens: {len(tokens)}",
+            level=logging.INFO
         )
                 
         # Process the first token to start the chain
@@ -434,6 +455,37 @@ class SequentialCommandProcessor(QObject):
         """Generate unique batch ID for logging"""
         import uuid
         return str(uuid.uuid4())[:8]
+        
+    def _generate_log_path(self, token: NodeToken, node_name: str, protocol: str) -> str:
+        """
+        Generate log file path for a token following LogWriter conventions.
+        
+        Args:
+            token: NodeToken object
+            node_name: Node name  
+            protocol: Protocol type (FBC, RPC, etc.)
+            
+        Returns:
+            Absolute path to log file
+        """
+        import os
+        
+        # Determine log directory
+        log_dir = os.path.join("test_logs", protocol.upper())
+        if node_name:
+            log_dir = os.path.join(log_dir, node_name)
+        
+        # Ensure directory exists
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Generate filename using same logic as LogWriter.write_to_log()
+        if hasattr(token, 'token_id') and hasattr(token, 'ip_address'):
+            formatted_ip = token.ip_address.replace('.', '-')
+            filename = f"{node_name}_{formatted_ip}_{token.token_id}.{protocol.lower()}"
+        else:
+            filename = f"{node_name}.{protocol.lower()}"
+        
+        return os.path.abspath(os.path.join(log_dir, filename))
 
     def _prepare_token_context(self, token: NodeToken, protocol: str, batch_id: str) -> dict:
         """
@@ -462,14 +514,8 @@ class SequentialCommandProcessor(QObject):
                 node_ip = "0.0.0.0"  # Default for invalid IPs
                 self.logger.warning(f"Invalid node IP for token {token.token_id}, using default")
 
-            # Generate unique log path and open log
-            log_path = self.logging_service.open_log_for_token(
-                token_id=token.token_id,
-                node_name=self._node_name,
-                node_ip=node_ip,
-                protocol=protocol,
-                batch_id=batch_id
-            )
+            # Generate log path using local helper method
+            log_path = self._generate_log_path(token, self._node_name, protocol)
 
             # Write standardized header with token metadata
             header = (
@@ -480,7 +526,7 @@ class SequentialCommandProcessor(QObject):
                 f"  Protocol: {protocol}\n"
                 f"  Batch ID: {batch_id}"
             )
-            self.logging_service.log(header)
+            self.logging_service.write_to_app_log(header, level=logging.INFO)
 
             return {
                 "normalized_token": normalized_token,
@@ -602,7 +648,7 @@ class SequentialCommandProcessor(QObject):
             )
             if not success:
                 log_entry += f"  Error: {result}\n"
-            self.logging_service.log(log_entry)
+            self.logging_service.write_to_app_log(log_entry, level=logging.INFO if success else logging.ERROR)
 
         # Release telnet client after each command
         self._release_telnet_client()
@@ -638,6 +684,8 @@ class SequentialCommandProcessor(QObject):
         """Finish processing and emit completion signals."""
         self.logger.info(f"SequentialCommandProcessor: Finishing processing - {self._success_count}/{self._total_commands} commands successful")
         self._is_processing = False
+        self._execution_state = ExecutionState.IDLE
+        self.execution_state_changed.emit(self._execution_state)
 
         # Perform manual cleanup of completed commands
         cleaned_count = self.command_queue.manual_cleanup()
@@ -656,12 +704,10 @@ class SequentialCommandProcessor(QObject):
 
         self.processing_finished.emit(self._success_count, self._total_commands)
 
-        # End batch logging
-        self.logging_service.end_batch_logging(
-            batch_id=self._batch_id,
-            node_name=self._node_name,
-            success_count=self._success_count,
-            total_count=self._total_commands
+        # Log batch completion
+        self.logging_service.write_to_app_log(
+            f"Batch {self._batch_id}: Completed processing - Node: {self._node_name}, Success: {self._success_count}/{self._total_commands}",
+            level=logging.INFO
         )
 
     def _release_telnet_client(self) -> None:
@@ -684,11 +730,47 @@ class SequentialCommandProcessor(QObject):
         """Stop processing commands."""
         self.logger.info("SequentialCommandProcessor: Stopping command processing")
 
+        self._execution_state = ExecutionState.IDLE
         self._is_processing = False
         self.command_queue.clear_queue()
         # Perform manual cleanup of any remaining completed commands
         self.command_queue.manual_cleanup()
         self._finish_processing()
+    
+    def pause(self) -> None:
+        """Pause the sequential processing."""
+        if self._execution_state == ExecutionState.RUNNING:
+            self.logger.info("SequentialCommandProcessor: Pausing execution")
+            self._execution_state = ExecutionState.PAUSED
+            self.execution_state_changed.emit(self._execution_state)
+            self.status_message.emit("Processing paused", 3000)
+        else:
+            self.logger.warning(f"SequentialCommandProcessor: Cannot pause from state {self._execution_state.value}")
+    
+    def resume(self) -> None:
+        """Resume the paused sequential processing."""
+        if self._execution_state == ExecutionState.PAUSED:
+            self.logger.info("SequentialCommandProcessor: Resuming execution")
+            self._execution_state = ExecutionState.RUNNING
+            self.execution_state_changed.emit(self._execution_state)
+            self.status_message.emit("Processing resumed", 3000)
+            # Continue processing from where we left off
+            self._process_next_token()
+        else:
+            self.logger.warning(f"SequentialCommandProcessor: Cannot resume from state {self._execution_state.value}")
+    
+    def cancel(self) -> None:
+        """Cancel the sequential processing."""
+        if self._execution_state in (ExecutionState.RUNNING, ExecutionState.PAUSED):
+            self.logger.info("SequentialCommandProcessor: Cancelling execution")
+            self._execution_state = ExecutionState.CANCELLED
+            self.execution_state_changed.emit(self._execution_state)
+            self.status_message.emit("Processing cancelled", 3000)
+            # Finish processing will be called on next iteration
+            if self._execution_state == ExecutionState.CANCELLED:
+                self._finish_processing()
+        else:
+            self.logger.warning(f"SequentialCommandProcessor: Cannot cancel from state {self._execution_state.value}")
 
     def cleanup_completed_commands(self) -> None:
         """Manually cleanup completed commands from queue"""
@@ -722,12 +804,8 @@ class SequentialCommandProcessor(QObject):
         self._batch_id = batch_id
 
         for i, token in enumerate(tokens):
-            # Initialize log file for this token
-            log_path = self.logging_service.open_log_for_token(
-                token.token_id,
-                protocol,
-                batch_id
-            )
+            # Generate log path using local helper method
+            log_path = self._generate_log_path(token, self._node_name, protocol)
 
             try:
                 # Normalize token according to protocol rules
