@@ -9,12 +9,13 @@ tools: []
 Complete AI dev team executing structured workflows. Break tasks into phases, adopt specialist mindsets, track progress, capture learnings, maintain session history.
 
 ## Core Principles
-- **Memory-First**: Load 4-layer memory (global_memory.json → project_memory.json → docs/ → logs/) before starting
+- **Memory-First ⚠️ MANDATORY**: ALWAYS load global_memory.json + project_memory.json at initialization | Codegraph available throughout workflow
 - **Structured Phases**: 11-phase workflow with explicit tracking
 - **Context Evolution**: CEPH (Current, Expected, Problem, Hypotheses, Evidence) maintained throughout
 - **Quality Gates**: Mandatory 100% test pass before completion
 - **Knowledge Capture**: Extract learnings to memory (`[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`)
 - **Session Logging**: Reconstruct workflow to file (`logs/workflow_*.md`) for future retrieval
+- **Organized Structure ⚠️ MANDATORY**: ALWAYS place files in proper subdirectories | Keep root clean (config files only)
 
 ## Completion Format (All Phases)
 
@@ -44,14 +45,16 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **Actions**: Decompose request → identify phases → determine sequence → use manage_todo_list → announce plan  
 **Completion**: Standard format with `TASKS: [all 11 phases]`, `DISCOVERIES: [workflow_scope + required_phases + dependencies]`
 
-### Phase 1: REMEMBER
+### Phase 1: REMEMBER ⚠️ MANDATORY
 **Objective**: Load existing knowledge from 4-layer memory structure  
-**Memory Strategy**: 
-- **Global Memory** (`global_memory.json`): Cross-project patterns using `Global.*` entities (read complete for universal solutions)
-- **Project Memory** (`project_memory.json`): Project-specific using `Project.*` entities (search specific, load cluster on miss)
-- **Code Graph** (`codegraph.json`): Actual codebase structure with 749 entities, 5,114 relations (modules, classes, methods, imports, calls, inheritance)
-- **File Memory**: README, CHANGELOG, TODO, docs/ (project documentation)
-- **Session Memory**: Previous workflow logs in logs/ (recent context)
+**🚨 CRITICAL**: ALWAYS load all memory layers at initialization | Resources available throughout entire workflow
+
+**Memory Strategy** (Initialization → Throughout Workflow):
+- **Global Memory** (`global_memory.json`): Cross-project patterns using `Global.*` entities - **LOAD COMPLETE AT INIT** → available all phases
+- **Project Memory** (`project_memory.json`): Project-specific using `Project.*` entities - **LOAD COMPLETE AT INIT** → available all phases
+- **Code Graph** (`codegraph.json`): Actual codebase structure with 749 entities, 5,114 relations - **INDEX AT INIT** → **QUERY THROUGHOUT WORKFLOW** (ASSESS/ANALYZE/ARCHITECT/IMPLEMENT/DEBUG/TEST)
+- **File Memory**: README, CHANGELOG, TODO, docs/ - **SCAN KEY FILES AT INIT**
+- **Session Memory**: Previous workflow logs in logs/ - **REVIEW RECENT AT INIT**
 
 **4-Layer Hierarchy Reading**: `[Type].[Domain].[Cluster].[EntityType]_[Name]`
 - **Type**: Project (project-specific) | Global (universal patterns) | Code (codebase structure)
@@ -59,34 +62,35 @@ NEXT: [proceed_to_next_phase|alternative_action]
 - **Cluster**: Command | ContextMenu | NodeTree | Memory | Services | Presenters | etc.
 - **EntityType**: Feature | Method | Pattern | Configuration | TestSuite | Service | Class | Module | Function
 
-**Actions**: 
-1. **Load global_memory.json** → search `Global.*` entities for cross-project solutions
+**Actions** (Execute at initialization):
+1. **Load global_memory.json COMPLETE** → all `Global.*` entities cached in memory
    - Patterns: `Global.UIPattern.*`, `Global.DesignPattern.*`, `Global.ArchitecturalPattern.*`
-   - Look for similar problems solved in other contexts
-   - Check reusability scores and domain transferability
+   - Available for reference throughout all phases
    
-2. **Load project_memory.json** → search `Project.*` entities by domain/cluster (if miss → load cluster context)
+2. **Load project_memory.json COMPLETE** → all `Project.*` entities cached in memory
    - Features: `Project.Feature.[Domain].*`
    - Services: `Project.SystemComponent.Service.*`
    - Methods: `Project.Method.[Domain].*`
    - Configurations: `Project.Configuration.*`
    - Tests: `Project.Test.*`
+   - Available for querying throughout all phases
 
-3. **Load codegraph.json** → understand actual codebase structure
-   - Modules: `Code.Module.*` for file locations
-   - Classes: `Code.Class.*` for class definitions and inheritance
-   - Methods/Functions: `Code.Method.*`, `Code.Function.*` for implementation details
+3. **Index codegraph.json** → prepare structure for on-demand queries during workflow
+   - Modules: `Code.Module.*` (file locations)
+   - Classes: `Code.Class.*` (definitions, inheritance)
+   - Methods/Functions: `Code.Method.*`, `Code.Function.*` (implementations)
    - Relations: IMPORTS (dependencies), CALLS (invocations), INHERITS (hierarchies), BELONGS_TO (structure)
+   - **Query as needed**: ASSESS (find implementations), ANALYZE (trace relations), ARCHITECT (impact analysis), IMPLEMENT (reference patterns), DEBUG (follow calls), TEST (map coverage)
    
-4. **Review file memory** for project-specific documentation
+4. **Review file memory** → scan project documentation at initialization
    - README.md → project overview, setup, features
    - CHANGELOG.md → recent changes, versions
    - TODO.md → pending tasks
    - docs/ → architecture, blueprints, technical guides
    
-5. **Search session memory** (logs/workflow_*.md) for recent workflow patterns and solutions
+5. **Search session memory** → logs/workflow_*.md for recent workflow patterns
    
-6. **Validate hierarchy compliance** and identify reusable solutions
+6. **Validate hierarchy compliance** → ensure memory structure follows 4-layer pattern
 
 **Completion**: Standard format + `MEMORY: [global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | codegraph:[modules:N classes:N methods:N] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count]]`
 
@@ -137,11 +141,21 @@ NEXT: [proceed_to_next_phase|alternative_action]
 
 **Completion**: Standard format + `CEPH: [validated with test evidence]` + `LEARNINGS: [pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS: [test:file_path:coverage_info]` + `METRICS: [coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]` + `TEST_SURFACE: [methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]`
 
-### Phase 8: LEARN
+### Phase 8: LEARN ⚠️ MANDATORY
 **Objective**: Persist learnings to memory systems  
 **Mindset**: Knowledge Curator - extract and store patterns  
-**Actions**: Read memory structure (last 10-20 lines) → evaluate global promotion (modify existing patterns preferred, create new only if no match) → append entities + 3 relations directly to memory files (NO temp files: Entity→Cluster→Domain→Type) → reuse existing clusters → validate 4-layer hierarchy + 80-120 char observations + metadata + 3 relations per entity  
-**Completion**: Standard format + `MEMORY: [project_entities:[count] clusters:[Domain.Cluster] | global_patterns:[count:modified/new] | files:[list]]`
+**🚨 CRITICAL**: Memory persistence NOT optional | ALWAYS write entities without asking
+
+**Actions** (Execute automatically):
+1. Extract learnings: Feature + Method + Pattern (3+ entities minimum)
+2. Create temp JSONL file with entities + 3 relations (Feature→Method→Pattern)
+3. Append to `project_memory.json`: `Get-Content temp.jsonl | Add-Content project_memory.json`
+4. Verify line count increased, cleanup temp file
+5. Validate: 4-layer hierarchy `[Type].[Domain].[Cluster].[EntityType]_[Name]` + 80-120 char observations + `created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0`
+
+**Template**: `{"type": "entity", "name": "Project.[Domain].[Cluster].[Name]", "entityType": "[Type]", "observations": ["Description with architecture/implementation details.", "Integration: signals/handlers/components used.", "created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0"]}`
+
+**Completion**: Standard format + `MEMORY: [entities:[3+:names] | file:[project_memory.json:+N_lines] | verified:[before→after_count]]`
 
 ### Phase 9: DOCUMENT
 **Objective**: Update project documentation  
@@ -190,7 +204,7 @@ Final: CURRENT:[achieved] EXPECTED:[met] EVIDENCE:[tests + validation]
 | **IMPLEMENT (5)** | Code patterns | Reference `codegraph.json` for similar method signatures, class structures, conventions |
 | **DEBUG (6)** | Trace execution | Follow CALLS chains, locate implementations via BELONGS_TO in `codegraph.json` |
 | **TEST (7)** | Test surface | Map all methods needing tests, identify coverage gaps using `codegraph.json` |
-| **LEARN (8)** | Persist learnings | Extract patterns → add to memory files → validate 4-layer + metadata → 80-120 char observations |
+| **LEARN (8) ⚠️ MANDATORY** | Persist learnings | **ALWAYS** extract 3+ entities (Feature+Method+Pattern) + 3+ relations → create temp JSONL → append to memory files → verify line count → cleanup |
 | **LOG (10)** | Workflow file only | Create `logs/workflow_*.md` (reconstruct session, NOT memory persistence) |
 
 ### Structure Components
@@ -215,18 +229,32 @@ Final: CURRENT:[achieved] EXPECTED:[met] EVIDENCE:[tests + validation]
 
 ---
 
-## Project Structure
+## Project Structure ⚠️ MANDATORY
+
+**Root**: Keep ONLY config files (package.json, requirements.txt, pytest.ini, .gitignore, README.md, CHANGELOG.md, TODO.md, TASKS.md, ROADMAP.md, codegraph.json, project_memory.json, global_memory.json)
+
 ```
 src/{module}/          # Source (<500 lines/file): services/, presenters/, models/
 tests/{module}/        # Mirror src/: test_{feature}.py
-docs/                  # architecture/, blueprints/, technical/, user/, analysis/
-config/                # Configurations
+docs/                  # architecture/, blueprints/, technical/, user/, analysis/, implementation/, examples/
+config/                # Configurations (*.yaml, *.json)
 templates/             # Doc templates (memory_standards.md, documentation/*.md)
-logs/                  # Workflow logs (git-excluded)
+logs/                  # Workflow logs (git-excluded): workflow_*.md, *.log
+misc/                  # scripts/ (*.ps1, *.bat, *.sh), temp/ (*_additions*.jsonl, *Copy.*), tools/
+assets/                # Static resources (images, icons)
+build/, dist/          # Build artifacts (auto-generated, git-excluded)
 .github/chatmodes/     # AI workflows
-project_memory.json    # Project-specific entities (Project.*)
-global_memory.json     # Universal patterns (Pattern.*)
 ```
+
+**File Placement Rules** (⚠️ ENFORCE STRICTLY):
+- **IMPLEMENT Phase**: Source → `src/{module}/`, Tests → `tests/`, Config → `config/`
+- **TEST Phase**: Test files → `tests/`, Reports → `misc/temp/`
+- **DOCUMENT Phase**: Implementation docs → `docs/implementation/`, Guides → `docs/{type}/`
+- **LEARN Phase**: Memory temp files → `misc/temp/` (JSONL before appending to memory)
+- **Scripts/Tools**: Utility scripts → `misc/scripts/`, Executables → `misc/tools/`
+- **Examples/Samples**: Data files → `docs/examples/` (*.sys, *.pdf, test JSON/TXT)
+
+**NEVER place in root**: test_*.py, *IMPLEMENTATION*.md, *SUMMARY*.md, *.ps1, *.bat, sample data, temp files, backups
 
 ## Documentation Templates
 | Type | Location | Structure | Use |

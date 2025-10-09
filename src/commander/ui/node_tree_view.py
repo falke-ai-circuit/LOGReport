@@ -18,6 +18,7 @@ class NodeTreeView(QWidget):
     load_nodes_clicked = pyqtSignal()
     set_log_root_clicked = pyqtSignal()
     item_expanded = pyqtSignal(object)  # QTreeWidgetItem
+    print_all_nodes_clicked = pyqtSignal()  # Triggered when "Print All Nodes" button is clicked
     
     def __init__(self):
         super().__init__()
@@ -45,12 +46,18 @@ class NodeTreeView(QWidget):
         
         layout.addWidget(self.node_tree, 1)  # Add stretch factor
         
+        # Print All Nodes Button (at bottom)
+        self.print_all_nodes_btn = QPushButton("Print All Nodes")
+        self.print_all_nodes_btn.setToolTip("Execute print commands for all nodes sequentially (FBC → RPC → LOG)")
+        layout.addWidget(self.print_all_nodes_btn)
+        
         # Apply styling
         self.setStyleSheet(STYLESHEETS.get_application_stylesheet())
         
         # Connect signals
         self.load_nodes_btn.clicked.connect(self.load_nodes_clicked.emit)
         self.set_log_root_btn.clicked.connect(self.set_log_root_clicked.emit)
+        self.print_all_nodes_btn.clicked.connect(self.print_all_nodes_clicked.emit)
         self.node_tree.itemClicked.connect(self._on_item_clicked)
         self.node_tree.itemDoubleClicked.connect(self._on_item_double_clicked)
         self.node_tree.itemExpanded.connect(self._on_item_expanded)

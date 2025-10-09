@@ -733,6 +733,56 @@ class NodeTreePresenter(QObject):
             
         except Exception as e:
             self._report_error(f"Error in print command execution for node {node_name}", e)
+    
+    def process_all_nodes_print_commands(self):
+        """
+        Execute print commands for all nodes sequentially.
+        Iterates through all nodes and calls process_node_print_commands for each.
+        Provides progress updates and aggregate statistics.
+        """
+        logging.info("Starting print command execution for ALL nodes...")
+        self.status_message_signal.emit("Starting print command execution for ALL nodes...", 0)
+        
+        try:
+            # Get all nodes
+            all_nodes = self.node_manager.get_all_nodes()
+            
+            if not all_nodes:
+                self._report_error("No nodes available to process")
+                return
+            
+            total_nodes = len(all_nodes)
+            successful_nodes = 0
+            failed_nodes = 0
+            
+            logging.info(f"Found {total_nodes} nodes to process")
+            self.status_message_signal.emit(f"Processing {total_nodes} nodes...", 0)
+            
+            # Process each node sequentially
+            for index, node in enumerate(all_nodes, start=1):
+                node_name = node.name
+                logging.info(f"Processing node {index}/{total_nodes}: {node_name}")
+                self.status_message_signal.emit(
+                    f"Processing node {index}/{total_nodes}: {node_name}...", 
+                    0
+                )
+                
+                try:
+                    # Call the existing per-node print command handler
+                    self.process_node_print_commands(node_name)
+                    successful_nodes += 1
+                except Exception as e:
+                    logging.error(f"Failed to process node {node_name}: {str(e)}")
+                    failed_nodes += 1
+                    # Continue with next node even if this one fails
+            
+            # Final summary message
+            summary = f"Print all nodes complete: {successful_nodes} successful, {failed_nodes} failed (total: {total_nodes})"
+            logging.info(summary)
+            self.status_message_signal.emit(summary, 8000)
+            
+        except Exception as e:
+            self._report_error("Error in bulk print command execution for all nodes", e)
         
     def process_node_hierarchical_commands(self, node_name: str):
         """

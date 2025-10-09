@@ -226,6 +226,7 @@ class CommanderWindow(QMainWindow):
         self.node_tree_view.node_selected.connect(self.on_node_selected)
         self.node_tree_view.node_double_clicked.connect(self._on_node_double_clicked)
         self.node_tree_view.context_menu_requested.connect(self.show_context_menu)
+        self.node_tree_view.print_all_nodes_clicked.connect(self.node_tree_presenter.process_all_nodes_print_commands)
         
     def _save_bstool_path(self, path: str):
         """Save the BsTool path to settings"""
