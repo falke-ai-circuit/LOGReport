@@ -244,18 +244,30 @@ class BsToolCommandService(QObject):
         """
         Get the path to bstool.exe, handling both development and bundled environments.
         
+        Uses hybrid approach for maximum compatibility:
+        1. PyInstaller frozen: Check sys._MEIPASS (temp extraction) then sys.executable directory
+        2. Development: Project root directory
+        
         Returns:
             str: Path to bstool.exe or empty string if not found
         """
         # Check if running in a bundled environment (PyInstaller)
         if getattr(sys, 'frozen', False):
-            # In bundled app, bstool.exe should be in the same directory as the executable
+            # Try sys._MEIPASS first (for onefile mode with temp extraction)
+            if hasattr(sys, '_MEIPASS'):
+                bstool_path = os.path.join(sys._MEIPASS, "BsTool.exe")
+                if os.path.exists(bstool_path):
+                    self.logger.debug(f"Found bstool.exe in _MEIPASS: {bstool_path}")
+                    return bstool_path
+            
+            # Fallback to executable directory (for onedir mode)
             bstool_path = os.path.join(os.path.dirname(sys.executable), "BsTool.exe")
+            self.logger.debug(f"Looking for bstool.exe in executable directory: {bstool_path}")
         else:
             # In development, bstool.exe should be in the project root
             bstool_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "BsTool.exe")
+            self.logger.debug(f"Looking for bstool.exe in project root: {bstool_path}")
             
-        self.logger.debug(f"Looking for bstool.exe at: {bstool_path}")
         return bstool_path
         
     def _run_bstool_process(self, command: list, env: dict, log_file_path: str):

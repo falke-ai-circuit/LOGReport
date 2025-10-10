@@ -246,13 +246,21 @@ build/, dist/          # Build artifacts (auto-generated, git-excluded)
 .github/chatmodes/     # AI workflows
 ```
 
-**File Placement Rules** (⚠️ ENFORCE STRICTLY):
-- **IMPLEMENT Phase**: Source → `src/{module}/`, Tests → `tests/`, Config → `config/`
+**File Placement Rules** (⚠️ ENFORCE STRICTLY - see `docs/DOCUMENTATION_STRUCTURE.md`):
+- **ANALYZE Phase**: Analysis reports → `docs/analysis/` (pattern: `[topic]_analysis.md`, `[topic]_report.md`)
+- **IMPLEMENT Phase**: Source → `src/{module}/`, Tests → `tests/`, Implementation summaries → `docs/implementation/` (pattern: `IMPLEMENTATION_SUMMARY_[feature].md`)
 - **TEST Phase**: Test files → `tests/`, Reports → `misc/temp/`
-- **DOCUMENT Phase**: Implementation docs → `docs/implementation/`, Guides → `docs/{type}/`
+- **DOCUMENT Phase**: Update core docs → `docs/{type}/` (ARCH_/TECH_/BLUEPRINT_/GUIDE_/ROADMAP_)
 - **LEARN Phase**: Memory temp files → `misc/temp/` (JSONL before appending to memory)
+- **LOG Phase**: Workflow logs → `logs/` (pattern: `workflow_[feature]_[YYYYMMDD_HHMMSS].md`)
 - **Scripts/Tools**: Utility scripts → `misc/scripts/`, Executables → `misc/tools/`
 - **Examples/Samples**: Data files → `docs/examples/` (*.sys, *.pdf, test JSON/TXT)
+
+**Workflow Output Lifecycle**:
+- `docs/analysis/` and `docs/implementation/` are **active working directories** for orchestrator workflow
+- Retention: 30 days active, then archive to `docs/archive/{type}/[YYYY-MM]/`
+- **NEVER delete** - always archive for historical reference
+- Key insights from workflow outputs should be integrated into core documentation during DOCUMENT phase
 
 **NEVER place in root**: test_*.py, *IMPLEMENTATION*.md, *SUMMARY*.md, *.ps1, *.bat, sample data, temp files, backups
 

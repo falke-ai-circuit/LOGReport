@@ -30,7 +30,7 @@ class UnifiedMemoryOptimizer:
         self.target_ratio = target_ratio
         self.entities = []
         self.relations = []
-        self.is_global = 'global' in memory_path.lower()
+        self.is_global = 'global' in str(memory_path).lower()
         self.prefix = 'Global' if self.is_global else 'Project'
         
         # Stats tracking
@@ -56,16 +56,20 @@ class UnifiedMemoryOptimizer:
         """Load JSONL memory file"""
         self.log(f"Loading: {self.memory_path.name}")
         
-        with open(self.memory_path, 'r', encoding='utf-8') as f:
-            for line in f:
+        with open(self.memory_path, 'r', encoding='utf-8-sig') as f:  # utf-8-sig handles BOM
+            for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
                     continue
-                data = json.loads(line)
-                if data.get('type') == 'entity':
-                    self.entities.append(data)
-                elif data.get('type') == 'relation' and 'from' in data and 'to' in data:
-                    self.relations.append(data)
+                try:
+                    data = json.loads(line)
+                    if data.get('type') == 'entity':
+                        self.entities.append(data)
+                    elif data.get('type') == 'relation' and 'from' in data and 'to' in data:
+                        self.relations.append(data)
+                except json.JSONDecodeError as e:
+                    self.log(f"Warning: Skipping invalid JSON at line {line_num}: {e}", "WARN")
+                    continue
         
         self.stats['original'] = self._calculate_stats()
         self.log(f"Loaded: {len(self.entities)} entities, {len(self.relations)} relations")

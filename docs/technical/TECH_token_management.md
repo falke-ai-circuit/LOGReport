@@ -617,7 +617,273 @@ def test_token_ip_association():
 
 ---
 
-## 🔍 Token ID Extraction
+## � SYS File Parsing Fixes
+
+### Recent Improvements (October 8, 2025)
+
+Fixed critical issues in SYS file parsing implementation to correctly handle main sys files (like `AB01_sys`) and token-specific sys files (like `181.sys`, `41.sys`) with proper token management and IP address association.
+
+### Problems Identified & Fixed
+
+#### 1. Token Extraction Bug
+**Location:** `src/node_config_dialog.py` line ~594  
+**Issue:** Code was assigning the entire tokens list instead of extracting the first element:
+```python
+token_id = node["tokens"]  # WRONG - assigns list ['181', '182', '183']
+```
+**Fix:** 
+```python
+token_id = node["tokens"][0]  # CORRECT - extracts first element '181'
+```
+
+#### 2. Single File Selection Limitation
+**Issue:** Dialog only allowed selecting one sys file at a time  
+**Fix:** Changed from `QFileDialog.getOpenFileName` to `getOpenFileNames` (plural) to support multiple file selection simultaneously
+
+#### 3. Incorrect Token Management
+**Issue:** Main/generic tokens (like 181 for AP02m) were being added to the tokens list, but they should only be used for IP address lookup. However, AL nodes need their single token in the list.
+
+**Fix:** 
+- **AP nodes**: Main tokens stored in `_main_token` field internally, NOT in tokens list
+- **AL nodes**: Main token IS in tokens list (AL has only one token for both purposes)
+- Only subordinate tokens (182, 183 for AP02m) are added to AP tokens list
+- `_main_token` is removed before saving node data (cleanup phase)
+
+**Example**:
+```python
+# AP02m node structure (before cleanup)
+{
+    "name": "AP02m",
+    "tokens": ["182", "183"],        # Subordinate tokens only
+    "_main_token": "181",             # For IP lookup
+    "log_type": "FBC",
+    "ip_address": ""
+}
+
+# AL02 node structure (before cleanup)
+{
+    "name": "AL02",
+    "tokens": [],                     # Empty (main token not operational)
+    "_main_token": "41",              # For IP lookup only
+    "log_type": "LOG",
+    "ip_address": ""
+}
+```
+
+#### 4. Merge vs Overwrite Behavior
+**Issue:** Sys file loading was merging with existing nodes instead of replacing them, causing confusion and inconsistent state.
+
+**Fix:** Changed to **overwrite mode** - loading sys files now replaces all existing nodes with a clean slate from the sys files.
+
+**Benefits**:
+- Predictable behavior (what you see in sys files is what you get)
+- No merge conflicts or unexpected state
+- Clean configuration reloads
+- Easier debugging and testing
+
+#### 5. IP Address Association Logic
+**Issue:** IP addresses weren't being correctly associated with nodes from token-specific sys files.
+
+**Fix:** 
+- Token-specific files (`181.sys`, `41.sys`) are detected by numeric filename pattern
+- IP is extracted only from token-specific files (not from main sys files)
+- IP is mapped to nodes via their `_main_token` field (not first token in list)
+- Auto-discovery of token sys files in the same directory as main sys file
+
+**IP Association Flow**:
+```
+1. Load main file (AB01_sys) → nodes have _main_token set
+2. Load token files (181.sys, 41.sys) → extract IPs into mapping {token: IP}
+3. Associate IPs → match node._main_token to token in mapping
+4. Result: node.ip_address = token_mapping[node._main_token]
+```
+
+### Files Modified
+
+#### 1. `src/utils/file_utils.py`
+
+**`parse_sys_file()` Enhancements**:
+- Added `_main_token` field to store main/generic token for IP lookup
+- **AP nodes**: Main tokens (181) are NOT added to tokens list, only subordinate tokens (182, 183)
+- **AL nodes**: Main token (41) is NOT added to tokens list (empty list for operational tokens)
+- Better detection of token-specific files vs main sys files (numeric filename pattern)
+- Improved docstring extraction and metadata handling
+
+**`merge_node_data()` Improvements**:
+- Handles both old format (tokens as strings) and new format (tokens as objects)
+- Better merging logic for tokens and types
+- Preserves `_main_token` during merge for IP association
+- Cleans up internal fields before final save
+
+#### 2. `src/node_config_dialog.py`
+
+**`load_sys_file()` Refactoring**:
+- Changed to `getOpenFileNames` for multiple file selection
+- Categorizes files into main sys files and token-specific sys files
+- Parses main files without IP extraction
+- Parses token files with IP extraction
+- Auto-discovers token sys files in same directory as selected main file
+- Uses `_main_token` for IP lookup instead of first token in list
+- **OVERWRITE MODE**: Replaces existing nodes instead of merging
+- Cleans up `_main_token` field before saving (internal field only)
+- Provides informative user feedback about files loaded and nodes created
+
+#### 3. `tests/test_sys_file_parsing_fixed.py`
+
+**Updated Test Suite**:
+- Verifies AP02m has tokens `["182", "183"]` NOT `["181", "182", "183"]`
+- Verifies AL02 has empty tokens list `[]` (41 is main token only)
+- Verifies IP addresses correctly assigned via `_main_token`
+- Tests merge functionality with both old and new formats
+- Tests overwrite behavior
+- **Result**: All 5 tests now pass ✅
+
+### Complete Loading Flow Example
+
+**Scenario:** Loading `AB01_sys` with `181.sys` and `41.sys`
+
+**Step 1: Select Files**
+```
+User selects: AB01_sys, 181.sys, 41.sys
+(or just AB01_sys - auto-discovers 181.sys and 41.sys)
+```
+
+**Step 2: Categorization**
+```
+Main files: ['AB01_sys']           # Has node definitions
+Token files: ['181.sys', '41.sys']  # Has IP addresses
+```
+
+**Step 3: Parse Main File (`AB01_sys`)**
+```python
+# Result for AP02m:
+{
+    "name": "AP02m",
+    "tokens": ["182", "183"],      # Subordinate tokens only
+    "_main_token": "181",           # Main token for IP lookup
+    "log_type": "FBC",
+    "ip_address": ""
+}
+
+# Result for AL02:
+{
+    "name": "AL02",
+    "tokens": [],                   # Empty (no subordinate tokens)
+    "_main_token": "41",            # Main token for IP lookup
+    "log_type": "LOG",
+    "ip_address": ""
+}
+```
+
+**Step 4: Parse Token Files**
+```python
+# From 181.sys:
+token_ips["181"] = "192.168.0.12"
+
+# From 41.sys:
+token_ips["41"] = "192.168.0.2"
+
+# Result mapping:
+token_ips = {
+    "181": "192.168.0.12",
+    "41": "192.168.0.2"
+}
+```
+
+**Step 5: IP Association**
+```python
+# For each node, lookup IP using _main_token:
+AP02m._main_token = "181" → IP = token_ips["181"] = "192.168.0.12"
+AL02._main_token = "41"   → IP = token_ips["41"] = "192.168.0.2"
+
+# Update nodes:
+AP02m.ip_address = "192.168.0.12"
+AL02.ip_address = "192.168.0.2"
+```
+
+**Step 6: Cleanup & Save**
+```python
+# Remove internal _main_token field:
+for node in nodes:
+    node.pop('_main_token', None)
+
+# OVERWRITE existing nodes_data (doesn't merge):
+self.nodes_data = {}
+for node in nodes:
+    self.nodes_data[node['name']] = node
+
+# Final saved nodes (no _main_token):
+{
+    "AP02m": {
+        "name": "AP02m",
+        "tokens": ["182", "183"],
+        "log_type": "FBC",
+        "ip_address": "192.168.0.12"
+    },
+    "AL02": {
+        "name": "AL02",
+        "tokens": [],
+        "log_type": "LOG",
+        "ip_address": "192.168.0.2"
+    }
+}
+```
+
+### Node Type Comparison
+
+#### AP-Based Nodes (e.g., AP02m, AP01m)
+- **Main Token**: 181, 161 (used for IP lookup only, not in tokens list)
+- **Subordinate Tokens**: 182, 183 / 162, 163 (in tokens list for operations)
+- **Log Types**: FBC, RPC, LOG
+- **IP Association**: Via main token from token-specific sys file
+
+#### AL-Based Nodes (e.g., AL02, AL01)
+- **Main Token**: 41, 191 (used for IP lookup only, not in tokens list)
+- **Subordinate Tokens**: None (empty tokens list)
+- **Log Types**: LOG, LIS
+- **IP Association**: Via main token from token-specific sys file
+
+### Usage in Node Configuration Dialog
+
+**Loading SYS Files**:
+1. Click "Load Sys File" button in Node Configuration dialog
+2. Select one or more sys files:
+   - **Option A**: Just main file (`AB01_sys`) - will auto-discover token files in same directory
+   - **Option B**: Main + token files (`AB01_sys`, `181.sys`, `41.sys`) - explicit selection
+   - **Option C**: Just token files if nodes already exist - updates IPs only
+3. System processes files and **OVERWRITES** existing configuration
+4. Nodes displayed with correct tokens (subordinate only) and IP addresses
+5. User sees informative message: "Loaded X files, created/updated Y nodes"
+
+### Benefits of Fixes
+
+1. **Correct Token Management** - Main tokens properly separated from operational (subordinate) tokens
+2. **Multiple File Support** - Load all related sys files in single operation
+3. **Auto-Discovery** - Automatically finds token sys files in same directory as main file
+4. **Clean Overwrites** - Loading sys files gives fresh start, no merge confusion or stale state
+5. **Proper IP Association** - IPs correctly mapped via main tokens, not first token in list
+6. **Error Prevention** - No more "str object has no attribute 'get'" errors from list/dict confusion
+7. **Clear User Feedback** - Informative messages about files loaded and nodes created/updated
+8. **Consistent Behavior** - Predictable results match sys file contents exactly
+9. **Easier Testing** - Clear expectations, all tests passing
+10. **Better Debugging** - Overwrite mode eliminates merge-related bugs
+
+### Known Limitations
+
+- Auto-discovery only works for token files in same directory as main sys file
+- Token-specific files must have numeric filenames (e.g., `181.sys`, not `token_181.sys`)
+- Overwrite mode means existing manual edits are lost when loading sys files
+- No validation of token consistency across files
+
+### Related Documentation
+
+- [IMPLEMENTATION_SUMMARY_codegraph.md](../implementation/IMPLEMENTATION_SUMMARY_codegraph.md) - Related implementation patterns
+- [Node Configuration Dialog](../architecture/ARCH_node_system.md#node-configuration) - Dialog architecture
+- Test suite: `tests/test_sys_file_parsing_fixed.py` - Comprehensive test coverage
+
+---
+
+## �🔍 Token ID Extraction
 
 Token ID extraction handles various input formats and normalizes them.
 

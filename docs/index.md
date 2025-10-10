@@ -166,6 +166,27 @@ Core architectural documentation for the LOGReport system.- [#Performance & Test
 
 - [#Best Practices & Patterns](architecture/ARCH_memory_system.md#best-practices--patterns) - Usage guidelines- [#Overview](blueprints/BLUEPRINT_context_menu_v1.md#Overview)
 
+**Consolidates**: 12 source documents
+
+---
+
+### [ARCH_chatmode_orchestrator.md](architecture/ARCH_chatmode_orchestrator.md)
+
+**Chatmode Orchestrator Architecture** - 11-phase workflow system for GitHub Copilot
+
+- [#Overview](architecture/ARCH_chatmode_orchestrator.md#-overview) - Orchestrator architecture and evolution
+- [#Transformation Journey](architecture/ARCH_chatmode_orchestrator.md#-transformation-journey) - Kilocode → GitHub Copilot migration
+- [#Rule System](architecture/ARCH_chatmode_orchestrator.md#-rule-system) - 42 transformation rules in 6 categories
+- [#Memory Integration](architecture/ARCH_chatmode_orchestrator.md#-memory-integration) - 4-layer memory hierarchy
+- [#Optimization](architecture/ARCH_chatmode_orchestrator.md#️-optimization) - 40% workflow speedup
+- [#Architecture](architecture/ARCH_chatmode_orchestrator.md#️-architecture) - Complete 11-phase workflow structure
+- [#Integration Points](architecture/ARCH_chatmode_orchestrator.md#-integration-points) - LOGReport system connections
+- [#Results](architecture/ARCH_chatmode_orchestrator.md#-results) - Transformation metrics and achievements
+
+**References**: analysis/ directory (6 analysis reports used as sources)
+
+---
+
 - [#Architecture](blueprints/BLUEPRINT_context_menu_v1.md#Architecture)
 
 **Consolidates**: 12 source documents- [#Filtering Mechanism](blueprints/BLUEPRINT_context_menu_v1.md#Filtering Mechanism)
@@ -203,6 +224,27 @@ Detailed technical implementation documentation.- [#Benefits](blueprints/BLUEPRI
 - [#API Token Utilities](technical/TECH_token_management.md#api-token-utilities) - Utility functions- [#Phases](blueprints/BLUEPRINT_documents_condensation_v1.md#Phases)
 
 - [#Integration & Usage](technical/TECH_token_management.md#integration--usage) - Integration examples- [#Rules](blueprints/BLUEPRINT_documents_condensation_v1.md#Rules)
+
+**Consolidates**: 9 source documents
+
+---
+
+### [TECH_codegraph_system.md](technical/TECH_codegraph_system.md)
+
+**Code Graph System** - Automated code structure analysis and dependency tracking
+
+- [#Overview](technical/TECH_codegraph_system.md#-overview) - System purpose and integration points
+- [#Architecture](technical/TECH_codegraph_system.md#️-architecture) - 6-layer hierarchy and entity types
+- [#Generator](technical/TECH_codegraph_system.md#-generator) - Universal Python code graph generator
+- [#Usage Guide](technical/TECH_codegraph_system.md#-usage-guide) - Generation, queries, and maintenance
+- [#Integration](technical/TECH_codegraph_system.md#-integration) - CI/CD, orchestrator workflow, MCP server
+- [#Universal Capabilities](technical/TECH_codegraph_system.md#-universal-capabilities) - Cross-project usage
+- [#Best Practices](technical/TECH_codegraph_system.md#-best-practices) - Regeneration strategy and optimization
+
+**Consolidates**: 2 technical guides (CODEGRAPH_GENERATOR_GUIDE, CODEGRAPH_GUIDE)  
+**References**: implementation/ directory (3 implementation summaries used as sources)
+
+---
 
 - [#Test Strategy](blueprints/BLUEPRINT_documents_condensation_v1.md#Test Strategy)
 
