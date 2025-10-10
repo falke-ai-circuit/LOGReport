@@ -328,7 +328,41 @@ class NodeTreePresenter(QObject):
         file_item.setIcon(0, get_token_icon())
         self.file_item_map[normalized_file_path] = file_item
         logging.debug(f"_create_file_item: Added {normalized_file_path} to file_item_map. Current map size: {len(self.file_item_map)}")
+        
+        # Check file content on startup and apply persistent color
+        self._check_file_color_on_startup(normalized_file_path, file_item)
+        
         return file_item
+        
+    def _check_file_color_on_startup(self, file_path: str, file_item: QTreeWidgetItem):
+        """
+        Check file content on startup and apply persistent color.
+        
+        This method is called when files are loaded into the tree to apply colors
+        based on existing file content, providing color persistence across application restarts.
+        
+        Args:
+            file_path: The normalized path to the log file
+            file_item: The QTreeWidgetItem representing the file in the tree
+        """
+        # Check if file exists
+        if not os.path.exists(file_path):
+            logging.debug(f"_check_file_color_on_startup: File does not exist yet: {file_path}")
+            return  # File doesn't exist yet, no color to apply
+        
+        # Get line count from the file
+        line_count = self.log_writer.get_file_line_count(file_path)
+        
+        # Apply color based on content only (no command execution status needed)
+        if line_count == 0:
+            color = "red"  # No content
+        elif line_count < 10:
+            color = "yellow"  # Minimal content
+        else:
+            color = "green"  # Sufficient content
+        
+        self.view.update_node_color(file_item, color)
+        logging.debug(f"_check_file_color_on_startup: Applied {color} color to {file_path} ({line_count} lines)")
         
     def handle_command_completed(self, command: str, result: str, success: bool, token: NodeToken):
         """
@@ -374,6 +408,35 @@ class NodeTreePresenter(QObject):
         self.node_status[log_path]["lines_written_by_command"] = lines_written_by_command
         logging.debug(f"handle_log_write_completed: Log Path: {log_path}, Log Success: {success}, Total Line Count: {total_line_count}, Lines Written by Command: {lines_written_by_command}")
         self._check_and_update_node_color(log_path)
+        
+        # Trigger auto-expansion and highlighting for this file
+        # Extract node name and token from file_item_map
+        normalized_path = os.path.normpath(log_path)
+        file_item = self.file_item_map.get(normalized_path)
+        if file_item:
+            item_data = file_item.data(0, Qt.ItemDataRole.UserRole)
+            if item_data:
+                node_name = item_data.get("node")
+                token_id = item_data.get("token")
+                token_type = item_data.get("token_type")
+                ip_address = item_data.get("ip_address")
+                
+                # Create a minimal token object for highlighting
+                if node_name and token_id and token_type:
+                    # Create NodeToken-like object with necessary attributes
+                    class TokenInfo:
+                        def __init__(self, token_id, token_type, log_path):
+                            self.token_id = token_id
+                            self.token_type = token_type
+                            self.log_path = log_path
+                    
+                    token_info = TokenInfo(token_id, token_type, log_path)
+                    
+                    # Emit signal to trigger auto-expansion and highlighting
+                    self._highlight_current_file(node_name, token_info, log_path)
+                    logging.debug(f"handle_log_write_completed: Triggered auto-expansion for {log_path}")
+        else:
+            logging.debug(f"handle_log_write_completed: File item not found in map for {normalized_path}")
             
     def _check_and_update_node_color(self, log_path: str):
         """
@@ -774,6 +837,9 @@ class NodeTreePresenter(QObject):
         self.status_message_signal.emit("Starting print command execution for ALL nodes...", 0)
         
         try:
+            # FIRST: Expand entire tree to show all files and their status
+            self._expand_entire_tree()
+            
             # Get all nodes
             all_nodes = self.node_manager.get_all_nodes()
             
@@ -1242,27 +1308,16 @@ class NodeTreePresenter(QObject):
         try:
             logging.debug(f"_highlight_current_file: node={node_name}, token={token.token_id}, path={file_path}")
             
+            # First, ensure the entire node is expanded
+            self._expand_entire_node(node_name)
+            
             # Normalize the file path
             normalized_path = os.path.normpath(file_path)
             
-            # Look up the item in file_item_map
+            # Look up the item in file_item_map (should be available after expansion)
             file_item = self.file_item_map.get(normalized_path)
-            
-            if not file_item:
-                logging.debug(f"_highlight_current_file: Item not found in file_item_map for {normalized_path}")
-                logging.debug(f"_highlight_current_file: Available keys: {list(self.file_item_map.keys())}")
-                # Item might not be loaded yet - try to expand the node to load children
-                self._expand_to_file(node_name, token.token_type)
-                # Try again after expansion
-                file_item = self.file_item_map.get(normalized_path)
                 
             if file_item:
-                # Expand all parent items
-                parent = file_item.parent()
-                while parent:
-                    self.view.expandItem(parent)
-                    parent = parent.parent()
-                
                 # Set as current item and scroll to it
                 self.view.setCurrentItem(file_item)
                 self.view.scrollToItem(file_item)
@@ -1270,19 +1325,65 @@ class NodeTreePresenter(QObject):
                 logging.debug(f"_highlight_current_file: Successfully highlighted {normalized_path}")
             else:
                 logging.warning(f"_highlight_current_file: Could not find tree item for {normalized_path}")
+                logging.debug(f"_highlight_current_file: Available keys: {list(self.file_item_map.keys())}")
                 
         except Exception as e:
             logging.error(f"_highlight_current_file: Error highlighting file: {str(e)}")
     
-    def _expand_to_file(self, node_name: str, token_type: str):
+    def _expand_entire_tree(self):
         """
-        Expand tree to make sure the section containing the file is loaded.
-        
-        Args:
-            node_name: Name of the node
-            token_type: Type of token (FBC, RPC, LOG, LIS)
+        Expand ALL nodes in the tree and all their subgroups.
+        Called when "Print All Nodes" is clicked to make all files visible.
         """
         try:
+            logging.info("_expand_entire_tree: Expanding entire node tree...")
+            self.status_message_signal.emit("Expanding tree to show all files...", 2000)
+            
+            root = self.view.node_tree
+            expanded_count = 0
+            
+            # Iterate through all top-level nodes
+            for i in range(root.topLevelItemCount()):
+                node_item = root.topLevelItem(i)
+                item_data = node_item.data(0, Qt.ItemDataRole.UserRole)
+                
+                if item_data and item_data.get("type") == "node":
+                    node_name = item_data.get("node_name", "")
+                    
+                    # Expand the node if not already expanded
+                    if not node_item.isExpanded():
+                        self.view.expandItem(node_item)
+                        # Trigger lazy loading
+                        self.handle_item_expanded(node_item)
+                    
+                    # Expand ALL section items (FBC, RPC, LOG, LIS)
+                    for j in range(node_item.childCount()):
+                        section_item = node_item.child(j)
+                        section_type = section_item.text(0)
+                        
+                        if not section_item.isExpanded():
+                            self.view.expandItem(section_item)
+                    
+                    expanded_count += 1
+                    logging.debug(f"_expand_entire_tree: Expanded node {node_name} ({expanded_count}/{root.topLevelItemCount()})")
+            
+            logging.info(f"_expand_entire_tree: Successfully expanded {expanded_count} nodes with all subgroups")
+            logging.info(f"_expand_entire_tree: file_item_map now contains {len(self.file_item_map)} files")
+            
+        except Exception as e:
+            logging.error(f"_expand_entire_tree: Error expanding tree: {str(e)}")
+    
+    def _expand_entire_node(self, node_name: str):
+        """
+        Fully expand a node and all its subgroups (FBC, RPC, LOG, LIS).
+        This ensures all children are loaded into file_item_map.
+        
+        Args:
+            node_name: Name of the node to expand
+        """
+        try:
+            logging.debug(f"_expand_entire_node: Expanding node {node_name} and all subgroups")
+            
             # Find the node item in the tree
             root = self.view.node_tree
             for i in range(root.topLevelItemCount()):
@@ -1291,22 +1392,29 @@ class NodeTreePresenter(QObject):
                 
                 if item_data and item_data.get("type") == "node":
                     item_node_name = item_data.get("node_name", "")
-                    # Match the node name (handle formats like "AP01m (192.168.0.11)")
-                    if item_node_name.startswith(node_name):
+                    
+                    # Match the node name exactly (case-insensitive)
+                    if item_node_name.lower() == node_name.lower():
+                        logging.debug(f"_expand_entire_node: Found node item for {node_name}")
+                        
                         # Expand the node to load children if not already loaded
                         if not node_item.isExpanded():
+                            logging.debug(f"_expand_entire_node: Expanding node {node_name}")
                             self.view.expandItem(node_item)
                             # Trigger lazy loading
                             self.handle_item_expanded(node_item)
                         
-                        # Find and expand the section item
+                        # Expand ALL section items (FBC, RPC, LOG, LIS)
                         for j in range(node_item.childCount()):
                             section_item = node_item.child(j)
-                            if section_item.text(0) == token_type:
-                                if not section_item.isExpanded():
-                                    self.view.expandItem(section_item)
-                                break
+                            section_type = section_item.text(0)
+                            
+                            if not section_item.isExpanded():
+                                logging.debug(f"_expand_entire_node: Expanding section {section_type} for {node_name}")
+                                self.view.expandItem(section_item)
+                        
+                        logging.debug(f"_expand_entire_node: Fully expanded node {node_name} with all subgroups")
                         break
                         
         except Exception as e:
-            logging.error(f"_expand_to_file: Error expanding tree: {str(e)}")
+            logging.error(f"_expand_entire_node: Error expanding node: {str(e)}")

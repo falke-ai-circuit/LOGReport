@@ -21,7 +21,7 @@ So its clear and visible whats being received and written to .lis .fbc .log .rpc
 
 [X]We need to adjust main generate report window since in report not all files content are visible ( we need to scan for .log .lis and .fbc and .rpc files in subfolders selected by select log folder, also when generating report we should use those files contents, i belive old way was to scan only for .log files but we should scan for all and include content in our report )
 
-[ ]We need to implement in node tree list to show colours based on file content ( if we have sucesfully executed a operation and written to file and it became green when we reopen program we should check if content is there and should make it green again ), also during execution node tree should expand and show processed file and highlight it
+[X]We need to implement in node tree list to show colours based on file content ( if we have sucesfully executed a operation and written to file and it became green when we reopen program we should check if content is there and should make it green again ), also during execution node tree should autp expand and show processed file and highlight it when its processed - COMPLETED 2025-10-10: Implemented startup color persistence checking file content (red=0 lines, yellow<10 lines, green>=10 lines). Auto-expansion implemented: entire tree expands when "Print All Nodes" clicked, making all files visible. Files highlight and scroll into view as they're processed during command execution.
 
 [X]We should show content that we copy to selected files when commands are executed in telnet tab window - COMPLETED 2025-01-10: Actual file content now displays in Telnet tab with headers showing destination file and statistics. Users can compare displayed content with saved files for verification.
 
@@ -32,3 +32,5 @@ So its clear and visible whats being received and written to .lis .fbc .log .rpc
 []We need to debug pause resume and cancel of Print All Nodes command in commander window since it is not doing anything at the moment and it should pause resume and cancel main workflow
 
 [X]VNC tab and all related functionality completely removed as per user request on 2025-01-10. Deleted vnc_tab.py (272 lines), test_vnc_connection.py (193 lines). Modified 8 files removing VNC imports, classes, methods, signal connections. Application maintains Telnet and BsTool functionality. Verified with pytest: 488/489 tests collected (1 VNC test properly excluded), 26 tests passed.
+
+[]we need to change rectangle colour on log file we currently processed in commander window ( logfile naming colour changes based on content but rectangle should change based on executed command )it can become green upon command execution, and even subgroup rectangle can become green if all file commands are executed and green and node circle can become green if all its subgroup rectangles are green 
