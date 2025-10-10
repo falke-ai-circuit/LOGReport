@@ -146,16 +146,63 @@ class NodeTreeView(QWidget):
         
     def update_node_color(self, item: QTreeWidgetItem, color_name: str):
         """
-        Update the color of a specific tree item.
+        Update the TEXT color of a specific tree item based on CONTENT.
+        This is independent from rectangle icon color (command execution status).
         
         Args:
             item: The QTreeWidgetItem to update.
-            color_name: The name of the color (e.g., "green", "red").
+            color_name: The name of the color (e.g., "green", "red", "yellow").
         """
         from PyQt6.QtGui import QColor
         color = QColor(color_name)
+        
+        # Set text color (foreground) - content-based
         item.setForeground(0, color)
-        logging.debug(f"NodeTreeView.update_node_color: Updated color for item {item.text(0)} to {color_name}")
+        logging.debug(f"NodeTreeView.update_node_color: Updated TEXT color for item {item.text(0)} to {color_name}")
+    
+    def update_node_icon(self, item: QTreeWidgetItem, color_name: str):
+        """
+        Update the RECTANGLE/CIRCLE ICON color based on COMMAND EXECUTION STATUS.
+        This is independent from text color (content-based).
+        Uses rectangles for files/sections, circles for nodes.
+        
+        Args:
+            item: The QTreeWidgetItem to update.
+            color_name: The name of the color (e.g., "green", "red", "yellow").
+        """
+        from ..icons import (get_file_icon_green, get_file_icon_yellow, get_file_icon_red,
+                             get_node_icon_green, get_node_icon_yellow, get_node_icon_red)
+        
+        # Determine item type
+        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        item_type = item_data.get("type") if item_data else None
+        
+        # Select appropriate icon based on type and color
+        if item_type == "node":
+            # Use circle icons for nodes
+            if color_name == "green":
+                icon = get_node_icon_green()
+            elif color_name == "yellow":
+                icon = get_node_icon_yellow()
+            elif color_name == "red":
+                icon = get_node_icon_red()
+            else:
+                logging.debug(f"NodeTreeView.update_node_icon: Unknown color {color_name} for node, skipping")
+                return
+        else:
+            # Use rectangle icons for files and sections
+            if color_name == "green":
+                icon = get_file_icon_green()
+            elif color_name == "yellow":
+                icon = get_file_icon_yellow()
+            elif color_name == "red":
+                icon = get_file_icon_red()
+            else:
+                logging.debug(f"NodeTreeView.update_node_icon: Unknown color {color_name}, skipping icon update")
+                return
+            
+        item.setIcon(0, icon)
+        logging.debug(f"NodeTreeView.update_node_icon: Updated ICON color for item {item.text(0)} to {color_name} (type={item_type})")
     
     def update_control_buttons(self, execution_state):
         """

@@ -225,12 +225,19 @@ class NodeTreePresenter(QObject):
             node_item.addChild(section)
             added_sections = True
             logging.debug(f"_load_node_children: Added {section_type} subsection to node tree")
+            
+            # Aggregate colors for this section after all files are added
+            if section_data["items"]:
+                self._aggregate_section_color(section)
         
         if not added_sections:
             no_files = QTreeWidgetItem(["No files found for this node"])
             no_files.setIcon(0, get_token_icon())
             node_item.addChild(no_files)
             logging.debug(f"_load_node_children: No files found for node: {node_name}")
+        else:
+            # Aggregate node color after all sections are loaded
+            self._aggregate_node_color(node_item)
         
     def _add_section(self, section_type, node, dir_name, extensions):
         """Add file items to section using glob patterns for efficiency"""
@@ -441,6 +448,7 @@ class NodeTreePresenter(QObject):
     def _check_and_update_node_color(self, log_path: str):
         """
         Check if both command and log write were successful for a node and update its color.
+        Updates BOTH text color (content-based) AND icon color (execution-based).
         
         Args:
             log_path: The log_path of the file item to check and update
@@ -465,35 +473,238 @@ class NodeTreePresenter(QObject):
             logging.debug(f"_check_and_update_node_color: Looking for normalized_log_path: {normalized_log_path} in file_item_map. Map keys: {list(self.file_item_map.keys())}")
             file_item = self.file_item_map.get(normalized_log_path)
             if file_item:
+                # Determine icon color based on COMMAND EXECUTION STATUS
                 if command_success and log_success:
                     if token_type in ["FBC", "RPC"]: # Apply to both FBC and RPC
                         if lines_written_by_command is None or lines_written_by_command == 0:
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (no new content for {token_type})")
-                            self.view.update_node_color(file_item, "red")
+                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to red (no new content for {token_type})")
+                            icon_color = "red"
                         elif lines_written_by_command < 10:
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to yellow (new content < 10 lines for {token_type})")
-                            self.view.update_node_color(file_item, "yellow")
+                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to yellow (new content < 10 lines for {token_type})")
+                            icon_color = "yellow"
                         else: # lines_written_by_command >= 10
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to green (new content >= 10 lines for {token_type})")
-                            self.view.update_node_color(file_item, "green")
+                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to green (new content >= 10 lines for {token_type})")
+                            icon_color = "green"
                     else: # Existing logic for other file types (e.g., LOG)
                         if total_line_count is None or total_line_count == 0:
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (no content)")
-                            self.view.update_node_color(file_item, "red")
+                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to red (no content)")
+                            icon_color = "red"
                         elif total_line_count < 10: # Example threshold, adjust as needed
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to yellow (total_line_count < 10)")
-                            self.view.update_node_color(file_item, "yellow")
+                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to yellow (total_line_count < 10)")
+                            icon_color = "yellow"
                         else: # total_line_count >= 10
-                            logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to green (total_line_count >= 10)")
-                            self.view.update_node_color(file_item, "green")
+                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to green (total_line_count >= 10)")
+                            icon_color = "green"
                 else:
-                    logging.debug(f"_check_and_update_node_color: Setting color for {normalized_log_path} to red (command/log failed)")
-                    self.view.update_node_color(file_item, "red")
+                    logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to red (command/log failed)")
+                    icon_color = "red"
+                
+                # Update rectangle icon color (command execution status)
+                self.view.update_node_icon(file_item, icon_color)
+                
+                # Store icon_color in item data for aggregation
+                file_item_data = file_item.data(0, Qt.ItemDataRole.UserRole)
+                if file_item_data:
+                    file_item_data["icon_color"] = icon_color
+                    file_item.setData(0, Qt.ItemDataRole.UserRole, file_item_data)
+                
+                # Update TEXT color based on ACTUAL FILE CONTENT (independent from icon color)
+                # Check the file and count lines to determine text color
+                if os.path.exists(normalized_log_path):
+                    content_line_count = self.log_writer.get_file_line_count(normalized_log_path)
+                    
+                    # Determine text color based on content
+                    if content_line_count == 0:
+                        text_color = "red"  # No content
+                    elif content_line_count < 10:
+                        text_color = "yellow"  # Minimal content
+                    else:
+                        text_color = "green"  # Sufficient content
+                    
+                    self.view.update_node_color(file_item, text_color)
+                    logging.debug(f"_check_and_update_node_color: Updated TEXT color for {normalized_log_path} to {text_color} ({content_line_count} lines)")
+                else:
+                    logging.debug(f"_check_and_update_node_color: File {normalized_log_path} does not exist, skipping text color update")
             else:
                 logging.warning(f"_check_and_update_node_color: file_item not found for log_path: {normalized_log_path}")
 
             # Reset status after update
             self.node_status[log_path] = {"command_success": None, "log_success": None, "total_line_count": None, "lines_written_by_command": None}
+            
+            # Trigger hierarchical icon color aggregation (file → section → node)
+            if file_item:
+                self._aggregate_hierarchical_colors(file_item)
+    
+    def _aggregate_hierarchical_colors(self, file_item):
+        """
+        Aggregate colors hierarchically from file → section → node.
+        
+        When a file color changes, check if all sibling files in the section have the same color,
+        then update the section. If all sections in a node have the same color, update the node.
+        
+        Args:
+            file_item: The file item that just had its color updated
+        """
+        # Get the section (parent) of this file item
+        section_item = file_item.parent()
+        if not section_item:
+            logging.debug("_aggregate_hierarchical_colors: File has no parent section")
+            return
+            
+        # Aggregate section color from all child files
+        self._aggregate_section_color(section_item)
+        
+        # Get the node (parent of section)
+        node_item = section_item.parent()
+        if not node_item:
+            logging.debug("_aggregate_hierarchical_colors: Section has no parent node")
+            return
+            
+        # Aggregate node color from all child sections
+        self._aggregate_node_color(node_item)
+    
+    def _aggregate_section_color(self, section_item):
+        """
+        Aggregate ICON color for a section (FBC/RPC/LOG/LIS) based on all child file ICON colors.
+        This affects rectangle icons, not text color.
+        
+        Logic:
+        - All files green → section green
+        - Any file red → section red
+        - All files yellow or mix of yellow/green → section yellow
+        - No files or placeholder → no color change
+        
+        Args:
+            section_item: The section QTreeWidgetItem
+        """
+        child_count = section_item.childCount()
+        if child_count == 0:
+            logging.debug(f"_aggregate_section_color: Section {section_item.text(0)} has no children")
+            return
+        
+        # Check if the only child is a placeholder (e.g., "No files found")
+        if child_count == 1:
+            first_child = section_item.child(0)
+            child_data = first_child.data(0, Qt.ItemDataRole.UserRole)
+            if not child_data or "log_path" not in child_data:
+                logging.debug(f"_aggregate_section_color: Section {section_item.text(0)} has only placeholder child")
+                return
+        
+        # Collect ICON colors from all child files
+        # We need to extract icon color, not text color (foreground)
+        # Since QIcon doesn't expose color directly, we'll track icon colors via a separate mechanism
+        # For now, we'll use a workaround: store icon_color in item data
+        colors = []
+        for i in range(child_count):
+            child = section_item.child(i)
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            if child_data and "log_path" in child_data:
+                # Get icon_color from UserRole data (we'll need to store it there)
+                icon_color = child_data.get("icon_color")
+                if icon_color:
+                    colors.append(QColor(icon_color).name())
+        
+        if not colors:
+            logging.debug(f"_aggregate_section_color: No file icon colors found in section {section_item.text(0)}")
+            return
+        
+        # Determine aggregated color
+        unique_colors = set(colors)
+        green_hex = QColor("green").name()
+        yellow_hex = QColor("yellow").name()
+        red_hex = QColor("red").name()
+        
+        if red_hex in unique_colors:
+            # Any red file makes the section red
+            aggregated_color = "red"
+        elif unique_colors == {green_hex}:
+            # All files green
+            aggregated_color = "green"
+        elif unique_colors == {yellow_hex} or unique_colors == {green_hex, yellow_hex}:
+            # All yellow or mix of yellow/green
+            aggregated_color = "yellow"
+        else:
+            # Default to yellow for mixed states
+            aggregated_color = "yellow"
+        
+        # Update section ICON color
+        self.view.update_node_icon(section_item, aggregated_color)
+        
+        # Store icon color in section data for node aggregation
+        section_data = section_item.data(0, Qt.ItemDataRole.UserRole)
+        if section_data:
+            section_data["icon_color"] = aggregated_color
+            section_item.setData(0, Qt.ItemDataRole.UserRole, section_data)
+        
+        logging.debug(f"_aggregate_section_color: Set {section_item.text(0)} ICON to {aggregated_color} (from {len(colors)} files)")
+    
+    def _aggregate_node_color(self, node_item):
+        """
+        Aggregate ICON color for a node based on all child section ICON colors.
+        This affects rectangle icons (circles for nodes), not text color.
+        
+        Logic:
+        - All sections green → node green
+        - Any section red → node red
+        - All sections yellow or mix of yellow/green → node yellow
+        - No sections → no color change
+        
+        Args:
+            node_item: The node QTreeWidgetItem
+        """
+        child_count = node_item.childCount()
+        if child_count == 0:
+            logging.debug(f"_aggregate_node_color: Node {node_item.text(0)} has no children")
+            return
+        
+        # Collect ICON colors from all child sections
+        colors = []
+        for i in range(child_count):
+            child = node_item.child(i)
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            # Only aggregate from section items (FBC, RPC, LOG, LIS)
+            if child_data and child_data.get("type") == "section":
+                icon_color = child_data.get("icon_color")
+                if icon_color:
+                    colors.append(QColor(icon_color).name())
+        
+        if not colors:
+            logging.debug(f"_aggregate_node_color: No section icon colors found in node {node_item.text(0)}")
+            return
+        
+        # Determine aggregated color (same logic as sections)
+        unique_colors = set(colors)
+        green_hex = QColor("green").name()
+        yellow_hex = QColor("yellow").name()
+        red_hex = QColor("red").name()
+        
+        if red_hex in unique_colors:
+            # Any red section makes the node red
+            aggregated_color = "red"
+        elif unique_colors == {green_hex}:
+            # All sections green
+            aggregated_color = "green"
+        elif unique_colors == {yellow_hex} or unique_colors == {green_hex, yellow_hex}:
+            # All yellow or mix of yellow/green
+            aggregated_color = "yellow"
+        else:
+            # Default to yellow for mixed states
+            aggregated_color = "yellow"
+        
+        # Update node ICON color
+        # For nodes, we might want to keep the circle icon or create colored circle icons
+        self.view.update_node_icon(node_item, aggregated_color)
+        
+        # Store icon color in node data
+        node_data = node_item.data(0, Qt.ItemDataRole.UserRole)
+        if node_data:
+            node_data["icon_color"] = aggregated_color
+            node_item.setData(0, Qt.ItemDataRole.UserRole, node_data)
+        
+        logging.debug(f"_aggregate_node_color: Set {node_item.text(0)} ICON to {aggregated_color} (from {len(colors)} sections)")
+        
+        self.view.update_node_color(node_item, aggregated_color)
+        logging.debug(f"_aggregate_node_color: Set {node_item.text(0)} to {aggregated_color} (from {len(colors)} sections)")
                 
     def set_log_root_folder(self, folder_path):
         """Set the root folder for log files"""

@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Hierarchical Icon Coloring System (2025-10-10)
+- [FEATURE] **Dual Color System** - Implemented independent icon (execution status) and text (content) color systems for commander node tree
+- [FEATURE] Rectangle icons for files/sections and circle icons for nodes change color based on command execution status (green=success, yellow=partial, red=failed)
+- [FEATURE] Hierarchical icon color aggregation: file icons → section rectangles → node circles with red-priority logic (any red child → red parent, all green → green parent)
+- [FEATURE] Text color remains independent, updating from actual file content check after command execution (red=0 lines, yellow<10 lines, green≥10 lines)
+- [IMPLEMENTATION] Added 9 icon generator functions in `src/commander/icons.py`: `get_file_icon_green/yellow/red()`, `get_section_icon_green/yellow/red()`, `get_node_icon_green/yellow/red()`
+- [IMPLEMENTATION] Separated `update_node_icon()` (execution status, uses setIcon) from `update_node_color()` (content, uses setForeground) in `NodeTreeView`
+- [IMPLEMENTATION] Icon colors stored in UserRole['icon_color'] for aggregation, text colors derived from live file content via `get_file_line_count()`
+- [IMPLEMENTATION] Three aggregation methods: `_aggregate_hierarchical_colors()` (trigger), `_aggregate_section_color()` (files→section), `_aggregate_node_color()` (sections→node)
+- [IMPLEMENTATION] Modified `_check_and_update_node_color()` to update BOTH icon color (execution) and text color (content check) after command completion
+- [TECHNICAL] Icon aggregation uses red-priority logic: any red child makes parent red, all green children make parent green, otherwise yellow
+- [TECHNICAL] Auto-detects item type from UserRole['type'] to use circles for nodes, rectangles for files/sections
+- [USER VALUE] Visual feedback shows both command execution success (icon) and actual file content (text) independently, enabling quick identification of execution vs content issues
+- [USER VALUE] Hierarchical aggregation provides at-a-glance overview of entire system state through color-coded node tree sections and nodes
+
 ### VNC Tab Removal (2025-01-10)
 - [REMOVAL] **Complete VNC Functionality Removal** - Eliminated all VNC-related code from LOGReport application per user request
 - [DELETED] `src/commander/ui/vnc_tab.py` (272 lines) - VNC tab UI widget with recording controls

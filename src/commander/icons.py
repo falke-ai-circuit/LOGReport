@@ -62,3 +62,48 @@ def get_token_icon():
     color = QColor()
     color.setNamedColor(COLORS.ICON_TOKEN)
     return create_token_icon(color)
+
+def get_file_icon_green():
+    """Creates green rectangle icon for successfully executed files"""
+    color = QColor("green")
+    return create_token_icon(color)
+
+def get_file_icon_yellow():
+    """Creates yellow rectangle icon for partially executed files"""
+    color = QColor("yellow")
+    return create_token_icon(color)
+
+def get_file_icon_red():
+    """Creates red rectangle icon for failed/unexecuted files"""
+    color = QColor("red")
+    return create_token_icon(color)
+
+def get_section_icon_green():
+    """Creates green rectangle icon for sections with all files executed"""
+    color = QColor("green")
+    return create_token_icon(color)
+
+def get_section_icon_yellow():
+    """Creates yellow rectangle icon for sections with mixed execution"""
+    color = QColor("yellow")
+    return create_token_icon(color)
+
+def get_section_icon_red():
+    """Creates red rectangle icon for sections with failed/unexecuted files"""
+    color = QColor("red")
+    return create_token_icon(color)
+
+def get_node_icon_green():
+    """Creates green circle icon for nodes with all sections executed"""
+    color = QColor("green")
+    return create_node_icon(color)
+
+def get_node_icon_yellow():
+    """Creates yellow circle icon for nodes with mixed execution"""
+    color = QColor("yellow")
+    return create_node_icon(color)
+
+def get_node_icon_red():
+    """Creates red circle icon for nodes with failed/unexecuted sections"""
+    color = QColor("red")
+    return create_node_icon(color)
