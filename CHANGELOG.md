@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Log Write Content Display (2025-01-10)
+- [FEATURE] **Telnet Tab Content Visibility** - Actual file content now displays in Telnet tab when writing to .lis, .fbc, .log, and .rpc files
+- [FEATURE] Shows REAL CONTENT being written, not just notifications - enables comparison between Telnet display and file content
+- [FEATURE] Formatted display with headers showing destination file: "📝 Writing to: filename.fbc (25 new lines | Total: 50 lines)"
+- [FEATURE] Content display includes command output with separator bars for visual clarity
+- [FEATURE] Displays "No new content written" notifications when files are accessed but not modified
+- [FEATURE] Shows "❌ Failed to write to filename" error indicators for write failures
+- [IMPLEMENTATION] Extended `log_write_completed` signal from 4 to 5 parameters to include content: `pyqtSignal(str, bool, int, int, str)`
+- [IMPLEMENTATION] Updated `CommanderWindow.on_log_write_notification()` to accept and display actual content with formatted headers/footers
+- [IMPLEMENTATION] Updated `NodeTreePresenter.handle_log_write_completed()` signature to accept content parameter (maintains existing color logic)
+- [TEST] Comprehensive test suite with 8 passing tests validating content display (signal connection, actual content verification, multiple writes, format consistency)
+- [DOCUMENTATION] Implementation follows existing signal/slot pattern throughout the project for maintainability
+- [USER VALUE] Users can now see exactly what's being written to files and compare with Telnet output for verification
+
 ### Multi-File Type Report Generation (2025-10-10)
 - [FEATURE] **Enhanced Report Generation** - Reports now include .lis, .fbc, and .rpc file contents in addition to .log and .txt files
 - [IMPROVEMENT] Updated LogProcessor to scan for all Commander log file types (.log, .txt, .text, .lis, .fbc, .rpc)

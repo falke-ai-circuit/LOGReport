@@ -199,6 +199,9 @@ class CommanderWindow(QMainWindow):
         self.telnet_tab.clear_terminal_clicked.connect(self.clear_terminal)
         self.telnet_tab.clear_log_clicked.connect(self.clear_node_log)
         
+        # Connect log writer signal to show file write notifications in Telnet tab
+        self.log_writer.log_write_completed.connect(self.on_log_write_notification)
+        
         # Connect BsTool tab signals
         self.bstool_tab.copy_to_log_clicked.connect(self.copy_to_log)
         self.bstool_tab.clear_terminal_clicked.connect(self.clear_terminal)
@@ -414,6 +417,46 @@ class CommanderWindow(QMainWindow):
             self.status_service.status_updated, self.log_writer,
             self.telnet_tab.command_input, self.telnet_tab.execute_btn
         )
+    
+    def on_log_write_notification(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int, content_written: str):
+        """
+        Handle log write completion and display the actual content in Telnet tab.
+        
+        Shows the actual content being written to .lis, .fbc, .log, and .rpc files,
+        making it clear and visible what's being received and written to files.
+        Users can compare the displayed content with what's written to the file.
+        
+        Args:
+            log_path: Path to the log file that was written
+            success: Whether the write operation succeeded
+            total_line_count: Total number of lines in the file after writing
+            lines_written_by_command: Number of lines written by this command
+            content_written: The actual content that was written to the file
+        """
+        # Extract filename from path for cleaner display
+        filename = os.path.basename(log_path) if log_path != "N/A" else "unknown file"
+        
+        # Display the actual content with a header showing which file it's being written to
+        if success:
+            if lines_written_by_command > 0:
+                # Show header with file information
+                header = f"\n{'='*80}\n📝 Writing to: {filename} ({lines_written_by_command} new line(s) | Total: {total_line_count} lines)\n{'='*80}"
+                self.telnet_tab.append_output(header)
+                
+                # Show the actual content being written
+                self.telnet_tab.append_output(content_written)
+                
+                # Show footer
+                footer = f"{'='*80}\n✓ Content written to {filename}\n{'='*80}\n"
+                self.telnet_tab.append_output(footer)
+            else:
+                # No new content case
+                notification = f"\n📝 {filename}: No new content written (Total: {total_line_count} lines)\n"
+                self.telnet_tab.append_output(notification)
+        else:
+            # Error case
+            error_msg = f"\n❌ Failed to write to {filename}\n"
+            self.telnet_tab.append_output(error_msg)
     
     def copy_to_log(self):
         """Copies current session content to selected token or log file"""

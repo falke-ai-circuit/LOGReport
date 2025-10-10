@@ -17,7 +17,7 @@ class LogWriter(QObject):
     """
     Service for writing to log files and application logs.
     """
-    log_write_completed = pyqtSignal(str, bool, int, int) # log_path, success, total_line_count, lines_written_by_command
+    log_write_completed = pyqtSignal(str, bool, int, int, str) # log_path, success, total_line_count, lines_written_by_command, content_written
     
     def __init__(self, node_manager: NodeManager, log_root: str = "logs", parent=None):
         """
@@ -135,10 +135,11 @@ class LogWriter(QObject):
             final_line_count = self.get_file_line_count(filepath) if log_success else 0
             lines_written_by_command = final_line_count - initial_line_count
             
+            # Emit signal with the actual content being written (for display in Telnet tab)
             if token and hasattr(token, 'log_path'):
-                self.log_write_completed.emit(token.log_path, log_success, final_line_count, lines_written_by_command) # Emit log_path, total_line_count, lines_written_by_command
+                self.log_write_completed.emit(token.log_path, log_success, final_line_count, lines_written_by_command, content)
             else:
-                self.log_write_completed.emit("N/A", log_success, final_line_count, lines_written_by_command) # Fallback if log_path not available
+                self.log_write_completed.emit("N/A", log_success, final_line_count, lines_written_by_command, content)
 
     def write_to_app_log(self, message: str, level: int = logging.INFO):
         """

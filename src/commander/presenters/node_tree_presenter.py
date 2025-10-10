@@ -355,7 +355,7 @@ class NodeTreePresenter(QObject):
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(100, self._check_sequential_processing_continuation)
             
-    def handle_log_write_completed(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int):
+    def handle_log_write_completed(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int, content_written: str):
         """
         Handle the log_write_completed signal from LogWriter.
         
@@ -364,6 +364,7 @@ class NodeTreePresenter(QObject):
             success: True if the log write was successful, False otherwise
             total_line_count: The total number of lines in the log file
             lines_written_by_command: The number of lines written by the current command
+            content_written: The actual content that was written (not used for color logic)
         """
         if log_path not in self.node_status:
             self.node_status[log_path] = {"command_success": None, "log_success": None, "total_line_count": None, "lines_written_by_command": None}

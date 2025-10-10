@@ -2,6 +2,9 @@
 
 This file contains a list of pending tasks and improvements for the LOGReport project.
 
+[X]We should show content that we copy to selected files when commands are executed in telnet tab window
+So its clear and visible whats being received and written to .lis .fbc .log .rpc files
+
 [X]When leftclicking on a node in nodes list corresponding command should appear in command pane automatically ( it appears when command is executed but i want when leftclicked command should appear so i can execute it by pressing execute. EXAMPLE: when leftlicked on AP01m_192_168_0_11-162.fbc file command print from fbc io structure 1620000 should appear in command ), we should do it for telnet tab and for bstool tab with corresponding implementation
 
 [X]We should add colour change on nodes list to files that have been processed, .rpc .fbc .log and .lis files ( changes colour to green if command executed and if there is content in selected file for example more than 5 lines change to green, if command is executed and content is below 5 lines in file writing should be in red colour, and if no command is executed and its below 5 lines of content for example writing should become yellow)
@@ -20,5 +23,12 @@ This file contains a list of pending tasks and improvements for the LOGReport pr
 
 [ ]We need to implement in node tree list to show colours based on file content ( if we have sucesfully executed a operation and written to file and it became green when we reopen program we should check if content is there and should make it green again ), also during execution node tree should expand and show processed file and highlight it
 
-[]We should show content that we copy to selected files when commands are executed in telnet tab window
-So its clear and visible whats being received and written to .lis .fbc .log .rpc files
+[X]We should show content that we copy to selected files when commands are executed in telnet tab window - COMPLETED 2025-01-10: Actual file content now displays in Telnet tab with headers showing destination file and statistics. Users can compare displayed content with saved files for verification.
+
+[ ]We need to fix ASCII table column alignment in Telnet tab when displaying FBC command output. Currently the vertical columns (like the 'sum' column with zeros) are not properly aligned with their headers despite using monospace font and tab-to-space conversion. The table displays correctly in the log files but not in the Telnet tab widget. Need to investigate alternative approaches: different fonts (Liberation Mono, DejaVu Sans Mono), pre-processing the content to normalize spacing, or using a different widget type (QPlainTextEdit, custom table widget).
+
+[]We need to include a stopping of execution actions if telnet debugger is disconnected so that way we dont send commands if there is no connection, also in telnet tab when we connect using connect we are connecting to debugger session of our remote system and if someone else is connected it will ask if we want to connect and we should write yes and press enter. when we are in debugger remote session we should be in system mode ( wich is indicated by %s ) and we can change mode by typing toggle and pressing enter ( wich will show either system or appl mode, we need to be in system mode to be able to send commands )
+
+[]We need to debug pause resume and cancel of Print All Nodes command in commander window since it is not doing anything at the moment and it should pause resume and cancel main workflow
+
+[]We need to fix VNC tab implementation so we can actually use vnc and connect to vnc host also we need to add connect to vnc to rightclick menu on node rightclick that will automatically execute connection command to selected node, we also need to remove recording playing and stopping functionalities in vnc tab since we dont need them we olnly need connecting to vnc and clipboard to copy/paste from vnc and to vnc session

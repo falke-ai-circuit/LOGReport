@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLineEdit, QLabel
 )
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QFont
 
 from .theme import STYLESHEETS
 
@@ -60,6 +61,13 @@ class TelnetTab(QWidget):
         # Telnet output
         self.output = QTextEdit()
         self.output.setReadOnly(True)
+        
+        # Set monospace font for proper ASCII table formatting
+        monospace_font = QFont("Courier New", 10)  # Use Courier New as primary font
+        monospace_font.setStyleHint(QFont.StyleHint.Monospace)
+        monospace_font.setFixedPitch(True)  # Ensure fixed-pitch rendering
+        self.output.setFont(monospace_font)
+        
         layout.addWidget(self.output)
 
         # Command input
@@ -96,8 +104,25 @@ class TelnetTab(QWidget):
         self.setStyleSheet(STYLESHEETS.get_telnet_tab_stylesheet())
 
     def append_output(self, text):
-        """Append text to the telnet output"""
-        self.output.append(text)
+        """
+        Append text to the telnet output with preserved formatting.
+        
+        Uses plain text insertion to preserve whitespace and monospace formatting
+        for ASCII tables and structured command output.
+        """
+        # Convert tabs to spaces (8 spaces per tab) for consistent alignment
+        text_with_spaces = text.replace('\t', ' ' * 8)
+        
+        # Move cursor to end
+        cursor = self.output.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.output.setTextCursor(cursor)
+        
+        # Insert as plain text to preserve all whitespace and formatting
+        self.output.insertPlainText(text_with_spaces + "\n")
+        
+        # Scroll to bottom to show new content
+        self.output.ensureCursorVisible()
         
     def get_command(self):
         """Get the current command text"""
