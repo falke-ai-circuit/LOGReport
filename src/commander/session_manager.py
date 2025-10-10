@@ -1,6 +1,6 @@
 """
 Session Manager
-Handles Telnet, VNC, and FTP session connections
+Handles Telnet and FTP session connections
 """
 import telnetlib
 import socket
@@ -16,7 +16,6 @@ from .models import NodeToken
 
 class SessionType(Enum):
     TELNET = "TELNET"
-    VNC = "VNC"
     FTP = "FTP"
     DEBUGGER = "DEBUGGER"  # Manually established sessions
 
@@ -239,158 +238,6 @@ class TelnetSession(BaseSession):
         clean = re.sub(r'\d+[a-z]\%\s*$', '', clean).strip()
         return clean
 
-class VNCSession(BaseSession):
-    """VNC Session implementation with connection management and recording"""
-    
-    def __init__(self, config: SessionConfig):
-        super().__init__(config)
-        self.max_retries = 3
-        self.retry_count = 0
-        self.client = None
-        self.recorder = None
-        self.is_recording = False
-        self.recording_path = None
-        
-    def connect(self) -> bool:
-        """Connect to VNC server with retry logic"""
-        logging.debug(f"VNCSession.connect: Connecting to {self.config.host}:{self.config.port}")
-        
-        # Reset retry count for new connection attempts
-        if self.retry_count == 0:
-            self.retry_count = 0
-            
-        try:
-            from vncdotool import api
-            
-            # Create VNC client
-            vnc_url = f"vnc://{self.config.host}:{self.config.port}"
-            self.client = api.connect(vnc_url, password=self.config.password)
-            
-            # Test connection
-            self.client.refreshScreen()
-            
-            self.is_connected = True
-            self.retry_count = 0  # Reset retry count on successful connection
-            self.connection_state_changed.emit(True)
-            logging.info(f"VNCSession: Connected to {self.config.host}:{self.config.port}")
-            return True
-            
-        except Exception as e:
-            logging.error(f"VNC connection failed: {str(e)}")
-            self.is_connected = False
-            self.connection_state_changed.emit(False)
-            
-            # Handle retry logic
-            if self.retry_count < self.max_retries:
-                self.retry_count += 1
-                logging.info(f"VNCSession: Retrying connection ({self.retry_count}/{self.max_retries})")
-                # Add a small delay before retrying
-                import time
-                time.sleep(1)
-                return self.connect()  # Recursive retry
-            else:
-                logging.error("VNCSession: Max retry attempts reached")
-                return False
-    
-    def _disconnect_impl(self):
-        """Implementation-specific disconnect logic"""
-        logging.debug("VNCSession: Disconnecting")
-        if self.client:
-            try:
-                self.client.disconnect()
-            except Exception as e:
-                logging.error(f"Error disconnecting VNC client: {str(e)}")
-            finally:
-                self.client = None
-        self.is_connected = False
-        self.connection_state_changed.emit(False)
-        
-        # Stop recording if active
-        if self.is_recording:
-            self.stop_recording()
-    
-    def send_command(self, command: str) -> str:
-        """Send command to VNC session as keyboard input"""
-        if not self.is_connected or not self.client:
-            return "Error: Not connected to VNC session"
-            
-        # Record keyboard event if recording is active
-        if self.is_recording and self.recorder:
-            self.recorder.record_keyboard_event(command)
-            
-        try:
-            # Send command as keyboard input
-            self.client.keyPress(command)
-            logging.debug(f"VNCSession: Sent keyboard sequence: {command}")
-            return f"VNC command '{command}' sent as keyboard sequence"
-        except Exception as e:
-            error_msg = f"Error sending VNC command: {str(e)}"
-            logging.error(error_msg)
-            return error_msg
-    
-    def start_recording(self, output_path: str, node_token: Optional[NodeToken] = None) -> bool:
-        """
-        Start recording the VNC session.
-        
-        Args:
-            output_path: Path where recording file will be saved
-            node_token: NodeToken associated with this recording
-            
-        Returns:
-            True if recording started successfully, False otherwise
-        """
-        try:
-            from .services.session_recorder import SessionRecorder
-            self.recorder = SessionRecorder(output_path, node_token)
-            success = self.recorder.start()
-            if success:
-                self.is_recording = True
-                self.recording_path = output_path
-                logging.info(f"Started recording VNC session to: {output_path}")
-            return success
-        except Exception as e:
-            logging.error(f"Error starting recording: {str(e)}")
-            return False
-    
-    def stop_recording(self) -> Optional[str]:
-        """
-        Stop recording the VNC session.
-        
-        Returns:
-            Path to the recorded file, or None if not recording
-        """
-        if not self.is_recording or not self.recorder:
-            return None
-            
-        try:
-            self.recorder.stop()
-            recording_path = self.recorder.finalize()
-            self.is_recording = False
-            self.recorder = None
-            logging.info(f"Stopped recording VNC session")
-            return recording_path
-        except Exception as e:
-            logging.error(f"Error stopping recording: {str(e)}")
-            return None
-    
-    def is_recording_active(self) -> bool:
-        """
-        Check if recording is currently active.
-        
-        Returns:
-            True if recording is active, False otherwise
-        """
-        return self.is_recording and self.recorder is not None
-    
-    def get_recording_path(self) -> Optional[str]:
-        """
-        Get the current recording path.
-        
-        Returns:
-            Path to the recording file, or None if not recording
-        """
-        return self.recording_path if self.is_recording else None
-
 class FTPSession(BaseSession):
     def connect(self):
         # Will be implemented in Phase 2
@@ -412,7 +259,6 @@ class SessionManager(QObject):
     
     session_types = {
         SessionType.TELNET: TelnetSession,
-        SessionType.VNC: VNCSession,
         SessionType.FTP: FTPSession,
         SessionType.DEBUGGER: TelnetSession  # Use TelnetSession for DEBUGGER sessions
     }

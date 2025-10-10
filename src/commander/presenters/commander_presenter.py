@@ -97,33 +97,6 @@ class CommanderPresenter(QObject):
             self.session_presenter._on_copy_to_log_clicked
         )
         
-        # Connect recording signals
-        self.ui_factory.session_view.record_clicked.connect(
-            self.session_presenter._on_record_clicked
-        )
-        self.ui_factory.session_view.stop_record_clicked.connect(
-            self.session_presenter._on_stop_record_clicked
-        )
-        self.ui_factory.session_view.play_clicked.connect(
-            self.session_presenter._on_play_clicked
-        )
-        self.ui_factory.session_view.pause_clicked.connect(
-            self.session_presenter._on_pause_clicked
-        )
-        self.ui_factory.session_view.speed_changed.connect(
-            self.session_presenter._on_speed_changed
-        )
-        
-        # Connect VNC tab signals
-        self.ui_factory.vnc_tab.copy_to_log_clicked.connect(
-            self.session_presenter._on_copy_to_log_clicked
-        )
-        
-        # Connect VNC text selection signal
-        self.ui_factory.vnc_tab.text_selected.connect(
-            self.session_presenter.handle_vnc_text_selection
-        )
-        
         # Connect BsTool tab execute signal
         self.ui_factory.bstool_tab.execute_clicked.connect(
             self.handle_bstool_execute
@@ -140,15 +113,6 @@ class CommanderPresenter(QObject):
             ClipboardMonitor instance
         """
         return self.session_presenter.get_clipboard_monitor()
-
-    def handle_vnc_text_selection(self, content: str):
-        """
-        Handle text selection in VNC viewer (Ctrl+C equivalent).
-        
-        Args:
-            content: Selected text content
-        """
-        self.session_presenter.handle_vnc_text_selection(content)
     
     def clear_node_log(self, selected_items):
         """

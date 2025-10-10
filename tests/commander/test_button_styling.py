@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 from PyQt5.QtWidgets import QApplication, QPushButton
 from PyQt5.QtGui import QColor
 from src.commander.ui.commander_window import CommanderWindow
-from src.commander.ui.vnc_tab import VNCTab
 
 @pytest.fixture(scope="module")
 def app():
@@ -17,12 +16,6 @@ def commander_window(app):
     window.show()
     yield window
     window.close()
-
-@pytest.fixture
-def vnc_tab(commander_window):
-    """Fixture for VNCTab instance."""
-    tab = VNCTab(commander_window)
-    return tab
 
 class TestButtonStyling:
     """Tests for button coloring and styling."""
@@ -68,13 +61,3 @@ class TestButtonStyling:
         button.setStyleSheet("background-color: lightgray;") # Or whatever the default disconnected color is
         color = self.get_button_background_color(button)
         assert color == QColor("lightgray") # Assuming lightgray is the default/disconnected color
-
-    def test_vnc_tab_buttons_no_conflicting_styles(self, vnc_tab):
-        """Verify VNC tab buttons do not have conflicting inline styles."""
-        # This test is more conceptual and might require manual inspection or a more advanced
-        # stylesheet parsing utility if direct programmatic access to inherited styles is not feasible.
-        # For now, we assume that if the stylesheet is empty, no inline conflicting styles are present.
-        # In a real scenario, you might check for specific properties that were known to conflict.
-        assert vnc_tab.connect_button.styleSheet() == ""
-        assert vnc_tab.disconnect_button.styleSheet() == ""
-        assert vnc_tab.send_ctrl_alt_del_button.styleSheet() == ""

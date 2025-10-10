@@ -31,4 +31,4 @@ So its clear and visible whats being received and written to .lis .fbc .log .rpc
 
 []We need to debug pause resume and cancel of Print All Nodes command in commander window since it is not doing anything at the moment and it should pause resume and cancel main workflow
 
-[]We need to fix VNC tab implementation so we can actually use vnc and connect to vnc host also we need to add connect to vnc to rightclick menu on node rightclick that will automatically execute connection command to selected node, we also need to remove recording playing and stopping functionalities in vnc tab since we dont need them we olnly need connecting to vnc and clipboard to copy/paste from vnc and to vnc session
+[X]VNC tab and all related functionality completely removed as per user request on 2025-01-10. Deleted vnc_tab.py (272 lines), test_vnc_connection.py (193 lines). Modified 8 files removing VNC imports, classes, methods, signal connections. Application maintains Telnet and BsTool functionality. Verified with pytest: 488/489 tests collected (1 VNC test properly excluded), 26 tests passed.

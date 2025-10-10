@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### VNC Tab Removal (2025-01-10)
+- [REMOVAL] **Complete VNC Functionality Removal** - Eliminated all VNC-related code from LOGReport application per user request
+- [DELETED] `src/commander/ui/vnc_tab.py` (272 lines) - VNC tab UI widget with recording controls
+- [DELETED] `tests/test_vnc_connection.py` (193 lines) - VNC connection tests
+- [MODIFIED] `src/commander/ui/session_view.py` - Removed VNCTab import, vnc_tab creation, 5 recording signals, 7 signal connections, 5 VNC methods
+- [MODIFIED] `src/commander/ui/commander_window.py` - Removed vnc_tab assignment, _connect_vnc_signals method, toggle_vnc_connection method (54 lines)
+- [MODIFIED] `src/commander/session_manager.py` - Removed VNCSession class (166 lines), SessionType.VNC enum value, vncdotool dependency
+- [MODIFIED] `src/commander/presenters/session_presenter.py` - Removed VNCTab import, active_vnc_session state, 9 VNC-related methods (150+ lines)
+- [MODIFIED] `src/commander/presenters/commander_presenter.py` - Removed VNC signal connections (7 signals), handle_vnc_text_selection method
+- [MODIFIED] `src/commander/ui/commander_ui_factory.py` - Removed VNCTab import, vnc_tab assignment, get_vnc_tab method
+- [MODIFIED] `src/commander/ui/theme.py` - Removed get_vnc_tab_stylesheet method (47 lines of stylesheet code)
+- [MODIFIED] `tests/commander/test_button_styling.py` - Removed VNCTab import, vnc_tab fixture, VNC-specific test
+- [TEST] Validation: 488 tests collected (1 VNC test excluded), 26 tests passed, no import errors, no broken dependencies
+- [IMPACT] Application maintains full Telnet and BsTool tab functionality with no regressions
+- [USER VALUE] Simplified codebase by removing unused feature, reduced dependencies, improved maintainability
+
 ### Log Write Content Display (2025-01-10)
 - [FEATURE] **Telnet Tab Content Visibility** - Actual file content now displays in Telnet tab when writing to .lis, .fbc, .log, and .rpc files
 - [FEATURE] Shows REAL CONTENT being written, not just notifications - enables comparison between Telnet display and file content

@@ -118,54 +118,6 @@ class StyleSheetManager:
         """
     
     @staticmethod
-    def get_vnc_tab_stylesheet() -> str:
-        """Get the VNC tab specific stylesheet."""
-        return """
-            QWidget {
-                background-color: """ + ColorPalette.BACKGROUND_DARK + """;
-                color: """ + ColorPalette.TEXT_PRIMARY + """;
-                font-family: Segoe UI;
-            }
-            QPushButton {
-                background-color: """ + ColorPalette.BUTTON_BACKGROUND + """;
-                border: 1px solid """ + ColorPalette.BUTTON_BORDER + """;
-                padding: 5px 15px;
-                min-width: 80px;
-                color: """ + ColorPalette.BUTTON_TEXT + """;
-            }
-            QPushButton:hover {
-                background-color: """ + ColorPalette.BUTTON_BACKGROUND_HOVER + """;
-            }
-            QPushButton:pressed {
-                background-color: """ + ColorPalette.BUTTON_BACKGROUND_PRESSED + """;
-            }
-            QPushButton:checked {
-                background-color: """ + ColorPalette.BUTTON_BACKGROUND_CHECKED + """;
-                font-weight: bold;
-            }
-            QLineEdit, QComboBox {
-                background-color: """ + ColorPalette.INPUT_BACKGROUND + """;
-                color: """ + ColorPalette.TEXT_PRIMARY + """;
-                border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
-                padding: 4px;
-            }
-            QTextEdit {
-                background-color: #1E1E1E;
-                color: """ + ColorPalette.TEXT_PRIMARY + """;
-                border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
-                selection-background-color: """ + ColorPalette.SELECTION_BACKGROUND + """;
-            }
-            QFrame {
-                border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
-            }
-            QToolBar {
-                background-color: """ + ColorPalette.BACKGROUND_DARK + """;
-                border: none;
-                spacing: 10px;
-            }
-        """
-    
-    @staticmethod
     def get_telnet_tab_stylesheet() -> str:
         """Get the Telnet tab specific stylesheet."""
         return """
