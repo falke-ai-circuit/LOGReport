@@ -93,6 +93,10 @@ class NodeTreePresenter(QObject):
         self.node_status = {}
         self.file_item_map = {} # Map log_path to QTreeWidgetItem
         
+        # Workflow control flags for Print All Nodes
+        self._workflow_paused = False
+        self._workflow_cancelled = False
+        
         # Connect signals from CommandQueue and LogWriter
         self.command_queue.command_completed.connect(self.handle_command_completed)
         self.log_writer.log_write_completed.connect(self.handle_log_write_completed)
@@ -1048,6 +1052,16 @@ class NodeTreePresenter(QObject):
         self.status_message_signal.emit("Starting print command execution for ALL nodes...", 0)
         
         try:
+            # Reset workflow control flags at the start
+            self._workflow_paused = False
+            self._workflow_cancelled = False
+            
+            # Enable pause and cancel buttons when workflow starts (RUNNING state)
+            self.view.pause_btn.setEnabled(True)
+            self.view.resume_btn.setEnabled(False)
+            self.view.cancel_btn.setEnabled(True)
+            logging.debug("Print All Nodes: Enabled pause and cancel buttons")
+            
             # FIRST: Expand entire tree to show all files and their status
             self._expand_entire_tree()
             
@@ -1056,6 +1070,10 @@ class NodeTreePresenter(QObject):
             
             if not all_nodes:
                 self._report_error("No nodes available to process")
+                # Disable all buttons on error
+                self.view.pause_btn.setEnabled(False)
+                self.view.resume_btn.setEnabled(False)
+                self.view.cancel_btn.setEnabled(False)
                 return
             
             # Store nodes to process
@@ -1070,6 +1088,10 @@ class NodeTreePresenter(QObject):
             
         except Exception as e:
             self._report_error("Error in bulk print command execution for all nodes", e)
+            # Disable all buttons on error
+            self.view.pause_btn.setEnabled(False)
+            self.view.resume_btn.setEnabled(False)
+            self.view.cancel_btn.setEnabled(False)
     
     def _process_next_node_in_sequence(self):
         """
@@ -1077,6 +1099,28 @@ class NodeTreePresenter(QObject):
         Called after each node's command queue finishes processing.
         Executes process_node_print_commands() for each node sequentially.
         """
+        # Check if workflow was cancelled
+        if self._workflow_cancelled:
+            logging.info("NodeTreePresenter: Workflow cancelled, finishing processing")
+            self.status_message_signal.emit("Print All Nodes workflow cancelled", 5000)
+            # Clear processing flags
+            self._nodes_to_process = []
+            self._workflow_cancelled = False  # Reset for next run
+            self._workflow_paused = False  # Reset for next run
+            # Disable all buttons on cancel (IDLE state)
+            self.view.pause_btn.setEnabled(False)
+            self.view.resume_btn.setEnabled(False)
+            self.view.cancel_btn.setEnabled(False)
+            logging.debug("Print All Nodes: Disabled all buttons (workflow cancelled)")
+            return
+        
+        # Check if workflow is paused
+        if self._workflow_paused:
+            logging.info("NodeTreePresenter: Workflow paused, waiting for resume")
+            self.status_message_signal.emit("Print All Nodes workflow paused", 3000)
+            # Don't process next node, wait for resume
+            return
+        
         if self._current_node_index >= len(self._nodes_to_process):
             # All nodes processed
             self.status_message_signal.emit(
@@ -1086,6 +1130,13 @@ class NodeTreePresenter(QObject):
             logging.info(f"Print all nodes complete: {self._total_nodes_to_process} nodes processed")
             # Clear processing flags
             self._nodes_to_process = []
+            self._workflow_cancelled = False  # Reset for next run
+            self._workflow_paused = False  # Reset for next run
+            # Disable all buttons on completion (IDLE state)
+            self.view.pause_btn.setEnabled(False)
+            self.view.resume_btn.setEnabled(False)
+            self.view.cancel_btn.setEnabled(False)
+            logging.debug("Print All Nodes: Disabled all buttons (workflow completed)")
             return
         
         node = self._nodes_to_process[self._current_node_index]
@@ -1108,9 +1159,20 @@ class NodeTreePresenter(QObject):
         """
         Check if sequential node processing should continue to the next node.
         Called via QTimer after each command completes to allow command_queue to update state.
+        Respects workflow pause/cancel state.
         """
         # Only proceed if we're in sequential processing mode
         if not hasattr(self, '_nodes_to_process') or not self._nodes_to_process:
+            return
+        
+        # Check if workflow is paused - don't continue if paused
+        if self._workflow_paused:
+            logging.debug("Sequential processing: Workflow paused, not continuing")
+            return
+        
+        # Check if workflow was cancelled - don't continue if cancelled
+        if self._workflow_cancelled:
+            logging.debug("Sequential processing: Workflow cancelled, not continuing")
             return
         
         # Check if command queue is idle (all commands for current node are done)
@@ -1496,16 +1558,68 @@ class NodeTreePresenter(QObject):
             self.status_message_signal.emit(f"Error opening log file: {str(e)}", 5000)
     
     def _handle_pause(self):
-        """Handle pause button click."""
+        """Handle pause button click - pauses Print All Nodes workflow."""
+        # Set workflow pause flag
+        self._workflow_paused = True
+        
+        # Update button states for PAUSED state (disable pause, enable resume/cancel)
+        self.view.pause_btn.setEnabled(False)
+        self.view.resume_btn.setEnabled(True)
+        self.view.cancel_btn.setEnabled(True)
+        logging.debug("Print All Nodes: Updated buttons for PAUSED state")
+        
+        # Also pause sequential processor (for context menu operations)
         self.sequential_processor.pause()
+        
+        # Emit status message
+        self.status_message_signal.emit("Workflow paused - will pause after current node completes", 3000)
+        logging.info("NodeTreePresenter: Workflow paused by user")
     
     def _handle_resume(self):
-        """Handle resume button click."""
+        """Handle resume button click - resumes Print All Nodes workflow."""
+        # Clear workflow pause flag
+        self._workflow_paused = False
+        
+        # Update button states for RUNNING state (enable pause/cancel, disable resume)
+        self.view.pause_btn.setEnabled(True)
+        self.view.resume_btn.setEnabled(False)
+        self.view.cancel_btn.setEnabled(True)
+        logging.debug("Print All Nodes: Updated buttons for RUNNING state (resumed)")
+        
+        # Also resume sequential processor (for context menu operations)
         self.sequential_processor.resume()
+        
+        # Emit status message
+        self.status_message_signal.emit("Workflow resumed", 3000)
+        logging.info("NodeTreePresenter: Workflow resumed by user")
+        
+        # Resume processing if we're in the middle of Print All Nodes
+        if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
+            self._check_sequential_processing_continuation()
     
     def _handle_cancel(self):
-        """Handle cancel button click."""
+        """Handle cancel button click - cancels Print All Nodes workflow."""
+        # Set workflow cancel flag
+        self._workflow_cancelled = True
+        
+        # Update button states for CANCELLED/IDLE state (disable all buttons)
+        self.view.pause_btn.setEnabled(False)
+        self.view.resume_btn.setEnabled(False)
+        self.view.cancel_btn.setEnabled(False)
+        logging.debug("Print All Nodes: Updated buttons for CANCELLED state")
+        
+        # Also cancel sequential processor (for context menu operations)
         self.sequential_processor.cancel()
+        
+        # Clear the nodes to process list to stop workflow
+        if hasattr(self, '_nodes_to_process'):
+            remaining_nodes = len(self._nodes_to_process) - getattr(self, '_current_node_index', 0)
+            self._nodes_to_process = []
+            self.status_message_signal.emit(f"Workflow cancelled - {remaining_nodes} remaining nodes skipped", 5000)
+            logging.info(f"NodeTreePresenter: Workflow cancelled by user, {remaining_nodes} nodes skipped")
+        else:
+            self.status_message_signal.emit("Workflow cancelled", 3000)
+            logging.info("NodeTreePresenter: Workflow cancelled by user")
     
     def _highlight_current_file(self, node_name: str, token, file_path: str):
         """

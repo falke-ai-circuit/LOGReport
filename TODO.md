@@ -1,6 +1,6 @@
 # TODO List
 
-This file contai[]we need to debug pause resume and cancel of Print All Nodes command in commander window since it is not doing anything at the moment and it should pause resume and cancel main workflow
+This file contains a list of pending tasks and improvements for the LOGReport project.
 
 [X]VNC tab and all related functionality completely removed as per user request on 2025-01-10. Deleted vnc_tab.py (272 lines), test_vnc_connection.py (193 lines). Modified 8 files removing VNC imports, classes, methods, signal connections. Application maintains Telnet and BsTool functionality. Verified with pytest: 488/489 tests collected (1 VNC test properly excluded), 26 tests passed.
 
@@ -33,7 +33,7 @@ So its clear and visible whats being received and written to .lis .fbc .log .rpc
 
 [X]we need to change rectangle colour on log file we currently processed in commander window ( logfile naming colour changes based on content but rectangle should change based on executed command )it can become green upon command execution, and even subgroup rectangle can become green if all file commands are executed and green and node circle can become green if all its subgroup rectangles are green 
 
-[]We need to debug pause resume and cancel of Print All Nodes command in commander window since it is not doing anything at the moment and it should pause resume and cancel main workflow
+[X]We need to debug pause resume and cancel of Print All Nodes command in commander window since it is not doing anything at the moment and it should pause resume and cancel main workflow - COMPLETED 2025-01-10: Fixed buttons not enabling during workflow. Root cause: Buttons initially disabled (setEnabled(False)) and never enabled because update_control_buttons() only responds to sequential_processor.execution_state_changed signal, but Print All Nodes uses command_queue directly without ExecutionState emission. Solution: Manual button state management at workflow lifecycle points (process_all_nodes_print_commands, _process_next_node_in_sequence, _handle_pause, _handle_resume, _handle_cancel). Button state transitions: IDLE (all disabled) → RUNNING (pause+cancel enabled) → PAUSED (resume+cancel enabled) → RUNNING (pause+cancel enabled) → IDLE (all disabled). Modified 6 locations in node_tree_presenter.py (~30 lines added) with debug logging for troubleshooting. State flag pattern (_workflow_paused, _workflow_cancelled) checks between processing cycles prevents thread interruption issues.
 
 [ ]We need to fix ASCII table column alignment in Telnet tab when displaying FBC command output. Currently the vertical columns (like the 'sum' column with zeros) are not properly aligned with their headers despite using monospace font and tab-to-space conversion. The table displays correctly in the log files but not in the Telnet tab widget. Need to investigate alternative approaches: different fonts (Liberation Mono, DejaVu Sans Mono), pre-processing the content to normalize spacing, or using a different widget type (QPlainTextEdit, custom table widget).
 
