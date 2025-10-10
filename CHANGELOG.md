@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Update Modes Workflow Enhancement (2025-10-10)
+- [WORKFLOW] **Generic Chatmode Optimization** - Condensed update_modes workflow to support user-defined chatmode targets instead of hardcoded references
+- [WORKFLOW] Reduced workflow definition from 600+ lines to 188 lines (-68% reduction) while maintaining comprehensive analysis capabilities
+- [WORKFLOW] 6-phase architecture: Discovery(0) → Completion Analysis(1) → Chatmode Evaluation(2) → Optimization Planning(3) → Instruction Updates(4) → Validation(5)
+- [WORKFLOW] User specifies TARGET_CHATMODE parameter (e.g., `.github/chatmodes/DevTeam.chatmode.md`), workflow analyzes all logs/workflow_*.md files
+- [WORKFLOW] Completion format compliance scoring: STATUS/PHASE/CEPH/METRICS/LEARNINGS/BLOCKERS/ARTIFACTS with presence + quality metrics
+- [WORKFLOW] Four-tier prioritization: Critical (mandatory <60%), High (quality <70%), Medium (consistency), Low (enhancements)
+- [WORKFLOW] Generates optimization report `/logs/chatmode_optimization_[chatmode_name]_[date].md` with before/after metrics and specific recommendations
+- [TECHNICAL] Field compliance analysis identifies instruction gaps: missing field pattern (≥40%), partial field pattern (≥30%), quality issues
+- [TECHNICAL] Batch workflow log processing from logs/ directory with aggregate statistics and trend analysis
+- [USER VALUE] Enables continuous improvement of chatmode instructions based on actual workflow execution patterns and completion format compliance
+
 ### Hierarchical Icon Coloring System (2025-10-10)
 - [FEATURE] **Dual Color System** - Implemented independent icon (execution status) and text (content) color systems for commander node tree
 - [FEATURE] Rectangle icons for files/sections and circle icons for nodes change color based on command execution status (green=success, yellow=partial, red=failed)
