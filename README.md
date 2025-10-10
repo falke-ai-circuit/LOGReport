@@ -4,6 +4,19 @@
 
 The LOGReport project implements a dual memory consolidation workflow that combines project-specific memory with cross-project global memory. This approach ensures both localized context and reusable knowledge patterns are maintained.
 
+### What is LOGReport?
+
+LOGReport is a comprehensive tool for converting multiple log files from industrial control systems into organized PDF/DOCX reports. It supports various log file formats including:
+
+- **Standard logs**: `.log`, `.txt` files
+- **Commander protocol logs**: `.lis` (LIS), `.fbc` (FBC), `.rpc` (RPC) files
+
+The application features:
+- **Recursive directory scanning**: Automatically discovers log files in nested folder structures
+- **Multi-format report generation**: Creates professional PDF or Word documents
+- **Flexible content filtering**: Configure line limits, ranges, and filtering modes
+- **Commander integration**: Full support for telnet/BsTool-based log collection from industrial devices
+
 ### Dual Memory System
 - **Project Memory**: Stores project-specific entities, relationships, and implementation details using the `project_memory` MCP server
 - **Global Memory**: Maintains reusable patterns, best practices, and cross-project knowledge using the `global_memory` MCP server

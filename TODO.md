@@ -16,7 +16,7 @@ This file contains a list of pending tasks and improvements for the LOGReport pr
 
 [X]we need to change colour of nodes in node configurator to green for nodes that have all information and to red ones that miss information, also we need to detect automatically when we load AB01_sys and search if tokenid.sys file exists in same directory and load ip adress from it, and if we already have a list we should be able to click on load sys file and if we load only tokenid.sys it should automatically understand and export ip adress for node with that tokenid
 
-[ ]We need to adjust main generate report window since in report not all files content are visible ( we need to scan for .log .lis and .fbc and .rpc files in subfolders selected by select log folder, also when generating report we should use those files contents, i belive old way was to scan only for .log files but we should scan for all and include content in our report )
+[X]We need to adjust main generate report window since in report not all files content are visible ( we need to scan for .log .lis and .fbc and .rpc files in subfolders selected by select log folder, also when generating report we should use those files contents, i belive old way was to scan only for .log files but we should scan for all and include content in our report )
 
 [ ]We need to implement in node tree list to show colours based on file content ( if we have sucesfully executed a operation and written to file and it became green when we reopen program we should check if content is there and should make it green again ), also during execution node tree should expand and show processed file and highlight it
 

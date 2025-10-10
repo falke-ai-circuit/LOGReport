@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Multi-File Type Report Generation (2025-10-10)
+- [FEATURE] **Enhanced Report Generation** - Reports now include .lis, .fbc, and .rpc file contents in addition to .log and .txt files
+- [IMPROVEMENT] Updated LogProcessor to scan for all Commander log file types (.log, .txt, .text, .lis, .fbc, .rpc)
+- [IMPROVEMENT] Modified `process_directory()` to use dynamic `supported_ext` tuple instead of hardcoded filter
+- [IMPROVEMENT] Recursive subfolder scanning now captures all file types in nested directory structures
+- [TEST] Created comprehensive test suite with 10 tests covering all file types, recursive scanning, and content validation
+- [TEST] All 10 tests passing - verified extension support, subfolder recursion, content reading, and result structure
+- [DOCUMENTATION] Maintains backward compatibility - existing .log/.txt scanning unchanged
+
 ### Sequential Execution Controls (2025-01-20)
 - [FIX] **Print All Nodes execution bug** - Fixed critical issue where only first node's commands executed when using "Print All Nodes" button
 - [IMPROVEMENT] Refactored `process_all_nodes_print_commands()` to reuse proven `process_node_print_commands()` mechanism instead of custom sequential processor

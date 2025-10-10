@@ -6,7 +6,7 @@ from utils.file_utils import filter_lines, read_text_file
 
 class LogProcessor:
     def __init__(self):
-        self.supported_ext = ('.log', '.txt', '.text')
+        self.supported_ext = ('.log', '.txt', '.text', '.lis', '.fbc', '.rpc')
         self.line_limit = None  # Can be set via GUI
         self.lines_mode = "first"  # or "last", "range"
         self.line_range = (0, 0)   # (start, end) for range mode
@@ -48,7 +48,7 @@ class LogProcessor:
         try:
             for root, _, files in os.walk(directory):
                 for file in files:
-                    if file.endswith(('.log', '.txt')):  # Note: .text not included as per CHANGE
+                    if file.endswith(self.supported_ext):
                         full_path = os.path.normpath(os.path.join(root, file))
                         results.append({
                             'type': 'file',
