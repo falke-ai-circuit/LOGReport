@@ -18,8 +18,8 @@ from unittest.mock import patch
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QSettings
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QSettings
 
 
 class TestBsToolPathPersistenceE2E:

@@ -4,7 +4,7 @@ Status Service
 This service handles status messages and notifications to the user.
 """
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from typing import Optional
 
 

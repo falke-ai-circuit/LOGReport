@@ -2,13 +2,13 @@ import pytest
 import json
 import os
 from unittest.mock import patch, MagicMock
-from PyQt6.QtWidgets import QApplication, QListWidgetItem
-from PyQt6.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QListWidgetItem
+from PyQt5.QtCore import Qt
 from src.node_config_dialog import NodeConfigDialog
 from src.sys_file_loader import SysFileParser
 from src.sys_file_loader import SysFileLoader
 
-# Ensure QApplication is initialized for PyQt6 widgets
+# Ensure QApplication is initialized for PyQt5 widgets
 @pytest.fixture(scope="session")
 def app():
     return QApplication([])
@@ -36,19 +36,19 @@ def mock_sys_file_content_al():
 """
 
 class TestNodeConfigIntegration:
-    @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.warning', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.information', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.critical', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.warning', MagicMock())
     def test_initialization_with_default_config(self, node_config_dialog):
         # Ensure the dialog initializes with some default data
         assert len(node_config_dialog.nodes_data) > 0
         assert node_config_dialog.node_list.count() > 0
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getOpenFileName')
+    @patch('PyQt5.QtWidgets.QFileDialog.getOpenFileName')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_file_and_extract_ip')
-    @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.warning', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.information', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.critical', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.warning', MagicMock())
     def test_load_sys_file_extracts_ip_success(self, mock_load_sys_file_and_extract_ip, mock_getOpenFileName, node_config_dialog):
         # Setup initial node data
         node_config_dialog.nodes_data = [
@@ -73,11 +73,11 @@ class TestNodeConfigIntegration:
         QMessageBox.information.assert_called_once()
         assert "Successfully extracted IP address: 192.168.1.100" in QMessageBox.information.call_args
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getOpenFileName')
+    @patch('PyQt5.QtWidgets.QFileDialog.getOpenFileName')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_file_and_extract_ip')
-    @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.warning', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.information', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.critical', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.warning', MagicMock())
     def test_load_sys_file_no_ip_found(self, mock_load_sys_file_and_extract_ip, mock_getOpenFileName, node_config_dialog):
         # Setup initial node data
         node_config_dialog.nodes_data = [
@@ -100,9 +100,9 @@ class TestNodeConfigIntegration:
         QMessageBox.warning.assert_called_once()
         assert "Could not extract IP address" in QMessageBox.warning.call_args
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getOpenFileName')
+    @patch('PyQt5.QtWidgets.QFileDialog.getOpenFileName')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_file_and_extract_ip')
-    @patch('PyQt6.QtWidgets.QMessageBox.warning', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.warning', MagicMock())
     def test_load_sys_file_no_node_selected(self, mock_load_sys_file_and_extract_ip, mock_getOpenFileName, node_config_dialog):
         mock_getOpenFileName.return_value = ("test.sys", "System Files (*.txt *.sys);;All Files (*)")
         node_config_dialog.node_list.clearSelection() # Ensure no node is selected
@@ -113,9 +113,9 @@ class TestNodeConfigIntegration:
         QMessageBox.warning.assert_called_once()
         assert "Please select a node first." in QMessageBox.warning.call_args
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getOpenFileName')
+    @patch('PyQt5.QtWidgets.QFileDialog.getOpenFileName')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_file_and_extract_ip')
-    @patch('PyQt6.QtWidgets.QMessageBox.warning', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.warning', MagicMock())
     def test_load_sys_file_incomplete_node_data(self, mock_load_sys_file_and_extract_ip, mock_getOpenFileName, node_config_dialog):
         node_config_dialog.nodes_data = [
             {"name": "AP01", "tokens": [], "types": ["FBC"], "ip": ""} # Missing tokens
@@ -130,11 +130,11 @@ class TestNodeConfigIntegration:
         QMessageBox.warning.assert_called_once()
         assert "Selected node must have a name and tokens" in QMessageBox.warning.call_args
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getExistingDirectory')
+    @patch('PyQt5.QtWidgets.QFileDialog.getExistingDirectory')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_files_from_directory')
     @patch('src.sys_file_loader.SysFileParser._parse_single_sys_file_content')
-    @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.information', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.critical', MagicMock())
     def test_load_sys_directory_success(self, mock_parse_single_sys_file_content, mock_load_sys_files_from_directory, mock_getExistingDirectory, node_config_dialog, mock_sys_file_content_ap, mock_sys_file_content_al):
         mock_getExistingDirectory.return_value = "/mock/sys/dir"
         mock_load_sys_files_from_directory.return_value = {
@@ -155,10 +155,10 @@ class TestNodeConfigIntegration:
         assert node_config_dialog.node_list.findItems("AP01", Qt.MatchFlag.MatchExactly)
         assert node_config_dialog.node_list.findItems("AL01", Qt.MatchFlag.MatchExactly)
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getExistingDirectory')
+    @patch('PyQt5.QtWidgets.QFileDialog.getExistingDirectory')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_files_from_directory')
-    @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.information', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.critical', MagicMock())
     def test_load_sys_directory_no_sys_files_found(self, mock_load_sys_files_from_directory, mock_getExistingDirectory, node_config_dialog):
         mock_getExistingDirectory.return_value = "/mock/empty/dir"
         mock_load_sys_files_from_directory.return_value = {}
@@ -169,11 +169,11 @@ class TestNodeConfigIntegration:
         assert not any(node['name'] == "AP01" for node in node_config_dialog.nodes_data)
         assert not node_config_dialog.node_list.findItems("AP01", Qt.MatchFlag.MatchExactly)
 
-    @patch('PyQt6.QtWidgets.QFileDialog.getExistingDirectory')
+    @patch('PyQt5.QtWidgets.QFileDialog.getExistingDirectory')
     @patch('src.sys_file_loader.SysFileLoader.load_sys_files_from_directory')
     @patch('src.sys_file_loader.SysFileParser._parse_single_sys_file_content')
-    @patch('PyQt6.QtWidgets.QMessageBox.information', MagicMock())
-    @patch('PyQt6.QtWidgets.QMessageBox.critical', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.information', MagicMock())
+    @patch('PyQt5.QtWidgets.QMessageBox.critical', MagicMock())
     def test_load_sys_directory_no_valid_nodes_found(self, mock_parse_single_sys_file_content, mock_load_sys_files_from_directory, mock_getExistingDirectory, node_config_dialog):
         mock_getExistingDirectory.return_value = "/mock/invalid/dir"
         mock_load_sys_files_from_directory.return_value = {

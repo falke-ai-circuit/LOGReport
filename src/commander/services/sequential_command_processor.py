@@ -8,7 +8,7 @@ import gc
 import weakref
 from typing import List, Optional, Callable
 from enum import Enum
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QCoreApplication
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer, QCoreApplication
 from typing import Tuple
 import datetime
 import time
@@ -723,7 +723,7 @@ class SequentialCommandProcessor(QObject):
     def _perform_periodic_cleanup(self) -> None:
         """Perform periodic cleanup to optimize memory usage."""
         # Process Qt events to prevent UI freezing
-        from PyQt6.QtCore import QCoreApplication
+        from PyQt5.QtCore import QCoreApplication
         QCoreApplication.processEvents()
 
     def stop_processing(self) -> None:

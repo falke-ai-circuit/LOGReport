@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
+from PyQt5.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
 from typing import List, Optional
 from .models import NodeToken
 from .session_manager import SessionConfig, SessionType

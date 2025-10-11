@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt6.QtCore import QObject, pyqtSignal, Qt
-from PyQt6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem
-from PyQt6.QtGui import QColor
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem
+from PyQt5.QtGui import QColor
 
 import sys
 import os

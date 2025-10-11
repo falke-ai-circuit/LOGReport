@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QTimer, QEventLoop
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer, QEventLoop
 
 from src.commander.ui.commander_window import CommanderWindow
 from src.commander.ui.telnet_tab import TelnetTab

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, pyqtSignal, QThread
+from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from typing import Dict, List, Any, Optional
 import logging
 import time

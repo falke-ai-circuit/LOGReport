@@ -1,12 +1,12 @@
 import sys
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QFileDialog, QComboBox, QSpinBox,
     QGroupBox, QStatusBar, QProgressBar
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor
-from PyQt6.QtWidgets import QStyleFactory
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtWidgets import QStyleFactory
 from processor import LogProcessor
 from generator import ReportGenerator
 from datetime import datetime
@@ -67,18 +67,18 @@ class LogReportGUI(QMainWindow):
     def _set_dark_theme(self):
         """Configure a nice dark theme"""
         dark_palette = QPalette()
-        dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-        dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(142, 45, 197).lighter())
-        dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.WindowText, Qt.white)
+        dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+        dark_palette.setColor(QPalette.Text, Qt.white)
+        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ButtonText, Qt.white)
+        dark_palette.setColor(QPalette.BrightText, Qt.red)
+        dark_palette.setColor(QPalette.Highlight, QColor(142, 45, 197).lighter())
+        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
         QApplication.instance().setPalette(dark_palette)
 
     def init_ui(self):
@@ -188,7 +188,7 @@ class LogReportGUI(QMainWindow):
     def open_node_manager(self):
         from node_config_dialog import NodeConfigDialog
         dialog = NodeConfigDialog(self)
-        dialog.exec()
+        dialog.exec_()
         
     def open_commander(self):
         from commander.ui.commander_window import CommanderWindow
@@ -378,4 +378,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = LogReportGUI()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())

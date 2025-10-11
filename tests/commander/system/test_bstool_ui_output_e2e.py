@@ -37,9 +37,9 @@ except ImportError:
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtTest import QTest
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtTest import QTest
 
 from commander.ui.bstool_tab import BsToolTab
 from commander.services.bstool_command_service import BsToolCommandService

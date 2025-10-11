@@ -2,12 +2,12 @@
 BsTool Tab - UI for BsTool operations
 """
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, 
     QPushButton, QLineEdit, QLabel
 )
 import logging
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from enum import Enum
 
 from .theme import STYLESHEETS
@@ -121,7 +121,7 @@ class BsToolTab(QWidget):
         """Append text to the output display without adding extra newlines"""
         self.logger.debug(f"DEBUG_MARK: BsToolTab.append_output called with text: {text!r}")
         # Use the same approach as telnet_tab to avoid extra newlines
-        from PyQt6.QtGui import QTextCursor
+        from PyQt5.QtGui import QTextCursor
         cursor = self.output.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         

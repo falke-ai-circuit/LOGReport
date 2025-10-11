@@ -3,14 +3,14 @@ import os
 import json
 import tempfile
 import re
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QGroupBox, QRadioButton, QPushButton, QLineEdit,
     QLabel, QFormLayout, QMessageBox, QButtonGroup,
     QFileDialog, QInputDialog, QCheckBox, QListWidgetItem
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
 from pathlib import Path
 
 class NodeConfigDialog(QDialog):
@@ -546,7 +546,7 @@ class NodeConfigDialog(QDialog):
     def create_files(self):
         """Create files and folders based on current configuration"""
         from log_creator import LogCreator
-        from PyQt6.QtWidgets import QFileDialog
+        from PyQt5.QtWidgets import QFileDialog
         
         # Validate configuration first
         errors = []

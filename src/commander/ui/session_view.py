@@ -4,8 +4,8 @@ Session View
 This view provides the session interface with Telnet and BsTool tabs.
 """
 
-from PyQt6.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
+from PyQt5.QtCore import pyqtSignal
 
 from commander.ui.telnet_tab import TelnetTab  # Add import for TelnetTab
 from commander.ui.bstool_tab import BsToolTab  # Import BsToolTab

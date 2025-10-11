@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt6.QtWidgets import QApplication, QTextEdit, QPushButton, QLineEdit
-from PyQt6.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QTextEdit, QPushButton, QLineEdit
+from PyQt5.QtCore import Qt
 import sys
 import os
 

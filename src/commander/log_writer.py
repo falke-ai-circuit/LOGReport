@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from commander.node_manager import NodeManager
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 
 
 class LogWriter(QObject):

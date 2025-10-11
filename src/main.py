@@ -5,7 +5,7 @@ import os
 os.environ["QT_LOGGING_RULES"] = "qt.core.filesystemwatcher=false"
 
 from gui import LogReportGUI
-from PyQt6.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication
 
 def cli_main(input_path, output_file):
     from processor import LogProcessor
@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
         window = LogReportGUI(bstool_path=bstool_path)
         window.show()
-        sys.exit(app.exec())
+        sys.exit(app.exec_())
     elif len(sys.argv) == 3:
         cli_main(sys.argv[1], sys.argv[2])
     else:

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 from src.commander.services.hierarchical_command_service import HierarchicalCommandService, BsToolWorker
 from src.commander.models import NodeToken, Node
@@ -14,7 +14,7 @@ from src.commander.services.log_command_service import LogCommandService
 from src.commander.services.context_menu_service import ContextMenuService
 from src.commander.presenters.commander_presenter import CommanderPresenter
 
-# Mock PyQt6 signals for testing outside a QApplication
+# Mock PyQt5 signals for testing outside a QApplication
 class MockPyqtSignal(QObject):
     def __init__(self, *args, **kwargs):
         super().__init__()

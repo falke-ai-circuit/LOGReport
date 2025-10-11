@@ -12,7 +12,7 @@ import logging
 import time
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from PyQt6.QtCore import QObject, QTimer, pyqtSignal
+from PyQt5.QtCore import QObject, QTimer, pyqtSignal
 
 from typing import Protocol
 

@@ -11,9 +11,9 @@ from unittest.mock import MagicMock, patch, call
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
-from PyQt6.QtTest import QTest
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt
+from PyQt5.QtTest import QTest
 
 from commander.ui.node_tree_view import NodeTreeView
 from commander.presenters.node_tree_presenter import NodeTreePresenter
@@ -21,10 +21,10 @@ from commander.models import Node, NodeToken
 from commander.node_manager import NodeManager
 
 
-# Mock QApplication for PyQt6 tests
+# Mock QApplication for PyQt5 tests
 @pytest.fixture(scope='session', autouse=True)
 def qapplication_fixture():
-    """Create QApplication for PyQt6 tests"""
+    """Create QApplication for PyQt5 tests"""
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)

@@ -4,7 +4,7 @@ Error Handler Service - Handles error reporting and logging
 import logging
 import traceback
 from typing import Optional, Dict, Any
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from .error_reporting.interface import StructuredError
 
 

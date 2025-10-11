@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt6.QtCore import QModelIndex, Qt
-from PyQt6.QtWidgets import QApplication
+from PyQt5.QtCore import QModelIndex, Qt
+from PyQt5.QtWidgets import QApplication
 
-# Mock QApplication for PyQt6 tests
+# Mock QApplication for PyQt5 tests
 @pytest.fixture(scope='session', autouse=True)
 def qapplication_fixture():
     app = QApplication.instance()
@@ -92,7 +92,7 @@ class TestNodeClickPopulatesTelnetTab:
 
     @pytest.fixture
     def commander_window(self, telnet_tab, mock_node_manager, mock_session_manager, mock_log_writer, mock_command_queue, mock_fbc_service, mock_rpc_service, mock_context_menu_service, mock_bstool_service):
-        from PyQt6.QtWidgets import QWidget # Import QWidget for mocking
+        from PyQt5.QtWidgets import QWidget # Import QWidget for mocking
         mock_ui_factory = MagicMock()
         mock_ui_factory.get_main_widget.return_value = QWidget() # Return an actual QWidget instance
         mock_ui_factory.session_view.telnet_tab = telnet_tab

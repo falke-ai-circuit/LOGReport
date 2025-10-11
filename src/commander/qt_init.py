@@ -18,7 +18,7 @@ def initialize_qt():
     
     # Create QApplication if it doesn't exist
     try:
-        from PyQt6.QtWidgets import QApplication
+        from PyQt5.QtWidgets import QApplication
         if QApplication.instance() is None:
             return QApplication(sys.argv)
     except ImportError:

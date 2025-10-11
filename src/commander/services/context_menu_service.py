@@ -6,20 +6,20 @@ import logging
 from typing import Dict, Any, List, Optional
 
 try:
-    from PyQt6.QtGui import QAction
-    from PyQt6.QtWidgets import QMenu
+    from PyQt5.QtWidgets import QAction
+    from PyQt5.QtWidgets import QMenu
     PYQT_IMPORT_SUCCESS = True
 except ImportError as e:
-    logging.error(f"Failed to import PyQt6 modules: {e}")
+    logging.error(f"Failed to import PyQt5 modules: {e}")
     PYQT_IMPORT_SUCCESS = False
     # Create placeholder classes to prevent runtime errors
     class QAction:
         def __init__(self, *args, **kwargs):
-            raise RuntimeError("PyQt6 QAction not available")
+            raise RuntimeError("PyQt5 QAction not available")
 
     class QMenu:
         def __init__(self, *args, **kwargs):
-            raise RuntimeError("PyQt6 QMenu not available")
+            raise RuntimeError("PyQt5 QMenu not available")
 
 from .context_menu_filter import ContextMenuFilterService
 from ..models import NodeToken

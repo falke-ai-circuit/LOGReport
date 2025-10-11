@@ -4,8 +4,8 @@ Commander Presenter Utilities - Helper functions for the Commander presenter
 import os
 import logging
 from typing import List
-from PyQt6.QtWidgets import QTreeWidgetItem, QTabWidget, QTextEdit
-from PyQt6.QtCore import Qt
+from PyQt5.QtWidgets import QTreeWidgetItem, QTabWidget, QTextEdit
+from PyQt5.QtCore import Qt
 
 from ..models import NodeToken
 from ..node_manager import NodeManager

@@ -2,9 +2,9 @@
 Node Tree View Component
 Stateless UI component for displaying nodes in a tree structure
 """
-from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QHBoxLayout, QPushButton
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QHBoxLayout, QPushButton
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 from .theme import STYLESHEETS
 import logging
 
@@ -153,7 +153,7 @@ class NodeTreeView(QWidget):
             item: The QTreeWidgetItem to update.
             color_name: The name of the color (e.g., "green", "red", "yellow").
         """
-        from PyQt6.QtGui import QColor
+        from PyQt5.QtGui import QColor
         color = QColor(color_name)
         
         # Set text color (foreground) - content-based

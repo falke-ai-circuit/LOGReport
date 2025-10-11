@@ -2,9 +2,9 @@ import os
 import sys
 import pytest
 from unittest.mock import MagicMock, patch, call
-from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QClipboard
-from PyQt6.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QClipboard
+from PyQt5.QtWidgets import QApplication
 
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
@@ -43,7 +43,7 @@ class TestClipboardMonitor:
     def clipboard_monitor(self, mock_node_manager, mock_log_writer, mock_status_service):
         """Create a ClipboardMonitor instance with mocked dependencies"""
         # Mock QApplication.clipboard() to avoid Qt initialization issues
-        with patch('PyQt6.QtWidgets.QApplication.clipboard') as mock_clipboard_method:
+        with patch('PyQt5.QtWidgets.QApplication.clipboard') as mock_clipboard_method:
             mock_clipboard = MagicMock()
             mock_clipboard_method.return_value = mock_clipboard
             

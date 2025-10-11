@@ -7,8 +7,8 @@ import logging
 import os
 import glob
 from typing import Optional
-from PyQt6.QtCore import QObject, pyqtSignal, Qt
-from PyQt6.QtWidgets import QTreeWidgetItem
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtWidgets import QTreeWidgetItem
 
 from ..models import NodeToken
 from ..node_manager import NodeManager
@@ -22,7 +22,7 @@ from ..icons import get_node_online_icon, get_node_offline_icon, get_token_icon
 import os
 import re
 import subprocess
-from PyQt6.QtGui import QColor
+from PyQt5.QtGui import QColor
 
 
 class NodeTreePresenter(QObject):
@@ -397,7 +397,7 @@ class NodeTreePresenter(QObject):
         if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
             # Use QTimer to check processing state after a short delay
             # This ensures the command_queue has time to update its _is_processing flag
-            from PyQt6.QtCore import QTimer
+            from PyQt5.QtCore import QTimer
             QTimer.singleShot(100, self._check_sequential_processing_continuation)
             
     def handle_log_write_completed(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int, content_written: str):
@@ -749,7 +749,7 @@ class NodeTreePresenter(QObject):
             return
             
         # Create menu
-        from PyQt6.QtWidgets import QMenu
+        from PyQt5.QtWidgets import QMenu
         menu = QMenu()
         
         # Use context menu service to populate and show menu

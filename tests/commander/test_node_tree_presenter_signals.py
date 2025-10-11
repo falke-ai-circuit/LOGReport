@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock
-from PyQt6.QtCore import QObject, pyqtSignal, Qt
-from PyQt6.QtWidgets import QTreeWidgetItem
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtWidgets import QTreeWidgetItem
 from src.commander.presenters.node_tree_presenter import NodeTreePresenter
 from src.commander.models import NodeToken
 import os

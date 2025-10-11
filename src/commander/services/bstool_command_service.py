@@ -5,7 +5,7 @@ import logging
 import threading
 import tempfile # Import tempfile
 import io # Import io
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from commander.services.threading_service import ThreadingService
 
 

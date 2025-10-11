@@ -4,11 +4,11 @@ Main Window
 This is the main application window that hosts all UI components.
 """
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QHBoxLayout,
     QStatusBar, QFileDialog, QApplication
 )
-from PyQt6.QtCore import Qt
+from PyQt5.QtCore import Qt
 
 from commander.ui.commander_ui_factory import CommanderUIFactory
 from commander.presenters.commander_presenter import CommanderPresenter

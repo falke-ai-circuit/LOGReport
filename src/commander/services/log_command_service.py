@@ -2,9 +2,9 @@
 Log Command Service - Handles batch operations for LOG files, such as opening all log files for a node sequentially.
 """
 
-from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtGui import QDesktopServices
-from PyQt6.QtCore import QUrl
+from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtCore import QUrl
 import os
 
 class LogCommandService(QObject):

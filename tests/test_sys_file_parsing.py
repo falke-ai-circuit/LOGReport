@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from src.utils.file_utils import parse_sys_file, merge_node_data
 from src.node_config_dialog import NodeConfigDialog
-from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 # Mock QApplication for UI tests
 @pytest.fixture(scope="session")
