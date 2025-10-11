@@ -173,6 +173,10 @@ class CommandQueue(QObject):
         
     def add_command(self, command: str, token: NodeToken, telnet_client=None):
         """Add a command to the queue with associated token"""
+        # Check connection before queueing if telnet_client is provided
+        if telnet_client and not telnet_client.is_connected:
+            logging.warning(f"CommandQueue.add_command: Telnet client not connected, attempting to queue anyway for reconnect handling")
+        
         qc = QueuedCommand(
             command=command,
             token=token,
@@ -223,65 +227,74 @@ class CommandQueue(QObject):
                 self._is_processing = False
             return
             
-        # Update all pending commands to processing status
-        for idx, item in enumerate(pending_commands):
-            item.status = 'processing'
-            logging.debug(f"CommandQueue.start_processing: Marked command {idx+1}/{total} as processing: {item.command}")
-            
-        # Create and start workers for each pending command
-        for idx, item in enumerate(pending_commands):
-            telnet_session = None
-            # Prioritize using the provided telnet_client if available
-            if item.telnet_client:
-                telnet_session = item.telnet_client
-                logging.debug(f"CommandQueue.start_processing: Using provided telnet client for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
-                # Add debug log about client reuse
-                if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'active_telnet_client') and telnet_session == self.parent.active_telnet_client:
-                    logging.debug("CommandQueue.start_processing: Reusing active manual Telnet connection")
+        # SEQUENTIAL EXECUTION FIX: Only process the FIRST pending command
+        # The _handle_worker_finished callback will trigger the next command after this one completes
+        logging.info(f"CommandQueue.start_processing: Sequential processing - starting first of {total} pending commands")
+        
+        # Get only the first pending command
+        item = pending_commands[0]
+        idx = 0
+        
+        # Mark only this command as processing
+        item.status = 'processing'
+        logging.debug(f"CommandQueue.start_processing: Marked command 1/{total} as processing: {item.command}")
+        
+        # Create and start worker for ONLY the first pending command
+        # The next command will be started by _handle_worker_finished after this completes
+        telnet_session = None
+        # Prioritize using the provided telnet_client if available
+        if item.telnet_client:
+            telnet_session = item.telnet_client
+            logging.debug(f"CommandQueue.start_processing: Using provided telnet client for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
+            # Add debug log about client reuse
+            if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'active_telnet_client') and telnet_session == self.parent.active_telnet_client:
+                logging.debug("CommandQueue.start_processing: Reusing active manual Telnet connection")
+        else:
+            # Check for active debugger session first
+            debugger_session = self.session_manager.get_debugger_session()
+            if debugger_session:
+                telnet_session = debugger_session
+                logging.debug(f"CommandQueue.start_processing: Using debugger session for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
             else:
-                # Check for active debugger session first
-                debugger_session = self.session_manager.get_debugger_session()
-                if debugger_session:
-                    telnet_session = debugger_session
-                    logging.debug(f"CommandQueue.start_processing: Using debugger session for command {idx+1}: {item.command} (connected: {telnet_session.is_connected})")
-                else:
-                    session_key = f"{item.token.name}_{item.token.token_type}"
-                    config = SessionConfig(
-                        host=item.token.ip_address,
-                        port=23,
-                        session_type=SessionType.TELNET
+                session_key = f"{item.token.name}_{item.token.token_type}"
+                config = SessionConfig(
+                    host=item.token.ip_address,
+                    port=23,
+                    session_type=SessionType.TELNET
+                )
+                
+                try:
+                    # Get or create session from session manager
+                    telnet_session = self.session_manager.get_or_create_session(
+                        session_key,
+                        SessionType.TELNET,
+                        config
                     )
+                    logging.debug(f"CommandQueue.start_processing: Using session for {session_key} (connected: {telnet_session.is_connected})")
                     
-                    try:
-                        # Get or create session from session manager
-                        telnet_session = self.session_manager.get_or_create_session(
-                            session_key,
-                            SessionType.TELNET,
-                            config
-                        )
-                        logging.debug(f"CommandQueue.start_processing: Using session for {session_key} (connected: {telnet_session.is_connected})")
+                    # Reconnect if session exists but is disconnected
+                    if not telnet_session.is_connected:
+                        logging.debug(f"CommandQueue.start_processing: Reconnecting session for {session_key}")
+                        telnet_session.connect()
                         
-                        # Reconnect if session exists but is disconnected
-                        if not telnet_session.is_connected:
-                            logging.debug(f"CommandQueue.start_processing: Reconnecting session for {session_key}")
-                            telnet_session.connect()
-                            
-                        if not telnet_session.is_connected:
-                            raise ConnectionError(f"Failed to connect session {session_key}")
-                            
-                    except Exception as e:
-                        logging.error(f"CommandQueue.start_processing: Error getting session for {session_key}: {str(e)}")
-                        item.status = 'failed'
-                        continue
+                    if not telnet_session.is_connected:
+                        raise ConnectionError(f"Failed to connect session {session_key}")
+                        
+                except Exception as e:
+                    logging.error(f"CommandQueue.start_processing: Error getting session for {session_key}: {str(e)}")
+                    item.status = 'failed'
+                    # Mark as failed and trigger next command processing
+                    self._handle_worker_finished(None)
+                    return
 
-            worker = CommandWorker(item.command, item.token, telnet_session)
-            logging.debug(f"CommandQueue.start_processing: Created worker for command {idx+1}/{total}: {item.command} (token {item.token.token_id})")
-            worker.setAutoDelete(True)
-            # Connect the finished signal properly
-            worker.signals.finished.connect(self._handle_worker_finished)
-            logging.debug(f"CommandQueue.start_processing: Starting worker {idx+1}/{total}")
-            self.thread_pool.start(worker)
-            logging.debug(f"CommandQueue.start_processing: Started worker for command {idx+1}/{total}")
+        worker = CommandWorker(item.command, item.token, telnet_session)
+        logging.debug(f"CommandQueue.start_processing: Created worker for command {idx+1}/{total}: {item.command} (token {item.token.token_id})")
+        worker.setAutoDelete(True)
+        # Connect the finished signal properly
+        worker.signals.finished.connect(self._handle_worker_finished)
+        logging.debug(f"CommandQueue.start_processing: Starting worker {idx+1}/{total}")
+        self.thread_pool.start(worker)
+        logging.debug(f"CommandQueue.start_processing: Started worker for command {idx+1}/{total}")
         
         # If we have commands to process, ensure we're in processing state
         if pending_commands:
@@ -290,6 +303,25 @@ class CommandQueue(QObject):
         
     def _handle_worker_finished(self, worker: CommandWorker):
         """Handle completion of a worker thread"""
+        # Handle case where worker is None (connection failed before worker creation)
+        if worker is None:
+            logging.debug("CommandQueue._handle_worker_finished: Worker is None (connection failed), checking for next command")
+            self.completed_count += 1
+            
+            # Check if there are more pending commands to process
+            pending_commands = [cmd for cmd in self.queue if cmd.status == 'pending']
+            if pending_commands:
+                logging.debug(f"CommandQueue._handle_worker_finished: {len(pending_commands)} pending commands remain, processing next")
+                self.start_processing()
+            else:
+                # No more pending commands, reset processing state
+                active_commands = [cmd for cmd in self.queue if cmd.status in ['pending', 'processing']]
+                if not active_commands:
+                    with self._processing_lock:
+                        self._is_processing = False
+                        logging.info("CommandQueue._handle_worker_finished: All commands processed (after connection failure)")
+            return
+            
         logging.debug(f"CommandQueue._handle_worker_finished: Worker finished for command: {worker.command}")
         self.completed_count += 1
         success = worker.success

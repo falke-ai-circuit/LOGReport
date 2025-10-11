@@ -112,6 +112,10 @@ class CommanderWindow(QMainWindow):
         # Initialize Telnet Service
         self.telnet_service = TelnetService(self.session_manager)
         
+        # Connect FBC and RPC services to Telnet service for debugger connection management
+        self.fbc_service.set_telnet_service(self.telnet_service)
+        self.rpc_service.set_telnet_service(self.telnet_service)
+        
         # Initialize context menu service
         self.context_menu_service = ContextMenuService(self.node_manager, self.context_menu_filter)
         

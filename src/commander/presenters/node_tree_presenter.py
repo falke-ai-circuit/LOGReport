@@ -98,6 +98,10 @@ class NodeTreePresenter(QObject):
         self._workflow_paused = False
         self._workflow_cancelled = False
         
+        # Pending BsTool execution (deferred until FBC/RPC commands complete)
+        # Dict: {node_name, log_file_path, bstool_command_args, log_token} or None
+        self._pending_bstool = None
+        
         # Connect signals from CommandQueue, LogWriter, and BsToolService
         self.command_queue.command_completed.connect(self.handle_command_completed)
         self.log_writer.log_write_completed.connect(self.handle_log_write_completed)
@@ -394,6 +398,12 @@ class NodeTreePresenter(QObject):
         logging.debug(f"handle_command_completed: Log Path: {log_path}, Command Success: {success}, Token Type: {token.token_type}")
         self._check_and_update_node_color(log_path)
         
+        # Check if pending BsTool execution should be triggered
+        # This happens when all FBC/RPC commands complete and queue becomes idle
+        if self._pending_bstool and not self.command_queue.is_processing:
+            logging.info("handle_command_completed: Queue idle, executing pending BsTool")
+            self._execute_pending_bstool()
+        
         # Check if we're in sequential node processing mode and queue is idle
         # This triggers processing of the next node when all commands for current node are done
         if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
@@ -482,6 +492,36 @@ class NodeTreePresenter(QObject):
             # Use QTimer to check processing state after a short delay
             QTimer.singleShot(100, self._check_sequential_processing_continuation)
             logging.debug("_handle_bstool_completed: Scheduled continuation check for sequential processing")
+    
+    def _execute_pending_bstool(self):
+        """
+        Execute a pending BsTool command that was deferred until FBC/RPC commands completed.
+        This method is called from handle_command_completed when the queue becomes idle.
+        """
+        if not self._pending_bstool:
+            logging.warning("_execute_pending_bstool: Called but no pending BsTool found")
+            return
+        
+        # Extract pending BsTool information
+        pending = self._pending_bstool
+        node_name = pending['node_name']
+        log_file_path = pending['log_file_path']
+        bstool_command_args = pending['bstool_command_args']
+        log_token = pending['log_token']
+        
+        # Clear pending state before execution
+        self._pending_bstool = None
+        
+        # Execute BsTool command
+        logging.info(f"_execute_pending_bstool: Executing BsTool for node {node_name} (deferred execution triggered)")
+        self.bstool_service.execute_bstool(
+            log_file_path=log_file_path,
+            bstool_command_args=bstool_command_args,
+            callback=self._handle_bstool_completed,
+            log_token=log_token
+        )
+        
+        # Note: Execution lock will be released by _run_bstool_process's finally block
             
     def _check_and_update_node_color(self, log_path: str):
         """
@@ -1005,11 +1045,21 @@ class NodeTreePresenter(QObject):
         logging.info(f"Starting print command execution for node {node_name}...")
         self.status_message_signal.emit(f"Starting print command execution for node {node_name}...", 0)
         
+        # SEQUENTIAL EXECUTION FIX: Try to acquire BsTool execution state atomically
+        # This prevents parallel BsTool execution when processing multiple nodes
+        # If already executing, defer this node's processing with retry timer
+        if not self.bstool_service.try_acquire_execution():
+            logging.warning(f"BsTool is currently executing, deferring node {node_name} processing")
+            # Schedule retry after 100ms
+            QTimer.singleShot(100, lambda: self.process_node_print_commands(node_name))
+            return
+        
         try:
             # Get the node
             node = self.node_manager.get_node(node_name)
             if not node:
                 self._report_error(f"Node {node_name} not found for print command processing")
+                self.bstool_service.release_execution()  # Release since we won't execute BsTool
                 return
             
             # Phase 1: Execute all FBC print commands
@@ -1044,12 +1094,11 @@ class NodeTreePresenter(QObject):
             log_tokens = self._get_tokens_for_node(node, "LOG")
             logging.debug(f"Phase 3 CHECK: Retrieved {len(log_tokens) if log_tokens else 0} LOG tokens for node {node_name}")
             
+            bstool_pending = False  # Track if BsTool was deferred
+            
             if log_tokens:
-                logging.info(f"Phase 3: Executing BsTool for node {node_name} ({len(log_tokens)} LOG files)")
-                
                 # Strip 'm' or 'r' suffix from node name for -errlog parameter
                 errlog_node_name = self._strip_node_suffix(node_name)
-                self.status_message_signal.emit(f"Phase 3/3: Executing BsTool -errlog {errlog_node_name}...", 0)
                 
                 # Switch to BsTool tab to show output
                 self.switch_to_bstool_tab_signal.emit()
@@ -1064,25 +1113,45 @@ class NodeTreePresenter(QObject):
                     # Highlight the LOG file being processed (similar to FBC/RPC)
                     self._highlight_current_file(node_name, log_token, log_file_path)
                     
-                    # Execute BsTool with -errlog parameter
-                    # BsTool workflow: runs as interactive shell → times out (normal) → 
-                    # writes output to temp file → service reads temp file → writes to log_file_path
                     bstool_command_args = f"-errlog {errlog_node_name}"
-                    logging.debug(f"Phase 3: Executing BsTool with args: {bstool_command_args}, output to: {log_file_path}")
-                    self.bstool_service.execute_bstool(log_file_path, bstool_command_args)
-                    logging.info(f"Phase 3: BsTool execution started (will timeout, read temp file, write to {log_file_path})")
                     
-                    # For sequential processing: trigger continuation check after BsTool starts
-                    # This is needed for nodes with no FBC/RPC tokens (BsTool-only)
-                    # where handle_command_completed() won't be called
-                    if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
-                        # Wait 200ms for BsTool thread to set is_executing flag, then check if we should continue
-                        QTimer.singleShot(200, self._check_sequential_processing_continuation)
-                        logging.debug("Phase 3: Scheduled continuation check for sequential processing (BsTool)")
+                    # DECISION: Execute immediately or defer based on FBC/RPC presence
+                    # If no FBC/RPC commands, execute BsTool immediately (no queue to wait for)
+                    # If FBC/RPC commands exist, defer BsTool until queue becomes idle
+                    if not (fbc_tokens or rpc_tokens):
+                        # NO FBC/RPC commands - execute BsTool immediately
+                        logging.info(f"Phase 3: Executing BsTool IMMEDIATELY for node {node_name} (no FBC/RPC commands)")
+                        self.status_message_signal.emit(f"Phase 3/3: BsTool -errlog {errlog_node_name}...", 0)
+                        self.bstool_service.execute_bstool(
+                            log_file_path=log_file_path,
+                            bstool_command_args=bstool_command_args,
+                            callback=self._handle_bstool_completed,
+                            log_token=log_token
+                        )
+                        bstool_pending = False  # BsTool executed immediately, not pending
+                    else:
+                        # FBC/RPC commands exist - defer BsTool until queue idle
+                        logging.info(f"Phase 3: BsTool execution DEFERRED for node {node_name} (will execute after FBC/RPC complete)")
+                        self.status_message_signal.emit(f"Phase 3/3: BsTool -errlog {errlog_node_name} pending...", 0)
+                        self._pending_bstool = {
+                            'node_name': node_name,
+                            'log_file_path': log_file_path,
+                            'bstool_command_args': bstool_command_args,
+                            'log_token': log_token
+                        }
+                        bstool_pending = True  # Mark that BsTool is pending
+                    
+                    # Do NOT schedule continuation check here - it will be triggered by handle_command_completed or _handle_bstool_completed
                 else:
                     logging.warning(f"Phase 3: LOG token has no log_path attribute, cannot execute BsTool")
             else:
                 logging.info(f"Phase 3: No LOG tokens found for node {node_name}, skipping BsTool execution")
+            
+            # If BsTool was NOT deferred AND we have FBC/RPC commands, execution lock will be released by queue completion
+            # If NO FBC/RPC commands, release execution lock immediately
+            if not bstool_pending and not (fbc_tokens or rpc_tokens):
+                self.bstool_service.release_execution()
+                logging.debug(f"Released BsTool execution state (no commands for node {node_name})")
             
             # Completion message
             total_commands = len(fbc_tokens) + len(rpc_tokens)
@@ -1096,6 +1165,9 @@ class NodeTreePresenter(QObject):
             logging.info(f"Print command execution completed for node {node_name}: {total_commands} total commands")
             
         except Exception as e:
+            # Release execution state if we acquired it but error occurred
+            self.bstool_service.release_execution()
+            logging.debug("Released BsTool execution state due to exception")
             self._report_error(f"Error in print command execution for node {node_name}", e)
     
     def process_all_nodes_print_commands(self):
@@ -1701,6 +1773,11 @@ class NodeTreePresenter(QObject):
         """Handle cancel button click - cancels Print All Nodes workflow."""
         # Set workflow cancel flag
         self._workflow_cancelled = True
+        
+        # Clear any pending BsTool execution
+        if self._pending_bstool:
+            logging.info(f"_handle_cancel: Clearing pending BsTool for node {self._pending_bstool['node_name']}")
+            self._pending_bstool = None
         
         # Update button states for CANCELLED/IDLE state (disable all buttons)
         self.view.pause_btn.setEnabled(False)

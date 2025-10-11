@@ -24,6 +24,7 @@ class BsToolCommandService(QObject):
         self.process = None
         self.threading_service = ThreadingService()
         self.process_lock = self.threading_service.create_lock()
+        self.execution_lock = threading.Lock()  # Separate lock for atomic execution state control
         self.log_writer = log_writer
         self.logger = logging.getLogger(__name__)
         self.is_executing = False  # Track if BsTool is currently executing
@@ -32,6 +33,30 @@ class BsToolCommandService(QObject):
         # The UI will set its initial state when connecting to the service
         # from ..widgets import ConnectionState
         # self.connection_state_signal.emit(ConnectionState.CONNECTED)
+        
+    def try_acquire_execution(self) -> bool:
+        """
+        Atomically check and set execution state.
+        Thread-safe method to prevent parallel BsTool execution.
+        
+        Returns:
+            bool: True if execution was acquired (was idle), False if already executing
+        """
+        with self.execution_lock:
+            if self.is_executing:
+                return False  # Already executing, cannot acquire
+            self.is_executing = True
+            return True  # Successfully acquired
+    
+    def release_execution(self):
+        """
+        Release execution state.
+        Called when BsTool execution completes (success or failure).
+        Thread-safe method to reset is_executing flag.
+        """
+        with self.execution_lock:
+            self.is_executing = False
+            self.logger.debug("BsTool execution state released")
         
     def execute_bstool(self, log_file_path: str, bstool_command_args: str = ""):
         """
@@ -78,9 +103,11 @@ class BsToolCommandService(QObject):
         self.logger.debug(f"Executing command: {' '.join(command)} for log file: {log_file_path}")
         
         try:
-            # Mark as executing BEFORE starting thread
-            self.is_executing = True
-            self.logger.debug(f"Set is_executing = True before starting BsTool thread")
+            # NOTE: is_executing flag should be set by caller using try_acquire_execution()
+            # This ensures atomic check-and-set to prevent race conditions
+            # If not already set, we log a warning but proceed anyway
+            if not self.is_executing:
+                self.logger.warning("execute_bstool called without acquiring execution state - caller should use try_acquire_execution()")
             
             # Start the process in a separate thread to avoid blocking UI
             self.threading_service.start_thread(
@@ -90,8 +117,8 @@ class BsToolCommandService(QObject):
             )
             
         except Exception as e:
-            # If thread start fails, reset the flag
-            self.is_executing = False
+            # If thread start fails, release execution state
+            self.release_execution()
             error_msg = f"Failed to start bstool process: {str(e)}"
             self.logger.error(error_msg, exc_info=True)
             self.report_error.emit(error_msg)
@@ -107,8 +134,13 @@ class BsToolCommandService(QObject):
         """
         self.logger.info(f"Executing bstool command: {command_str}")
         
-        # Mark as executing
-        self.is_executing = True
+        # NOTE: Caller should use try_acquire_execution() for atomic gate check
+        # For backward compatibility with UI tab, we acquire here if not already set
+        if not self.is_executing:
+            if not self.try_acquire_execution():
+                self.logger.warning("BsTool already executing, cannot start another instance")
+                self.status_message_signal.emit("BsTool already executing, please wait...", 3000)
+                return
         
         # Emit status message
         self.status_message_signal.emit("Starting bstool command execution...", 3000)
@@ -428,8 +460,8 @@ class BsToolCommandService(QObject):
             from ..widgets import ConnectionState
             self.connection_state_signal.emit(ConnectionState.CONNECTED)
             
-            # Mark execution as complete
-            self.is_executing = False
+            # Release execution state (thread-safe)
+            self.release_execution()
                 
     def terminate_bstool(self):
         """Terminate the currently running bstool process if any."""
