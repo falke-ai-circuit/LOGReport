@@ -33,9 +33,15 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **Optional Fields** (use when applicable):
 - `CEPH:[context_structure]` (ASSESS phase and onwards)
 - `MEMORY:[entities_loaded]` (REMEMBER phase)
-- `LEARNINGS:[pattern:[insights] | approach:[methodology]]` (specialist phases: ANALYZE, ARCHITECT, IMPLEMENT, DEBUG, TEST, LEARN) | ✅ `pattern:[Centralized validation for DRY] | approach:[Color coding in populate_node_list for real-time feedback]` | ❌ Bullet points or free-form paragraphs | **Format**: Always use `pattern:[X] | approach:[Y]` with pipe separator
+- `LEARNINGS:[pattern:[insights] | approach:[methodology]]` ⚠️ **MANDATORY FORMAT** (specialist phases: ANALYZE, ARCHITECT, IMPLEMENT, DEBUG, TEST, LEARN)  
+  ✅ CORRECT: `LEARNINGS:[pattern:[Centralized validation for DRY] | approach:[Color coding in populate_node_list for real-time feedback]]`  
+  ❌ WRONG: `LEARNINGS:[Implemented validation and color coding]` (no pattern:/approach: structure)  
+  ❌ WRONG: Bullet points or free-form paragraphs  
+  **Rule**: ALWAYS use `pattern:[X] | approach:[Y]` with pipe separator
 - `ARTIFACTS:[type:path:description]` (IMPLEMENT, TEST, LEARN, DOCUMENT phases)
-- `METRICS:[measurement_data]` (TEST phase) - ⚠️ **MUST include delta values (Δ)**
+- `METRICS:[measurement_data]` (TEST phase) - ⚠️ **MUST include delta values (Δ)**  
+  ✅ CORRECT: `METRICS:[coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9)]`  
+  ❌ WRONG: `METRICS:[coverage=95% | tests=9/9]` (missing +Δ deltas)
 - `DOCUMENT:[documentation_updates]` (DOCUMENT phase)
 - `HANDOFFS:[future_patterns]` (LOG phase)
 
@@ -65,7 +71,7 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **Objective**: Investigate patterns and root causes  
 **Mindset**: Analyzer - uncover hidden relationships  
 **Actions**: Map architecture + dependencies → **query loaded codegraph** (BELONGS_TO for structure, IMPORTS for dependencies, DOCUMENTED_IN for context, detect emergent patterns) → analyze dataflow + relationships + patterns + tech debt → identify edge cases + inefficiencies → discover root causes → find optimization opportunities → evolve CEPH  
-**Completion**: Standard + `CEPH:[updated with analysis insights]` + `LEARNINGS:[pattern:[domain_insights] | approach:[methodology]]`
+**Completion**: Standard + `CEPH:[updated with analysis insights]` + `LEARNINGS:[pattern:[domain_insights] | approach:[methodology]]` ⚠️ **MANDATORY FORMAT** - use pattern:|approach: structure, NOT free-form text
 
 ### Phase 4: ARCHITECT
 **Objective**: Design system architecture and implementation plan  
@@ -92,7 +98,7 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **🚨 CRITICAL**: Tests NOT optional | 100% pass required | Failed tests = incomplete  
 **Actions**: **Map test surface using loaded codegraph** (methods needing tests, existing patterns, untested paths) → create comprehensive test file (unit + integration + edge cases) → run `python -m pytest <test_file> -v` → verify ALL tests pass (9/9, not 5/9) → if ANY fail: return to DEBUG → fix → re-run → repeat until 100% pass → create manual integration test for critical workflows → test actual scenarios (not just mocks) → proceed to LEARN only after 100% pass  
 **Completion**: Standard + `CEPH:[validated with test evidence]` + `LEARNINGS:[pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS:[test:file_path:coverage_info]` + `METRICS:[measurement_with_deltas]` ⚠️ **MANDATORY DELTAS** + `TEST_SURFACE:[methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]`  
-**METRICS Format** (⚠️ MANDATORY Δ): ✅ `coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration` | ❌ `coverage=95%` (missing baseline Δ) | `tests=9/9` (missing +N) | **Rule**: ALWAYS include (Δ±X%) or (+N) showing change from baseline  
+**METRICS Format** (⚠️ MANDATORY Δ - NO EXCEPTIONS): ✅ `coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration` | ❌ `coverage=95%` (missing baseline Δ) | ❌ `tests=9/9` (missing +N new tests) | **Rule**: ALWAYS include (Δ±X%) or (+N) showing change from baseline - if first implementation use (+N) showing new additions  
 **TEST_SURFACE Format**: ✅ `methods_tested:8/10 classes_covered:[NodeTreeView, NodeTreePresenter] edge_cases:5` | Shows: fraction tested, class list, edge case count
 
 ### Phase 8: LEARN ⚠️ MANDATORY
