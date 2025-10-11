@@ -455,6 +455,7 @@ class NodeTreePresenter(QObject):
         """
         Handle the bstool_execution_completed signal from BsToolService.
         Triggers sequential processing continuation check for Print All Nodes workflow.
+        Sets command_success for LOG files (BsTool doesn't use command queue).
         
         Args:
             log_path: Path to the log file that was processed
@@ -462,6 +463,19 @@ class NodeTreePresenter(QObject):
             return_code: Process return code
         """
         logging.debug(f"_handle_bstool_completed: BsTool finished for {log_path}, success={success}, return_code={return_code}")
+        
+        # Set command_success in node_status for BsTool execution
+        # This allows handle_log_write_completed to update colors naturally
+        # (same flow as FBC/RPC, but using BsTool success instead of command queue success)
+        if log_path not in self.node_status:
+            self.node_status[log_path] = {"command_success": None, "log_success": None, "total_line_count": None, "lines_written_by_command": None}
+        
+        self.node_status[log_path]["command_success"] = success
+        logging.debug(f"_handle_bstool_completed: Set command_success={success} for {log_path}")
+        
+        # Wait a bit for the file to be written before checking colors
+        # BsTool writes output from temp file to actual log file asynchronously
+        QTimer.singleShot(500, lambda: self._check_and_update_node_color(log_path))
         
         # If we're in sequential processing mode, check if we should continue to next node
         if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
@@ -494,34 +508,40 @@ class NodeTreePresenter(QObject):
             token_type = file_item_data.data(0, Qt.ItemDataRole.UserRole).get("token_type") if file_item_data else None
 
             normalized_log_path = os.path.normpath(log_path)
-            logging.debug(f"_check_and_update_node_color: Looking for normalized_log_path: {normalized_log_path} in file_item_map. Map keys: {list(self.file_item_map.keys())}")
             file_item = self.file_item_map.get(normalized_log_path)
             if file_item:
                 # Determine icon color based on COMMAND EXECUTION STATUS
                 if command_success and log_success:
                     if token_type in ["FBC", "RPC"]: # Apply to both FBC and RPC
                         if lines_written_by_command is None or lines_written_by_command == 0:
-                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to red (no new content for {token_type})")
                             icon_color = "red"
                         elif lines_written_by_command < 10:
-                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to yellow (new content < 10 lines for {token_type})")
                             icon_color = "yellow"
                         else: # lines_written_by_command >= 10
-                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to green (new content >= 10 lines for {token_type})")
                             icon_color = "green"
-                    else: # Existing logic for other file types (e.g., LOG)
-                        if total_line_count is None or total_line_count == 0:
-                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to red (no content)")
-                            icon_color = "red"
-                        elif total_line_count < 10: # Example threshold, adjust as needed
-                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to yellow (total_line_count < 10)")
-                            icon_color = "yellow"
-                        else: # total_line_count >= 10
-                            logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to green (total_line_count >= 10)")
-                            icon_color = "green"
+                    else: # LOG and other file types - check actual file content
+                        # For LOG files, read actual file content to determine icon color
+                        # This ensures we get the correct count after BsTool finishes writing
+                        if os.path.exists(normalized_log_path):
+                            actual_line_count = self.log_writer.get_file_line_count(normalized_log_path)
+                            if actual_line_count == 0:
+                                icon_color = "red"
+                            elif actual_line_count < 10:
+                                icon_color = "yellow"
+                            else: # actual_line_count >= 10
+                                icon_color = "green"
+                        else:
+                            # File doesn't exist yet, use total_line_count as fallback
+                            if total_line_count is None or total_line_count == 0:
+                                icon_color = "red"
+                            elif total_line_count < 10:
+                                icon_color = "yellow"
+                            else:
+                                icon_color = "green"
                 else:
-                    logging.debug(f"_check_and_update_node_color: Setting ICON for {normalized_log_path} to red (command/log failed)")
                     icon_color = "red"
+                
+                logging.debug(f"_check_and_update_node_color: Set ICON to {icon_color} for {normalized_log_path}")
                 
                 # Update rectangle icon color (command execution status)
                 self.view.update_node_icon(file_item, icon_color)
@@ -546,9 +566,9 @@ class NodeTreePresenter(QObject):
                         text_color = "green"  # Sufficient content
                     
                     self.view.update_node_color(file_item, text_color)
-                    logging.debug(f"_check_and_update_node_color: Updated TEXT color for {normalized_log_path} to {text_color} ({content_line_count} lines)")
+                    logging.debug(f"_check_and_update_node_color: Set TEXT to {text_color} for {os.path.basename(normalized_log_path)} ({content_line_count} lines)")
                 else:
-                    logging.debug(f"_check_and_update_node_color: File {normalized_log_path} does not exist, skipping text color update")
+                    logging.debug(f"_check_and_update_node_color: File does not exist yet, skipping text color update")
             else:
                 logging.warning(f"_check_and_update_node_color: file_item not found for log_path: {normalized_log_path}")
 
@@ -572,7 +592,6 @@ class NodeTreePresenter(QObject):
         # Get the section (parent) of this file item
         section_item = file_item.parent()
         if not section_item:
-            logging.debug("_aggregate_hierarchical_colors: File has no parent section")
             return
             
         # Aggregate section color from all child files
@@ -581,7 +600,6 @@ class NodeTreePresenter(QObject):
         # Get the node (parent of section)
         node_item = section_item.parent()
         if not node_item:
-            logging.debug("_aggregate_hierarchical_colors: Section has no parent node")
             return
             
         # Aggregate node color from all child sections
@@ -603,7 +621,6 @@ class NodeTreePresenter(QObject):
         """
         child_count = section_item.childCount()
         if child_count == 0:
-            logging.debug(f"_aggregate_section_color: Section {section_item.text(0)} has no children")
             return
         
         # Check if the only child is a placeholder (e.g., "No files found")
@@ -611,7 +628,6 @@ class NodeTreePresenter(QObject):
             first_child = section_item.child(0)
             child_data = first_child.data(0, Qt.ItemDataRole.UserRole)
             if not child_data or "log_path" not in child_data:
-                logging.debug(f"_aggregate_section_color: Section {section_item.text(0)} has only placeholder child")
                 return
         
         # Collect ICON colors from all child files
@@ -629,7 +645,6 @@ class NodeTreePresenter(QObject):
                     colors.append(QColor(icon_color).name())
         
         if not colors:
-            logging.debug(f"_aggregate_section_color: No file icon colors found in section {section_item.text(0)}")
             return
         
         # Determine aggregated color
@@ -659,8 +674,6 @@ class NodeTreePresenter(QObject):
         if section_data:
             section_data["icon_color"] = aggregated_color
             section_item.setData(0, Qt.ItemDataRole.UserRole, section_data)
-        
-        logging.debug(f"_aggregate_section_color: Set {section_item.text(0)} ICON to {aggregated_color} (from {len(colors)} files)")
     
     def _aggregate_node_color(self, node_item):
         """
@@ -678,7 +691,6 @@ class NodeTreePresenter(QObject):
         """
         child_count = node_item.childCount()
         if child_count == 0:
-            logging.debug(f"_aggregate_node_color: Node {node_item.text(0)} has no children")
             return
         
         # Collect ICON colors from all child sections
@@ -693,7 +705,6 @@ class NodeTreePresenter(QObject):
                     colors.append(QColor(icon_color).name())
         
         if not colors:
-            logging.debug(f"_aggregate_node_color: No section icon colors found in node {node_item.text(0)}")
             return
         
         # Determine aggregated color (same logic as sections)
@@ -725,10 +736,7 @@ class NodeTreePresenter(QObject):
             node_data["icon_color"] = aggregated_color
             node_item.setData(0, Qt.ItemDataRole.UserRole, node_data)
         
-        logging.debug(f"_aggregate_node_color: Set {node_item.text(0)} ICON to {aggregated_color} (from {len(colors)} sections)")
-        
         self.view.update_node_color(node_item, aggregated_color)
-        logging.debug(f"_aggregate_node_color: Set {node_item.text(0)} to {aggregated_color} (from {len(colors)} sections)")
                 
     def set_log_root_folder(self, folder_path):
         """Set the root folder for log files"""
@@ -1038,7 +1046,10 @@ class NodeTreePresenter(QObject):
             
             if log_tokens:
                 logging.info(f"Phase 3: Executing BsTool for node {node_name} ({len(log_tokens)} LOG files)")
-                self.status_message_signal.emit(f"Phase 3/3: Executing BsTool -errlog {node_name}...", 0)
+                
+                # Strip 'm' or 'r' suffix from node name for -errlog parameter
+                errlog_node_name = self._strip_node_suffix(node_name)
+                self.status_message_signal.emit(f"Phase 3/3: Executing BsTool -errlog {errlog_node_name}...", 0)
                 
                 # Switch to BsTool tab to show output
                 self.switch_to_bstool_tab_signal.emit()
@@ -1056,7 +1067,7 @@ class NodeTreePresenter(QObject):
                     # Execute BsTool with -errlog parameter
                     # BsTool workflow: runs as interactive shell → times out (normal) → 
                     # writes output to temp file → service reads temp file → writes to log_file_path
-                    bstool_command_args = f"-errlog {node_name}"
+                    bstool_command_args = f"-errlog {errlog_node_name}"
                     logging.debug(f"Phase 3: Executing BsTool with args: {bstool_command_args}, output to: {log_file_path}")
                     self.bstool_service.execute_bstool(log_file_path, bstool_command_args)
                     logging.info(f"Phase 3: BsTool execution started (will timeout, read temp file, write to {log_file_path})")
@@ -1218,24 +1229,21 @@ class NodeTreePresenter(QObject):
         
         # Check if workflow is paused - don't continue if paused
         if self._workflow_paused:
-            logging.debug("Sequential processing: Workflow paused, not continuing")
             return
         
         # Check if workflow was cancelled - don't continue if cancelled
         if self._workflow_cancelled:
-            logging.debug("Sequential processing: Workflow cancelled, not continuing")
             return
         
         # Check if BsTool is currently executing - wait for it to complete
         if self.bstool_service.is_executing:
-            logging.debug("Sequential processing: BsTool is executing, waiting for completion")
             # Re-check after a short delay
             QTimer.singleShot(100, self._check_sequential_processing_continuation)
             return
         
         # Check if command queue is idle (all commands for current node are done)
         if not self.command_queue.is_processing:
-            logging.debug(f"Sequential processing: Queue idle and BsTool complete, proceeding to next node")
+            logging.debug(f"Sequential processing: Proceeding to next node")
             self._process_next_node_in_sequence()
         
     def process_node_hierarchical_commands(self, node_name: str):
@@ -1296,7 +1304,9 @@ class NodeTreePresenter(QObject):
                             # Generate BsTool command for this log file
                             node_id = self._extract_node_id_from_log_path(token.log_path)
                             if node_id:
-                                bstool_command_args = f"-errlog {node_id}"
+                                # Strip 'm' or 'r' suffix from node_id for -errlog parameter
+                                errlog_node_id = self._strip_node_suffix(node_id)
+                                bstool_command_args = f"-errlog {errlog_node_id}"
                                 self.command_generated_signal.emit(bstool_command_args, "BSTOOL")
                         except Exception as e:
                             logging.error(f"Error processing LOG file {token.log_path}: {str(e)}")
@@ -1313,6 +1323,25 @@ class NodeTreePresenter(QObject):
             
         except Exception as e:
             self._report_error(f"Error in hierarchical command execution for node {node_name}", e)
+    
+    def _strip_node_suffix(self, node_name: str) -> str:
+        """
+        Strip 'm' or 'r' suffix from node name for BsTool -errlog parameter.
+        
+        Examples:
+            AP01m → AP01
+            AP02r → AP02
+            AP01 → AP01 (unchanged)
+            
+        Args:
+            node_name: Original node name (may have 'm' or 'r' suffix)
+            
+        Returns:
+            Node name without 'm' or 'r' suffix
+        """
+        if node_name.endswith('m') or node_name.endswith('r'):
+            return node_name[:-1]
+        return node_name
     
     def _get_tokens_for_node(self, node, token_type: str):
         """
@@ -1537,13 +1566,16 @@ class NodeTreePresenter(QObject):
                 self._report_error("Could not extract node ID from log file path", None)
                 return
             
+            # Strip 'm' or 'r' suffix from node_id for -errlog parameter
+            errlog_node_id = self._strip_node_suffix(node_id)
+            
             # Construct bstool command arguments
-            bstool_command_args = f"-errlog {node_id}"
+            bstool_command_args = f"-errlog {errlog_node_id}"
             
             # Execute the BsTool command directly via bstool_service
             self.bstool_service.execute_command(bstool_command_args)
             
-            self.status_message_signal.emit(f"Executing BsTool with -errlog {node_id}", 3000)
+            self.status_message_signal.emit(f"Executing BsTool with -errlog {errlog_node_id}", 3000)
         except Exception as e:
             self._report_error("Error processing BsTool command", e)
             
