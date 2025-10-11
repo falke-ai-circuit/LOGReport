@@ -46,9 +46,11 @@ class UnifiedMemoryOptimizer:
         self.backup_dir.mkdir(exist_ok=True)
         
     def log(self, message, level="INFO"):
-        """Structured logging"""
+        """Structured logging with encoding safety"""
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] {level:5s} | {message}")
+        # Replace unicode arrows with ASCII for Windows console compatibility
+        safe_message = message.replace('→', '->').replace('←', '<-')
+        print(f"[{timestamp}] {level:5s} | {safe_message}")
     
     # ==================== LOADING & SAVING ====================
     
@@ -136,9 +138,9 @@ class UnifiedMemoryOptimizer:
     # ==================== PHASE 1: AGGRESSIVE CONDENSATION ====================
     
     def phase1_condensation(self):
-        """Phase 1: Aggressive entity condensation"""
+        """Phase 1: Aggressive entity condensation and intelligent cleanup"""
         self.log("=" * 70)
-        self.log("PHASE 1: AGGRESSIVE CONDENSATION")
+        self.log("PHASE 1: INTELLIGENT CLEANUP + AGGRESSIVE CONDENSATION")
         self.log("=" * 70)
         
         self.save_memory("before_phase1")
@@ -146,7 +148,15 @@ class UnifiedMemoryOptimizer:
         # Step 1: Identify removable entities
         self.log("Identifying removable entities...")
         removable = self._identify_removable_entities()
-        self.log(f"Found {len(removable)} removable entities")
+        
+        # Categorize removals
+        categories = defaultdict(list)
+        for item in removable:
+            categories[item['reason']].append(item['name'])
+        
+        self.log(f"Found {len(removable)} removable entities:")
+        for reason, names in categories.items():
+            self.log(f"  {reason:30s}: {len(names):3d} entities")
         
         # Step 2: Remove entities
         if removable:
@@ -166,9 +176,29 @@ class UnifiedMemoryOptimizer:
         self.log(f"Phase 1 Complete:")
         self.log(f"  Size: {self.stats['original']['size']/1024:.2f} KB → {self.stats['phase1']['size']/1024:.2f} KB ({(self.stats['phase1']['size']-self.stats['original']['size'])/self.stats['original']['size']*100:+.1f}%)")
         self.log(f"  Entities: {self.stats['original']['entities']} → {self.stats['phase1']['entities']}")
+        
+        # Log cleanup report
+        if removable:
+            self.log("\nCleanup Report:")
+            for reason, names in sorted(categories.items()):
+                self.log(f"  {reason}:")
+                for name in names[:3]:
+                    self.log(f"    - {name}")
+                if len(names) > 3:
+                    self.log(f"    ... and {len(names) - 3} more")
     
     def _identify_removable_entities(self):
-        """Identify entities to remove"""
+        """
+        Identify entities to remove based on intelligent cleanup criteria.
+        
+        Removal categories:
+        1. MemoryType entities (organizational metadata, no workflow value)
+        2. Cluster/Domain/Type meta entities (hierarchy via relations)
+        3. Generic documentation (README/TODO extractions)
+        4. Low-value entities (<2 observations or all <25 chars)
+        5. Obsolete entities (no refs 90+ days)
+        6. Overly verbose (>500 chars - will be condensed instead)
+        """
         removable = []
         entity_names = {e['name'] for e in self.entities}
         connected_entities = set()
@@ -183,29 +213,79 @@ class UnifiedMemoryOptimizer:
         
         for entity in self.entities:
             name = entity['name']
+            entity_type = entity.get('entityType', '')
             observations = entity.get('observations', [])
             
-            # Skip hierarchy entities
+            # Skip hierarchy entities (will be regenerated in Phase 2)
             if any(name.startswith(p) for p in [f'{self.prefix}.Domain.', f'{self.prefix}.Cluster.', f'{self.prefix}.Type.']):
                 continue
             
             should_remove = False
             reason = ""
             
-            # Remove disconnected with minimal value
-            if name in disconnected and len(observations) <= 2:
+            # 1. Remove MemoryType entities (organizational metadata only)
+            if entity_type == 'MemoryType':
                 should_remove = True
-                reason = "disconnected+minimal_observations"
+                reason = "meta_type_organizational"
             
-            # Remove overly verbose (>500 chars total)
-            elif sum(len(obs) for obs in observations) > 500:
+            # 2. Remove Cluster/Domain/Type meta entities
+            elif entity_type in ['Cluster', 'Domain', 'Type'] or '_Cluster' in name or '_Domain' in name or '_Type' in name:
                 should_remove = True
-                reason = "overly_verbose"
+                reason = "hierarchy_meta_entity"
+            
+            # 3. Remove generic documentation entities (README/TODO extractions)
+            elif entity_type == 'Document' and any(kw in name for kw in [
+                'Project_Overview', 'Project_Features', 'Project_Requirements', 
+                'Project_Installation', 'Project_Usage', 'Project_Tasks'
+            ]):
+                should_remove = True
+                reason = "generic_documentation"
+            
+            # 4. Remove low-value entities (minimal observations)
+            elif len(observations) <= 1 or (len(observations) == 2 and all(len(obs) < 25 for obs in observations)):
+                should_remove = True
+                reason = "low_value_minimal_obs"
+            
+            # 5. Remove obsolete entities (no refs for 90+ days)
+            elif self._is_obsolete(entity):
+                should_remove = True
+                reason = "obsolete_no_refs_90d"
+            
+            # 6. Disconnected entities with no value (verbose ones will be condensed)
+            elif name in disconnected and len(observations) <= 2:
+                should_remove = True
+                reason = "disconnected_minimal_value"
             
             if should_remove:
-                removable.append({'name': name, 'reason': reason})
+                removable.append({'name': name, 'reason': reason, 'type': entity_type})
         
         return removable
+    
+    def _is_obsolete(self, entity):
+        """Check if entity is obsolete (no refs for 90+ days)"""
+        observations = entity.get('observations', [])
+        
+        # Look for refs:0 and old update date
+        has_zero_refs = False
+        update_date = None
+        
+        for obs in observations:
+            if 'refs:0' in obs:
+                has_zero_refs = True
+            match_upd = re.search(r'upd:(\d{4}-\d{2}-\d{2})', obs)
+            if match_upd:
+                update_date = match_upd.group(1)
+        
+        if has_zero_refs and update_date:
+            try:
+                from datetime import datetime, timedelta
+                upd = datetime.strptime(update_date, '%Y-%m-%d')
+                if datetime.now() - upd > timedelta(days=90):
+                    return True
+            except:
+                pass
+        
+        return False
     
     def _condense_observations(self):
         """Aggressively condense observations to 80-char max"""
