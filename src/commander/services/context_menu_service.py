@@ -119,30 +119,36 @@ class ContextMenuService:
                 # Log subgroup processing
                 logging.info(f"Processing {section_type} subgroup for node {node_name} with {len(tokens)} tokens")
 
-                # Create action for printing all tokens (simplified to only this command)
-                print_action = QAction(f"Print All {section_type} Tokens for {node_name}", menu)
-                if self.presenter:
-                    # Connect action to presenter method
-                    if section_type == "FBC":
-                        print_action.triggered.connect(
-                            lambda: self.presenter.process_all_fbc_subgroup_commands(
-                                self._get_current_item_from_data(item_data, tokens)
-                            )
+                # For LOG subgroup, ONLY show BsTool execution action (no "Print All" action)
+                if section_type == "LOG":
+                    # Add BsTool action for LOG subgroups that executes -errlog command
+                    bstool_action = QAction(f"Print All LOG Tokens for {node_name}", menu)
+                    if self.presenter:
+                        # Connect to BsTool handler with node name - this will execute -errlog [nodename]
+                        bstool_action.triggered.connect(
+                            lambda: self._handle_bstool_node_action(node_name)
                         )
-                    elif section_type == "RPC":
-                        print_action.triggered.connect(
-                            lambda: self.presenter.process_all_rpc_subgroup_commands(
-                                self._get_current_item_from_data(item_data, tokens)
+                    menu.addAction(bstool_action)
+                    added_actions = True
+                else:
+                    # For FBC and RPC, create action for printing all tokens
+                    print_action = QAction(f"Print All {section_type} Tokens for {node_name}", menu)
+                    if self.presenter:
+                        # Connect action to presenter method
+                        if section_type == "FBC":
+                            print_action.triggered.connect(
+                                lambda: self.presenter.process_all_fbc_subgroup_commands(
+                                    self._get_current_item_from_data(item_data, tokens)
+                                )
                             )
-                        )
-                    elif section_type == "LOG":
-                        print_action.triggered.connect(
-                            lambda: self.presenter.process_all_log_subgroup_commands(
-                                self._get_current_item_from_data(item_data, tokens)
+                        elif section_type == "RPC":
+                            print_action.triggered.connect(
+                                lambda: self.presenter.process_all_rpc_subgroup_commands(
+                                    self._get_current_item_from_data(item_data, tokens)
+                                )
                             )
-                        )
-                menu.addAction(print_action)
-                added_actions = True
+                    menu.addAction(print_action)
+                    added_actions = True
 
                 # Add action for clearing all subgroup log files
                 if self.context_menu_filter.should_show_command(
@@ -389,6 +395,23 @@ class ContextMenuService:
                 filtered_tokens.append(t)
         
         return filtered_tokens
+
+    def _handle_bstool_node_action(self, node_name: str) -> None:
+        """
+        Handle BsTool context menu action for a node (LOG subgroup).
+        Generates BsTool command with -errlog parameter using node name.
+
+        Args:
+            node_name: Name of the node to run BsTool for
+        """
+        logging.info(f"Running BsTool for node {node_name} with -errlog parameter")
+        if self.presenter:
+            # Generate BsTool command with -errlog parameter
+            # The presenter will handle extracting the proper node ID and generating the command
+            # Create a dummy log file path to trigger the node ID extraction
+            # Format: NODENAME_xxx.log to match the extraction pattern
+            dummy_log_path = f"{node_name}_dummy.log"
+            self.presenter.process_bstool_command(dummy_log_path)
 
     def _handle_bstool_action(self, log_file_path: str) -> None:
         """

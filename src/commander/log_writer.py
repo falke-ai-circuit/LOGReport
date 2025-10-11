@@ -201,10 +201,12 @@ class LogWriter(QObject):
         Args:
             filepath: Path to the file to append to
             content: Content to append to the file
+            token: Optional token parameter (unused but kept for compatibility)
         """
         if not content.strip():
             return
             
+        log_success = False
         try:
             with open(filepath, 'a', encoding='utf-8') as f:
                 f.write(content + '\n')
@@ -217,9 +219,9 @@ class LogWriter(QObject):
             line_count_to_emit = self.get_file_line_count(filepath) if log_success else 0
             
             if token and hasattr(token, 'log_path'):
-                self.log_write_completed.emit(token.log_path, log_success, line_count_to_emit, line_count_to_emit) # Emit log_path, total_line_count, lines_written_by_command (for append, assume all lines are new)
+                self.log_write_completed.emit(token.log_path, log_success, line_count_to_emit, line_count_to_emit, content) # Emit log_path, success, total_line_count, lines_written_by_command, content
             else:
-                self.log_write_completed.emit("N/A", log_success, line_count_to_emit, line_count_to_emit) # Fallback if log_path not available
+                self.log_write_completed.emit(filepath_to_emit, log_success, line_count_to_emit, line_count_to_emit, content) # Emit filepath, success, total_line_count, lines_written_by_command, content
 
     def get_file_line_count(self, filepath: str) -> int:
         """

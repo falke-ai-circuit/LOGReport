@@ -176,6 +176,7 @@ class CommanderWindow(QMainWindow):
         self.node_tree_presenter.node_tree_updated_signal.connect(self.on_node_tree_updated)
         self.node_tree_presenter.log_file_selected_signal.connect(self.session_manager.ip_changed.emit)
         self.node_tree_presenter.command_generated_signal.connect(self._handle_command_generated)
+        self.node_tree_presenter.switch_to_bstool_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.bstool_tab))
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)

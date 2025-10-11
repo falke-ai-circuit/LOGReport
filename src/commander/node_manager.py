@@ -590,11 +590,16 @@ class NodeManager:
         # Format IP address: 192.168.0.11 -> 192-168-0-11
         formatted_ip = ip_address.replace('.', '-')
         
-        # Create path: <log_root>/<token_type>/<node_name>/<filename>
-        # Apply nodename truncation logic for 'LOG' type files
-        if log_type.upper() == "LOG" and len(node_name) > 2 and node_name[-1].lower() in ['r', 'm']:
-            node_name = node_name[:-1]
-            
+        # LOG files use flat directory structure (no per-node subdirectories)
+        # Pattern: {log_root}/LOG/{node_name}_{formatted_ip}.log
+        # Other types: {log_root}/{token_type}/{node_name}/{filename}
+        
+        if log_type.upper() == "LOG":
+            # LOG files: flat directory, filename format {node_name}_{formatted_ip}.log
+            filename = f"{node_name}_{formatted_ip}.log"
+            return os.path.join(self.log_root, log_type, filename)
+        
+        # For non-LOG types, use subdirectory per node
         # Generate filename with identifiers based on log type
         if log_type.upper() == "RPC":
             # RPC pattern: {node_name}_{formatted_ip}_{token_id}.{extension}
@@ -603,7 +608,7 @@ class NodeManager:
             # FBC pattern: {node_name}_{token_id}_{formatted_ip}_{token_id}.{extension}
             filename = f"{node_name}_{token_id}_{formatted_ip}_{token_id}.{log_type.lower()}"
         else:
-            # LIS, LOG and other types: {node_name}_{formatted_ip}_{token_id}.{extension}
+            # LIS and other types: {node_name}_{formatted_ip}_{token_id}.{extension}
             filename = f"{node_name}_{formatted_ip}_{token_id}.{log_type.lower()}"
         return os.path.join(self.log_root, log_type, node_name, filename)
     

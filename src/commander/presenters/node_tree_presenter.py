@@ -7,7 +7,7 @@ import logging
 import os
 import glob
 from typing import Optional
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, Qt, QTimer
 from PyQt5.QtWidgets import QTreeWidgetItem
 
 from ..models import NodeToken
@@ -35,6 +35,7 @@ class NodeTreePresenter(QObject):
     node_tree_updated_signal = pyqtSignal()  # emitted when node tree is updated
     log_file_selected_signal = pyqtSignal(str)  # emitted when log file is selected, carries filename
     command_generated_signal = pyqtSignal(str, str) # emitted when a command is generated, carries command string and token type
+    switch_to_bstool_tab_signal = pyqtSignal()  # emitted when BsTool execution starts, to switch to BsTool tab
     
     def __init__(self, view, node_manager: NodeManager, session_manager: SessionManager,
                  log_writer: LogWriter, command_queue: CommandQueue,
@@ -97,9 +98,10 @@ class NodeTreePresenter(QObject):
         self._workflow_paused = False
         self._workflow_cancelled = False
         
-        # Connect signals from CommandQueue and LogWriter
+        # Connect signals from CommandQueue, LogWriter, and BsToolService
         self.command_queue.command_completed.connect(self.handle_command_completed)
         self.log_writer.log_write_completed.connect(self.handle_log_write_completed)
+        self.bstool_service.bstool_execution_completed.connect(self._handle_bstool_completed)
         
         logging.debug("NodeTreePresenter initialized")
     
@@ -448,6 +450,24 @@ class NodeTreePresenter(QObject):
                     logging.debug(f"handle_log_write_completed: Triggered auto-expansion for {log_path}")
         else:
             logging.debug(f"handle_log_write_completed: File item not found in map for {normalized_path}")
+    
+    def _handle_bstool_completed(self, log_path: str, success: bool, return_code: int):
+        """
+        Handle the bstool_execution_completed signal from BsToolService.
+        Triggers sequential processing continuation check for Print All Nodes workflow.
+        
+        Args:
+            log_path: Path to the log file that was processed
+            success: True if BsTool execution was successful
+            return_code: Process return code
+        """
+        logging.debug(f"_handle_bstool_completed: BsTool finished for {log_path}, success={success}, return_code={return_code}")
+        
+        # If we're in sequential processing mode, check if we should continue to next node
+        if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
+            # Use QTimer to check processing state after a short delay
+            QTimer.singleShot(100, self._check_sequential_processing_continuation)
+            logging.debug("_handle_bstool_completed: Scheduled continuation check for sequential processing")
             
     def _check_and_update_node_color(self, log_path: str):
         """
@@ -969,7 +989,7 @@ class NodeTreePresenter(QObject):
         This method orchestrates Print-based subgroup commands:
         - Phase 1: Print All FBC Tokens
         - Phase 2: Print All RPC Tokens
-        - Phase 3: Print All LOG (no BsTool execution)
+        - Phase 3: Execute BsTool for LOG (with -errlog parameter)
 
         Args:
             node_name: Name of the node to process print commands for
@@ -1012,29 +1032,54 @@ class NodeTreePresenter(QObject):
             else:
                 logging.info(f"No RPC tokens found for node {node_name}")
             
-            # Phase 3: Print all LOG files (no BsTool execution)
+            # Phase 3: Execute BsTool for LOG files (with -errlog parameter)
             log_tokens = self._get_tokens_for_node(node, "LOG")
+            logging.debug(f"Phase 3 CHECK: Retrieved {len(log_tokens) if log_tokens else 0} LOG tokens for node {node_name}")
+            
             if log_tokens:
-                logging.info(f"Phase 3: Printing {len(log_tokens)} LOG files for node {node_name}")
-                self.status_message_signal.emit(f"Phase 3/3: Printing {len(log_tokens)} LOG files...", 0)
+                logging.info(f"Phase 3: Executing BsTool for node {node_name} ({len(log_tokens)} LOG files)")
+                self.status_message_signal.emit(f"Phase 3/3: Executing BsTool -errlog {node_name}...", 0)
                 
-                # For LOG files, we "print" by opening them (no BsTool processing)
-                for token in log_tokens:
-                    if hasattr(token, 'log_path') and token.log_path:
-                        try:
-                            # Just emit the log file selected signal (display/print)
-                            filename = os.path.basename(token.log_path)
-                            self.log_file_selected_signal.emit(filename)
-                            logging.debug(f"Printed LOG file: {filename}")
-                        except Exception as e:
-                            logging.error(f"Error printing LOG file {token.log_path}: {str(e)}")
+                # Switch to BsTool tab to show output
+                self.switch_to_bstool_tab_signal.emit()
+                logging.debug("Phase 3: Emitted signal to switch to BsTool tab")
+                
+                # Use the first LOG token's log_path for output destination
+                log_token = log_tokens[0]
+                log_file_path = log_token.log_path if hasattr(log_token, 'log_path') else None
+                
+                if log_file_path:
+                    logging.debug(f"Phase 3: LOG file path from token: {log_file_path}")
+                    # Highlight the LOG file being processed (similar to FBC/RPC)
+                    self._highlight_current_file(node_name, log_token, log_file_path)
+                    
+                    # Execute BsTool with -errlog parameter
+                    # BsTool workflow: runs as interactive shell → times out (normal) → 
+                    # writes output to temp file → service reads temp file → writes to log_file_path
+                    bstool_command_args = f"-errlog {node_name}"
+                    logging.debug(f"Phase 3: Executing BsTool with args: {bstool_command_args}, output to: {log_file_path}")
+                    self.bstool_service.execute_bstool(log_file_path, bstool_command_args)
+                    logging.info(f"Phase 3: BsTool execution started (will timeout, read temp file, write to {log_file_path})")
+                    
+                    # For sequential processing: trigger continuation check after BsTool starts
+                    # This is needed for nodes with no FBC/RPC tokens (BsTool-only)
+                    # where handle_command_completed() won't be called
+                    if hasattr(self, '_nodes_to_process') and self._nodes_to_process:
+                        # Wait 200ms for BsTool thread to set is_executing flag, then check if we should continue
+                        QTimer.singleShot(200, self._check_sequential_processing_continuation)
+                        logging.debug("Phase 3: Scheduled continuation check for sequential processing (BsTool)")
+                else:
+                    logging.warning(f"Phase 3: LOG token has no log_path attribute, cannot execute BsTool")
             else:
-                logging.info(f"No LOG tokens found for node {node_name}")
+                logging.info(f"Phase 3: No LOG tokens found for node {node_name}, skipping BsTool execution")
             
             # Completion message
-            total_commands = len(fbc_tokens) + len(rpc_tokens) + len(log_tokens)
+            total_commands = len(fbc_tokens) + len(rpc_tokens)
+            if log_tokens:
+                total_commands += 1  # BsTool command counts as one command
+            
             self.status_message_signal.emit(
-                f"Print command execution complete for {node_name}: {total_commands} print commands processed", 
+                f"Print command execution complete for {node_name}: {total_commands} commands processed", 
                 5000
             )
             logging.info(f"Print command execution completed for node {node_name}: {total_commands} total commands")
@@ -1061,6 +1106,12 @@ class NodeTreePresenter(QObject):
             self.view.resume_btn.setEnabled(False)
             self.view.cancel_btn.setEnabled(True)
             logging.debug("Print All Nodes: Enabled pause and cancel buttons")
+            
+            # CRITICAL: Ensure log files are scanned to populate node.tokens with LOG tokens
+            if hasattr(self.node_manager, 'log_root') and self.node_manager.log_root:
+                logging.info("Scanning log files to ensure LOG tokens are available...")
+                self.node_manager.scan_log_files()
+                logging.info("Log file scan complete")
             
             # FIRST: Expand entire tree to show all files and their status
             self._expand_entire_tree()
@@ -1175,9 +1226,16 @@ class NodeTreePresenter(QObject):
             logging.debug("Sequential processing: Workflow cancelled, not continuing")
             return
         
+        # Check if BsTool is currently executing - wait for it to complete
+        if self.bstool_service.is_executing:
+            logging.debug("Sequential processing: BsTool is executing, waiting for completion")
+            # Re-check after a short delay
+            QTimer.singleShot(100, self._check_sequential_processing_continuation)
+            return
+        
         # Check if command queue is idle (all commands for current node are done)
         if not self.command_queue.is_processing:
-            logging.debug(f"Sequential processing: Queue idle, proceeding to next node")
+            logging.debug(f"Sequential processing: Queue idle and BsTool complete, proceeding to next node")
             self._process_next_node_in_sequence()
         
     def process_node_hierarchical_commands(self, node_name: str):
@@ -1268,6 +1326,7 @@ class NodeTreePresenter(QObject):
             List of tokens of the specified type
         """
         try:
+            logging.debug(f"_get_tokens_for_node: Getting {token_type} tokens for node {node.name}")
             # node.tokens is Dict[str, List[NodeToken]], so we need to flatten the lists
             all_tokens = []
             for token_list in node.tokens.values():
@@ -1282,8 +1341,11 @@ class NodeTreePresenter(QObject):
                     if isinstance(token_list, NodeToken):
                         all_tokens.append(token_list)
             
+            logging.debug(f"_get_tokens_for_node: Found {len(all_tokens)} total tokens for node {node.name}")
+            
             # Filter tokens by type
             filtered_tokens = [t for t in all_tokens if t.token_type == token_type]
+            logging.debug(f"_get_tokens_for_node: Filtered to {len(filtered_tokens)} {token_type} tokens for node {node.name}")
             return filtered_tokens
         except Exception as e:
             logging.error(f"Error getting {token_type} tokens for node {node.name}: {str(e)}")
@@ -1462,6 +1524,7 @@ class NodeTreePresenter(QObject):
     def process_bstool_command(self, log_file_path: str):
         """
         Process BsTool command for a log file.
+        Executes BsTool with -errlog parameter using the extracted node ID.
         
         Args:
             log_file_path: Path to the log file to process with BsTool
@@ -1470,12 +1533,17 @@ class NodeTreePresenter(QObject):
             # Extract node ID from log file path
             node_id = self._extract_node_id_from_log_path(log_file_path)
             
-            # Construct bstool command arguments
-            bstool_command_args = f"-errlog {node_id}" if node_id else ""
+            if not node_id:
+                self._report_error("Could not extract node ID from log file path", None)
+                return
             
-            # Emit the command to UI instead of executing directly
-            self.command_generated_signal.emit(bstool_command_args, "BSTOOL")
-            self.status_message_signal.emit(f"Generated BsTool command for {os.path.basename(log_file_path)}", 3000)
+            # Construct bstool command arguments
+            bstool_command_args = f"-errlog {node_id}"
+            
+            # Execute the BsTool command directly via bstool_service
+            self.bstool_service.execute_command(bstool_command_args)
+            
+            self.status_message_signal.emit(f"Executing BsTool with -errlog {node_id}", 3000)
         except Exception as e:
             self._report_error("Error processing BsTool command", e)
             
@@ -1664,6 +1732,10 @@ class NodeTreePresenter(QObject):
             logging.info("_expand_entire_tree: Expanding entire node tree...")
             self.status_message_signal.emit("Expanding tree to show all files...", 2000)
             
+            # CRITICAL: Clear and rebuild file_item_map to ensure consistency
+            logging.debug(f"_expand_entire_tree: Clearing file_item_map (was {len(self.file_item_map)} entries)")
+            self.file_item_map = {}
+            
             root = self.view.node_tree
             expanded_count = 0
             
@@ -1675,25 +1747,29 @@ class NodeTreePresenter(QObject):
                 if item_data and item_data.get("type") == "node":
                     node_name = item_data.get("node_name", "")
                     
-                    # Expand the node if not already expanded
-                    if not node_item.isExpanded():
-                        self.view.expandItem(node_item)
-                        # Trigger lazy loading
-                        self.handle_item_expanded(node_item)
+                    # Always force reload of children to rebuild file_item_map
+                    # Remove all existing children first
+                    while node_item.childCount() > 0:
+                        node_item.removeChild(node_item.child(0))
+                    
+                    # Reload children (this populates file_item_map)
+                    self._load_node_children(node_item)
+                    
+                    # Expand the node
+                    self.view.expandItem(node_item)
                     
                     # Expand ALL section items (FBC, RPC, LOG, LIS)
                     for j in range(node_item.childCount()):
                         section_item = node_item.child(j)
                         section_type = section_item.text(0)
-                        
-                        if not section_item.isExpanded():
-                            self.view.expandItem(section_item)
+                        self.view.expandItem(section_item)
                     
                     expanded_count += 1
                     logging.debug(f"_expand_entire_tree: Expanded node {node_name} ({expanded_count}/{root.topLevelItemCount()})")
             
             logging.info(f"_expand_entire_tree: Successfully expanded {expanded_count} nodes with all subgroups")
             logging.info(f"_expand_entire_tree: file_item_map now contains {len(self.file_item_map)} files")
+            logging.debug(f"_expand_entire_tree: file_item_map keys: {list(self.file_item_map.keys())}")
             
         except Exception as e:
             logging.error(f"_expand_entire_tree: Error expanding tree: {str(e)}")

@@ -17,6 +17,7 @@ class BsToolCommandService(QObject):
     bstool_output_signal = pyqtSignal(str, str)   # output from bstool, log file path
     report_error = pyqtSignal(str)                # error message
     connection_state_signal = pyqtSignal(object)  # ConnectionState enum
+    bstool_execution_completed = pyqtSignal(str, bool, int)  # log_file_path, success, return_code
     
     def __init__(self, log_writer=None, parent=None):
         super().__init__(parent)
@@ -25,6 +26,7 @@ class BsToolCommandService(QObject):
         self.process_lock = self.threading_service.create_lock()
         self.log_writer = log_writer
         self.logger = logging.getLogger(__name__)
+        self.is_executing = False  # Track if BsTool is currently executing
         
         # Initialize connection state but don't emit signal until UI is ready
         # The UI will set its initial state when connecting to the service
@@ -76,6 +78,10 @@ class BsToolCommandService(QObject):
         self.logger.debug(f"Executing command: {' '.join(command)} for log file: {log_file_path}")
         
         try:
+            # Mark as executing BEFORE starting thread
+            self.is_executing = True
+            self.logger.debug(f"Set is_executing = True before starting BsTool thread")
+            
             # Start the process in a separate thread to avoid blocking UI
             self.threading_service.start_thread(
                 target=self._run_bstool_process,
@@ -84,6 +90,8 @@ class BsToolCommandService(QObject):
             )
             
         except Exception as e:
+            # If thread start fails, reset the flag
+            self.is_executing = False
             error_msg = f"Failed to start bstool process: {str(e)}"
             self.logger.error(error_msg, exc_info=True)
             self.report_error.emit(error_msg)
@@ -98,6 +106,9 @@ class BsToolCommandService(QObject):
             command_str (str): Full command string to execute
         """
         self.logger.info(f"Executing bstool command: {command_str}")
+        
+        # Mark as executing
+        self.is_executing = True
         
         # Emit status message
         self.status_message_signal.emit("Starting bstool command execution...", 3000)
@@ -287,9 +298,10 @@ class BsToolCommandService(QObject):
             from ..widgets import ConnectionState
             self.connection_state_signal.emit(ConnectionState.CONNECTED)
             
-            # Create temporary files for stdout and stderr
-            stdout_temp_file = tempfile.TemporaryFile(mode='w+', encoding='utf-8', delete=False)
-            stderr_temp_file = tempfile.TemporaryFile(mode='w+', encoding='utf-8', delete=False)
+            # Create temporary files for stdout and stderr with encoding error handling
+            # BsTool.exe outputs Windows-1252/CP1252 encoding, use errors='replace' to handle non-UTF-8 bytes
+            stdout_temp_file = tempfile.TemporaryFile(mode='w+', encoding='utf-8', errors='replace', delete=False)
+            stderr_temp_file = tempfile.TemporaryFile(mode='w+', encoding='utf-8', errors='replace', delete=False)
             
             self.logger.debug(f"DEBUG_MARK: Redirecting stdout to temporary file: {stdout_temp_file.name}")
             self.logger.debug(f"DEBUG_MARK: Redirecting stderr to temporary file: {stderr_temp_file.name}")
@@ -323,12 +335,18 @@ class BsToolCommandService(QObject):
                 self.process.wait(timeout=10)  # 10 second timeout
             except subprocess.TimeoutExpired:
                 self.logger.warning("bstool process timed out, terminating...")
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=5)  # Give 5 seconds to terminate gracefully
-                except subprocess.TimeoutExpired:
-                    self.process.kill()  # Force kill if it doesn't terminate
-                    self.process.wait()
+                # Access process within lock to avoid race condition
+                with self.process_lock:
+                    if self.process:
+                        try:
+                            self.process.terminate()
+                            self.process.wait(timeout=5)  # Give 5 seconds to terminate gracefully
+                        except subprocess.TimeoutExpired:
+                            if self.process:
+                                self.process.kill()  # Force kill if it doesn't terminate
+                                self.process.wait()
+                        except Exception as e:
+                            self.logger.error(f"Error terminating bstool process: {str(e)}")
             
             # Read output from temporary files after process completion
             stdout_temp_file.seek(0) # Rewind to beginning
@@ -382,22 +400,26 @@ class BsToolCommandService(QObject):
             if return_code == 0:
                 self.status_message_signal.emit("bstool execution completed successfully", 3000)
                 self.logger.info("bstool execution completed successfully")
+                self.bstool_execution_completed.emit(log_file_path, True, return_code)
             else:
                 error_msg = f"bstool process exited with code {return_code}"
                 self.logger.error(error_msg)
                 self.report_error.emit(error_msg)
                 self.status_message_signal.emit(error_msg, 5000)
+                self.bstool_execution_completed.emit(log_file_path, False, return_code)
                 
         except FileNotFoundError as e:
             error_msg = f"bstool.exe not found: {str(e)}"
             self.logger.error(error_msg)
             self.report_error.emit(error_msg)
             self.status_message_signal.emit(error_msg, 5000)
+            self.bstool_execution_completed.emit(log_file_path, False, -1)
         except Exception as e:
             error_msg = f"Error during bstool execution: {str(e)}"
             self.logger.error(error_msg, exc_info=True)
             self.report_error.emit(error_msg)
             self.status_message_signal.emit(error_msg, 5000)
+            self.bstool_execution_completed.emit(log_file_path, False, -1)
         finally:
             with self.process_lock:
                 self.process = None
@@ -405,6 +427,9 @@ class BsToolCommandService(QObject):
             # Emit connected state when process finishes
             from ..widgets import ConnectionState
             self.connection_state_signal.emit(ConnectionState.CONNECTED)
+            
+            # Mark execution as complete
+            self.is_executing = False
                 
     def terminate_bstool(self):
         """Terminate the currently running bstool process if any."""
