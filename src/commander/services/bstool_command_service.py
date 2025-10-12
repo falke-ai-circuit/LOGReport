@@ -380,12 +380,25 @@ class BsToolCommandService(QObject):
         
         Emits bstool_execution_completed signal for backward compatibility.
         Forwards signal to CommandQueue for sequential processing continuation.
+        Emits bstool_output_signal to display output in BsToolTab.
         """
         self.logger.info(f"BsToolWorker completed: {command}, success={success}")
         
         # Extract log_file_path from token (it should have log_path attribute)
         log_file_path = getattr(token, 'log_path', '')
         return_code = 0 if success else -1
+        
+        # CRITICAL FIX: Emit bstool_output_signal to display output in BsToolTab
+        # This was missing for sequential execution - output was written to file but not displayed in UI
+        # Add a header to separate outputs from different nodes during sequential execution
+        if result:
+            # Extract node name from log file path for header
+            import os
+            filename = os.path.basename(log_file_path) if log_file_path else "unknown"
+            header = f"\n{'='*80}\nBsTool output for {filename}\n{'='*80}\n"
+            full_output = header + result
+            self.logger.debug(f"_handle_worker_completed: Emitting bstool_output_signal with {len(full_output)} chars")
+            self.bstool_output_signal.emit(full_output, log_file_path)
         
         # Forward signal to CommandQueue for sequential processing
         # This is CRITICAL - without this, NodeTreePresenter's handle_command_completed won't fire

@@ -400,9 +400,16 @@ class NodeTreePresenter(QObject):
         if result and token.token_type in ["FBC", "RPC"]:
             logging.debug(f"handle_command_completed: Emitting command_output_display_signal for {token.token_type} token with result length: {len(result)}")
             self.command_output_display_signal.emit(result, token.token_type)
-            # Auto-switch to Telnet tab to show the output
+            
+            # FIX: Switch to Telnet tab during sequential execution to show FBC/RPC output as it happens
+            # This allows users to see each command's output in real-time
             self.switch_to_telnet_tab_signal.emit()
             logging.debug("handle_command_completed: Emitted switch_to_telnet_tab_signal for FBC/RPC output")
+        
+        elif result and token.token_type == "LOG":
+            # For LOG tokens (BsTool), switch to BsTool tab to show output
+            logging.debug(f"handle_command_completed: LOG token completed, switching to BsTool tab")
+            self.switch_to_bstool_tab_signal.emit()
         
         # Check if we're in sequential node processing mode and queue is idle
         # This triggers processing of the next node when all commands for current node are done
@@ -1039,8 +1046,9 @@ class NodeTreePresenter(QObject):
                 
                 if log_file_path:
                     logging.debug(f"Phase 3: LOG file path from token: {log_file_path}")
-                    # Highlight the LOG file being processed (similar to FBC/RPC)
-                    self._highlight_current_file(node_name, log_token, log_file_path)
+                    # NOTE: DO NOT highlight here - it causes premature visual jump during sequential execution
+                    # Highlighting now moved to _check_sequential_processing_continuation() after queue is truly idle
+                    # self._highlight_current_file(node_name, log_token, log_file_path)  # REMOVED - timing issue fix
                     
                     bstool_command_args = f"-errlog {errlog_node_name}"
                     
@@ -1223,6 +1231,23 @@ class NodeTreePresenter(QObject):
         
         if not is_processing:
             logging.debug(f"Sequential processing: Queue IDLE, proceeding to next node")
+            
+            # TIMING FIX: Highlight current node's file NOW (after queue is truly idle)
+            # This ensures the highlight stays on the current node until all commands complete
+            # Previously this was called prematurely in process_node_print_commands()
+            if self._current_node_index > 0:  # Don't highlight before first node starts
+                prev_node_index = self._current_node_index - 1
+                if prev_node_index < len(self._nodes_to_process):
+                    prev_node = self._nodes_to_process[prev_node_index]
+                    # Try to find and highlight a LOG file for the completed node
+                    log_tokens = self._get_tokens_for_node(prev_node, "LOG")
+                    if log_tokens:
+                        log_token = log_tokens[0]
+                        log_file_path = log_token.log_path if hasattr(log_token, 'log_path') else None
+                        if log_file_path:
+                            logging.debug(f"Highlighting completed node {prev_node.name} LOG file: {log_file_path}")
+                            self._highlight_current_file(prev_node.name, log_token, log_file_path)
+            
             self._process_next_node_in_sequence()
         else:
             logging.debug(f"Sequential processing: Queue still PROCESSING, not proceeding yet")

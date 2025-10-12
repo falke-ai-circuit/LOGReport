@@ -156,7 +156,8 @@ class BsToolWorker(QRunnable):
             # BsTool is interactive - timeout is expected, what matters is whether output was generated
             self.success = has_output and len(output_lines) > 0
             if self.success:
-                self.result = f"BsTool execution successful: {len(output_lines)} lines captured"
+                # Store the actual output content in self.result for UI display
+                self.result = '\n'.join(output_lines)
                 self.logger.info(f"BsToolWorker.run: SUCCESS - captured {len(output_lines)} lines of output")
             else:
                 self.result = "BsTool execution failed: no output captured"

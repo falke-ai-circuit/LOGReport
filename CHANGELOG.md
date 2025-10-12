@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Sequential Execution UI Improvements (2025-10-12)
+- [BUGFIX] **UI Highlight Timing Fix** - Fixed premature highlight jump during "Print All Nodes" sequential execution - highlight now stays on current node until all commands (FBC→RPC→LOG) complete
+- [ROOT CAUSE] Synchronous _highlight_current_file() called in process_node_print_commands Phase 3 before async BsTool worker completed, causing visual jump to next node
+- [SOLUTION] Removed premature highlight from process_node_print_commands Phase 3, moved highlight logic to _check_sequential_processing_continuation where it executes after command_queue.is_processing==False
+- [BUGFIX] **BsTool Output Display Fix** - Fixed BsTool tab showing no content during sequential execution - output now displays with separator headers distinguishing each node
+- [ROOT CAUSE] BsToolWorker stored summary message instead of actual output in self.result; _handle_worker_completed never emitted bstool_output_signal during sequential mode
+- [SOLUTION] Changed BsToolWorker.run() to store '\n'.join(output_lines) in self.result; added bstool_output_signal.emit() in _handle_worker_completed with header formatting
+- [FEATURE] **Dynamic Tab Switching** - Automatically switches tabs during sequential execution to show relevant output: Telnet tab for FBC/RPC commands, BsTool tab for LOG commands
+- [IMPLEMENTATION] Modified handle_command_completed() to unconditionally emit switch_to_telnet_tab_signal for FBC/RPC tokens, switch_to_bstool_tab_signal for LOG tokens
+- [MODIFIED] `src/commander/presenters/node_tree_presenter.py` - Removed premature highlight (line ~1042), added deferred highlight logic (line ~1223), simplified tab switching (line ~395-415)
+- [MODIFIED] `src/commander/services/bstool_command_service.py` - Added separator header formatting in _handle_worker_completed (line ~381): "={'*80}\nBsTool output for {filename}\n={'*80}\n"
+- [MODIFIED] `src/commander/services/bstool_worker.py` - Changed self.result from summary message to actual output: self.result = '\n'.join(output_lines) (line ~160)
+- [USER VALIDATION] User confirmed: "now its perfect" - all fixes working in production
+- [MEMORY] Extracted 5 learnings to project_memory.json: SequentialUIHighlightTiming_Feature, SequentialBsToolOutputDisplay_Feature, DynamicTabSwitching_Pattern, BsToolCommandService_HandleWorkerCompleted_Method, NodeTreePresenter_CheckSequentialProcessingContinuation_Method
+
 ### Sequential Output Display & Tab Switching (2025-10-12)
 - [FEATURE] **Sequential Execution Output Display** - Implemented automatic tab switching and output display for sequential "Print All Nodes" execution to match manual execution behavior
 - [IMPLEMENTATION] Added switch_to_telnet_tab_signal to NodeTreePresenter, emits when FBC/RPC commands complete during sequential processing
