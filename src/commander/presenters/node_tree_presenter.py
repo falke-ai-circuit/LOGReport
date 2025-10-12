@@ -36,6 +36,8 @@ class NodeTreePresenter(QObject):
     log_file_selected_signal = pyqtSignal(str)  # emitted when log file is selected, carries filename
     command_generated_signal = pyqtSignal(str, str) # emitted when a command is generated, carries command string and token type
     switch_to_bstool_tab_signal = pyqtSignal()  # emitted when BsTool execution starts, to switch to BsTool tab
+    switch_to_telnet_tab_signal = pyqtSignal()  # emitted when FBC/RPC command output is displayed, to switch to Telnet tab
+    command_output_display_signal = pyqtSignal(str, str)  # emitted when command output needs to be displayed, carries output text and token type
     
     def __init__(self, view, node_manager: NodeManager, session_manager: SessionManager,
                  log_writer: LogWriter, command_queue: CommandQueue,
@@ -392,6 +394,15 @@ class NodeTreePresenter(QObject):
         self.node_status[log_path]["command_success"] = success
         logging.debug(f"handle_command_completed: Log Path: {log_path}, Command Success: {success}, Token Type: {token.token_type}")
         self._check_and_update_node_color(log_path)
+        
+        # Emit signal to display command output in appropriate tab (Telnet for FBC/RPC, BsTool already handles LOG)
+        # This ensures sequential execution shows output just like manual execution
+        if result and token.token_type in ["FBC", "RPC"]:
+            logging.debug(f"handle_command_completed: Emitting command_output_display_signal for {token.token_type} token with result length: {len(result)}")
+            self.command_output_display_signal.emit(result, token.token_type)
+            # Auto-switch to Telnet tab to show the output
+            self.switch_to_telnet_tab_signal.emit()
+            logging.debug("handle_command_completed: Emitted switch_to_telnet_tab_signal for FBC/RPC output")
         
         # Check if we're in sequential node processing mode and queue is idle
         # This triggers processing of the next node when all commands for current node are done

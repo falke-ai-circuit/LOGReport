@@ -181,6 +181,8 @@ class CommanderWindow(QMainWindow):
         self.node_tree_presenter.log_file_selected_signal.connect(self.session_manager.ip_changed.emit)
         self.node_tree_presenter.command_generated_signal.connect(self._handle_command_generated)
         self.node_tree_presenter.switch_to_bstool_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.bstool_tab))
+        self.node_tree_presenter.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.node_tree_presenter.command_output_display_signal.connect(self._handle_sequential_output)
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)
@@ -448,6 +450,26 @@ class CommanderWindow(QMainWindow):
             self.bstool_tab.command_input.setFocus()
             self.session_tabs.setCurrentWidget(self.bstool_tab)
         logging.debug(f"Command '{command}' for type '{token_type}' set in UI.")
+    
+    def _handle_sequential_output(self, output_text: str, token_type: str):
+        """
+        Handle the command_output_display_signal from NodeTreePresenter during sequential execution.
+        Routes command output to the appropriate tab based on token type.
+        
+        This ensures sequential execution (Print All Nodes) displays output just like manual execution.
+        
+        Args:
+            output_text: The command output text to display
+            token_type: The type of token (FBC, RPC, LOG, LIS)
+        """
+        if token_type in ["FBC", "RPC"]:
+            # Display FBC and RPC output in Telnet tab
+            self.telnet_tab.append_output(output_text)
+            logging.debug(f"Sequential output displayed in Telnet tab for {token_type} token (length: {len(output_text)})")
+        elif token_type == "LOG":
+            # LOG output is handled by BsTool service via bstool_output_signal
+            # No action needed here as BsTool already displays output during sequential execution
+            pass
     
     def closeEvent(self, event):
         """Cleanup on window close"""

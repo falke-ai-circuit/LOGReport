@@ -31784,3 +31784,63 @@ Error: BsTool execution failed: no output captured
 2025-10-12 11:37:16,533 - root - DEBUG - Sequential processing: Queue IDLE, proceeding to next node
 2025-10-12 11:37:16,533 - root - INFO - Print all nodes complete: 8 nodes processed
 2025-10-12 11:37:16,533 - root - DEBUG - Print All Nodes: Disabled all buttons (workflow completed)
+2025-10-12 15:05:24,292 - commander_app - INFO - Failed to write to FBC log: [Errno 2] No such file or directory: 'C:/Users/gorjovicgo/_DIA\\FBC\\AP01\\AP01_162_192-168-0-11_162.fbc'
+2025-10-12 15:05:24,299 - commander_app - INFO - Token Processing Result:
+  Token ID: 162
+  Token Type: FBC
+  Command Executed: print from fbc io structure 1620000
+  Status: Success
+
+2025-10-12 15:05:24,299 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 1/0
+2025-10-12 15:05:24,300 - commander_app - INFO - Token Processing Result:
+  Token ID: 162
+  Token Type: FBC
+  Command Executed: print from fbc io structure 1620000
+  Status: Success
+
+2025-10-12 15:05:24,301 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 1/0
+2025-10-12 15:05:29,590 - commander_app - INFO - Failed to write to FBC log: [Errno 2] No such file or directory: 'C:/Users/gorjovicgo/_DIA\\FBC\\AP01\\AP01_163_192-168-0-11_163.fbc'
+2025-10-12 15:05:29,593 - commander_app - INFO - Token Processing Result:
+  Token ID: 163
+  Token Type: FBC
+  Command Executed: print from fbc io structure 1630000
+  Status: Success
+
+2025-10-12 15:05:29,593 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 2/0
+2025-10-12 15:05:29,594 - commander_app - INFO - Token Processing Result:
+  Token ID: 163
+  Token Type: FBC
+  Command Executed: print from fbc io structure 1630000
+  Status: Success
+
+2025-10-12 15:05:29,595 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 2/0
+2025-10-12 15:05:32,346 - commander_app - INFO - Failed to write to RPC log: [Errno 2] No such file or directory: 'C:/Users/gorjovicgo/_DIA\\RPC\\AP01\\AP01_192-168-0-11_162.rpc'
+2025-10-12 15:05:32,347 - commander_app - INFO - Token Processing Result:
+  Token ID: 162
+  Token Type: RPC
+  Command Executed: print from fbc rupi counters 1620000
+  Status: Success
+
+2025-10-12 15:05:32,348 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 3/0
+2025-10-12 15:05:32,348 - commander_app - INFO - Token Processing Result:
+  Token ID: 162
+  Token Type: RPC
+  Command Executed: print from fbc rupi counters 1620000
+  Status: Success
+
+2025-10-12 15:05:32,349 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 3/0
+2025-10-12 15:05:35,099 - commander_app - INFO - Failed to write to RPC log: [Errno 2] No such file or directory: 'C:/Users/gorjovicgo/_DIA\\RPC\\AP01\\AP01_192-168-0-11_163.rpc'
+2025-10-12 15:05:35,102 - commander_app - INFO - Token Processing Result:
+  Token ID: 163
+  Token Type: RPC
+  Command Executed: print from fbc rupi counters 1630000
+  Status: Success
+
+2025-10-12 15:05:35,103 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 4/0
+2025-10-12 15:05:35,103 - commander_app - INFO - Token Processing Result:
+  Token ID: 163
+  Token Type: RPC
+  Command Executed: print from fbc rupi counters 1630000
+  Status: Success
+
+2025-10-12 15:05:35,104 - commander_app - INFO - Batch None: Completed processing - Node: , Success: 4/0

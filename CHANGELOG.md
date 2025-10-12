@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Sequential Output Display & Tab Switching (2025-10-12)
+- [FEATURE] **Sequential Execution Output Display** - Implemented automatic tab switching and output display for sequential "Print All Nodes" execution to match manual execution behavior
+- [IMPLEMENTATION] Added switch_to_telnet_tab_signal to NodeTreePresenter, emits when FBC/RPC commands complete during sequential processing
+- [IMPLEMENTATION] Added command_output_display_signal(str,str) carrying output text and token type for routing to appropriate tabs
+- [IMPLEMENTATION] Created _handle_sequential_output() method in CommanderWindow to route FBC/RPC output to telnet_tab.append_output()
+- [SIGNAL FLOW] NodeTreePresenter.handle_command_completed() → switch_to_telnet_tab_signal.emit() + command_output_display_signal.emit(result, token_type) → CommanderWindow._handle_sequential_output() → telnet_tab.append_output()
+- [MODIFIED] `src/commander/presenters/node_tree_presenter.py` (+9 lines) - Added 2 signals (lines 39-40), modified handle_command_completed to emit signals for FBC/RPC tokens (lines 395-397)
+- [MODIFIED] `src/commander/ui/commander_window.py` (+23 lines) - Added _handle_sequential_output() routing handler (lines 455-469), connected signals in _connect_signals() (lines 184-185)
+- [CREATED] `tests/test_sequential_output_display.py` (8 test cases) - Validates signal emission, token routing, FBC/RPC/LOG handling
+- [PATTERN] Dual Execution Path Unification - Signal-based architecture enables identical behavior between manual and sequential execution paths
+- [USER TESTING] Tab switching confirmed working by user, sequential execution now displays output just like manual execution
+- [MEMORY] Extracted 4 learnings to project_memory.json: TabSwitchingAutomation_Feature, SwitchToTelnetTabSignal_Method, HandleSequentialOutput_Method, DualExecutionPathUnification_Pattern
+- [CODEGRAPH] Updated 2 modules in codegraph.json: commander_presenters_node_tree_presenter (added signal descriptions), commander_ui_commander_window (added _handle_sequential_output method)
+
 ### BsTool Signal Forwarding Fix (2025-10-12)
 - [BUGFIX] **Sequential Processing Continuation** - Fixed sequential "Print All Nodes" workflow stopping after first BsTool execution by implementing signal forwarding from BsToolCommandService to CommandQueue
 - [ROOT CAUSE] BsToolWorker submitted directly to thread pool bypassed CommandQueue.start_processing(), missing automatic signal forwarding that CommandWorker (FBC/RPC) receives
