@@ -145,7 +145,9 @@ class CommanderWindow(QMainWindow):
             self.fbc_service,
             self.rpc_service,
             self.context_menu_service,
-            self.bstool_service
+            self.bstool_service,
+            self.telnet_service,  # Pass telnet_service for auto-connect functionality
+            self.telnet_tab.get_connection_info  # Pass callback to get IP/port from telnet_tab
         )
         
         # Set presenter in context menu service

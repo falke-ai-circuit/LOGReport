@@ -42,7 +42,7 @@ class NodeTreePresenter(QObject):
     def __init__(self, view, node_manager: NodeManager, session_manager: SessionManager,
                  log_writer: LogWriter, command_queue: CommandQueue,
                  fbc_service: FbcCommandService, rpc_service: RpcCommandService,
-                 context_menu_service, bstool_service):
+                 context_menu_service, bstool_service, telnet_service=None, get_connection_info_callback=None):
         """
         Initialize the NodeTreePresenter.
 
@@ -56,6 +56,7 @@ class NodeTreePresenter(QObject):
             rpc_service: Service for RPC command operations
             context_menu_service: Service for context menu operations
             bstool_service: Service for BsTool command operations
+            telnet_service: Service for Telnet connection management (optional, for auto-connect)
         """
         super().__init__()
         self.view = view
@@ -67,6 +68,8 @@ class NodeTreePresenter(QObject):
         self.rpc_service = rpc_service
         self.context_menu_service = context_menu_service
         self.bstool_service = bstool_service
+        self.telnet_service = telnet_service  # For auto-connect functionality
+        self.get_connection_info_callback = get_connection_info_callback  # Callback to get IP/port from telnet_tab
         
         # Initialize sequential processor
         self.sequential_processor = SequentialCommandProcessor(
@@ -1085,11 +1088,37 @@ class NodeTreePresenter(QObject):
         Execute print commands for all nodes sequentially.
         Calls process_node_print_commands() for each node, just like right-click.
         Monitors command_queue.is_processing to chain node processing.
+        Automatically establishes Telnet debugger connection if not connected.
         """
         logging.info("Starting print command execution for ALL nodes...")
         self.status_message_signal.emit("Starting print command execution for ALL nodes...", 0)
         
         try:
+            # CRITICAL: Check/establish Telnet debugger connection before starting workflow
+            # Uses same retry logic (2 attempts, 10s delay) as manual Connect button
+            # Includes system mode verification (%s prompt) and automatic "systemmode" command
+            if self.telnet_service:
+                logging.info("Checking Telnet debugger connection before Print All Nodes execution...")
+                
+                # Initialize debugger IP/port from telnet_tab UI if not already set
+                # This handles first auto-connect before any manual connection
+                if not self.telnet_service.debugger_ip_address and self.get_connection_info_callback:
+                    ip, port = self.get_connection_info_callback()
+                    if ip and port:
+                        logging.info(f"NodeTreePresenter: Initializing debugger IP/port from UI: {ip}:{port}")
+                        self.telnet_service.debugger_ip_address = ip
+                        self.telnet_service.debugger_port = port
+                
+                if not self.telnet_service._ensure_debugger_connection():
+                    error_msg = "Failed to establish Telnet debugger connection. Please connect manually in Telnet tab."
+                    logging.error(f"Print All Nodes aborted: {error_msg}")
+                    self.status_message_signal.emit(error_msg, 8000)
+                    # Don't enable any buttons - workflow cannot start without connection
+                    return
+                logging.info("Telnet debugger connection verified, proceeding with Print All Nodes workflow")
+            else:
+                logging.warning("TelnetService not available in NodeTreePresenter, skipping connection check")
+            
             # Reset workflow control flags at the start
             self._workflow_paused = False
             self._workflow_cancelled = False

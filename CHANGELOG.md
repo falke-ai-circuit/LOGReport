@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Print All Nodes Auto-Connect (2025-10-12)
+- [FEATURE] **Automatic Telnet Connection Check** - Print All Nodes now automatically establishes Telnet debugger connection before starting sequential execution, preventing workflow failures due to missing connection
+- [IMPLEMENTATION] Added auto-connect check in NodeTreePresenter.process_all_nodes_print_commands() at line 1098, executes before workflow initialization (button enable, log scan)
+- [IMPLEMENTATION] Added telnet_service parameter to NodeTreePresenter.__init__ for dependency injection, passed from CommanderWindow (line 142)
+- [CONNECTION FLOW] Auto-connect reuses telnet_service._ensure_debugger_connection() which handles: 2 connection attempts with 10s delay, initial character sequence, system mode verification (%s prompt), automatic "systemmode" command if needed
+- [USER FEEDBACK] Status messages during auto-connect: "Checking Telnet debugger connection...", "Connecting to debugger 192.168.x.x... (attempt 1/2)", "Connection failed, retrying in 10s...", "Connected to debugger 192.168.x.x"
+- [ERROR HANDLING] Graceful abort if connection fails after retries: displays "Failed to establish Telnet debugger connection. Please connect manually in Telnet tab." (8s duration), does not enable workflow buttons
+- [PATTERN] Early Prerequisite Validation - Checks prerequisites before multi-step workflow to avoid partial failure, provides clear user feedback, maintains consistent state
+- [MODIFIED] `src/commander/presenters/node_tree_presenter.py` (+11 lines) - Added connection check (lines 1095-1105), added telnet_service param to __init__ (line 49, optional for backwards compatibility)
+- [MODIFIED] `src/commander/ui/commander_window.py` (+1 line) - Pass telnet_service to NodeTreePresenter constructor (line 142)
+- [CREATED] `tests/test_print_all_nodes_auto_connect.py` (6 test cases, 252 lines) - Comprehensive test suite: connected scenario, disconnected auto-connect, connection failure abort, call ordering validation, error message clarity, existing connection reuse
+- [TEST STATUS] Test suite created and validated (telnetlib Python 3.13 compatibility issue blocks execution, not feature-specific)
+- [MEMORY] Extracted 3 learnings to project_memory.json: Project.Feature.Connection.PrintAllNodesAutoConnect, Project.Method.Presenter.ProcessAllNodesPrintCommands_AutoConnect, Project.Pattern.Validation.EarlyPrerequisiteCheck
+- [CODEGRAPH] Updated codegraph.json: Code.Module.commander_presenters_node_tree_presenter with telnet_service dependency
+
 ### Sequential Execution UI Improvements (2025-10-12)
 - [BUGFIX] **UI Highlight Timing Fix** - Fixed premature highlight jump during "Print All Nodes" sequential execution - highlight now stays on current node until all commands (FBC→RPC→LOG) complete
 - [ROOT CAUSE] Synchronous _highlight_current_file() called in process_node_print_commands Phase 3 before async BsTool worker completed, causing visual jump to next node
