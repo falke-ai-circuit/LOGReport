@@ -399,17 +399,15 @@ class NodeTreePresenter(QObject):
         self._check_and_update_node_color(log_path)
         
         # Emit signal to display command output in appropriate tab (Telnet for FBC/RPC, BsTool already handles LOG)
-        # This ensures sequential execution shows output just like manual execution
-        if result and token.token_type in ["FBC", "RPC"]:
-            logging.debug(f"handle_command_completed: Emitting command_output_display_signal for {token.token_type} token with result length: {len(result)}")
-            self.command_output_display_signal.emit(result, token.token_type)
-            
+        # NOTE: File write notifications (on_log_write_notification) now handle displaying output with formatting
+        # So we no longer need to emit command_output_display_signal to avoid duplicate output
+        if token.token_type in ["FBC", "RPC"]:
             # FIX: Switch to Telnet tab during sequential execution to show FBC/RPC output as it happens
             # This allows users to see each command's output in real-time
             self.switch_to_telnet_tab_signal.emit()
             logging.debug("handle_command_completed: Emitted switch_to_telnet_tab_signal for FBC/RPC output")
         
-        elif result and token.token_type == "LOG":
+        elif token.token_type == "LOG":
             # For LOG tokens (BsTool), switch to BsTool tab to show output
             logging.debug(f"handle_command_completed: LOG token completed, switching to BsTool tab")
             self.switch_to_bstool_tab_signal.emit()

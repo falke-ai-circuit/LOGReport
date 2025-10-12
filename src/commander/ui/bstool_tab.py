@@ -122,6 +122,14 @@ class BsToolTab(QWidget):
         self.logger.debug(f"DEBUG_MARK: BsToolTab.append_output called with text: {text!r}")
         # Use the same approach as telnet_tab to avoid extra newlines
         from PyQt5.QtGui import QTextCursor
+        
+        # Check if user is at bottom BEFORE adding content
+        scrollbar = self.output.verticalScrollBar()
+        was_at_bottom = self.is_user_at_bottom()
+        
+        # Save current scroll position if user is NOT at bottom (reading earlier content)
+        saved_scroll_position = scrollbar.value() if not was_at_bottom else None
+        
         cursor = self.output.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         
@@ -131,14 +139,28 @@ class BsToolTab(QWidget):
         cursor.insertText(normalized_text)
         self.output.setTextCursor(cursor)
         
-        # Scroll to bottom to ensure the latest output is visible
-        scrollbar = self.output.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+        # Smart scroll behavior:
+        # - If user WAS at bottom: scroll to show new content (following live output)
+        # - If user scrolled up: restore exact position (don't interrupt reading)
+        if was_at_bottom:
+            scrollbar.setValue(scrollbar.maximum())
+        else:
+            scrollbar.setValue(saved_scroll_position)
         
     def clear_output(self):
         """Clear the output display"""
         self.output.clear()
         
+    def is_user_at_bottom(self):
+        """
+        Check if user is at the bottom of the scroll area (following live output).
+        Returns True if scrolled to bottom, False if scrolled up reviewing earlier logs.
+        Uses 5px tolerance to handle autoscroll edge cases.
+        """
+        scrollbar = self.output.verticalScrollBar()
+        # User is "at bottom" if within 5 pixels of maximum (handles rendering timing)
+        return scrollbar.value() >= scrollbar.maximum() - 5
+    
     def get_bstool_path(self):
         """Get the current BsTool path"""
         return self.bstool_path_edit.text().strip()

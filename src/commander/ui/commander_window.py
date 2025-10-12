@@ -174,7 +174,7 @@ class CommanderWindow(QMainWindow):
         self.commander_presenter.status_message_signal.connect(self.status_service.status_updated)
         self.commander_presenter.set_cmd_input_text_signal.connect(self.telnet_tab.command_input.setText)
         self.commander_presenter.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
-        self.commander_presenter.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.commander_presenter.switch_to_telnet_tab_signal.connect(lambda: self._smart_switch_to_tab(self.telnet_tab))
         self.commander_presenter.set_cmd_focus_signal.connect(self.telnet_tab.command_input.setFocus)
         
         # Connect node tree presenter signals
@@ -182,15 +182,15 @@ class CommanderWindow(QMainWindow):
         self.node_tree_presenter.node_tree_updated_signal.connect(self.on_node_tree_updated)
         self.node_tree_presenter.log_file_selected_signal.connect(self.session_manager.ip_changed.emit)
         self.node_tree_presenter.command_generated_signal.connect(self._handle_command_generated)
-        self.node_tree_presenter.switch_to_bstool_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.bstool_tab))
-        self.node_tree_presenter.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.node_tree_presenter.switch_to_bstool_tab_signal.connect(lambda: self._smart_switch_to_tab(self.bstool_tab))
+        self.node_tree_presenter.switch_to_telnet_tab_signal.connect(lambda: self._smart_switch_to_tab(self.telnet_tab))
         self.node_tree_presenter.command_output_display_signal.connect(self._handle_sequential_output)
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)
         self.set_cmd_input_text_signal.connect(self.telnet_tab.command_input.setText)
         self.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
-        self.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.switch_to_telnet_tab_signal.connect(lambda: self._smart_switch_to_tab(self.telnet_tab))
         self.status_message_signal.connect(self.status_service.status_updated)
         
         # Connect telnet service signals properly
@@ -240,6 +240,41 @@ class CommanderWindow(QMainWindow):
         # self.copy_to_log_btn.clicked.connect(self.copy_to_log)
         # self.clear_terminal_btn.clicked.connect(self.clear_terminal)
         # self.clear_node_log_btn.clicked.connect(self.clear_node_log)
+    
+    def _smart_switch_to_tab(self, target_tab, check_scroll=True):
+        """
+        Smart tab switching that respects user scroll position.
+        
+        Args:
+            target_tab: The tab widget to switch to (self.telnet_tab or self.bstool_tab)
+            check_scroll: If True, only switch if user is at bottom of current tab's output.
+                         If False, switch unconditionally (for user-initiated actions).
+        
+        Behavior:
+            - If check_scroll=False: Always switch (backward compatible)
+            - If check_scroll=True: Only switch if current tab's user is at bottom
+            - Prevents interrupting users who scrolled up to review earlier logs
+        """
+        if not check_scroll:
+            # Unconditional switch (user-initiated or forced)
+            self.session_tabs.setCurrentWidget(target_tab)
+            return
+        
+        # Get current tab and check if user is following live output
+        current_tab = self.session_tabs.currentWidget()
+        
+        # Only check scroll position for telnet and bstool tabs
+        if current_tab == self.telnet_tab:
+            if self.telnet_tab.is_user_at_bottom():
+                self.session_tabs.setCurrentWidget(target_tab)
+            # else: User is scrolled up, don't interrupt
+        elif current_tab == self.bstool_tab:
+            if self.bstool_tab.is_user_at_bottom():
+                self.session_tabs.setCurrentWidget(target_tab)
+            # else: User is scrolled up, don't interrupt
+        else:
+            # For other tabs (if any in the future), always switch
+            self.session_tabs.setCurrentWidget(target_tab)
     
     def _load_configurations(self):
         """Load all configurations"""
@@ -354,8 +389,10 @@ class CommanderWindow(QMainWindow):
     
     def on_telnet_command_finished(self, response, automatic):
         """Handles the completion of a telnet command run in a background thread"""
-        # Append response to telnet output
-        self.telnet_tab.append_output(response)
+        # Only append raw response if there's no current_token
+        # (Commands with tokens will be displayed via on_log_write_notification with formatting)
+        if not self.current_token:
+            self.telnet_tab.append_output(response)
         
         # Clear command input if not automatic
         if not automatic:
@@ -370,11 +407,13 @@ class CommanderWindow(QMainWindow):
     
     def on_log_write_notification(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int, content_written: str):
         """
-        Handle log write completion and display the actual content in Telnet tab.
+        Handle log write completion and display the actual content in appropriate tab.
         
         Shows the actual content being written to .lis, .fbc, .log, and .rpc files,
         making it clear and visible what's being received and written to files.
-        Users can compare the displayed content with what's written to the file.
+        Routes output based on file extension:
+        - .fbc, .rpc, .lis → Telnet tab
+        - .log → BsTool tab
         
         Args:
             log_path: Path to the log file that was written
@@ -383,30 +422,35 @@ class CommanderWindow(QMainWindow):
             lines_written_by_command: Number of lines written by this command
             content_written: The actual content that was written to the file
         """
-        # Extract filename from path for cleaner display
+        # Extract filename and extension from path
         filename = os.path.basename(log_path) if log_path != "N/A" else "unknown file"
+        file_ext = os.path.splitext(filename)[1].lower() if log_path != "N/A" else ""
+        
+        # Determine which tab to write to based on file extension
+        # .log files go to BsTool tab, everything else (.fbc, .rpc, .lis) goes to Telnet tab
+        target_tab = self.bstool_tab if file_ext == ".log" else self.telnet_tab
         
         # Display the actual content with a header showing which file it's being written to
         if success:
             if lines_written_by_command > 0:
                 # Show header with file information
                 header = f"\n{'='*80}\n📝 Writing to: {filename} ({lines_written_by_command} new line(s) | Total: {total_line_count} lines)\n{'='*80}"
-                self.telnet_tab.append_output(header)
+                target_tab.append_output(header)
                 
                 # Show the actual content being written
-                self.telnet_tab.append_output(content_written)
+                target_tab.append_output(content_written)
                 
                 # Show footer
                 footer = f"{'='*80}\n✓ Content written to {filename}\n{'='*80}\n"
-                self.telnet_tab.append_output(footer)
+                target_tab.append_output(footer)
             else:
                 # No new content case
                 notification = f"\n📝 {filename}: No new content written (Total: {total_line_count} lines)\n"
-                self.telnet_tab.append_output(notification)
+                target_tab.append_output(notification)
         else:
             # Error case
             error_msg = f"\n❌ Failed to write to {filename}\n"
-            self.telnet_tab.append_output(error_msg)
+            target_tab.append_output(error_msg)
     
     def copy_to_log(self):
         """Copies current session content to selected token or log file"""
@@ -442,15 +486,16 @@ class CommanderWindow(QMainWindow):
         """
         Handle the command_generated_signal from NodeTreePresenter.
         Updates the command input of the active tab (Telnet or BsTool) with the received command.
+        Uses check_scroll=False for user-initiated actions (always switch).
         """
         if token_type in ["FBC", "RPC"]:
             self.telnet_tab.command_input.setText(command)
             self.telnet_tab.command_input.setFocus()
-            self.session_tabs.setCurrentWidget(self.telnet_tab)
+            self._smart_switch_to_tab(self.telnet_tab, check_scroll=False)  # User action, force switch
         elif token_type == "BSTOOL":
             self.bstool_tab.command_input.setText(command)
             self.bstool_tab.command_input.setFocus()
-            self.session_tabs.setCurrentWidget(self.bstool_tab)
+            self._smart_switch_to_tab(self.bstool_tab, check_scroll=False)  # User action, force switch
         logging.debug(f"Command '{command}' for type '{token_type}' set in UI.")
     
     def _handle_sequential_output(self, output_text: str, token_type: str):

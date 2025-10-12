@@ -113,7 +113,14 @@ class TelnetTab(QWidget):
         # Convert tabs to spaces (8 spaces per tab) for consistent alignment
         text_with_spaces = text.replace('\t', ' ' * 8)
         
-        # Move cursor to end
+        # Check if user is at bottom BEFORE adding content
+        scrollbar = self.output.verticalScrollBar()
+        was_at_bottom = self.is_user_at_bottom()
+        
+        # Save current scroll position if user is NOT at bottom (reading earlier content)
+        saved_scroll_position = scrollbar.value() if not was_at_bottom else None
+        
+        # Move cursor to end and insert text
         cursor = self.output.textCursor()
         cursor.movePosition(cursor.MoveOperation.End)
         self.output.setTextCursor(cursor)
@@ -121,8 +128,13 @@ class TelnetTab(QWidget):
         # Insert as plain text to preserve all whitespace and formatting
         self.output.insertPlainText(text_with_spaces + "\n")
         
-        # Scroll to bottom to show new content
-        self.output.ensureCursorVisible()
+        # Smart scroll behavior:
+        # - If user WAS at bottom: scroll to show new content (following live output)
+        # - If user scrolled up: restore exact position (don't interrupt reading)
+        if was_at_bottom:
+            scrollbar.setValue(scrollbar.maximum())
+        else:
+            scrollbar.setValue(saved_scroll_position)
         
     def get_command(self):
         """Get the current command text"""
@@ -136,6 +148,16 @@ class TelnetTab(QWidget):
         """Get IP and port for connection"""
         return self.ip_edit.text().strip(), self.port_edit.text().strip()
         
+    def is_user_at_bottom(self):
+        """
+        Check if user is at the bottom of the scroll area (following live output).
+        Returns True if scrolled to bottom, False if scrolled up reviewing earlier logs.
+        Uses 5px tolerance to handle autoscroll edge cases.
+        """
+        scrollbar = self.output.verticalScrollBar()
+        # User is "at bottom" if within 5 pixels of maximum (handles rendering timing)
+        return scrollbar.value() >= scrollbar.maximum() - 5
+    
     def update_connection_status(self, state):
         """Update UI based on connection status"""
         from ..widgets import ConnectionState
