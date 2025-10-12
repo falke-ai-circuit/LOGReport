@@ -271,7 +271,7 @@ class TestCommandExecution:
         command_queue.thread_pool.waitForDone(5000)  # Wait up to 5 seconds
         
         # Process any pending Qt events to ensure signals are handled
-        from PyQt5.QtCore import QCoreApplication
+        from PyQt6.QtCore import QCoreApplication
         app = QCoreApplication.instance()
         if app is None:
             app = QCoreApplication([])

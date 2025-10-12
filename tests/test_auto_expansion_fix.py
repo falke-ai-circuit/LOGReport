@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 def test_log_write_triggers_highlighting():
     """Test that handle_log_write_completed triggers _highlight_current_file"""
     from commander.presenters.node_tree_presenter import NodeTreePresenter
-    from PyQt5.QtWidgets import QTreeWidgetItem
-    from PyQt5.QtCore import Qt
+    from PyQt6.QtWidgets import QTreeWidgetItem
+    from PyQt6.QtCore import Qt
     
     # Create mock dependencies
     view = Mock()
@@ -126,7 +126,7 @@ def test_highlighting_not_triggered_when_file_not_in_map():
 def test_color_update_still_happens():
     """Test that color update still occurs even with highlighting addition"""
     from commander.presenters.node_tree_presenter import NodeTreePresenter
-    from PyQt5.QtWidgets import QTreeWidgetItem
+    from PyQt6.QtWidgets import QTreeWidgetItem
     
     # Create mock dependencies
     view = Mock()
@@ -192,3 +192,4 @@ if __name__ == "__main__":
     test_color_update_still_happens()
     
     print("\n✅ All tests passed!")
+

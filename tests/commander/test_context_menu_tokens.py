@@ -2,8 +2,8 @@ import os
 import sys
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt5.QtCore import QPoint
-from PyQt5.QtWidgets import QMenu, QApplication
+from PyQt6.QtCore import QPoint
+from PyQt6.QtWidgets import QMenu, QApplication
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))

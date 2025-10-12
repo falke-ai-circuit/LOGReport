@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt5.QtWidgets import QApplication, QMenu
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QAction
+from PyQt6.QtWidgets import QApplication, QMenu
+from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtWidgets import QAction
 import os
 import tempfile
 import sys

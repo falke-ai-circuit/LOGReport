@@ -6,8 +6,8 @@ import pytest
 import tempfile
 import os
 from unittest.mock import Mock, MagicMock, patch, call
-from PyQt5.QtWidgets import QMenu, QAction
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QMenu, QAction
+from PyQt6.QtCore import Qt
 
 # Import classes to test
 import sys
@@ -191,3 +191,4 @@ class TestBsToolCommandGeneration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

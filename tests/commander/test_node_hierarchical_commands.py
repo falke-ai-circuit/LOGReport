@@ -10,8 +10,8 @@ This test suite validates:
 
 import pytest
 from unittest.mock import MagicMock, patch, call
-from PyQt5.QtWidgets import QApplication, QMenu, QTreeWidgetItem
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMenu, QTreeWidgetItem
+from PyQt6.QtCore import Qt
 
 from commander.services.context_menu_service import ContextMenuService
 from commander.services.context_menu_filter import ContextMenuFilterService
@@ -378,3 +378,4 @@ class TestNodeHierarchicalCommands:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

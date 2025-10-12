@@ -12,7 +12,7 @@ This test simulates realistic command execution scenarios including:
 import pytest
 import logging
 from unittest.mock import Mock, MagicMock, patch, call
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 from src.commander.services.sequential_command_processor import SequentialCommandProcessor, ExecutionState
 from src.commander.models import NodeToken
 
@@ -358,3 +358,4 @@ class TestSequentialIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+

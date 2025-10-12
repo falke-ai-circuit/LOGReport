@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
-from PyQt5.QtWidgets import QApplication, QPushButton
-from PyQt5.QtGui import QColor
+from PyQt6.QtWidgets import QApplication, QPushButton
+from PyQt6.QtGui import QColor
 from src.commander.ui.commander_window import CommanderWindow
 
 @pytest.fixture(scope="module")

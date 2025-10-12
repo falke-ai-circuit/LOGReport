@@ -4,8 +4,8 @@ Test BsTool LOG file color updates with node suffix handling
 import pytest
 import os
 from unittest.mock import Mock, MagicMock, patch
-from PyQt5.QtWidgets import QTreeWidgetItem
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QTreeWidgetItem
+from PyQt6.QtCore import Qt
 
 
 def test_bstool_completed_updates_colors():
@@ -162,3 +162,4 @@ def test_bstool_color_update_with_node_suffix():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

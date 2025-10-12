@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import Mock, patch
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from src.commander.log_writer import LogWriter
 from src.commander.presenters.node_tree_presenter import NodeTreePresenter

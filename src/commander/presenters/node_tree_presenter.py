@@ -400,9 +400,13 @@ class NodeTreePresenter(QObject):
         
         # Check if pending BsTool execution should be triggered
         # This happens when all FBC/RPC commands complete and queue becomes idle
-        if self._pending_bstool and not self.command_queue.is_processing:
-            logging.info("handle_command_completed: Queue idle, executing pending BsTool")
-            self._execute_pending_bstool()
+        # Use QTimer to check processing state after a short delay
+        # This ensures the command_queue has time to update its _is_processing flag
+        # (command_completed signal emitted 29 lines before flag reset in _handle_worker_finished)
+        if self._pending_bstool:
+            from PyQt5.QtCore import QTimer
+            logging.debug("handle_command_completed: Pending BsTool detected, scheduling delayed check")
+            QTimer.singleShot(50, self._check_and_execute_pending_bstool)
         
         # Check if we're in sequential node processing mode and queue is idle
         # This triggers processing of the next node when all commands for current node are done
@@ -483,6 +487,11 @@ class NodeTreePresenter(QObject):
         self.node_status[log_path]["command_success"] = success
         logging.debug(f"_handle_bstool_completed: Set command_success={success} for {log_path}")
         
+        # Release BsTool execution lock to allow next node to proceed
+        # This lock was acquired in process_node_print_commands() at the start
+        self.bstool_service.release_execution()
+        logging.debug(f"_handle_bstool_completed: Released BsTool execution lock")
+        
         # Wait a bit for the file to be written before checking colors
         # BsTool writes output from temp file to actual log file asynchronously
         QTimer.singleShot(500, lambda: self._check_and_update_node_color(log_path))
@@ -492,6 +501,22 @@ class NodeTreePresenter(QObject):
             # Use QTimer to check processing state after a short delay
             QTimer.singleShot(100, self._check_sequential_processing_continuation)
             logging.debug("_handle_bstool_completed: Scheduled continuation check for sequential processing")
+    
+    def _check_and_execute_pending_bstool(self):
+        """
+        Check if queue is idle and execute pending BsTool if ready.
+        This method is called via QTimer after command completion to ensure the queue's 
+        _is_processing flag has been updated (handles 29-line timing gap in command_queue.py).
+        """
+        if not self._pending_bstool:
+            logging.debug("_check_and_execute_pending_bstool: No pending BsTool found")
+            return
+        
+        if not self.command_queue.is_processing:
+            logging.info("_check_and_execute_pending_bstool: Queue idle, executing pending BsTool")
+            self._execute_pending_bstool()
+        else:
+            logging.debug(f"_check_and_execute_pending_bstool: Queue still processing, will retry on next command completion")
     
     def _execute_pending_bstool(self):
         """
@@ -513,12 +538,11 @@ class NodeTreePresenter(QObject):
         self._pending_bstool = None
         
         # Execute BsTool command
+        # Note: Completion is handled via bstool_execution_completed signal connected in __init__
         logging.info(f"_execute_pending_bstool: Executing BsTool for node {node_name} (deferred execution triggered)")
         self.bstool_service.execute_bstool(
             log_file_path=log_file_path,
-            bstool_command_args=bstool_command_args,
-            callback=self._handle_bstool_completed,
-            log_token=log_token
+            bstool_command_args=bstool_command_args
         )
         
         # Note: Execution lock will be released by _run_bstool_process's finally block

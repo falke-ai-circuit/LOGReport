@@ -528,6 +528,374 @@ def process_sequential_batch(self, tokens: List['NodeToken'],
 
 ---
 
+## ⚡ Advanced Execution Patterns
+
+**Purpose**: Advanced command execution strategies for complex workflows  
+**Scope**: Deferred execution, system mode validation, memory optimization
+
+### Deferred BsTool Execution
+
+**Problem**: BsTool commands executing in parallel with FBC/RPC instead of sequentially
+
+**Pattern**: Store execution info when queuing, trigger when queue idle
+
+#### Implementation
+
+**Pending Execution Tracker** (`node_tree_presenter.py` line 101):
+```python
+self._pending_bstool = None  # Dict: {node_name, log_file_path, bstool_command_args, log_token}
+```
+
+**Smart Execution Decision** (Phase 3 of `process_node_print_commands()`):
+```python
+# Phase 3: Execute BsTool for LOG files
+log_tokens = self._get_tokens_for_node(node, "LOG")
+
+if log_tokens:
+    # Check if FBC or RPC commands exist
+    fbc_tokens = self._get_tokens_for_node(node, "FBC")
+    rpc_tokens = self._get_tokens_for_node(node, "RPC")
+    
+    has_queue_commands = (fbc_tokens and len(fbc_tokens) > 0) or (rpc_tokens and len(rpc_tokens) > 0)
+    
+    if has_queue_commands:
+        # DEFER: FBC/RPC commands exist, wait for queue to complete
+        self._pending_bstool = {
+            'node_name': node_name,
+            'log_file_path': log_file_path,
+            'bstool_command_args': bstool_command_args,
+            'log_token': log_token
+        }
+        logging.info(f"DEFERRED BsTool execution for {node_name} (waiting for FBC/RPC queue)")
+    else:
+        # IMMEDIATE: No FBC/RPC commands, execute BsTool now
+        logging.info(f"Executing BsTool IMMEDIATELY for {node_name} (no queue commands)")
+        self.bstool_service.execute_bstool(log_file_path, bstool_command_args)
+```
+
+**Execution Trigger** (`handle_command_completed()` lines 400-405):
+```python
+def handle_command_completed(self, node_name: str, token_id: str, success: bool):
+    """Handle command completion from queue."""
+    # ... existing completion logic ...
+    
+    # Check if BsTool execution was deferred and queue is now idle
+    if self._pending_bstool is not None and not self.command_queue.is_processing:
+        logging.info("Queue idle and pending BsTool detected - executing now")
+        self._execute_pending_bstool()
+```
+
+**Execution Flow**:
+```
+process_node_print_commands(node_A)
+    ↓
+Phase 1: Queue FBC commands (if exist)
+    ↓
+Phase 2: Queue RPC commands (if exist)
+    ↓
+Phase 3: Check FBC/RPC exist?
+    ↓ (Yes - commands queued)
+Store in _pending_bstool
+    ↓
+CommandQueue processes FBC commands
+    ↓ (each completion)
+handle_command_completed() checks:
+    - _pending_bstool not None?
+    - command_queue.is_processing == False?
+    ↓ (Both True)
+_execute_pending_bstool()
+    ↓
+Extract pending info → Clear _pending_bstool → Execute BsTool
+```
+
+**Benefits**:
+- True sequential execution (FBC → RPC → BsTool)
+- No race conditions between queue and BsTool
+- Proper cleanup on workflow cancellation
+- Memory-efficient (single pending dict, not queue)
+
+**Related**: See [IMPL_bstool_evolution.md#phase-5](../implementation/IMPL_bstool_evolution.md#phase-5-complete-integration) for complete implementation history
+
+---
+
+### System Mode Validation
+
+**Problem**: Telnet commands require system mode, but verifying mode with toggle loop was unreliable
+
+**Pattern**: Guaranteed single `systemmode` command for debugger initialization
+
+#### Implementation
+
+**Session Initialization Sequence** (`session_manager.py` lines 165-200):
+```python
+def _initialize_session(self) -> bool:
+    """
+    Initialize telnet session with guaranteed system mode entry.
+    
+    Sequence:
+        1. Send 'yes' + wait 1.0s + clear buffer
+        2. Send CTRL+Z + wait 0.5s + clear buffer
+        3. Send 'systemmode' + wait 0.5s + set mode
+    
+    Returns:
+        True if initialization successful
+    """
+    try:
+        # Step 1: Accept license
+        self.connection.write(b'yes\r\n')
+        time.sleep(1.0)
+        self.connection.read_very_eager()  # Clear buffer
+        
+        # Step 2: Exit any active mode
+        self.connection.write(b'\x1a')  # CTRL+Z
+        time.sleep(0.5)
+        self.connection.read_very_eager()  # Clear buffer
+        
+        # Step 3: Enter system mode (guaranteed single command)
+        self.connection.write(b'systemmode\r\n')
+        time.sleep(0.5)
+        self.current_mode = 'system'
+        
+        return True
+    except Exception as e:
+        self.logger.error(f"Session initialization failed: {e}")
+        return False
+```
+
+**Before** (40+ lines of toggle loop):
+```python
+# Complex loop with response checking
+for attempt in range(max_toggles):
+    self.connection.write(b'toggle\r\n')
+    time.sleep(2.0)
+    toggle_response = self.connection.read_very_eager().decode('ascii', 'ignore')
+    if 'System Commands' in toggle_response:
+        self.current_mode = 'system'
+        return True
+    # ... pattern matching for %s, %a, etc.
+```
+
+**After** (3 lines):
+```python
+# Single guaranteed command
+self.connection.write(b'systemmode\r\n')
+time.sleep(0.5)
+self.current_mode = 'system'
+return True
+```
+
+**Benefits**:
+- Reliable initialization (no pattern matching failures)
+- Faster connection (no 5+ toggle attempts)
+- Simpler code (3 lines vs 40+ lines)
+- Predictable behavior (always enters system mode)
+
+**Test Results**: 21/21 tests passed (previously had intermittent failures)
+
+**Related**: See [IMPLEMENTATION_SUMMARY_systemmode_command.md](../implementation/IMPLEMENTATION_SUMMARY_systemmode_command.md) for original implementation
+
+---
+
+### Memory-Optimized Cleanup
+
+**Problem**: Project memory cluttered with organizational metadata and low-value entities
+
+**Pattern**: Intelligent cleanup phase removing meta entities without workflow value
+
+#### Cleanup Categories
+
+**Always Remove**:
+1. **MemoryType entities** (e.g., `Project.MemoryType.UI`) - organizational metadata
+2. **Cluster/Domain/Type meta entities** (e.g., `Project.System.Project_Cluster`) - hierarchy represented via relations
+3. **Generic documentation** (README/TODO extracts without unique insights)
+4. **Low-value entities** (<2 observations or all <25 chars)
+5. **Obsolete entities** (no refs 90+ days)
+
+**Conditionally Process**:
+- **Verbose entities** (>500 chars) - CONDENSE
+- **Disconnected entities** - REVIEW (may have value)
+
+#### Implementation
+
+**Cleanup Phase in Workflow** (`update_memory.md`):
+```
+PRE-PHASE: INVENTORY→VALIDATION
+    ↓
+CLEANUP PHASE (NEW):
+    1. Analyze removal candidates (analyze_memory_cleanup.py)
+    2. Categorize entities by removal reason
+    3. Automated cleanup (Phase 1 of unified_memory_optimizer.py)
+    4. Manual review for disconnected entities
+    5. Output cleanup report with reasons + backup
+    ↓
+PROJECT PHASES (1-8): Analysis→Implementation
+    ↓
+GLOBAL PHASES (9-16): Analysis→Implementation
+    ↓
+POST-PHASE: VERIFICATION→COMPARISON
+```
+
+**Analysis Script** (`scripts/analyze_memory_cleanup.py`):
+```python
+# Standalone analysis tool (does NOT modify memory)
+python scripts/analyze_memory_cleanup.py
+
+# Output Example:
+# META TYPES: 33 entities
+# CLUSTER META: 37 entities
+# DOMAIN META: 2 entities
+# GENERIC DOCUMENTATION: 6 entities
+# LOW VALUE: 2 entities
+# DISCONNECTED: 6 entities
+# VERBOSE: 10 entities
+#
+# TOTAL REMOVAL CANDIDATES: 97 / 250 (38.8%)
+```
+
+**Automated Cleanup** (Phase 1 of `unified_memory_optimizer.py`):
+```python
+def cleanup_phase(memory_data: dict) -> dict:
+    """
+    Remove organizational metadata and low-value entities.
+    
+    Returns:
+        Cleaned memory data with removal report
+    """
+    removed = {
+        'meta_types': [],
+        'cluster_meta': [],
+        'low_value': [],
+        'obsolete': []
+    }
+    
+    for entity in memory_data['entities']:
+        # Remove MemoryType entities
+        if 'MemoryType' in entity['name']:
+            removed['meta_types'].append(entity['name'])
+            continue
+        
+        # Remove Cluster meta entities
+        if '_Cluster' in entity['name'] or '_Domain' in entity['name']:
+            removed['cluster_meta'].append(entity['name'])
+            continue
+        
+        # Remove low-value entities
+        obs_count = len(entity.get('observations', []))
+        if obs_count < 2:
+            removed['low_value'].append(entity['name'])
+            continue
+    
+    # Generate cleanup report
+    return {
+        'cleaned_data': memory_data,
+        'removed': removed,
+        'stats': {
+            'before': len(memory_data['entities']),
+            'after': len(memory_data['entities']) - sum(len(v) for v in removed.values()),
+            'reduction': f"{sum(len(v) for v in removed.values()) / len(memory_data['entities']) * 100:.1f}%"
+        }
+    }
+```
+
+**Results** (LOGReport project):
+- Before: 250 entities
+- After: 193 entities  
+- Reduction: 22.4% (57 entities removed)
+- Categories: 33 MemoryType + 37 Cluster meta + 6 generic docs + 2 low-value
+
+**Benefits**:
+- Cleaner memory queries (no meta entity noise)
+- Better signal-to-noise ratio (high-value entities only)
+- Faster memory loading (22% fewer entities)
+- Easier maintenance (less clutter to review)
+
+**Related**: See [IMPLEMENTATION_SUMMARY_memory_cleanup.md](../implementation/IMPLEMENTATION_SUMMARY_memory_cleanup.md) for detailed analysis
+
+---
+
+### Sequential Command Queue Fix
+
+**Problem**: Command queue processed all commands in parallel instead of sequentially
+
+**Pattern**: Process one command at a time, trigger next only after current completes
+
+#### Key Changes
+
+**Before** (`command_queue.py` `start_processing()`):
+```python
+# Marked ALL commands as processing
+for idx, item in enumerate(pending_commands):
+    item.status = 'processing'
+
+# Started ALL workers
+for idx, item in enumerate(pending_commands):
+    worker = CommandWorker(...)
+    self.thread_pool.start(worker)
+```
+
+**After** (Sequential Fix):
+```python
+# SEQUENTIAL EXECUTION FIX: Only process the FIRST pending command
+logging.info(f"Sequential processing - starting first of {total} pending commands")
+
+# Get only the first pending command
+item = pending_commands[0]
+
+# Mark only this command as processing
+item.status = 'processing'
+
+# Create and start worker for ONLY the first pending command
+worker = CommandWorker(item.command, item.token, telnet_session)
+self.thread_pool.start(worker)
+```
+
+**Continuation Logic** (`_handle_worker_finished()`):
+```python
+def _handle_worker_finished(self, command: str, success: bool):
+    """Handle worker completion and trigger next command."""
+    # Mark current command as completed
+    self._mark_command_completed(command, success)
+    
+    # Check for more pending commands
+    pending = self._get_pending_commands()
+    
+    if pending:
+        # Trigger next command
+        self.start_processing()
+    else:
+        # All commands completed
+        self.all_commands_completed.emit()
+```
+
+**Flow**:
+```
+start_processing()
+    ↓
+Process FIRST command only
+    ↓
+Worker executes → completes
+    ↓
+_handle_worker_finished() called
+    ↓
+Check for pending commands
+    ↓ (If pending)
+call start_processing() again
+    ↓
+Repeat until no pending commands
+```
+
+**Test Results**: 3/3 tests passed in 15.44s (previously had race conditions)
+
+**Benefits**:
+- Guaranteed sequential execution
+- Proper wait-for-completion between commands
+- No race conditions with shared resources
+- Predictable command order
+
+**Related**: See [IMPLEMENTATION_SUMMARY_sequential_command_execution.md](../implementation/IMPLEMENTATION_SUMMARY_sequential_command_execution.md) for complete fix details
+
+---
+
 ## 🔧 Command Services
 
 Protocol-specific command services handle the details of FBC, RPC, and BsTool execution.

@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from src.utils.file_utils import parse_sys_file, merge_node_data
 from src.node_config_dialog import NodeConfigDialog
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 # Mock QApplication for UI tests
 @pytest.fixture(scope="session")
@@ -133,3 +133,4 @@ def test_load_sys_file_merge_new_ip(qapp, tmp_path):
     assert ap01_node is not None
     assert ap01_node["ip"] == "192.168.1.100" # New IP should be applied
     assert {"token_id": "AB01", "token_type": "UNKNOWN"} in ap01_node["tokens"]
+

@@ -387,6 +387,334 @@ grep -c '"type": "entity"' codegraph.json
 grep -c '"type": "relation"' codegraph.json
 ```
 
+---
+
+## 🔗 Cluster Layer Enhancement
+
+**Version**: 5-Layer Hierarchy  
+**Added**: 2025-01-19  
+**Impact**: Richer organizational context while maintaining <100KB size target
+
+### Evolution from 4-Layer to 5-Layer
+
+The codegraph structure was enhanced from 4-layer to **5-layer** hierarchy, adding a Cluster layer between Domain and Module for more specific organizational context.
+
+**Before** (4 layers):
+```
+Code.Type.Python
+└── Code.Domain.Commander
+    ├── Code.Module.context_menu_service
+    └── Code.Module.bstool_command_service
+```
+
+**After** (5 layers):
+```
+Code.Type.Python
+└── Code.Domain.Commander
+    └── Code.Cluster.Commander.Services
+        ├── Code.Module.context_menu_service
+        └── Code.Module.bstool_command_service
+```
+
+### Cluster Definitions by Domain
+
+**Commander Domain** (4 clusters):
+- **Services**: Command services (context menu, bstool, error reporting)
+- **Views**: UI views (node tree, dialogs, widgets)
+- **Presenters**: Presenters (mediates between models and views)
+- **Models**: Data models (node configuration, state management)
+
+**Core Domain** (3 clusters):
+- **FileIO**: File I/O (log loading, token detection, file processing)
+- **Processing**: Data processing (log parsing, report generation)
+- **Configuration**: Configuration (settings, constants, contracts)
+
+**Frontend Domain** (3 clusters):
+- **MainUI**: Main GUI (windows, tabs, primary interface)
+- **Dialogs**: Dialog windows (configuration, settings)
+- **Workers**: Background workers (async processing, threading)
+
+### Benefits
+
+**Organizational Clarity**:
+- Clear separation between service types (BsTool service vs Telnet service vs Context menu service)
+- Easier navigation: "Find all services" vs "Find all modules in Commander"
+- Better grouping for related functionality
+
+**Query Efficiency**:
+```python
+# Before: Search all Commander modules
+query = "Code.Domain.Commander.Code.Module.*"
+
+# After: Search only service modules
+query = "Code.Domain.Commander.Code.Cluster.Services.*"
+```
+
+**Size Impact**:
+- Added ~200 cluster entities
+- Increased file size by ~2KB (within 100KB target)
+- Improved semantic value outweighs minimal size increase
+
+### Implementation Details
+
+**Script**: `scripts/update_codegraph.py` - Phase 3 (Cluster Assignment)  
+**Logic**: Pattern-based cluster detection from module names:
+- `*_service.py` → Services cluster
+- `*_view.py`, `*_window.py` → Views cluster
+- `*_presenter.py` → Presenters cluster
+- `*_model.py`, `*_models.py` → Models cluster
+- `*_loader.py`, `*_parser.py` → FileIO cluster
+- `*_processor.py`, `*_generator.py` → Processing cluster
+
+---
+
+## 🤖 DevTeam Integration Patterns
+
+**Integration Date**: 2025-10-11  
+**Purpose**: Mandate codegraph usage in DevTeam orchestrator workflow for code-aware development
+
+### Phase-Specific Codegraph Usage
+
+Codegraph integrated into DevTeam.chatmode with phase-specific requirements:
+
+| Phase | Usage Level | Codegraph Operations |
+|-------|-------------|----------------------|
+| **REMEMBER (1)** | Optional | Load global/project memory, codegraph typically loaded in ASSESS |
+| **ASSESS (2)** | **LOAD POINT** | **Read entire codegraph.json into context** - makes all entities available |
+| **ANALYZE (3)** | Recommended | Query BELONGS_TO for structure, IMPORTS for dependencies, DOCUMENTED_IN for context |
+| **ARCHITECT (4)** | Recommended | Query for impact analysis (affected modules, downstream dependencies, inheritance) |
+| **IMPLEMENT (5)** | **⚠️ MANDATORY** | Reference similar method signatures, parameter patterns, class structures, naming conventions |
+| **DEBUG (6)** | **⚠️ MANDATORY** | Trace CALLS chains, locate implementations via BELONGS_TO, follow IMPORTS for dependency issues |
+| **TEST (7)** | Recommended | Map all methods needing tests, identify untested paths, dependency-based test surface |
+
+### Codegraph Query Patterns
+
+**ANALYZE Phase** - Pattern Detection:
+```python
+# Detect emergent patterns across codebase
+query = "Code.Module.*context_menu*"  # Find all context menu related modules
+# Follow BELONGS_TO to understand structure
+# Follow IMPORTS to map dependencies
+# Check DOCUMENTED_IN for existing documentation
+```
+
+**ARCHITECT Phase** - Impact Analysis:
+```python
+# Identify affected modules when changing component X
+affected = []
+for module in codegraph.query("Code.Module.*"):
+    if module.imports("component_x"):
+        affected.append(module)
+        # Follow forward IMPORTS to find downstream dependencies
+        downstream = module.get_dependents()
+        affected.extend(downstream)
+```
+
+**IMPLEMENT Phase** - Pattern Matching:
+```python
+# Reference similar method signatures before implementing
+similar_methods = codegraph.query("Code.Method.*validate_token*")
+for method in similar_methods:
+    # Check parameter patterns
+    # Review naming conventions
+    # Understand return types
+    # Copy consistent patterns
+```
+
+**DEBUG Phase** - Execution Trace:
+```python
+# Trace execution from error point
+error_method = codegraph.get_method("NodeTreePresenter.handle_command_completed")
+# Follow CALLS relations backward (who calls this?)
+callers = error_method.get_incoming_calls()
+# Follow CALLS forward (what does this call?)
+callees = error_method.get_outgoing_calls()
+# Check IMPORTS for dependency issues
+dependencies = error_method.module.get_imports()
+```
+
+**TEST Phase** - Coverage Mapping:
+```python
+# Map all methods needing tests
+untested_methods = []
+for method in codegraph.query("Code.Method.*"):
+    # Query for corresponding test file
+    test_file = f"test_{method.module_name}.py"
+    if not codegraph.has_entity(test_file):
+        untested_methods.append(method)
+```
+
+### Integration Benefits
+
+**Code-Aware Development**:
+- Implementations follow existing patterns automatically
+- Impact analysis prevents breaking changes
+- Debug sessions faster with execution trace
+- Test coverage gaps immediately visible
+
+**Consistency Enforcement**:
+- New code matches existing naming conventions
+- Method signatures consistent across similar methods
+- Import patterns follow established architecture
+- Documentation pointers guide doc creation
+
+**Workflow Efficiency**:
+- No manual codebase searching required
+- Patterns discovered automatically via queries
+- Dependencies mapped instantly
+- Related code found with single query
+
+### DevTeam Chatmode Changes
+
+**Core Principles Addition**:
+```markdown
+- **Codegraph-Driven ⚠️ MANDATORY**: ALWAYS query codegraph.json for navigation, 
+  impact analysis, patterns | OBLIGATORY in IMPLEMENT + DEBUG phases | 
+  PREFERABLY in ANALYZE + ARCHITECT + TEST phases
+```
+
+**Phase Actions Enhanced**:
+- ANALYZE: Added "**query loaded codegraph** (BELONGS_TO, IMPORTS, DOCUMENTED_IN, detect patterns)"
+- ARCHITECT: Added "**query loaded codegraph for impact analysis** (affected modules, downstream dependencies)"
+- IMPLEMENT: Added "**reference loaded codegraph** (similar signatures, class structures, conventions)"
+- DEBUG: Added "**trace execution in loaded codegraph** (CALLS chains, BELONGS_TO, IMPORTS)"
+
+**Completion Format Enhanced**:
+- ANALYZE: Added `CODEGRAPH_REFS:[modules:[list] classes:[list] relevant_relations:[count]]`
+- ARCHITECT: Added `IMPACT_ANALYSIS:[affected_modules:[list] downstream_dependencies:[count]]`
+- IMPLEMENT: Added `CODE_PATTERNS:[similar_methods:[list] reused_structures:[count]]`
+- DEBUG: Added `EXECUTION_TRACE:[call_chain:[methods] affected_classes:[list] dependency_issues:[count]]`
+- TEST: Added `TEST_SURFACE:[methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]`
+
+---
+
+## 📝 Documentation Pointer System
+
+**Feature**: Bidirectional Code↔Documentation Linking  
+**Implementation Date**: 2025-10-11  
+**Purpose**: Rich context in single query without re-analysis
+
+### Concept
+
+**Problem**: Querying code structure gives entities but no documentation context. Developers must separately search for relevant docs.
+
+**Solution**: DOCUMENTED_IN relations linking code entities to documentation files, creating bidirectional navigation.
+
+**Benefits**:
+- No re-analysis required (query once, get code + docs)
+- Rich context in single query (structure + documentation + source pointers)
+- Persistent knowledge (links survive sessions)
+- Minimal size impact (+1.35KB for 7 doc pointers)
+
+### Implementation
+
+**Doc Entities** in codegraph.json:
+```json
+{
+  "type": "entity",
+  "name": "Doc:docs/technical/TECH_codegraph.md",
+  "entityType": "Documentation",
+  "observations": ["Documentation for Codebase", "upd:2025-10-11,refs:0"]
+}
+```
+
+**DOCUMENTED_IN Relations**:
+```json
+{
+  "type": "relation",
+  "from": "Code.Type.Codebase",
+  "to": "Doc:docs/technical/TECH_codegraph.md",
+  "relationType": "DOCUMENTED_IN"
+}
+```
+
+### Usage Patterns
+
+**Query with Documentation Context**:
+```python
+# Query Commander domain
+commander = codegraph.get_entity("Code.Domain.Commander")
+
+# Get documentation automatically
+doc_links = commander.get_relations("DOCUMENTED_IN")
+for doc in doc_links:
+    print(f"Documented in: {doc.target}")
+    # Output: "Documented in: docs/architecture/ARCH_command_system.md"
+```
+
+**Reverse Query** (Find code for documentation):
+```python
+# Query documentation entity
+doc = codegraph.get_entity("Doc:docs/architecture/ARCH_memory_system.md")
+
+# Find what it documents
+documented_entities = doc.get_incoming_relations("DOCUMENTED_IN")
+for entity in documented_entities:
+    print(f"Documents: {entity.name}")
+    # Output: "Documents: Code.Domain.Core"
+```
+
+### Size Impact Analysis
+
+**Baseline** (without doc pointers):
+- Entities: 749
+- Relations: 5,114
+- Size: 22.05KB
+
+**Enhanced** (with doc pointers):
+- Entities: 752 (+3 Doc entities)
+- Relations: 5,121 (+7 DOCUMENTED_IN)
+- Size: 23.40KB (+1.35KB, 6.1% increase)
+
+**Headroom**: Target is <100KB, current 23.40KB leaves 76.60KB headroom (326% under target)
+
+### Strategic Pointer Placement
+
+**High-Value Entities Only**:
+- Type entities (Codebase → TECH_codegraph.md)
+- Domain entities (Commander → ARCH_command_system.md, Core → ARCH_memory_system.md)
+- Key classes (NodeTreePresenter → ARCH_node_system.md)
+
+**Not Linked**:
+- Individual methods (too granular, would add 500+ relations)
+- Utility modules (documented in parent domain)
+- Generated files (no documentation needed)
+
+### Integration with DevTeam
+
+**ANALYZE Phase** - Automatic Context:
+```python
+# Query module for analysis
+module = codegraph.get_entity("Code.Module.commander_node_manager")
+# Documentation link included automatically
+docs = module.get_documentation_links()
+# Read relevant docs for analysis context
+```
+
+**IMPLEMENT Phase** - Pattern Guidance:
+```python
+# Find similar implementations
+similar = codegraph.query("Code.Class.*Presenter*")
+for cls in similar:
+    # Get documentation for best practices
+    docs = cls.get_documentation_links()
+    # Follow documented patterns
+```
+
+**DOCUMENT Phase** - Update Tracking:
+```python
+# Find entities without documentation
+undocumented = []
+for entity in codegraph.query("Code.Class.*"):
+    if not entity.has_relation("DOCUMENTED_IN"):
+        undocumented.append(entity)
+# Create documentation for undocumented entities
+```
+
+---
+
+## 💡 Best Practices
+
 ### When to Regenerate
 
 **Always Regenerate After**:

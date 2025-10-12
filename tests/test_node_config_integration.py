@@ -2,8 +2,8 @@ import pytest
 import json
 import os
 from unittest.mock import patch, MagicMock
-from PyQt5.QtWidgets import QApplication, QListWidgetItem
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QListWidgetItem
+from PyQt6.QtCore import Qt
 from src.node_config_dialog import NodeConfigDialog
 from src.sys_file_loader import SysFileParser
 from src.sys_file_loader import SysFileLoader

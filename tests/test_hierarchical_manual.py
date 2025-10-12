@@ -8,8 +8,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from unittest.mock import MagicMock
-from PyQt5.QtWidgets import QApplication, QMenu
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMenu
+from PyQt6.QtCore import Qt
 
 from commander.services.context_menu_service import ContextMenuService
 from commander.services.context_menu_filter import ContextMenuFilterService
@@ -179,3 +179,4 @@ if __name__ == "__main__":
     else:
         print("\n⚠️  SOME TESTS FAILED! Please review the output above.")
         sys.exit(1)
+

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QPushButton
+from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QPushButton
 from src.commander.presenters.commander_presenter import CommanderPresenter
 from src.commander.ui.commander_ui_factory import CommanderUIFactory
 from src.commander.ui.session_view import SessionView

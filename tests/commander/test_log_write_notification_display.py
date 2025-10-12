@@ -9,8 +9,8 @@ was received and written to the files.
 import pytest
 import os
 from unittest.mock import MagicMock, patch
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QSettings
 
 from commander.ui.commander_window import CommanderWindow
 
@@ -206,3 +206,4 @@ class TestLogWriteNotificationDisplay:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

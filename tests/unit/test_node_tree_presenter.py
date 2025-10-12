@@ -3,7 +3,7 @@ Unit tests for NodeTreePresenter
 """
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt5.QtGui import QColor
+from PyQt6.QtGui import QColor
 from src.commander.presenters.node_tree_presenter import NodeTreePresenter
 from src.commander.node_manager import NodeManager
 from src.commander.session_manager import SessionManager

@@ -12,8 +12,8 @@ import sys
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from PyQt5.QtWidgets import QApplication, QListWidgetItem
-from PyQt5.QtGui import QColor
+from PyQt6.QtWidgets import QApplication, QListWidgetItem
+from PyQt6.QtGui import QColor
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -358,3 +358,4 @@ class TestStandaloneTokenSysFile:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

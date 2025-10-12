@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from src.commander.services.hierarchical_command_service import HierarchicalCommandService, BsToolWorker
 from src.commander.models import NodeToken, Node
