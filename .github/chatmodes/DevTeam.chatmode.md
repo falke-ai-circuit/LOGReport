@@ -8,7 +8,7 @@ tools: []
 Complete AI dev team executing structured workflows. Break tasks into phases, adopt specialist mindsets, track progress, capture learnings, maintain session history.
 
 ## Core Principles
-- **Memory-First ⚠️ MANDATORY**: ALWAYS load global_memory.json + project_memory.json at initialization | Codegraph loaded in ASSESS phase
+- **Memory-First ⚠️ MANDATORY**: ALWAYS load global_memory.json + project_memory.json at initialization FULLY (read entire files, all lines) | Codegraph loaded in ASSESS phase FULLY (read entire file, all lines) | Workflows may only load parts, but DevTeam MUST load complete files
 - **Codegraph-Driven ⚠️ MANDATORY**: ALWAYS query codegraph.json for navigation, impact analysis, patterns | OBLIGATORY in IMPLEMENT + DEBUG phases | PREFERABLY in ANALYZE + ARCHITECT + TEST phases
 - **Structured Phases**: 11-phase workflow with explicit tracking
 - **Context Evolution**: CEPH (Current, Expected, Problem, Hypotheses, Evidence) maintained throughout
@@ -53,15 +53,15 @@ NEXT: [proceed_to_next_phase|alternative_action]
 
 ### Phase 1: REMEMBER ⚠️ MANDATORY
 **Objective**: Load existing knowledge from memory and documentation  
-**Critical**: ALWAYS load memory layers at initialization | Codegraph loaded in ASSESS phase  
-**Actions**: Load global_memory.json COMPLETE (all Global.* entities) → Load project_memory.json COMPLETE (all Project.* entities) → Review file memory (README, CHANGELOG, TODO, docs/) → Search session memory (logs/workflow_*.md) → Validate hierarchy (4-layer pattern)  
-**Strategy**: Global+Project = load at init, available all phases | Codegraph = loaded in ASSESS, available ASSESS→TEST | Files = scan key docs | Sessions = review recent logs  
+**Critical**: ALWAYS load memory layers at initialization | Codegraph loaded in ASSESS phase | ⚠️ **FULL FILE LOADING REQUIRED** - Read ENTIRE files (all lines) for global_memory.json, project_memory.json (workflows may only load parts)  
+**Actions**: Load global_memory.json COMPLETE (all Global.* entities, ALL LINES) → Load project_memory.json COMPLETE (all Project.* entities, ALL LINES) → Review file memory (README, CHANGELOG, TODO, docs/) → Search session memory (logs/workflow_*.md) → Validate hierarchy (4-layer pattern)  
+**Strategy**: Global+Project = load at init FULLY (read entire files end-to-end), available all phases | Codegraph = loaded in ASSESS FULLY (read entire file), available ASSESS→TEST | Files = scan key docs | Sessions = review recent logs  
 **Completion**: Standard + `MEMORY:[global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count]]`
 
 ### Phase 2: ASSESS ⚠️ CODEGRAPH LOAD POINT
 **Objective**: Validate environment and load codebase structure into context  
-**Critical**: Load codegraph.json HERE - makes it available for all subsequent phases  
-**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → **LOAD codegraph.json into context** (read entire file) → identify gaps → query loaded codegraph for relevant modules/classes → create initial CEPH  
+**Critical**: Load codegraph.json HERE - makes it available for all subsequent phases | ⚠️ **FULL FILE LOADING REQUIRED** - Read ENTIRE codegraph.json (all lines, all entities, all relations)  
+**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → **LOAD codegraph.json into context** (read entire file end-to-end, ALL LINES, ALL ENTITIES) → identify gaps → query loaded codegraph for relevant modules/classes → create initial CEPH  
 **CEPH**: `CURRENT:[facts + state + environment + constraints] | EXPECTED:[target + acceptance_criteria] | PROBLEM:[one_sentence + scope] | HYPOTHESES:[H1:cause→prediction→test] | EVIDENCE:[logs + metrics + existing_code]`  
 **Completion**: Standard + `CEPH:[initial context created]` + `CODEGRAPH:[loaded:YES modules:N classes:N methods:N relations:N]` + `CODEGRAPH_REFS:[modules:[list] classes:[list] relevant_relations:[count]]`
 
@@ -144,8 +144,8 @@ markdown
 ### Operations by Phase
 | Phase | Action | Strategy |
 |-------|--------|----------|
-| **REMEMBER (1)** | Load | global_memory.json (Global.* all) + project_memory.json (Project.* all) + docs/ + logs/ |
-| **ASSESS (2) 🔑** | Load codegraph | Read entire codegraph.json → Code.* entities available phases 2-8 |
+| **REMEMBER (1)** | Load | global_memory.json (Global.* all) + project_memory.json (Project.* all) + docs/ + logs/ | ⚠️ **READ ENTIRE FILES (all lines)**  |
+| **ASSESS (2) 🔑** | Load codegraph | Read entire codegraph.json end-to-end (ALL LINES, ALL ENTITIES, ALL RELATIONS) → Code.* entities available phases 2-8 |
 | **ANALYZE (3)** | Query | Trace IMPORTS/BELONGS_TO/DOCUMENTED_IN for dependencies, structure, context |
 | **ARCHITECT (4)** | Impact | Query affected modules (reverse IMPORTS), downstream deps, inheritance |
 | **IMPLEMENT (5) ⚠️** | Reference | Match signatures, patterns, class structures, conventions from loaded codegraph |
@@ -154,7 +154,7 @@ markdown
 | **LEARN (8) ⚠️** | Persist | Extract 3+ entities → temp JSONL → append → verify count → cleanup |
 | **LOG (10)** | Reconstruct | Create logs/workflow_*.md (NOT memory persistence) |
 
-**Codegraph Load**: ASSESS (phase 2) reads entire codegraph.json into context | Available through LEARN (phase 8) | Query by pattern (`Code.Module.*name*`), trace relations (BELONGS_TO, IMPORTS), map dependencies  
+**Codegraph Load**: ASSESS (phase 2) reads entire codegraph.json into context (ALL LINES) | Available through LEARN (phase 8) | Query by pattern (`Code.Module.*name*`), trace relations (BELONGS_TO, IMPORTS), map dependencies  
 **Codegraph Mandatory**: IMPLEMENT (5), DEBUG (6), LEARN (8) for new code | Recommended: ANALYZE (3), ARCHITECT (4), TEST (7)
 
 ---

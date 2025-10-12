@@ -41,24 +41,24 @@
 {"type": "entity", "name": "Global.UIPattern.Testing.PyQt6IntegrationTesting_Pattern", "entityType": "UIPattern", "observations": ["Ptrn: integ testing PyQt6 UI components, inclmocking QFileDialog+QMessageBox,...", "upd:2025-10-08,refs:0"]}
 {"type": "entity", "name": "Global.Approach.DataProcessing.RegexBasedExtraction_Approach", "entityType": "Approach", "observations": ["Approach for extracting structured data from text files using regular express...", "upd:2025-10-08,refs:0"]}
 {"type": "entity", "name": "Global.DataProcessingPattern.Configuration.NodeConfigurationFromSysFile_Pattern", "entityType": "DataProcessingPattern", "observations": ["Ptrn: parsing sys files to extract node config (name, IP, tokens, types)+merg...", "Updated to correctly parse AL-based nodes, setting log types to LOG+LIS only.", "Updated to accurately extract single tokens for AL nodes using an adjusted re...", "upd:2025-10-08,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Implementation.Code", "entityType": "Cluster", "observations": ["Implementation.Code cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Implementation.Docs", "entityType": "Cluster", "observations": ["Implementation.Docs cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Implementation.Features", "entityType": "Cluster", "observations": ["Implementation.Features cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Implementation.System", "entityType": "Cluster", "observations": ["Implementation.System cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Implementation.Testing", "entityType": "Cluster", "observations": ["Implementation.Testing cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Patterns.Command", "entityType": "Cluster", "observations": ["Patterns.Command cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Patterns.Data", "entityType": "Cluster", "observations": ["Patterns.Data cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Patterns.Reliability", "entityType": "Cluster", "observations": ["Patterns.Reliability cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Patterns.Service", "entityType": "Cluster", "observations": ["Patterns.Service cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Patterns.System", "entityType": "Cluster", "observations": ["Patterns.System cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Patterns.UI", "entityType": "Cluster", "observations": ["Patterns.UI cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Cluster.Workflows.Process", "entityType": "Cluster", "observations": ["Workflows.Process cluster.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Domain.Implementation", "entityType": "Domain", "observations": ["Implementation domain.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Domain.Patterns", "entityType": "Domain", "observations": ["Patterns domain.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Domain.System", "entityType": "Domain", "observations": ["System domain.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Domain.Workflows", "entityType": "Domain", "observations": ["Workflows domain.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Type.Implementation", "entityType": "Type", "observations": ["Implementation type.", "upd:2025-10-11,refs:0"]}
-{"type": "entity", "name": "Global.Type.Pattern", "entityType": "Type", "observations": ["Pattern type.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Implementation.Code", "entityType": "Cluster", "observations": ["Implementation.Code cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Implementation.Docs", "entityType": "Cluster", "observations": ["Implementation.Docs cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Implementation.Features", "entityType": "Cluster", "observations": ["Implementation.Features cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Implementation.System", "entityType": "Cluster", "observations": ["Implementation.System cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Implementation.Testing", "entityType": "Cluster", "observations": ["Implementation.Testing cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Patterns.Command", "entityType": "Cluster", "observations": ["Patterns.Command cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Patterns.Data", "entityType": "Cluster", "observations": ["Patterns.Data cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Patterns.Reliability", "entityType": "Cluster", "observations": ["Patterns.Reliability cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Patterns.Service", "entityType": "Cluster", "observations": ["Patterns.Service cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Patterns.System", "entityType": "Cluster", "observations": ["Patterns.System cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Patterns.UI", "entityType": "Cluster", "observations": ["Patterns.UI cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Cluster.Workflows.Process", "entityType": "Cluster", "observations": ["Workflows.Process cluster.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Implementation", "entityType": "Domain", "observations": ["Implementation domain.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Patterns", "entityType": "Domain", "observations": ["Patterns domain.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Domain.System", "entityType": "Domain", "observations": ["System domain.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Domain.Workflows", "entityType": "Domain", "observations": ["Workflows domain.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Type.Implementation", "entityType": "Type", "observations": ["Implementation type.", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Global.Type.Pattern", "entityType": "Type", "observations": ["Pattern type.", "upd:2025-10-12,refs:0"]}
 {"type": "relation", "from": "Global.DesignPattern.DataManagement.CompositeKey_Pattern", "to": "Global.Cluster.Patterns.Data", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Global.DesignPattern.ErrorHandling.Delegation_Pattern", "to": "Global.Cluster.Patterns.Reliability", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Global.BestPractice.API.APIContract_Enforcement", "to": "Global.Cluster.Implementation.Code", "relationType": "BELONGS_TO"}

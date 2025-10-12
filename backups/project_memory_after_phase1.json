@@ -118,31 +118,6 @@
 {"type": "entity", "name": "Project.Feature.Packaging.BsToolBundling_Feature", "entityType": "Feature", "observations": ["BsTool.exe bundled as binary resource in PyInstaller spec file for automatic ...", "Path detection uses hybrid approach: sys._MEIPASS (temp extraction) → sys.exe...", "Eliminates need for separate BsTool.exe distribution|manual path config."]}
 {"type": "entity", "name": "Project.Method.Packaging.HybridResourcePathDetection_Method", "entityType": "Method", "observations": ["Implemented in BsToolCommandService._get_bstool_path() w/three-tier fallback ...", "Tier 1: Check sys._MEIPASS for PyInstaller onefile mode (temp extraction dire...", "Tier 2: Use sys.executable directory for onedir mode (distribution folder)."]}
 {"type": "entity", "name": "Project.Configuration.Packaging.WindowsServer2012Manifest_Configuration", "entityType": "Configuration", "observations": ["Custom Windows manifest XML in LOGReporter.spec w/explicit supportedOS declar...", "Includes Windows Server 2012 ({4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38})+Server ...", "Covers Vista/2008 viaWindows 11+all Server versions for maximum compatibility."]}
-{"type": "entity", "name": "Project.Cluster.Analysis.CodeAnalysis", "entityType": "Cluster", "observations": ["Analysis.CodeAnalysis cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Changes.Code", "entityType": "Cluster", "observations": ["Changes.Code cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Changes.Fixes", "entityType": "Cluster", "observations": ["Changes.Fixes cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Configuration.Rules", "entityType": "Cluster", "observations": ["Configuration.Rules cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.Architecture", "entityType": "Cluster", "observations": ["Documentation.Architecture cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.Optimization", "entityType": "Cluster", "observations": ["Documentation.Optimization cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Documentation.Project", "entityType": "Cluster", "observations": ["Documentation.Project cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.Commands", "entityType": "Cluster", "observations": ["Features.Commands cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.DataProcessing", "entityType": "Cluster", "observations": ["Features.DataProcessing cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.General", "entityType": "Cluster", "observations": ["Features.General cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Features.UI", "entityType": "Cluster", "observations": ["Features.UI cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Components", "entityType": "Cluster", "observations": ["Implementation.Components cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.DataModels", "entityType": "Cluster", "observations": ["Implementation.DataModels cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Methods", "entityType": "Cluster", "observations": ["Implementation.Methods cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Misc", "entityType": "Cluster", "observations": ["Implementation.Misc cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Services", "entityType": "Cluster", "observations": ["Implementation.Services cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.UI", "entityType": "Cluster", "observations": ["Implementation.UI cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Implementation.Workflows", "entityType": "Cluster", "observations": ["Implementation.Workflows cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Meta.Types", "entityType": "Cluster", "observations": ["Meta.Types cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Patterns.UI", "entityType": "Cluster", "observations": ["Patterns.UI cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Solutions.Debugging", "entityType": "Cluster", "observations": ["Solutions.Debugging cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Cluster.Testing.Strategies", "entityType": "Cluster", "observations": ["Testing.Strategies cluster.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Domain.Core", "entityType": "Domain", "observations": ["Core domain.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Domain.Support", "entityType": "Domain", "observations": ["Support domain.", "upd:2025-10-09,refs:0"]}
-{"type": "entity", "name": "Project.Type.ProjectEntity", "entityType": "Type", "observations": ["ProjectEntity type.", "upd:2025-10-09,refs:0"]}
 {"type": "entity", "name": "Project.ReportGeneration.FileScanning.Feature_MultiFileTypeSupport", "entityType": "Feature", "observations": ["Enhanced LogProcessor to scan .log, .txt, .text, .lis, .fbc, .rpc files recur...", "Implementation: Updated supported_ext tuple+process_directory() filter condit...", "Impact: Reports now include content from all Commander log file types (FBC, R..."]}
 {"type": "entity", "name": "Project.ReportGeneration.FileScanning.Method_ProcessDirectoryExpanded", "entityType": "Method", "observations": ["Modified LogProcessor.process_directory() to use self.supported_ext tuple ins...", "Enables dynamic ext support via single config point (supported_ext attribute).", "Maintains backward compatibility while adding .lis, .fbc, .rpc support."]}
 {"type": "entity", "name": "Project.Testing.FileScanning.Pattern_MultiFileTypeTestCoverage", "entityType": "Pattern", "observations": ["Created comprehensive test suite w/10 tests validating all file type scanning...", "Test strategy: Pytest fixtures for temp directory setup, assertions for each ...", "Covers edge cases: empty directories, nested folders, content validation, res..."]}
@@ -192,6 +167,61 @@
 {"type": "entity", "name": "Project.Commander.Pattern.DeferredExecution_BsTool", "entityType": "Pattern", "observations": ["Deferred execution pattern for BsTool commands to ensure sequential phase exe...", "Architecture: Store execution info in Phase 3, trigger from handle_command_co...", "Implementation: _pending_bstool dict stores {node_name, log_file_path, bstool..."]}
 {"type": "entity", "name": "Project.Commander.Method.ExecutePendingBsTool", "entityType": "Method", "observations": ["Helper method in NodeTreePresenter that executes deferred BsTool commands whe...", "Called from handle_command_completed when _pending_bstool exists AND command_...", "Extracts pending info, clears _pending_bstool, then calls bstool_service.exec..."]}
 {"type": "entity", "name": "Project.Commander.Feature.SmartBsToolExecution", "entityType": "Feature", "observations": ["Conditional BsTool execution: immediate if no FBC/RPC commands, deferred if F...", "Edge case handling: Nodes w/only LOG tokens execute BsTool immediately w/odef...", "Workflow cancellation: Clears _pending_bstool in _handle_cancel to prevent ex..."]}
+{"type": "entity", "name": "Project.Cluster.Analysis.CodeAnalysis", "entityType": "Cluster", "observations": ["Analysis.CodeAnalysis cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Changes.Code", "entityType": "Cluster", "observations": ["Changes.Code cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Changes.Fixes", "entityType": "Cluster", "observations": ["Changes.Fixes cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Configuration.Rules", "entityType": "Cluster", "observations": ["Configuration.Rules cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Documentation.Architecture", "entityType": "Cluster", "observations": ["Documentation.Architecture cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Documentation.Optimization", "entityType": "Cluster", "observations": ["Documentation.Optimization cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Documentation.Project", "entityType": "Cluster", "observations": ["Documentation.Project cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Features.Commands", "entityType": "Cluster", "observations": ["Features.Commands cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Features.DataProcessing", "entityType": "Cluster", "observations": ["Features.DataProcessing cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Features.General", "entityType": "Cluster", "observations": ["Features.General cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Features.UI", "entityType": "Cluster", "observations": ["Features.UI cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.Components", "entityType": "Cluster", "observations": ["Implementation.Components cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.DataModels", "entityType": "Cluster", "observations": ["Implementation.DataModels cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.Methods", "entityType": "Cluster", "observations": ["Implementation.Methods cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.Misc", "entityType": "Cluster", "observations": ["Implementation.Misc cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.Services", "entityType": "Cluster", "observations": ["Implementation.Services cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.UI", "entityType": "Cluster", "observations": ["Implementation.UI cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Implementation.Workflows", "entityType": "Cluster", "observations": ["Implementation.Workflows cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Patterns.UI", "entityType": "Cluster", "observations": ["Patterns.UI cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Solutions.Debugging", "entityType": "Cluster", "observations": ["Solutions.Debugging cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Cluster.Testing.Strategies", "entityType": "Cluster", "observations": ["Testing.Strategies cluster.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Domain.Core", "entityType": "Domain", "observations": ["Core domain.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Domain.Support", "entityType": "Domain", "observations": ["Support domain.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Type.ProjectEntity", "entityType": "Type", "observations": ["ProjectEntity type.", "upd:2025-10-11,refs:0"]}
+{"type": "entity", "name": "Project.Documentation.Consolidation.Feature_IncrementalConsolidation", "entityType": "Feature", "observations": ["Incremental docs consolidation workflow: rescan new docs since last consolida...", "Implementation: 18 new docs (15 impl summaries + 3 technical) consolidated in...", "Integration strategy: (A) Timeline-based evolution narrative for iterative im..."]}
+{"type": "entity", "name": "Project.Documentation.Consolidation.Pattern_EvolutionaryDocumentation", "entityType": "Pattern", "observations": ["Pattern: Consolidate iterative impl summaries into single comprehensive evolu...", "Application: BsTool integration (Jan-Oct 2025): 8 impl summaries (sequential ...", "Benefits: Single source of truth for feature history, easier onboarding (see ..."]}
+{"type": "entity", "name": "Project.Documentation.Consolidation.Method_CoreDocEnhancement", "entityType": "Method", "observations": ["Method: Enhance existing core documents w/new sections rather than create new...", "Implementation: TECH_codegraph_system enhanced w/3 sections (Cluster Layer En...", "Decision criteria: Create new doc if distinct topic/audience, enhance existin..."]}
+{"type": "entity", "name": "Project.Documentation.Consolidation.Workflow_UpdateDocuments", "entityType": "Workflow", "observations": ["Workflow: update_documents.md 10-phase interleaved consolidation (Phase 0 pla...", "Execution: PLANREMEMBERASSESSANALYZEARCHITECTIMPLEMENTTESTLEARNDOCUMENTLOG. D...", "Metrics: Before 73 docs (18 core+55 workflow), After 58 docs (19 core+29 impl..."]}
+{"type": "entity", "name": "Project.Commander.BsTool.Feature_DeferredExecutionTimingFix", "entityType": "Feature", "observations": ["Fixed signal timing race condition in deferred BsTool execution (Oct 12 2025)...", "Integration: Modified node_tree_presenter.py handle_command_completed() lines..."]}
+{"type": "entity", "name": "Project.Commander.BsTool.Method_CheckAndExecutePendingBstool", "entityType": "Method", "observations": ["Helper method added to node_tree_presenter.py (lines 506-524) implementing de...", "Implementation details: No parameters (uses self._pending_bstool dict state),..."]}
+{"type": "entity", "name": "Global.PyQt5.Pattern_EventLoopDelayForAsyncState", "entityType": "Pattern", "observations": ["QTimer.singleShot(delay_ms, callback) pattern allows Qt event loop to process...", "PyQt5 app: command_completed signal → 29 lines of worker cleanup → _is_proces..."]}
+{"type": "entity", "name": "Project.Commander.BsTool.Pattern_SignalBasedCompletion", "entityType": "Pattern", "observations": ["BsToolCommandService uses PyQt signal arch for async completion notification ...", "Anti-pattern caught: Initial impl incorrectly passed callback=+log_token= par..."]}
+{"type": "entity", "name": "Project.Commander.BsTool.Feature_DeferredExecutionTimingFix", "entityType": "Feature", "observations": ["Fixed signal timing race condition in deferred BsTool execution (Oct 12 2025)...", "Integration: Modified node_tree_presenter.py handle_command_completed() lines..."]}
+{"type": "entity", "name": "Project.Commander.BsTool.Method_CheckAndExecutePendingBstool", "entityType": "Method", "observations": ["Helper method added to node_tree_presenter.py (lines 506-524) implementing de...", "Implementation details: No parameters (uses self._pending_bstool dict state),..."]}
+{"type": "entity", "name": "Global.PyQt5.Pattern_EventLoopDelayForAsyncState", "entityType": "Pattern", "observations": ["QTimer.singleShot(delay_ms, callback) pattern allows Qt event loop to process...", "PyQt5 app: command_completed signal → 29 lines of worker cleanup → _is_proces..."]}
+{"type": "entity", "name": "Project.Commander.BsTool.Pattern_SignalBasedCompletion", "entityType": "Pattern", "observations": ["BsToolCommandService uses PyQt signal arch for async completion notification ...", "Anti-pattern caught: Initial impl incorrectly passed callback=+log_token= par..."]}
+{"type": "entity", "name": "Project.Commander.Command.Feature_BsToolSignalForwarding", "entityType": "Feature", "observations": ["Fixed sequential processing continuation after BsTool execution by implementi...", "Root cause: BsToolWorker submitted directly to thread pool bypassed CommandQu...", "Solution: Added _handle_worker_completed() method that forwards command_compl..."]}
+{"type": "entity", "name": "Project.Commander.Command.Method_HandleWorkerCompleted", "entityType": "Method", "observations": ["CRITICAL signal forwarding method in BsToolCommandService that bridges BsTool...", "Implementation: Receives command_completed from BsToolWorker, forwards to Com...", "Without this method: Sequential processing stops after first BsTool execution..."]}
+{"type": "entity", "name": "Project.Commander.Command.Pattern_QRunnableSignalBridging", "entityType": "Pattern", "observations": ["Architectural pattern for bridging QRunnable workers w/PyQt signal systems wh...", "Problem: QRunnable workers submitted directly to QThreadPool don't automatica...", "Solution: Service layer (BsToolCommandService) acts as signal bridge by conne..."]}
+{"type": "entity", "name": "Project.Commander.Feature.SequentialOutputDisplay_Feature", "entityType": "Feature", "observations": ["Displays command output in tabs during sequential execution (Print All Nodes)", "Architecture: command_output_display_signal routes FBC/RPC→Telnet tab, LOG→Bs...", "Integration: NodeTreePresenter.handle_command_completed → CommanderWindow._ha..."]}
+{"type": "entity", "name": "Project.Commander.Method.NodeTreePresenterEmitOutputSignal_Method", "entityType": "Method", "observations": ["Emits command_output_display_signal in handle_command_completed for FBC/RPC t...", "Parameters: output_text (result from command_completed), token_type (FBC/RPC)", "Location: src/commander/presenters/node_tree_presenter.py:392-394"]}
+{"type": "entity", "name": "Project.Commander.Method.CommanderWindowHandleSequentialOutput_Method", "entityType": "Method", "observations": ["Routes sequential command output to appropriate tab based on token type", "Logic: FBC/RPC→telnet_tab.append_output(), LOG→skip (BsTool handles)", "Location: src/commander/ui/commander_window.py:445-459"]}
+{"type": "entity", "name": "Global.Pattern.UI.DualExecutionPathUnification_Pattern", "entityType": "Pattern", "observations": ["Pattern: Unify UI updates across manual+sequential execution paths via signal...", "Implementation: Sequential path emits same signals manual path uses for consi...", "Benefits: Single UI update logic, no code duplication, maintains separation o..."]}
+{"type": "entity", "name": "Project.Commander.Sequential.Feature_TabSwitchingAutomation", "entityType": "Feature", "observations": ["Automatic tab switching during sequential execution (Print All Nodes). When F...", "Implementation: switch_to_telnet_tab_signal emitted from NodeTreePresenter.ha...", "Integration: Unifies user experience between manual execution (single command..."]}
+{"type": "entity", "name": "Project.Commander.Sequential.Method_SwitchToTelnetTabSignal", "entityType": "Method", "observations": ["Signal emission method in NodeTreePresenter for automatic tab switching. Emit...", "Implementation: Lines 392-397 in node_tree_presenter.py. Checks token.token_t...", "Signal flow: NodeTreePresenter.handle_command_completed() → switch_to_telnet_..."]}
+{"type": "entity", "name": "Project.Commander.Sequential.Method_HandleSequentialOutput", "entityType": "Method", "observations": ["Output routing handler in CommanderWindow._handle_sequential_output(). Routes...", "Implementation: Lines 445-459 in commander_window.py. Token routing logic: FB...", "Integration: Receives (output_text: str, token_type: str) parameters. Preserv..."]}
+{"type": "entity", "name": "Project.Commander.Sequential.Pattern_DualExecutionPathUnification", "entityType": "Pattern", "observations": ["Pattern for unifying manual+sequential execution paths to provide identical u...", "Approach: Identified signal path gap (command_queue.command_completed carried...", "Architecture: Preserves existing BsTool workflow (temp file reading via bstoo..."]}
+{"type": "entity", "name": "Project.Commander.BugFix.Feature_SequentialUIHighlightTiming", "entityType": "Feature", "observations": ["Fixed premature UI highlight jump during sequential execution. Moved highligh...", "Root cause: Synchronous highlight fired before async BsTool completed, causin...", "Solution: Deferred highlight to async continuation point after queue confirms...", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Commander.BugFix.Feature_SequentialBsToolOutputDisplay", "entityType": "Feature", "observations": ["Fixed missing BsTool output during sequential execution. BsToolWorker now sto...", "Root cause: self.result contained summary message instead of actual output, b...", "Solution: Changed self.result to ' '.join(output_lines), added signal emissio...", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Commander.Pattern.DynamicTabSwitching", "entityType": "Pattern", "observations": ["Dynamic tab switching during sequential execution: FBC/RPCTelnet, LOGBsTool. ...", "Implementation: handle_command_completed checks token.token_type+emits approp...", "Benefit: User sees each command's output as it executes, improves UX during P...", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Commander.Method.BsToolCommandService_HandleWorkerCompleted", "entityType": "Method", "observations": ["Emits bstool_output_signal w/header separator for UI display. Header format: ...", "Forwards signal to CommandQueue for sequential processing continuation.", "Located in src/commander/services/bstool_command_service.py ~line 381", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Commander.Method.NodeTreePresenter_CheckSequentialProcessingContinuation", "entityType": "Method", "observations": ["Deferred highlight logic after queue idle verification. Highlights completed ...", "Prevents premature visual jump by ensuring all commands complete before highl...", "Located in src/commander/presenters/node_tree_presenter.py ~line 1223", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Feature.Connection.PrintAllNodesAutoConnect", "entityType": "Feature", "observations": ["Auto-connect before Print All Nodes: checks/establishes Telnet debugger conne...", "Reuses telnet_service._ensure_debugger_connection (2 retries, 10s delay, syst...", "Aborts workflow w/error if connection fails after retries, prevents partial e...", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Method.Presenter.ProcessAllNodesPrintCommands_AutoConnect", "entityType": "Method", "observations": ["Modified process_all_nodes_print_commands in node_tree_presenter.py to check ...", "Added telnet_service param to NodeTreePresenter.__init__ (optional, for backw...", "Connection check at line 1098, before button enable/log scan (early validatio...", "upd:2025-10-12,refs:0"]}
+{"type": "entity", "name": "Project.Pattern.Validation.EarlyPrerequisiteCheck", "entityType": "Pattern", "observations": ["Pattern: Validate prerequisites before multi-step workflow to avoid partial f...", "Example: Check Telnet connection before Print All Nodes prevents mid-workflow...", "Benefits: Clear user feedback, no wasted processing, consistent state", "upd:2025-10-12,refs:0"]}
 {"type": "relation", "from": "Project.Feature.Command.TelnetCommand_Population", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Document.Architecture.ArchitecturalDesign_Proposal", "to": "Project.Cluster.Documentation.Architecture", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.SystemComponent.File.FileClearing_Mechanism", "to": "Project.Cluster.Implementation.Components", "relationType": "BELONGS_TO"}
@@ -312,21 +342,68 @@
 {"type": "relation", "from": "Project.Feature.Packaging.BsToolBundling_Feature", "to": "Project.Cluster.Features.General", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Method.Packaging.HybridResourcePathDetection_Method", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Configuration.Packaging.WindowsServer2012Manifest_Configuration", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.Services", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Implementation.DataModels", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.ReportGeneration.FileScanning.Feature_MultiFileTypeSupport", "to": "Project.Cluster.Features.General", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.ReportGeneration.FileScanning.Method_ProcessDirectoryExpanded", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Testing.FileScanning.Pattern_MultiFileTypeTestCoverage", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.UI.LogWriteNotificationDisplay_Feature", "to": "Project.Cluster.Features.UI", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Method.UI.CommanderWindow_OnLogWriteNotification", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Pattern.UI.SignalBasedNotificationDisplay_Pattern", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.UI.VNCTabRemoval_Feature", "to": "Project.Cluster.Features.UI", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Implementation.Code.VNCSessionClass_Removal", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Pattern.Refactoring.ComponentRemovalPattern_Pattern", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Feature.NodeTree.StartupColorPersistence", "to": "Project.Cluster.Features.General", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Method.NodeTree.CheckFileColorOnStartup", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Pattern.NodeTree.DualModeColoring", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.NodeTree.Feature_HierarchicalIconColoring", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.NodeTree.Method_update_node_icon", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.NodeTree.Pattern_DualColorSystem", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.WorkflowControl.Feature_PrintAllNodesPauseResumeCancel", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.WorkflowControl.Method_HandlePause", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.WorkflowControl.Method_HandleResume", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.WorkflowControl.Method_HandleCancel", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.WorkflowControl.Pattern_StateFlagBetweenCycles", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.UI.Feature_ButtonStateManagement", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.UI.Method_ManualButtonStateControl", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.UI.Pattern_ButtonLifecycleStates", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Architecture.Pattern_DualExecutionPaths", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Debugging.Method_ButtonStateDiagnostics", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Workflow.Optimization.Feature_ChatmodeOptimizationWorkflow", "to": "Project.Cluster.Features.General", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Workflow.Optimization.Method_WorkflowComplianceScoring", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Workflow.Optimization.Pattern_GenericChatmodeOptimization", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Frontend.QtMigration.Feature_PyQt6ToPyQt5Migration", "to": "Project.Cluster.Features.General", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Frontend.QtMigration.Method_BulkRegexReplacement", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Frontend.QtMigration.Pattern_EnumToAttributeConversion", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Feature_EncodingErrorFix", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Method_TempFileEncoding", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.ContextMenu.Feature_LogSubgroupBsTool", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.ContextMenu.Method_HandleBsToolNodeAction", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Pattern_ExternalProcessEncoding", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Pattern_NodeIdExtraction", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Test_EncodingAndParameterExtraction", "to": "Project.Cluster.Testing.Strategies", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.NodeTree.Pattern_FileItemMapPathNormalization", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Method_HandleBsToolCompleted", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.NodeTree.Method_CheckAndUpdateNodeColor", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Workflow.Pattern_BsToolAsyncFileWriting", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Debug.Pattern_ReducedLogging", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.BsTool.Bug_LogFileColorPersistentRed", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.NodeTree.Pattern_NodeSuffixStripping", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Pattern.DeferredExecution_BsTool", "to": "Project.Cluster.Implementation.Misc", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Method.ExecutePendingBsTool", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Feature.SmartBsToolExecution", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Features.Commands", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Documentation.Architecture", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Implementation.Components", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Implementation.UI", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Implementation.Methods", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Documentation.Project", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
-{"type": "relation", "from": "Project.Cluster.Meta.Types", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Analysis.CodeAnalysis", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Documentation.Project", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Implementation.Misc", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Implementation.Workflows", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Patterns.UI", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Documentation.Optimization", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Changes.Code", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Implementation.Services", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Cluster.Implementation.DataModels", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Changes.Fixes", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Features.UI", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Cluster.Solutions.Debugging", "to": "Project.Domain.Support", "relationType": "BELONGS_TO"}
@@ -336,44 +413,28 @@
 {"type": "relation", "from": "Project.Cluster.Features.General", "to": "Project.Domain.Core", "relationType": "BELONGS_TO"}
 {"type": "relation", "from": "Project.Domain.Core", "to": "Project.Type.ProjectEntity", "relationType": "IS_A"}
 {"type": "relation", "from": "Project.Domain.Support", "to": "Project.Type.ProjectEntity", "relationType": "IS_A"}
-{"type": "relation", "from": "Project.ReportGeneration.FileScanning.Feature_MultiFileTypeSupport", "to": "Project.ReportGeneration.FileScanning.Method_ProcessDirectoryExpanded", "relationType": "IMPLEMENTS_VIA"}
-{"type": "relation", "from": "Project.Testing.FileScanning.Pattern_MultiFileTypeTestCoverage", "to": "Project.ReportGeneration.FileScanning.Feature_MultiFileTypeSupport", "relationType": "VALIDATES"}
-{"type": "relation", "from": "Project.ReportGeneration.FileScanning.Method_ProcessDirectoryExpanded", "to": "Global.DesignPattern.Service.ServiceLayer_Pattern", "relationType": "APPLIES"}
-{"type": "relation", "from": "Project.Feature.UI.LogWriteNotificationDisplay_Feature", "to": "Project.Method.UI.CommanderWindow_OnLogWriteNotification", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Method.UI.CommanderWindow_OnLogWriteNotification", "to": "Project.Pattern.UI.SignalBasedNotificationDisplay_Pattern", "relationType": "USES"}
-{"type": "relation", "from": "Project.Feature.UI.VNCTabRemoval_Feature", "to": "Project.Implementation.Code.VNCSessionClass_Removal", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Feature.UI.VNCTabRemoval_Feature", "to": "Project.Pattern.Refactoring.ComponentRemovalPattern_Pattern", "relationType": "USES"}
-{"type": "relation", "from": "Project.Pattern.Refactoring.ComponentRemovalPattern_Pattern", "to": "Global.DesignPattern.Service.ServiceLayer_Pattern", "relationType": "EXTENDS"}
-{"type": "relation", "from": "Project.Feature.NodeTree.StartupColorPersistence", "to": "Project.Method.NodeTree.CheckFileColorOnStartup", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Method.NodeTree.CheckFileColorOnStartup", "to": "Project.Pattern.NodeTree.DualModeColoring", "relationType": "USES"}
-{"type": "relation", "from": "Project.Feature.NodeTree.StartupColorPersistence", "to": "Project.Pattern.NodeTree.DualModeColoring", "relationType": "EXEMPLIFIES"}
-{"type": "relation", "from": "Project.Commander.NodeTree.Feature_HierarchicalIconColoring", "to": "Project.Commander.NodeTree.Method_update_node_icon", "relationType": "uses"}
-{"type": "relation", "from": "Project.Commander.NodeTree.Feature_HierarchicalIconColoring", "to": "Project.Commander.NodeTree.Pattern_DualColorSystem", "relationType": "implements"}
-{"type": "relation", "from": "Project.Commander.NodeTree.Method_update_node_icon", "to": "Project.Commander.NodeTree.Pattern_DualColorSystem", "relationType": "implements"}
-{"type": "relation", "from": "Project.Commander.WorkflowControl.Feature_PrintAllNodesPauseResumeCancel", "to": "Project.Commander.WorkflowControl.Method_HandlePause", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.WorkflowControl.Feature_PrintAllNodesPauseResumeCancel", "to": "Project.Commander.WorkflowControl.Method_HandleResume", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.WorkflowControl.Feature_PrintAllNodesPauseResumeCancel", "to": "Project.Commander.WorkflowControl.Method_HandleCancel", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.WorkflowControl.Method_HandlePause", "to": "Project.Commander.WorkflowControl.Pattern_StateFlagBetweenCycles", "relationType": "USES"}
-{"type": "relation", "from": "Project.Commander.WorkflowControl.Method_HandleResume", "to": "Project.Commander.WorkflowControl.Pattern_StateFlagBetweenCycles", "relationType": "USES"}
-{"type": "relation", "from": "Project.Commander.WorkflowControl.Method_HandleCancel", "to": "Project.Commander.WorkflowControl.Pattern_StateFlagBetweenCycles", "relationType": "USES"}
-{"type": "relation", "from": "Project.Commander.UI.Feature_ButtonStateManagement", "to": "Project.Commander.UI.Method_ManualButtonStateControl", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.UI.Method_ManualButtonStateControl", "to": "Project.Commander.UI.Pattern_ButtonLifecycleStates", "relationType": "USES"}
-{"type": "relation", "from": "Project.Commander.UI.Feature_ButtonStateManagement", "to": "Global.Architecture.Pattern_DualExecutionPaths", "relationType": "ADDRESSES"}
-{"type": "relation", "from": "Project.Commander.UI.Feature_ButtonStateManagement", "to": "Project.Commander.Debugging.Method_ButtonStateDiagnostics", "relationType": "INCLUDES"}
-{"type": "relation", "from": "Global.Architecture.Pattern_DualExecutionPaths", "to": "Project.Commander.UI.Pattern_ButtonLifecycleStates", "relationType": "INFLUENCES"}
-{"type": "relation", "from": "Project.Commander.Debugging.Method_ButtonStateDiagnostics", "to": "Project.Commander.UI.Method_ManualButtonStateControl", "relationType": "SUPPORTS"}
-{"type": "relation", "from": "Project.Workflow.Optimization.Feature_ChatmodeOptimizationWorkflow", "to": "Project.Workflow.Optimization.Method_WorkflowComplianceScoring", "relationType": "USES"}
-{"type": "relation", "from": "Project.Workflow.Optimization.Method_WorkflowComplianceScoring", "to": "Project.Workflow.Optimization.Pattern_GenericChatmodeOptimization", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Workflow.Optimization.Feature_ChatmodeOptimizationWorkflow", "to": "Project.Workflow.Optimization.Pattern_GenericChatmodeOptimization", "relationType": "FOLLOWS"}
-{"type": "relation", "from": "Project.Commander.BsTool.Feature_EncodingErrorFix", "to": "Project.Commander.BsTool.Method_TempFileEncoding", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.ContextMenu.Feature_LogSubgroupBsTool", "to": "Project.Commander.ContextMenu.Method_HandleBsToolNodeAction", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.BsTool.Pattern_ExternalProcessEncoding", "to": "Project.Commander.BsTool.Feature_EncodingErrorFix", "relationType": "APPLIES_TO"}
-{"type": "relation", "from": "Project.Commander.BsTool.Test_EncodingAndParameterExtraction", "to": "Project.Commander.BsTool.Feature_EncodingErrorFix", "relationType": "VALIDATES"}
-{"type": "relation", "from": "Project.Commander.BsTool.Test_EncodingAndParameterExtraction", "to": "Project.Commander.ContextMenu.Feature_LogSubgroupBsTool", "relationType": "VALIDATES"}
-{"type": "relation", "from": "Project.Commander.ContextMenu.Method_HandleBsToolNodeAction", "to": "Project.Commander.BsTool.Pattern_NodeIdExtraction", "relationType": "USES"}
-{"type": "relation", "from": "Project.Commander.BsTool.Bug_LogFileColorPersistentRed", "to": "Project.Commander.NodeTree.Pattern_FileItemMapPathNormalization", "relationType": "CAUSED_BY"}
-{"type": "relation", "from": "Project.Commander.BsTool.Method_HandleBsToolCompleted", "to": "Project.Commander.NodeTree.Method_CheckAndUpdateNodeColor", "relationType": "CALLS"}
-{"type": "relation", "from": "Project.Commander.NodeTree.Method_CheckAndUpdateNodeColor", "to": "Project.Commander.NodeTree.Pattern_DualColorSystem", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.Pattern.DeferredExecution_BsTool", "to": "Project.Commander.Method.ExecutePendingBsTool", "relationType": "IMPLEMENTS"}
-{"type": "relation", "from": "Project.Commander.Feature.SmartBsToolExecution", "to": "Project.Commander.Pattern.DeferredExecution_BsTool", "relationType": "USES"}
-{"type": "relation", "from": "Project.Commander.Method.ExecutePendingBsTool", "to": "Project.Commander.Feature.SmartBsToolExecution", "relationType": "ENABLES"}
+{"type": "relation", "from": "Project.Documentation.Consolidation.Feature_IncrementalConsolidation", "to": "Project.Documentation.Consolidation.Pattern_EvolutionaryDocumentation", "relationType": "USES"}
+{"type": "relation", "from": "Project.Documentation.Consolidation.Feature_IncrementalConsolidation", "to": "Project.Documentation.Consolidation.Method_CoreDocEnhancement", "relationType": "USES"}
+{"type": "relation", "from": "Project.Documentation.Consolidation.Pattern_EvolutionaryDocumentation", "to": "Project.Documentation.Consolidation.Workflow_UpdateDocuments", "relationType": "PART_OF"}
+{"type": "relation", "from": "Project.Documentation.Consolidation.Method_CoreDocEnhancement", "to": "Project.Documentation.Consolidation.Workflow_UpdateDocuments", "relationType": "PART_OF"}
+{"type": "relation", "from": "Project.Commander.BsTool.Feature_DeferredExecutionTimingFix", "to": "Project.Commander.BsTool.Method_CheckAndExecutePendingBstool", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Project.Commander.BsTool.Method_CheckAndExecutePendingBstool", "to": "Global.PyQt5.Pattern_EventLoopDelayForAsyncState", "relationType": "USES_PATTERN"}
+{"type": "relation", "from": "Project.Commander.BsTool.Feature_DeferredExecutionTimingFix", "to": "Project.Commander.BsTool.Pattern_SignalBasedCompletion", "relationType": "DEPENDS_ON"}
+{"type": "relation", "from": "Project.Commander.BsTool.Feature_DeferredExecutionTimingFix", "to": "Project.Commander.BsTool.Method_CheckAndExecutePendingBstool", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Project.Commander.BsTool.Method_CheckAndExecutePendingBstool", "to": "Global.PyQt5.Pattern_EventLoopDelayForAsyncState", "relationType": "USES_PATTERN"}
+{"type": "relation", "from": "Project.Commander.BsTool.Feature_DeferredExecutionTimingFix", "to": "Project.Commander.BsTool.Pattern_SignalBasedCompletion", "relationType": "DEPENDS_ON"}
+{"type": "relation", "from": "Project.Commander.Command.Feature_BsToolSignalForwarding", "to": "Project.Commander.Command.Method_HandleWorkerCompleted", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Project.Commander.Command.Method_HandleWorkerCompleted", "to": "Project.Commander.Command.Pattern_QRunnableSignalBridging", "relationType": "USES"}
+{"type": "relation", "from": "Project.Commander.Command.Feature_BsToolSignalForwarding", "to": "Project.Commander.Command.Pattern_QRunnableSignalBridging", "relationType": "DEMONSTRATES"}
+{"type": "relation", "from": "Project.Commander.Feature.SequentialOutputDisplay_Feature", "to": "Project.Cluster.Features.Commands", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Method.NodeTreePresenterEmitOutputSignal_Method", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Method.CommanderWindowHandleSequentialOutput_Method", "to": "Project.Cluster.Implementation.Methods", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Global.Pattern.UI.DualExecutionPathUnification_Pattern", "to": "Global.Cluster.Patterns.UI", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Feature.SequentialOutputDisplay_Feature", "to": "Project.Commander.Method.NodeTreePresenterEmitOutputSignal_Method", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Project.Commander.Feature.SequentialOutputDisplay_Feature", "to": "Project.Commander.Method.CommanderWindowHandleSequentialOutput_Method", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Project.Commander.Feature.SequentialOutputDisplay_Feature", "to": "Global.Pattern.UI.DualExecutionPathUnification_Pattern", "relationType": "USES"}
+{"type": "relation", "from": "Project.Commander.Sequential.Feature_TabSwitchingAutomation", "to": "Project.Commander.Sequential.Method_SwitchToTelnetTabSignal", "relationType": "USES"}
+{"type": "relation", "from": "Project.Commander.Sequential.Feature_TabSwitchingAutomation", "to": "Project.Commander.Sequential.Method_HandleSequentialOutput", "relationType": "USES"}
+{"type": "relation", "from": "Project.Commander.Sequential.Pattern_DualExecutionPathUnification", "to": "Project.Commander.Sequential.Feature_TabSwitchingAutomation", "relationType": "IMPLEMENTS"}
+{"type": "relation", "from": "Project.Commander.Sequential.Method_SwitchToTelnetTabSignal", "to": "Project.Commander.NodeTree", "relationType": "BELONGS_TO"}
+{"type": "relation", "from": "Project.Commander.Sequential.Method_HandleSequentialOutput", "to": "Project.Commander.UI", "relationType": "BELONGS_TO"}
