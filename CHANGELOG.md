@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### BsTool Signal Forwarding Fix (2025-10-12)
+- [BUGFIX] **Sequential Processing Continuation** - Fixed sequential "Print All Nodes" workflow stopping after first BsTool execution by implementing signal forwarding from BsToolCommandService to CommandQueue
+- [ROOT CAUSE] BsToolWorker submitted directly to thread pool bypassed CommandQueue.start_processing(), missing automatic signal forwarding that CommandWorker (FBC/RPC) receives
+- [SOLUTION] Added `_handle_worker_completed()` method in BsToolCommandService that forwards `command_completed` signal to CommandQueue, enabling NodeTreePresenter to receive completion events
+- [SIGNAL CHAIN] BsToolWorker.signals.command_completed → BsToolCommandService._handle_worker_completed → CommandQueue.command_completed.emit → NodeTreePresenter.handle_command_completed → _check_sequential_processing_continuation
+- [MODIFIED] `src/commander/services/bstool_command_service.py` - Added 2 lines: `self.logger.debug("Forwarding signal to CommandQueue")` and `self.command_queue.command_completed.emit(command, result, success, token)` in _handle_worker_completed method
+- [CREATED] `src/commander/services/bstool_worker.py` - QRunnable worker (194 lines) for synchronous BsTool execution with stdin=DEVNULL, 10s timeout, content-based success validation (tempfile size check)
+- [PATTERN] QRunnable Signal Bridging - Service layer acts as signal bridge when workers bypass normal queue processing: Worker.signals → Service.handler → Queue.signals → Presenter.handler
+- [TESTING] User confirmed sequential processing works correctly across multiple nodes (AP01, AP02m, AP02r, AP06), workflow continues even on BsTool failures
+- [KNOWN ISSUE] Minor cosmetic UI highlight timing issue - highlight jumps to next AP before previous AP processing completes (added to TODO for future fix)
+- [MEMORY] Extracted 3 learnings to project_memory.json: Feature_BsToolSignalForwarding, Method_HandleWorkerCompleted, Pattern_QRunnableSignalBridging
+- [CODEGRAPH] Added 2 modules + 6 relations to codegraph.json: Code.Module.commander_services_bstool_worker, Code.Class.commander_services_bstool_worker.BsToolWorker, IMPORTS/BELONGS_TO relations
+
 ### Documentation Consolidation - Incremental Update (2025-10-11)
 - [DOCUMENTATION] **Incremental Consolidation Workflow** - Consolidated 18 new documentation files created after October 11, 2025 consolidation into existing core documentation structure
 - [CREATED] `docs/implementation/IMPL_bstool_evolution.md` (832 lines) - Comprehensive BsTool integration evolution narrative consolidating 8 implementation summaries with 5-phase timeline (Jan-Oct 2025)

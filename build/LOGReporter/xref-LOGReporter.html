@@ -2792,6 +2792,7 @@ imported by:
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.presenters.session_presenter">commander.presenters.session_presenter</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.clipboard_monitor">commander.services.clipboard_monitor</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
@@ -5922,6 +5923,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
  &#8226;   <a href="#commander.services.rpc_command_service">commander.services.rpc_command_service</a>
@@ -6056,6 +6058,7 @@ imported by:
  &#8226;   <a href="#commander.presenters.commander_presenter_utils">commander.presenters.commander_presenter_utils</a>
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.presenters.session_presenter">commander.presenters.session_presenter</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
@@ -6277,6 +6280,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.clipboard_monitor">commander.services.clipboard_monitor</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
@@ -6301,6 +6305,7 @@ imported by:
 imports:
     <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
  &#8226;   <a href="#commander.services">commander.services</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.threading_service">commander.services.threading_service</a>
  &#8226;   <a href="#commander.widgets">commander.widgets</a>
  &#8226;   <a href="#datetime">datetime</a>
@@ -6317,6 +6322,30 @@ imports:
   <div class="import">
 imported by:
     <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="commander.services.bstool_worker"></a>
+  <a target="code" href="///D:/_APP/LOGReport/src/commander/services/bstool_worker.py" type="text/plain"><tt>commander.services.bstool_worker</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
+ &#8226;   <a href="#commander.command_queue">commander.command_queue</a>
+ &#8226;   <a href="#commander.models">commander.models</a>
+ &#8226;   <a href="#commander.services">commander.services</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#shlex">shlex</a>
+ &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#tempfile">tempfile</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
 
   </div>
 
@@ -15163,6 +15192,7 @@ imported by:
  &#8226;   <a href="#commander.presenters.commander_presenter_utils">commander.presenters.commander_presenter_utils</a>
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
  &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
@@ -23814,6 +23844,7 @@ imported by:
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.qt_init">commander.qt_init</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
  &#8226;   <a href="#commander.services.logging_service">commander.services.logging_service</a>
@@ -27716,6 +27747,7 @@ imports:
 imported by:
     <a href="#PIL.ImageShow">PIL.ImageShow</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#netrc">netrc</a>
  &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
@@ -28156,6 +28188,7 @@ imported by:
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#ctypes._aix">ctypes._aix</a>
  &#8226;   <a href="#ctypes.util">ctypes.util</a>
  &#8226;   <a href="#http.server">http.server</a>
@@ -28520,6 +28553,7 @@ imported by:
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#cgi">cgi</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
+ &#8226;   <a href="#commander.services.bstool_worker">commander.services.bstool_worker</a>
  &#8226;   <a href="#ctypes.util">ctypes.util</a>
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
  &#8226;   <a href="#lxml.html">lxml.html</a>

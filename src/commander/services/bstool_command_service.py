@@ -19,15 +19,16 @@ class BsToolCommandService(QObject):
     connection_state_signal = pyqtSignal(object)  # ConnectionState enum
     bstool_execution_completed = pyqtSignal(str, bool, int)  # log_file_path, success, return_code
     
-    def __init__(self, log_writer=None, parent=None):
+    def __init__(self, log_writer=None, command_queue=None, parent=None):
         super().__init__(parent)
         self.process = None
         self.threading_service = ThreadingService()
         self.process_lock = self.threading_service.create_lock()
-        self.execution_lock = threading.Lock()  # Separate lock for atomic execution state control
+        self.execution_lock = threading.Lock()  # Separate lock for atomic execution state control (LEGACY - kept for backward compatibility)
         self.log_writer = log_writer
+        self.command_queue = command_queue
         self.logger = logging.getLogger(__name__)
-        self.is_executing = False  # Track if BsTool is currently executing
+        self.is_executing = False  # Track if BsTool is currently executing (LEGACY - kept for backward compatibility)
         
         # Initialize connection state but don't emit signal until UI is ready
         # The UI will set its initial state when connecting to the service
@@ -312,6 +313,93 @@ class BsToolCommandService(QObject):
             self.logger.debug(f"Looking for bstool.exe in project root: {bstool_path}")
             
         return bstool_path
+    
+    def queue_bstool_command(self, log_file_path: str, bstool_command_args: str, token):
+        """
+        Queue a BsTool command for execution through the CommandQueue.
+        
+        This is the NEW PREFERRED method for executing BsTool commands as it integrates
+        with the CommandQueue system for proper synchronization with FBC/RPC commands.
+        
+        Args:
+            log_file_path: Path to the log file for output
+            bstool_command_args: Command arguments for BsTool (e.g., "-errlog AP01")
+            token: NodeToken associated with this command
+        """
+        if not self.command_queue:
+            error_msg = "CommandQueue not available for BsTool execution"
+            self.logger.error(error_msg)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+            return
+        
+        # Get BsTool path
+        bstool_path = self._get_bstool_path()
+        if not bstool_path or not os.path.exists(bstool_path):
+            error_msg = f"BsTool.exe not found at {bstool_path}"
+            self.logger.error(error_msg)
+            self.report_error.emit(error_msg)
+            self.status_message_signal.emit(error_msg, 5000)
+            return
+        
+        # Set up environment
+        env = os.environ.copy()
+        env["COMMUNICATION_LINE"] = "AB01"
+        
+        # Import BsToolWorker
+        from .bstool_worker import BsToolWorker
+        
+        # Create worker
+        worker = BsToolWorker(
+            bstool_path=bstool_path,
+            bstool_args=bstool_command_args,
+            log_file_path=log_file_path,
+            token=token,
+            env=env
+        )
+        
+        # Connect signals to relay to UI
+        worker.signals.finished.connect(self._handle_worker_finished)
+        worker.signals.command_completed.connect(self._handle_worker_completed)
+        
+        # Add to command queue's thread pool
+        worker.setAutoDelete(True)
+        self.command_queue.thread_pool.start(worker)
+        
+        self.logger.info(f"BsTool command queued: {bstool_command_args} -> {log_file_path}")
+        self.status_message_signal.emit(f"BsTool command queued: {bstool_command_args}", 3000)
+    
+    def _handle_worker_finished(self, worker):
+        """Handle BsToolWorker finished signal."""
+        self.logger.debug(f"BsToolWorker finished: {worker.command}")
+        # Worker will emit command_completed signal separately
+    
+    def _handle_worker_completed(self, command: str, result: str, success: bool, token):
+        """
+        Handle BsToolWorker command_completed signal.
+        
+        Emits bstool_execution_completed signal for backward compatibility.
+        Forwards signal to CommandQueue for sequential processing continuation.
+        """
+        self.logger.info(f"BsToolWorker completed: {command}, success={success}")
+        
+        # Extract log_file_path from token (it should have log_path attribute)
+        log_file_path = getattr(token, 'log_path', '')
+        return_code = 0 if success else -1
+        
+        # Forward signal to CommandQueue for sequential processing
+        # This is CRITICAL - without this, NodeTreePresenter's handle_command_completed won't fire
+        self.logger.debug(f"_handle_worker_completed: Forwarding signal to CommandQueue for sequential processing")
+        self.command_queue.command_completed.emit(command, result, success, token)
+        
+        # Emit legacy signal for backward compatibility
+        self.bstool_execution_completed.emit(log_file_path, success, return_code)
+        
+        # Emit status message
+        if success:
+            self.status_message_signal.emit("BsTool execution completed successfully", 3000)
+        else:
+            self.status_message_signal.emit("BsTool execution failed", 5000)
         
     def _run_bstool_process(self, command: list, env: dict, log_file_path: str):
         """

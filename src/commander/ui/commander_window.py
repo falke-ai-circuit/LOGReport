@@ -84,8 +84,8 @@ class CommanderWindow(QMainWindow):
         # Setup UI first
         self.init_ui()
         
-        # Initialize BsTool service
-        self.bstool_service = BsToolCommandService(self.log_writer, self)
+        # Initialize BsTool service (pass command_queue for synchronization)
+        self.bstool_service = BsToolCommandService(self.log_writer, self.command_queue, self)
         
         # Connect BsToolTab signals to service
         self.bstool_tab = self.session_view.bstool_tab
