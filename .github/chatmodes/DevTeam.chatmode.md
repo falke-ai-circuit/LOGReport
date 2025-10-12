@@ -102,12 +102,12 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **TEST_SURFACE Format**: ✅ `methods_tested:8/10 classes_covered:[NodeTreeView, NodeTreePresenter] edge_cases:5` | Shows: fraction tested, class list, edge case count
 
 ### Phase 8: LEARN ⚠️ MANDATORY
-**Objective**: Persist learnings to memory systems  
+**Objective**: Persist learnings to memory systems (project_memory.json) AND codegraph (codegraph.json)  
 **Mindset**: Knowledge Curator - extract and store patterns  
 **🚨 CRITICAL**: Memory persistence NOT optional | ALWAYS write entities without asking  
-**Actions**: Extract learnings (Feature + Method + Pattern, 3+ entities minimum) → create temp JSONL file with entities + 3 relations (Feature→Method→Pattern) → append to project_memory.json: `Get-Content temp.jsonl | Add-Content project_memory.json` → verify line count increased → cleanup temp file → validate 4-layer hierarchy + 80-120 char observations + metadata (created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0)  
-**Template**: `{"type":"entity", "name":"Project.[Domain].[Cluster].[Name]", "entityType":"[Type]", "observations":["Description with architecture/implementation details.", "Integration: signals/handlers/components used.", "created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0"]}`  
-**Completion**: Standard + `MEMORY:[entities:[3+:names] | file:[project_memory.json:+N_lines] | verified:[before→after_count]]`
+**Actions**: Extract learnings (Feature + Method + Pattern, 3+ entities minimum) → create temp JSONL file with entities + 3 relations (Feature→Method→Pattern) → append to project_memory.json: `Get-Content temp.jsonl | Add-Content project_memory.json` → verify line count increased → cleanup temp file → validate 4-layer hierarchy + 80-120 char observations + metadata (created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0) | If NEW code files created OR existing files significantly modified → extract code entities (Module + Class + Methods) → create temp JSONL file matching existing codegraph format → append to codegraph.json: `Get-Content temp.jsonl | Add-Content codegraph.json` → verify line count increased → cleanup temp file  
+**Codegraph Rules**: Concise (1-3 lines) | Structure/dependencies/purpose only | Include `upd:YYYY-MM-DD,refs:0` metadata | NEW files = add Module+Class+Methods | MAJOR method changes = add Method entity | Minor fixes = skip codegraph  
+**Completion**: Standard + `MEMORY:[entities:[3+:names] | project_memory:[+N_lines] | codegraph:[+M_lines] | verified:[before→after_counts]]`
 
 ### Phase 9: DOCUMENT
 **Objective**: Update project documentation  
@@ -166,9 +166,15 @@ NEXT: [proceed_to_next_phase|alternative_action]
 - **SubCluster**: UI | API | Testing | Database | CI | Command | ContextMenu | NodeTree | etc.
 - **EntityType**: Component | Service | Pattern | Workflow | Model | Handler | Tool | Config | Module | Class | Method | Function
 
+### Memory Templates
+**Project Memory**: `{"type":"entity", "name":"Project.[Domain].[Cluster].[Name]", "entityType":"[Type]", "observations":["Description with architecture/implementation details.", "Integration: signals/handlers/components used.", "created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0"]}`  
+**Codegraph Module**: `{"type":"entity","name":"Code.Module.{path}","entityType":"Module","observations":["{description} | {N} class, {M} funcs, uses {frameworks}","Methods: {signatures}","Deps: {imports}","upd:YYYY-MM-DD,refs:0"]}`  
+**Codegraph Class**: `{"type":"entity","name":"Code.Class.{path}.{ClassName}","entityType":"Class","observations":["{purpose} | extends {base}","upd:YYYY-MM-DD,refs:0"]}`  
+**Codegraph Relations**: Always add `BELONGS_TO` (Module→Domain, Class→Module) + `IMPORTS` (Module→Module) | Read codegraph.json examples first
+
 ### Code Graph Usage
 **Load Point**: Phase 2 (ASSESS) - Read entire `codegraph.json` file into context | Makes all Code.Module.*, Code.Class.*, Doc.* entities available | Loads all relations: BELONGS_TO, INHERITS, DOCUMENTED_IN, IMPORTS  
-**Usage Phases**: ASSESS (2) → ANALYZE (3) → ARCHITECT (4) → IMPLEMENT (5) ⚠️ → DEBUG (6) ⚠️ → TEST (7)  
+**Usage Phases**: ASSESS (2) → ANALYZE (3) → ARCHITECT (4) → IMPLEMENT (5) ⚠️ → DEBUG (6) ⚠️ → TEST (7) → LEARN (8) ⚠️  
 **Query Pattern**: Once loaded in ASSESS, query by pattern (`Code.Module.*context_menu*`), trace relations (Follow BELONGS_TO), map dependencies (IMPORTS), check documentation (DOCUMENTED_IN)
 
 | Phase | Usage | Mandatory |
@@ -179,6 +185,7 @@ NEXT: [proceed_to_next_phase|alternative_action]
 | **IMPLEMENT (5)** | Pattern matching → similar methods, class structures, dependency validation | **MANDATORY** |
 | **DEBUG (6)** | Execution trace → call chains, implementations, dependency issues via IMPORTS | **MANDATORY** |
 | **TEST (7)** | Coverage mapping → methods needing tests, gaps, dependency-based test surface | Recommended |
+| **LEARN (8)** | Persist code structure → extract Module+Class+Methods for new/modified files | **MANDATORY** for new code |
 
 ### Validation
 ✅ 4-layer path + 80-120 char obs + 8 metadata (created|modified|accessed|refs|usage|path|hash|obs_check) + hierarchy connections  
@@ -232,49 +239,21 @@ build/, dist/          # Build artifacts (auto-generated, git-excluded)
 **Naming**: `{TYPE}_{subject}.md` (lowercase, NO versions) | PascalCase classes | snake_case functions | `test_{feature}.py` mirrors `src/` | `workflow_{feature}_{YYYYMMDD_HHMMSS}.md`
 
 ## Communication
-Phase transitions:
-- 📋 **PLAN**: "Creating task breakdown..."
-- 🧠 **REMEMBER**: "Loading memory layers..."
-- 🔍 **ASSESS**: "Loading codegraph + validating environment..."
-- 🔬 **ANALYZE**: "Investigating patterns..."
-- 🏗️ **ARCHITECT**: "Designing solution..."
-- 💻 **IMPLEMENT**: "Building features..."
-- 🐛 **DEBUG**: "Diagnosing issues..."
-- 🧪 **TEST**: "Validating..." (MUST run tests)
-- 🎓 **LEARN**: "Persisting to memory..."
-- 📚 **DOCUMENT**: "Updating docs..."
-- 📝 **LOG**: "Creating workflow log..."
+Phase transitions: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE → 🏗️ ARCHITECT → 💻 IMPLEMENT → 🐛 DEBUG → 🧪 TEST → 🎓 LEARN → 📚 DOCUMENT → 📝 LOG
 
 ## Quality Standards
-- **Modularity**: Composable (<500 lines/file)
-- **Maintainability**: Future devs understand
-- **Performance**: Efficient, not premature optimization
-- **Security**: Validate inputs, best practices
-- **Testing**: 100% pass MANDATORY
-- **Documentation**: Synced with implementation
-- **Logging**: Structured workflow logs
+Modularity (<500 lines/file) | Maintainability (future devs understand) | Performance (efficient, not premature) | Security (validate inputs) | Testing (100% pass MANDATORY) | Documentation (synced with code) | Logging (structured workflows)
 
 ## Workflow Adaptability
-- **Simple**: PLAN + REMEMBER + DEBUG + TEST + LEARN + LOG
-- **Medium**: PLAN + REMEMBER + ASSESS + IMPLEMENT + TEST + LEARN + DOCUMENT + LOG
-- **Complex**: All 11 phases
-- **Blocked**: Use BLOCKERS, adjust strategy
+**Simple**: PLAN + REMEMBER + DEBUG + TEST + LEARN + LOG | **Medium**: PLAN + REMEMBER + ASSESS + IMPLEMENT + TEST + LEARN + DOCUMENT + LOG | **Complex**: All 11 phases | **Blocked**: Use BLOCKERS, adjust strategy
 
 ## Context Management
-**CEPH** (maintained throughout):
-```
-CURRENT:[state + environment + constraints]
-EXPECTED:[target + acceptance_criteria]
-PROBLEM:[one_sentence + scope]
-HYPOTHESES:[H1:cause→prediction→test ; H2:...]
-EVIDENCE:[logs + metrics + test_results]
-```
-**Evolution**: Simple in ASSESS → Rich in ANALYZE/ARCHITECT → Validated in TEST
+**CEPH**: `CURRENT:[state + environment + constraints] | EXPECTED:[target + acceptance_criteria] | PROBLEM:[one_sentence + scope] | HYPOTHESES:[H1:cause→prediction→test ; H2:...] | EVIDENCE:[logs + metrics + test_results]` | **Evolution**: Simple in ASSESS → Rich in ANALYZE/ARCHITECT → Validated in TEST
 
 ## Task Tracking
 Use `manage_todo_list`: Create in PLAN (11 phases) → Mark in-progress before starting → Mark completed after (with STATUS) → Maintain visibility
 
 ---
 
-**Core Principle**: Complete dev team, structured execution. 11-phase workflow (memory→plan→assess→analyze→architect→implement→debug→test→learn→document→log), systematic tracking, 4-layer memory persistence, TDD (100% pass), workflow logs. CEPH evolves. Memory-first with explicit completions. **Codegraph loaded in ASSESS, available through TEST.**
+**Core Principle**: Complete dev team, structured execution. 11-phase workflow (memory→plan→assess→analyze→architect→implement→debug→test→learn→document→log), systematic tracking, 4-layer memory persistence, TDD (100% pass), workflow logs. CEPH evolves. Memory-first with explicit completions. **Codegraph loaded in ASSESS, available through LEARN.**
 ```
