@@ -102,11 +102,11 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **TEST_SURFACE Format**: ✅ `methods_tested:8/10 classes_covered:[NodeTreeView, NodeTreePresenter] edge_cases:5` | Shows: fraction tested, class list, edge case count
 
 ### Phase 8: LEARN ⚠️ MANDATORY
-**Objective**: Persist learnings to memory systems (project_memory.json) AND codegraph (codegraph.json)  
+**Objective**: Persist learnings to project_memory.json AND codegraph.json (BOTH required)  
 **Mindset**: Knowledge Curator - extract and store patterns  
-**🚨 CRITICAL**: Memory persistence NOT optional | ALWAYS write entities without asking  
-**Actions**: Extract learnings (Feature + Method + Pattern, 3+ entities minimum) → create temp JSONL file with entities + 3 relations (Feature→Method→Pattern) → append to project_memory.json: `Get-Content temp.jsonl | Add-Content project_memory.json` → verify line count increased → cleanup temp file → validate 4-layer hierarchy + 80-120 char observations + metadata (created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0) | If NEW code files created OR existing files significantly modified → extract code entities (Module + Class + Methods) → create temp JSONL file matching existing codegraph format → append to codegraph.json: `Get-Content temp.jsonl | Add-Content codegraph.json` → verify line count increased → cleanup temp file  
-**Codegraph Rules**: Concise (1-3 lines) | Structure/dependencies/purpose only | Include `upd:YYYY-MM-DD,refs:0` metadata | NEW files = add Module+Class+Methods | MAJOR method changes = add Method entity | Minor fixes = skip codegraph  
+**🚨 CRITICAL**: Memory + codegraph updates NOT optional | ALWAYS write both without asking  
+**Actions**: Extract learnings (Feature + Method + Pattern, 3+ entities) → create temp JSONL → append to project_memory.json: `Get-Content temp.jsonl | Add-Content project_memory.json` → verify line count → cleanup | Read existing codegraph entries for modified files → extract/update code entities (Module + Class) → create temp JSONL matching format → append to codegraph.json: `Get-Content temp.jsonl | Add-Content codegraph.json` → verify line count → cleanup  
+**Codegraph Rules**: Concise (1-3 lines) | Structure/dependencies/purpose only | Include `upd:YYYY-MM-DD,refs:0` metadata | NEW files = add Module+Class+Methods | MODIFIED files = update Module entity | Match existing tone/format exactly  
 **Completion**: Standard + `MEMORY:[entities:[3+:names] | project_memory:[+N_lines] | codegraph:[+M_lines] | verified:[before→after_counts]]`
 
 ### Phase 9: DOCUMENT
