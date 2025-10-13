@@ -75,9 +75,16 @@ BLOCKERS: [none|specific_issues]
 NEXT: [proceed_to_next_phase|alternative_action]
 ```
 
-**Optional Fields**: `CEPH:[context]` (ASSESS+) | `MEMORY:[entities_loaded]` (REMEMBER) | `LEARNINGS:[pattern:[X] | approach:[Y]]` (specialist phases) | `ARTIFACTS:[type:path:description]` (IMPLEMENT, TEST, LEARN, DOCUMENT) | `METRICS:[measurement_with_deltas]` (TEST, MUST include Δ) | `DOCUMENT:[updates]` (DOCUMENT) | `HANDOFFS:[future_patterns]` (LOG)
+**Optional Fields**: `STACK:[breadcrumb] (depth:N)` (VMP vertical mode, depth ≥ 1) | `CEPH:[context]` (ASSESS+) | `MEMORY:[entities_loaded]` (REMEMBER) | `LEARNINGS:[pattern:[X] | approach:[Y]]` (specialist phases) | `ARTIFACTS:[type:path:description]` (IMPLEMENT, TEST, LEARN, DOCUMENT) | `METRICS:[measurement_with_deltas]` (TEST, MUST include Δ) | `DOCUMENT:[updates]` (DOCUMENT) | `HANDOFFS:[future_patterns]` (LOG)
 
 ## Format Requirements ⚠️ MANDATORY
+
+### VMP (Vertical Mode Protocol)
+**Rule**: Use 🔄 VMP for interruptions and blockers | PUSH/POP/USER operations | Stack notation with ← arrows
+
+✅ `🔄 VMP PUSH | STACK: 🏗️ ARCHITECT ← 🔬 ANALYZE (depth:2)`  
+✅ `🔄 VMP | STACK: 💻 IMPLEMENT (depth:0)` (user interruption)  
+❌ Freeform context switching without VMP block
 
 ### Metrics (TEST Phase)
 **Rule**: ALWAYS include (Δ±X%) or (+N) showing change from baseline

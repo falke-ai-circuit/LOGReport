@@ -213,6 +213,23 @@ Additional documentation for key components and features:
 - [Token Processing](docs/api_token_utilities.md) - FBC/RPC handling
 - [Node Management](docs/node_manager_configuration.md) - Device tree configuration
 
+## Development Workflow
+
+### DevTeam Chatmode with VMP
+
+The project uses **DevTeam chatmode** for structured AI-assisted development with **Vertical Mode Protocol (VMP)** for workflow interruption management.
+
+**11-Phase Workflow**: PLAN → REMEMBER → ASSESS → ANALYZE → ARCHITECT → IMPLEMENT → DEBUG → TEST → LEARN → DOCUMENT → LOG
+
+**VMP Features**:
+- **Stack-Based Context**: Preserves workflow context during interruptions (user questions, agent-detected blockers)
+- **Auto-Detection**: Automatically routes to appropriate phases when detecting anomalies, test failures, design flaws, requirement gaps
+- **PUSH/POP Operations**: Enter vertical exploration (PUSH), resolve blocker, return to horizontal workflow (POP)
+- **Breadcrumb Navigation**: Visual stack trail with ← arrows (e.g., 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG)
+- **Max Depth 5**: Safety limit with emergency POP_ALL for circular dependencies
+
+See [DevTeam.chatmode.md](.github/chatmodes/DevTeam.chatmode.md) for complete workflow specification and [VMP_specification_draft.md](docs/architecture/VMP_specification_draft.md) for detailed protocol documentation.
+
 ## Testing
 
 ### Test Suite Organization

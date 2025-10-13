@@ -16,27 +16,29 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 - **Knowledge Capture**: Extract learnings to memory (`[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`)
 - **Session Logging**: Reconstruct workflow to file (`logs/workflow_*.md`) for future retrieval
 - **Organized Structure ⚠️ MANDATORY**: ALWAYS place files in proper subdirectories | Keep root clean (config files only)
-- **Interruption Resilience**: Emit IRP template when workflow interrupted → preserve specialist role → maintain TASK/PHASE context → resume seamlessly
+- **Vertical Mode Protocol**: Stack-based workflow management | Handles interruptions (user questions, anomalies, blockers) → preserve context → resolve → resume | PUSH/POP operations for nested exploration → breadcrumb navigation → auto-return to horizontal flow
 
-## Interruption Response Protocol (IRP)
+## Vertical Mode Protocol (VMP)
 
-**Objective**: Maintain workflow context across user interruptions | Prevents context loss | Enables seamless resumption  
-**Critical**: Agent MUST emit IRP when user interrupts mid-workflow (questions, changes, feedback, new info)
+**Objective**: Stack-based workflow management | Handle interruptions (user questions, agent blockers) → preserve context → resolve → resume | PUSH/POP operations | Breadcrumb navigation
 
 **Template**:
 
-🔄 IRP
-MODE: [specialist_role_emoji_name]
-TASK: [one_sentence_workflow]
-PHASE: [N_PHASE_NAME]
-STATUS: [last_completed_action]
+🔄 VMP [PUSH|POP]
+STACK: [parent_modes_with_←_arrows] (depth:N)
+MODE: [mode_emoji_name]
+ORIGIN: [phase].action (interrupted_by:[user]|blocked_by:[issue])
+[TRIGGER: [pattern] | RESOLVED: [outcome]]
 
-[Address user's interruption]
+[Context/answer]
 
-RESUMING: [MODE] → [PHASE] → [next_specific_action]
+ACTION: [next_action | RESUME parent | CONTINUE horizontal]
 
 
-**Rules**: Max 6 lines (excluding answer) | MODE = current phase specialist (🐛 Debugger, 🏗️ Architect, 💻 Coder, 🧪 Tester, 🔬 Analyzer, � Documenter) | TASK = persist original workflow | STATUS = last action | RESUMING = explicit next action | Answer between STATUS and RESUMING
+**Auto-Detection** (agent emits VMP PUSH when detecting):  
+Anomaly (unexpected, mismatch) → ANALYZE | Investigation (3+ hypotheses) → DEBUG | Test fail (<100% pass, MANDATORY) → DEBUG | Design flaw (architectural limitation) → ARCHITECT | Requirement gap (ambiguous criteria) → ANALYZE
+
+**Rules**: PUSH = blocker detected, preserve STACK | POP = blocker resolved, return to parent | USER = answer & resume (no stack change) | Max depth: 5 | Stack notation: 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG | CEPH accumulates evidence across stack
 
 ## Completion Format (All Phases)
 
@@ -51,6 +53,7 @@ NEXT: [proceed_to_next_phase|alternative_action]
 
 
 **Optional Fields** (use when applicable):
+- `STACK:[breadcrumb_trail] (depth:N)` (VMP vertical mode only, depth ≥ 1)
 - `CEPH:[context_structure]` (ASSESS phase and onwards)
 - `MEMORY:[entities_loaded]` (REMEMBER phase)
 - `LEARNINGS:[pattern:[insights] | approach:[methodology]]` ⚠️ **MANDATORY FORMAT** (specialist phases: ANALYZE, ARCHITECT, IMPLEMENT, DEBUG, TEST, LEARN)  
@@ -190,8 +193,9 @@ markdown
 **See `.github/instructions/structure.md`**: Directory organization (root clean) | File placement by phase (table-driven) | Document structure by type | Memory file structure (hierarchy, organization, update rules) | Naming conventions | Size limits
 
 ## Communication
-Phase transitions: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE → 🏗️ ARCHITECT → 💻 IMPLEMENT → 🐛 DEBUG → 🧪 TEST → 🎓 LEARN → 📚 DOCUMENT → 📝 LOG  
-**Interruptions**: Use 🔄 IRP template → maintain MODE/TASK/PHASE → answer user → RESUMING statement → continue workflow
+**Horizontal Flow**: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE → 🏗️ ARCHITECT → 💻 IMPLEMENT → 🐛 DEBUG → 🧪 TEST → 🎓 LEARN → 📚 DOCUMENT → 📝 LOG  
+**Vertical Flow**: Use 🔄 VMP (PUSH/POP for blockers, USER for interruptions) → preserve STACK/MODE/ORIGIN → resolve → resume  
+**Stack Notation**: Breadcrumb trail with ← arrows (e.g., 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG)
 
 ## Workflow Adaptability
 **Simple**: PLAN + REMEMBER + DEBUG + TEST + LEARN + LOG | **Medium**: PLAN + REMEMBER + ASSESS + IMPLEMENT + TEST + LEARN + DOCUMENT + LOG | **Complex**: All 11 phases | **Blocked**: Use BLOCKERS, adjust strategy | **Skip Rules**: ANALYZE/ARCHITECT optional for simple fixes | DOCUMENT optional if no user-facing changes
@@ -203,7 +207,13 @@ Phase transitions: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE 
 Use `manage_todo_list`: Create in PLAN (11 phases) → Mark in-progress before starting → Mark completed after (with STATUS) → Maintain visibility
 
 ## Error Recovery
-**Test Failures**: TEST → DEBUG (re-hypothesis) → IMPLEMENT (fix) → TEST (verify) | **Blocked Phase**: Document in BLOCKERS → skip to LOG → create workflow_partial_*.md | **Memory Load Failure**: Verify files exist → check JSONL format → validate 4-layer pattern → **re-read entire file with verification** → report last entries to confirm | **Codegraph Missing**: Proceed without (manual IMPLEMENT/DEBUG) → create in LEARN | **Incomplete Load Detected**: Missing last entries in verification → re-read file completely → confirm counts → report hierarchies | **Context Lost**: Query returns no results → reload file in current phase → verify with test query → proceed with fresh context
+**Test Failures**: TEST (failure detected) → VMP PUSH DEBUG (re-hypothesis, MANDATORY) → fix root cause → VMP POP TEST (verify) → IF pass: CONTINUE LEARN | IF fail: iterate DEBUG  
+**Blocked Phase**: Detect blocker → VMP PUSH appropriate phase (ANALYZE for anomalies, DEBUG for investigation, ARCHITECT for design flaws) → resolve → VMP POP to origin → continue  
+**Vertical Stack Blocked**: Max depth reached OR circular dependency → POP_ALL to depth 0 → LOG partial workflow → document in BLOCKERS  
+**Memory Load Failure**: Verify files exist → check JSONL format → validate 4-layer pattern → re-read entire file with verification → report last entries to confirm  
+**Codegraph Missing**: Proceed without (manual IMPLEMENT/DEBUG) → create in LEARN  
+**Incomplete Load Detected**: Missing last entries in verification → re-read file completely → confirm counts → report hierarchies  
+**Context Lost**: Query returns no results → reload file in current phase → verify with test query → proceed with fresh context
 
 ---
 

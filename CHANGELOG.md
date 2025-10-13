@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Vertical Mode Protocol (VMP) Integration (2025-10-13)
+- [ARCHITECTURE] **Unified Workflow Interruption Management** - Replaced IRP (Interruption Response Protocol) with VMP (Vertical Mode Protocol) providing unified handling of user questions and agent-detected blockers via single stack-based protocol
+- [DESIGN] **Stack-Based Context Preservation** - Implemented PUSH/POP operations with breadcrumb navigation (← arrows), max depth 5 levels, emergency POP_ALL for circular dependencies. CEPH context accumulates evidence across stack levels
+- [AUTO-DETECTION] **Intelligent Phase Routing** - Agent automatically emits VMP PUSH when detecting: Anomalies→ANALYZE, Investigations (3+ hypotheses)→DEBUG, Test failures (<100% pass, MANDATORY)→DEBUG, Design flaws (architectural limitations)→ARCHITECT, Requirement gaps (ambiguous criteria)→ANALYZE
+- [CONDENSED STYLE] **Minimal Documentation Footprint** - Condensed VMP specification from 60 lines (verbose IRP+VMP) to 18 lines matching DevTeam chatmode terse style. Unified template with [PUSH|POP] variants, one-line trigger descriptions with pipe separators, compact rules
+- [INTEGRATION] **Seamless Workflow Compatibility** - No breaking changes to existing 11-phase workflow. VMP activates only when interruptions/blockers detected. STACK optional field appears in completion format only when depth ≥ 1 (vertical mode active)
+- [TEMPLATE] **Unified VMP Syntax** - Single template: `🔄 VMP [PUSH|POP]` with STACK (breadcrumb trail), MODE (current specialist), ORIGIN (phase.action with interrupted_by/blocked_by), TRIGGER/RESOLVED (context-dependent), ACTION (next step)
+- [ERROR RECOVERY] **Vertical Routing** - Enhanced error recovery: Test failures→VMP PUSH DEBUG (mandatory), Blocked phases→VMP PUSH appropriate phase (ANALYZE/DEBUG/ARCHITECT), Max depth/circular dependencies→POP_ALL to depth 0
+- [MODIFIED] `.github/chatmodes/DevTeam.chatmode.md` (+4 lines net: -56 verbose IRP, +60 condensed VMP) - Replaced IRP section, added VMP to Core Principles, updated Error Recovery with vertical routing, extended Communication section with Horizontal/Vertical flows, added STACK optional field to completion format
+- [MODIFIED] `.github/instructions/standards.md` (+6 lines) - Added VMP format requirements section with ✅/❌ examples, added STACK optional field to status format
+- [CREATED] `docs/architecture/VMP_specification_draft.md` (v2.0.0 Unified, 120 lines) - Complete VMP specification with auto-detection rules, decision tree, workflow examples (simple/deep/lateral/emergency), LOG template extension, safety mechanisms
+- [MEMORY] Extracted 3 patterns to project_memory.json: Feature_VMP_Integration (unified protocol details), Pattern_Unified_Interruption_Protocol (stack-based design), Method_Condensed_Chatmode_Style (terse documentation approach)
+- [CODEGRAPH] Added 2 config entities to codegraph.json: Module_DevTeam_chatmode (VMP integration), Module_standards (VMP format standards)
+- [PATTERN] **Unified Interruption Protocol** - All workflow interruptions (user-driven questions/feedback, agent-driven anomalies/blockers) share same pattern: preserve context → resolve → resume. ORIGIN field naturally differentiates source without separate protocols
+- [USER IMPACT] Developers using DevTeam chatmode now have unified protocol for all context switches. Agent automatically handles vertical exploration (PUSH→investigate→POP) while maintaining horizontal workflow progress. User questions answered inline without losing phase context
+
 ### Pause/Resume/Cancel Button Fix (2025-10-13)
 - [BUGFIX] **Fixed Buttons Disabled During Print All Nodes** - Pause/resume/cancel buttons now remain enabled and clickable throughout Print All Nodes workflow execution, resolving issue where buttons became disabled immediately after first command completion
 - [ROOT CAUSE] Signal collision: Both NodeTreePresenter and SequentialCommandProcessor connected to command_queue.command_completed signal. SequentialCommandProcessor incorrectly processed Print All Nodes commands despite not initiating them (_total_commands=0), causing premature ExecutionState.IDLE emission that disabled all workflow buttons
