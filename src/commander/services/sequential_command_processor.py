@@ -622,6 +622,13 @@ class SequentialCommandProcessor(QObject):
         - Uses circuit breaker check for flow control
         - Maintains consistent error tracking
         """
+        # CRITICAL FIX: Only process commands when we're actively managing sequential execution
+        # This prevents responding to commands from other workflows (e.g., Print All Nodes)
+        # that queue commands directly via command_queue without using process_tokens_sequentially()
+        if not self._is_processing:
+            self.logger.debug(f"SequentialCommandProcessor: Ignoring command completion (not processing) - Token: {token.token_id}")
+            return
+        
         self.logger.debug(f"SequentialCommandProcessor: Command completed - Success: {success}, Token: {token.token_id}, Current index: {self._current_token_index}, Total: {self._total_commands}")
         self._completed_commands += 1
         if success:

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Pause/Resume/Cancel Button Fix (2025-10-13)
+- [BUGFIX] **Fixed Buttons Disabled During Print All Nodes** - Pause/resume/cancel buttons now remain enabled and clickable throughout Print All Nodes workflow execution, resolving issue where buttons became disabled immediately after first command completion
+- [ROOT CAUSE] Signal collision: Both NodeTreePresenter and SequentialCommandProcessor connected to command_queue.command_completed signal. SequentialCommandProcessor incorrectly processed Print All Nodes commands despite not initiating them (_total_commands=0), causing premature ExecutionState.IDLE emission that disabled all workflow buttons
+- [SOLUTION] Guard condition in SequentialCommandProcessor._on_command_completed() (line 628): Checks _is_processing flag before processing commands. Only processes when actively managing sequential execution via process_tokens_sequentially() (context menu operations). Print All Nodes workflow bypasses SequentialCommandProcessor, so guard prevents interference
+- [IMPLEMENTATION] Added 5-line guard at sequential_command_processor.py line 628: `if not self._is_processing: return` with debug logging. Prevents responding to unowned commands from other workflows
+- [PATTERN] Shared Signal Listener Isolation - Signal listeners sharing command_queue.command_completed must validate command ownership before processing. Architecture pattern for PyQt5 signal/slot systems with multiple listeners on shared signals
+- [MODIFIED] `src/commander/services/sequential_command_processor.py` (+5 lines) - Added ownership guard in _on_command_completed() method
+- [CREATED] `tests/unit/services/test_sequential_processor_guard.py` (4 test cases, 100% passing) - Validates: (1) ignores commands when not processing, (2) processes commands when actively processing, (3) finishes when all owned commands complete, (4) guard prevents premature finish (bug scenario)
+- [TEST STATUS] 4/4 tests passing, 0 failures, 1 deprecation warning (telnetlib Python 3.13)
+- [USER VALIDATION REQUIRED] Test Print All Nodes workflow and verify buttons stay enabled/clickable throughout execution with hover highlighting
+
 ### Test Suite Optimization (2025-01-13)
 - [TEST SUITE] **Phase 6 Validation Complete** - Established 87.1% pass rate baseline (27/31 tests) with 0.34s total runtime, validated hierarchical test organization (226 tests collected, 0 import errors from Phase 3 reorganization)
 - [ORGANIZATION] **100% Test Consolidation** - Completed Phase 3: Moved 68+ files into hierarchical structure (tests/[type]/[theme]/test_*.py), eliminated 46% unconsolidated tests, created 18 thematic directories
