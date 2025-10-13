@@ -37,7 +37,7 @@ ORIGIN: [phase].action (interrupted_by:[user]|blocked_by:[issue])
 ACTION: [next_action | RESUME parent | CONTINUE horizontal]
 
 **Auto-Detection** (agent emits VMP PUSH when detecting):  
-Anomaly (unexpected, mismatch) → ANALYZE | Investigation (3+ hypotheses) → DEBUG | Test fail (<100% pass, MANDATORY) → DEBUG | Design flaw (architectural limitation) → ARCHITECT | Requirement gap (ambiguous criteria) → ANALYZE | User explicit mode request (direct command) → [REQUESTED_MODE] | Code implementation needed (during IMPLEMENT phase) → CODE
+Anomaly (unexpected, mismatch) → ANALYZE | Investigation (3+ hypotheses) → DEBUG | Test fail (<100% pass, MANDATORY) → DEBUG | Design flaw (architectural limitation) → ARCHITECT | Requirement gap (ambiguous criteria) → ANALYZE | Repeated failures (2+ failed attempts in same phase, same issue) → ASSESS | User explicit mode request (direct command) → [REQUESTED_MODE] | Code implementation needed (during IMPLEMENT phase) → CODE
 
 **Rules**: PUSH = blocker detected OR user requests mode, preserve STACK | POP = blocker resolved, return to parent | USER = answer & resume (no stack change) | Max depth: 5 | Stack notation: 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG | CEPH accumulates evidence across stack | **Mode Instructions**: On PUSH, load target phase's mindset/instructions as operational guide
 
@@ -79,18 +79,18 @@ NEXT: [proceed_to_next_phase|alternative_action]
 ### Phase 1: REMEMBER ⚠️ MANDATORY
 **Objective**: Load existing knowledge from memory and documentation  
 **Critical**: ALWAYS load memory layers at initialization | Codegraph loaded in ASSESS phase | ⚠️ **FULL FILE LOADING REQUIRED** - Read ENTIRE files (all lines) for global_memory.json, project_memory.json (workflows may only load parts)  
-**Actions**: Load global_memory.json COMPLETE (all Global.* entities, ALL LINES) → Load project_memory.json COMPLETE (all Project.* entities, ALL LINES) → **VERIFY LOAD: Report last 2 entries from each file with hierarchy patterns to confirm complete loading** → Review file memory (README, CHANGELOG, TODO, docs/) → Search session memory (logs/workflow_*.md) → Validate hierarchy (4-layer pattern)  
+**Actions**: Load global_memory.json COMPLETE (all Global.* entities, ALL LINES) → Load project_memory.json COMPLETE (all Project.* entities, ALL LINES) → **VERIFY LOAD: Summarize loaded entities by hierarchy** (global_memory: domains, patterns, entity types with counts | project_memory: domains, clusters, feature/method/pattern counts) → Review file memory (README, CHANGELOG, TODO, docs/) → Search session memory (logs/workflow_*.md) → Validate hierarchy (4-layer pattern)  
 **Strategy**: Global+Project = load at init FULLY (read entire files end-to-end), available all phases | Codegraph = loaded in ASSESS FULLY (read entire file), available ASSESS→TEST | Files = scan key docs | Sessions = review recent logs  
-**Verification Check**: ⚠️ **MANDATORY** - Include in completion status: Last entry hierarchy from global_memory.json (e.g., "Global.Domain.Workflows") + Last entry hierarchy from project_memory.json (e.g., "Project.Testing.Coverage.Feature_*") to prove full file read  
-**Completion**: Standard + `MEMORY:[global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count] | **VERIFIED_LOAD:[global_last:"hierarchy_pattern" project_last:"hierarchy_pattern" confirms_complete:YES]**]`
+**Verification Check**: ⚠️ **MANDATORY** - Include in completion status: Summary of global_memory.json (domains:[list] patterns:[count] workflows:[count] entity_types:[list]) + Summary of project_memory.json (domains:[list] clusters:[list] features:[count] methods:[count] patterns:[count]) to prove full file read  
+**Completion**: Standard + `MEMORY:[global_summary:[domains:X patterns:Y workflows:Z entity_types:[Type1,Type2]] | project_summary:[domains:X clusters:Y features:Z methods:M patterns:P] | docs_reviewed:[files] | workflows_analyzed:[count] | **VERIFIED_LOAD:[global_complete:YES project_complete:YES hierarchies_valid:YES]**]`
 
 ### Phase 2: ASSESS ⚠️ CODEGRAPH LOAD POINT
 **Objective**: Validate environment and load codebase structure into context  
 **Critical**: Load codegraph.json HERE - makes it available for all subsequent phases | ⚠️ **FULL FILE LOADING REQUIRED** - Read ENTIRE codegraph.json (all lines, all entities, all relations)  
-**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → **LOAD codegraph.json into context** (read entire file end-to-end, ALL LINES, ALL ENTITIES) → **VERIFY LOAD: Report last 2 Module entries with hierarchy patterns to confirm complete loading** → identify gaps → query loaded codegraph for relevant modules/classes → create initial CEPH  
+**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → **review documentation** (README, CHANGELOG, docs/, architecture docs, standards.md, structure.md) → review state → **LOAD codegraph.json into context** (read entire file end-to-end, ALL LINES, ALL ENTITIES) → **VERIFY LOAD: Summarize loaded code entities** (modules by domain:[src/tests/config], classes:[count], methods:[count], relation types:[IMPORTS/BELONGS_TO/CALLS/DOCUMENTED_IN counts]) → identify gaps → query loaded codegraph for relevant modules/classes → create initial CEPH  
 **CEPH**: `CURRENT:[facts + state + environment + constraints] | EXPECTED:[target + acceptance_criteria] | PROBLEM:[one_sentence + scope] | HYPOTHESES:[H1:cause→prediction→test] | EVIDENCE:[logs + metrics + existing_code]`  
-**Verification Check**: ⚠️ **MANDATORY** - Include in completion status: Last Module entry hierarchy from codegraph.json (e.g., "Code.Tests.Unit.Module_*") to prove full file read  
-**Completion**: Standard + `CEPH:[initial context created]` + `CODEGRAPH:[loaded:YES modules:N classes:N methods:N relations:N **| VERIFIED_LOAD:[codegraph_last:"Code.*.*.Module_name" confirms_complete:YES]**]` + `CODEGRAPH_REFS:[modules:[list] classes:[list] relevant_relations:[count]]`
+**Verification Check**: ⚠️ **MANDATORY** - Include in completion status: Summary of codegraph.json (modules:[total by_domain:[src:X tests:Y]] classes:[total] methods:[total] relations:[IMPORTS:X BELONGS_TO:Y CALLS:Z DOCUMENTED_IN:W]) to prove full file read  
+**Completion**: Standard + `CEPH:[initial context created]` + `CODEGRAPH:[loaded:YES summary:[modules:N_total(src:X tests:Y) classes:M methods:P relations:[IMPORTS:A BELONGS_TO:B CALLS:C DOCUMENTED_IN:D]] **| VERIFIED_LOAD:[codegraph_complete:YES structure_valid:YES]**]` + `CODEGRAPH_REFS:[modules:[list] classes:[list] relevant_relations:[count]]` + `DOCS_REVIEWED:[files_read + key_constraints_identified]`
 
 ### Phase 3: ANALYZE
 **Objective**: Investigate patterns and root causes  
@@ -119,10 +119,10 @@ NEXT: [proceed_to_next_phase|alternative_action]
 ### Phase 7: TEST ⚠️ MANDATORY
 **Objective**: Validate solution comprehensively against original user request  
 **Mindset**: Tester - systematic validation and quality gates  
-**Critical**: Tests NOT optional | 100% pass required | Failed tests = incomplete | Validate against user prompt | User confirmation required for complex/non-conclusive tests  
+**Critical**: Tests NOT optional | 100% pass required | Failed tests = incomplete | Validate against user prompt | ⚠️ **USER VERIFICATION MANDATORY** - MUST pause after testing, present results, wait for user confirmation before proceeding to LEARN phase | Agent cannot self-approve complex changes  
 **Test Scope** (adaptive): Simple fixes = unit tests | Features = unit + integration | Architecture changes = unit + integration + regression | Always = validate user prompt acceptance criteria  
-**Actions**: Extract acceptance criteria from user prompt → **map test surface using loaded codegraph** (methods needing tests, existing patterns, untested paths) → create appropriate test coverage → run `python -m pytest <test_file> -v` → verify ALL tests pass (9/9, not 5/9) → **if ANY fail: route by type** (logic errors → DEBUG | design flaws → ARCHITECT | requirements mismatch → ANALYZE) → fix → re-run → repeat until 100% pass → **if tests complex/non-conclusive/UI/UX: request user validation** → proceed to LEARN only after 100% pass + user validation (if needed)  
-**Completion**: Standard + `CEPH:[validated with test evidence]` + `LEARNINGS:[pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS:[test:file_path:coverage_info]` + `METRICS:[measurement_with_deltas]` ⚠️ MANDATORY DELTAS + `TEST_SURFACE:[methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]` + `USER_VALIDATION:[prompt_criteria_met + user_confirmed:yes/no/not_needed]`
+**Actions**: Extract acceptance criteria from user prompt → **map test surface using loaded codegraph** (methods needing tests, existing patterns, untested paths) → create appropriate test coverage → run `python -m pytest <test_file> -v` → verify ALL tests pass (9/9, not 5/9) → **if ANY fail: route by type** (logic errors → DEBUG | design flaws → ARCHITECT | requirements mismatch → ANALYZE) → fix → re-run → repeat until 100% pass → **⚠️ MANDATORY CHECKPOINT: Present test results to user with summary, request explicit verification ("Tests pass, please verify the solution meets your requirements before I proceed to LEARN phase")** → **WAIT for user response** → IF user confirms: proceed to LEARN | IF user rejects: route to appropriate phase for fixes  
+**Completion**: Standard + `CEPH:[validated with test evidence]` + `LEARNINGS:[pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS:[test:file_path:coverage_info]` + `METRICS:[measurement_with_deltas]` ⚠️ MANDATORY DELTAS + `TEST_SURFACE:[methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]` + `USER_VERIFICATION:[test_results_presented + awaiting_confirmation:YES]` ⚠️ **MUST SHOW awaiting_confirmation:YES until user responds**
 
 ### Phase 8: LEARN ⚠️ MANDATORY
 **Objective**: Persist learnings to project_memory.json AND codegraph.json (BOTH required)  
@@ -172,13 +172,13 @@ markdown
 ### Operations by Phase
 | Phase | Action | Strategy | Verification |
 |-------|--------|----------|--------------|
-| **REMEMBER (1)** | Load | global_memory.json (Global.* all) + project_memory.json (Project.* all) + docs/ + logs/ | ⚠️ **READ ENTIRE FILES (all lines)** | ⚠️ Report last 2 entries with hierarchy from each file |
-| **ASSESS (2) 🔑** | Load codegraph | Read entire codegraph.json end-to-end (ALL LINES, ALL ENTITIES, ALL RELATIONS) → Code.* entities available phases 2-8 | ⚠️ Report last 2 Module entries with hierarchy |
+| **REMEMBER (1)** | Load | global_memory.json (Global.* all) + project_memory.json (Project.* all) + docs/ + logs/ | ⚠️ **READ ENTIRE FILES (all lines)** | ⚠️ Summary: global (domains, patterns, entity types) + project (domains, clusters, features/methods/patterns counts) |
+| **ASSESS (2) 🔑** | Load codegraph + docs | Read entire codegraph.json end-to-end (ALL LINES, ALL ENTITIES, ALL RELATIONS) + review documentation (README, CHANGELOG, docs/, standards.md, structure.md) → Code.* entities available phases 2-8 | ⚠️ Summary: modules by domain (src/tests), classes, methods, relation types (IMPORTS/BELONGS_TO/CALLS/DOCUMENTED_IN) + docs reviewed |
 | **ANALYZE (3)** | Query | Trace IMPORTS/BELONGS_TO/DOCUMENTED_IN for dependencies, structure, context | Confirm codegraph queries return results |
 | **ARCHITECT (4)** | Impact | Query affected modules (reverse IMPORTS), downstream deps, inheritance | Reference specific codegraph entities in decisions |
 | **IMPLEMENT (5) ⚠️** | Reference | Match signatures, patterns, class structures, conventions from loaded codegraph | List CODE_PATTERNS used from codegraph |
 | **DEBUG (6) ⚠️** | Trace | Follow CALLS chains, locate implementations, track dependency flow | Show EXECUTION_TRACE from codegraph |
-| **TEST (7)** | Map surface | Query methods needing tests, identify coverage gaps | List TEST_SURFACE mapped from codegraph |
+| **TEST (7) ⚠️** | Map + Verify | Query methods needing tests, identify coverage gaps, **MANDATORY user verification checkpoint** | List TEST_SURFACE mapped from codegraph + **USER_VERIFICATION awaiting_confirmation:YES** |
 | **LEARN (8) ⚠️** | Persist | Extract 3+ entities → temp JSONL → append → verify count → cleanup | Report line count before→after for both files |
 | **LOG (10)** | Reconstruct | Create logs/workflow_*.md (NOT memory persistence) | N/A |
 
@@ -209,12 +209,14 @@ Use `manage_todo_list`: Create in PLAN (11 phases) → Mark in-progress before s
 
 ## Error Recovery
 **Test Failures**: TEST (failure detected) → VMP PUSH DEBUG (re-hypothesis, MANDATORY) → fix root cause → VMP POP TEST (verify) → IF pass: CONTINUE LEARN | IF fail: iterate DEBUG  
-**Blocked Phase**: Detect blocker → VMP PUSH appropriate phase (ANALYZE for anomalies, DEBUG for investigation, ARCHITECT for design flaws) → resolve → VMP POP to origin → continue  
+**Repeated Failures**: Same phase fails 2+ times with same issue → VMP PUSH ASSESS (re-evaluate environment, docs, constraints, tooling) → identify root cause of repeated failures → fix systemic issue → VMP POP to origin phase → retry with new context  
+**Blocked Phase**: Detect blocker → VMP PUSH appropriate phase (ANALYZE for anomalies, DEBUG for investigation, ARCHITECT for design flaws, ASSESS for repeated failures) → resolve → VMP POP to origin → continue  
 **Vertical Stack Blocked**: Max depth reached OR circular dependency → POP_ALL to depth 0 → LOG partial workflow → document in BLOCKERS  
 **Memory Load Failure**: Verify files exist → check JSONL format → validate 4-layer pattern → re-read entire file with verification → report last entries to confirm  
 **Codegraph Missing**: Proceed without (manual IMPLEMENT/DEBUG) → create in LEARN  
 **Incomplete Load Detected**: Missing last entries in verification → re-read file completely → confirm counts → report hierarchies  
-**Context Lost**: Query returns no results → reload file in current phase → verify with test query → proceed with fresh context
+**Context Lost**: Query returns no results → reload file in current phase → verify with test query → proceed with fresh context  
+**User Verification Timeout**: TEST phase awaiting confirmation → agent MUST NOT proceed to LEARN/DOCUMENT/LOG without explicit user approval → re-present results if needed → escalate if user unresponsive
 
 ---
 
