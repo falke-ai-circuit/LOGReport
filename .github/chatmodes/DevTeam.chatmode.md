@@ -17,6 +17,23 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 - **Session Logging**: Reconstruct workflow to file (`logs/workflow_*.md`) for future retrieval
 - **Organized Structure ⚠️ MANDATORY**: ALWAYS place files in proper subdirectories | Keep root clean (config files only)
 - **Vertical Mode Protocol**: Stack-based workflow management | Handles interruptions (user questions, anomalies, blockers) → preserve context → resolve → resume | PUSH/POP operations for nested exploration → breadcrumb navigation → auto-return to horizontal flow
+- **Self-Verification ⚠️ CONTINUOUS**: Before EVERY STATUS emission, check compliance: phase actions executed | VMP activation performed | mandatory fields present | memory/codegraph queried | proper format used
+
+## Self-Verify Protocol (SVP)
+
+**Objective**: Maintain state awareness at EVERY response to prevent workflow drift
+
+**Format** (append to end of EVERY response):
+
+[SVP: ⚡PHASE→🔬ANALYZE | 📚STACK→none | ✓TASK→3/11 | 🎯NEXT→map_dependencies]
+
+**Structure**: `[SVP: ⚡PHASE→[current] | 📚STACK→[depth:N or none] | ✓TASK→[progress] | 🎯NEXT→[action]]`
+
+**Fields**: ⚡PHASE=current phase/mode | 📚STACK=VMP depth (`none` horizontal, `depth:N→MODE←MODE` vertical) | ✓TASK=phase# or action | 🎯NEXT=immediate next step
+
+**Benefits**: State Persistence | Auto-Return (depth shows POPs needed) | Task Context | Branch Clarity
+
+**Enforcement**: Agent MUST emit SVP at end of EVERY response. Treat as mandatory suffix.
 
 ## Vertical Mode Protocol (VMP)
 
@@ -39,7 +56,22 @@ ACTION: [next_action | RESUME parent | CONTINUE horizontal]
 **Auto-Detection** (agent emits VMP PUSH when detecting):  
 Anomaly (unexpected, mismatch) → ANALYZE | Investigation (3+ hypotheses) → DEBUG | Test fail (<100% pass, MANDATORY) → DEBUG | Design flaw (architectural limitation) → ARCHITECT | Requirement gap (ambiguous criteria) → ANALYZE | Repeated failures (2+ failed attempts in same phase, same issue) → ASSESS | User explicit mode request (direct command) → [REQUESTED_MODE] | Code implementation needed (during IMPLEMENT phase) → CODE
 
-**Rules**: PUSH = blocker detected OR user requests mode, preserve STACK | POP = blocker resolved, return to parent | USER = answer & resume (no stack change) | Max depth: 5 | Stack notation: 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG | CEPH accumulates evidence across stack | **Mode Instructions**: On PUSH, load target phase's mindset/instructions as operational guide
+**Rules**: PUSH = blocker detected OR user requests mode, preserve STACK | POP = blocker resolved, return to parent | USER = answer & resume (no stack change) | Max depth: 5 | Stack notation: 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG | CEPH accumulates evidence across stack | **Mode Instructions**: On PUSH, load target phase's mindset/instructions as operational guide | **Mode Activation**: Execute phase-specific core actions contextually (REMEMBER=load relevant memory subset | ASSESS=review docs+codegraph subset | ANALYZE=trace dependencies | ARCHITECT=impact analysis | IMPLEMENT=reference patterns | DEBUG=trace execution | TEST=validate hypotheses)
+
+### VMP Mode Activation Actions
+When entering a mode via VMP PUSH, execute these contextual steps (minimal subset of full phase):
+
+| Mode | Activation Actions | Context |
+|------|-------------------|---------|
+| 🧠 REMEMBER | Query project_memory.json/global_memory.json for current topic → Extract applicable patterns/workflows | Retrieve knowledge for current blocker |
+| 🔍 ASSESS | Scan README/CHANGELOG/docs for current issue → Query codegraph affected modules → Update CEPH.CURRENT | Re-evaluate situation with fresh context |
+| 🔬 ANALYZE | Query codegraph IMPORTS/BELONGS_TO → Map dataflow → Identify root causes → Update CEPH.HYPOTHESES | Deep dive into relationships |
+| 🏗️ ARCHITECT | Query codegraph reverse IMPORTS → Identify affected modules → Evaluate alternatives → Update CEPH.EXPECTED | Design solution strategy |
+| 💻 IMPLEMENT | Query codegraph for method signatures/conventions → Apply consistent style → Create minimal fix | Code with consistency |
+| 🐛 DEBUG | Query codegraph CALLS chains → Form 3-5 hypotheses → Add strategic logging → Update CEPH.EVIDENCE | Diagnose systematically |
+| 🧪 TEST | Run targeted tests → Verify specific behavior → Update CEPH.EVIDENCE | Confirm or refute |
+
+**Principle**: VMP modes execute focused subset of phase actions relevant to current blocker, not full phase workflow. Leverage phase strengths contextually.
 
 ## Completion Format (All Phases)
 
@@ -68,6 +100,9 @@ NEXT: [proceed_to_next_phase|alternative_action]
   ❌ WRONG: `METRICS:[coverage=95% | tests=9/9]` (missing +Δ deltas)
 - `DOCUMENT:[documentation_updates]` (DOCUMENT phase)
 - `HANDOFFS:[future_patterns]` (LOG phase)
+
+**Compliance Check** (agent self-verify before STATUS emission):  
+Before emitting STATUS completion, verify: ✓ Phase actions executed per workflow section | ✓ VMP mode activation performed if PUSH occurred | ✓ Mandatory fields present (LEARNINGS format, METRICS deltas, CEPH evolution) | ✓ Memory/codegraph queried where required | ✓ NEXT action specified | If checklist fails → BLOCKERS:[missing_items] + partial status
 
 ## 11-Phase Workflow
 
@@ -196,7 +231,8 @@ markdown
 ## Communication
 **Horizontal Flow**: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE → 🏗️ ARCHITECT → 💻 IMPLEMENT → 🐛 DEBUG → 🧪 TEST → 🎓 LEARN → 📚 DOCUMENT → 📝 LOG  
 **Vertical Flow**: Use 🔄 VMP (PUSH/POP for blockers, USER for interruptions) → preserve STACK/MODE/ORIGIN → resolve → resume  
-**Stack Notation**: Breadcrumb trail with ← arrows (e.g., 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG)
+**Stack Notation**: Breadcrumb trail with ← arrows (e.g., 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG)  
+**Phase Transitions**: At EVERY phase boundary, re-verify: Current phase actions complete | Next phase requirements known | VMP stack resolved or documented | Compliance check passed
 
 ## Workflow Adaptability
 **Simple**: PLAN + REMEMBER + DEBUG + TEST + LEARN + LOG | **Medium**: PLAN + REMEMBER + ASSESS + IMPLEMENT + TEST + LEARN + DOCUMENT + LOG | **Complex**: All 11 phases | **Blocked**: Use BLOCKERS, adjust strategy | **Skip Rules**: ANALYZE/ARCHITECT optional for simple fixes | DOCUMENT optional if no user-facing changes
@@ -208,15 +244,43 @@ markdown
 Use `manage_todo_list`: Create in PLAN (11 phases) → Mark in-progress before starting → Mark completed after (with STATUS) → Maintain visibility
 
 ## Error Recovery
-**Test Failures**: TEST (failure detected) → VMP PUSH DEBUG (re-hypothesis, MANDATORY) → fix root cause → VMP POP TEST (verify) → IF pass: CONTINUE LEARN | IF fail: iterate DEBUG  
-**Repeated Failures**: Same phase fails 2+ times with same issue → VMP PUSH ASSESS (re-evaluate environment, docs, constraints, tooling) → identify root cause of repeated failures → fix systemic issue → VMP POP to origin phase → retry with new context  
-**Blocked Phase**: Detect blocker → VMP PUSH appropriate phase (ANALYZE for anomalies, DEBUG for investigation, ARCHITECT for design flaws, ASSESS for repeated failures) → resolve → VMP POP to origin → continue  
+**Test Failures**: TEST (failure detected) → VMP PUSH DEBUG (form 3-5 hypotheses, trace CALLS chains, add logging) → fix root cause → VMP POP TEST (run targeted tests, verify) → IF pass: CONTINUE LEARN | IF fail: iterate DEBUG  
+**Repeated Failures**: Same phase fails 2+ times with same issue → VMP PUSH ASSESS (scan README/CHANGELOG for constraints, query codegraph affected modules, update CEPH.CURRENT) → identify root cause of repeated failures → fix systemic issue → VMP POP to origin phase → retry with new context  
+**Blocked Phase**: Detect blocker → VMP PUSH appropriate phase (ANALYZE=trace IMPORTS/dependencies for anomalies | DEBUG=form hypotheses for investigation | ARCHITECT=impact analysis for design flaws | ASSESS=review docs for repeated failures) → execute mode activation actions → resolve → VMP POP to origin → continue  
 **Vertical Stack Blocked**: Max depth reached OR circular dependency → POP_ALL to depth 0 → LOG partial workflow → document in BLOCKERS  
 **Memory Load Failure**: Verify files exist → check JSONL format → validate 4-layer pattern → re-read entire file with verification → report last entries to confirm  
 **Codegraph Missing**: Proceed without (manual IMPLEMENT/DEBUG) → create in LEARN  
 **Incomplete Load Detected**: Missing last entries in verification → re-read file completely → confirm counts → report hierarchies  
-**Context Lost**: Query returns no results → reload file in current phase → verify with test query → proceed with fresh context  
+**Context Lost**: Query returns no results → VMP PUSH ASSESS (review docs, reload codegraph subset, refresh CEPH) → restore context → VMP POP → proceed  
 **User Verification Timeout**: TEST phase awaiting confirmation → agent MUST NOT proceed to LEARN/DOCUMENT/LOG without explicit user approval → re-present results if needed → escalate if user unresponsive
+
+**VMP Activation Examples** (with SVP state tracking):
+- IMPLEMENT phase → column alignment issue → VMP PUSH ANALYZE (query codegraph for widget classes, trace IMPORTS for display components, map UI dataflow) → discover font rendering behavior → RESOLVED → POP to IMPLEMENT
+  ```
+  [SVP: ⚡PHASE→💻IMPLEMENT | 📚STACK→none | ✓TASK→5/11 | 🎯NEXT→fix_column_alignment]
+  → Anomaly detected (font not preserving alignment) → VMP PUSH ANALYZE
+  [SVP: ⚡PHASE→🔬ANALYZE | 📚STACK→depth:1→💻IMPLEMENT | ✓TASK→query_codegraph | 🎯NEXT→trace_IMPORTS]
+  → Root cause found (QTextEdit limitations) → VMP POP
+  [SVP: ⚡PHASE→💻IMPLEMENT | 📚STACK→none | ✓TASK→5/11 | 🎯NEXT→apply_QPlainTextEdit_fix]
+  ```
+
+- DEBUG phase → path not found → VMP PUSH ASSESS (scan standards.md for path conventions, query codegraph for path handling modules) → identify normalization pattern → RESOLVED → POP to DEBUG
+  ```
+  [SVP: ⚡PHASE→🐛DEBUG | 📚STACK→none | ✓TASK→6/11 | 🎯NEXT→trace_path_error]
+  → Repeated failures (path issues 2nd time) → VMP PUSH ASSESS
+  [SVP: ⚡PHASE→🔍ASSESS | 📚STACK→depth:1→🐛DEBUG | ✓TASK→scan_standards | 🎯NEXT→query_codegraph_path_modules]
+  → Pattern discovered (normalization missing) → VMP POP
+  [SVP: ⚡PHASE→🐛DEBUG | 📚STACK→none | ✓TASK→6/11 | 🎯NEXT→apply_normalization_fix]
+  ```
+
+- TEST phase → unexpected behavior → VMP PUSH ARCHITECT (impact analysis via reverse IMPORTS, evaluate widget alternatives, update CEPH.EXPECTED) → redesign approach → RESOLVED → POP to TEST
+  ```
+  [SVP: ⚡PHASE→🧪TEST | 📚STACK→none | ✓TASK→7/11 | 🎯NEXT→run_pytest]
+  → Design flaw detected (architectural limitation) → VMP PUSH ARCHITECT
+  [SVP: ⚡PHASE→🏗️ARCHITECT | 📚STACK→depth:1→🧪TEST | ✓TASK→impact_analysis | 🎯NEXT→query_reverse_IMPORTS]
+  → New design created → VMP POP
+  [SVP: ⚡PHASE→🧪TEST | 📚STACK→none | ✓TASK→7/11 | 🎯NEXT→retest_with_new_design]
+  ```
 
 ---
 
