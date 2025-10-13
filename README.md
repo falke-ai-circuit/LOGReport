@@ -19,6 +19,30 @@ The application features:
 - **Intelligent line wrapping**: Automatically wraps long lines at 80 characters (verified for A4 page width) to prevent text overflow
 - **Flexible content filtering**: Configure line limits, ranges, and filtering modes
 - **Commander integration**: Full support for telnet/BsTool-based log collection from industrial devices
+- **BsTool bundling**: BsTool.exe automatically bundled and detected - no manual configuration needed
+
+### BsTool Integration
+
+LOGReporter includes **automatic BsTool.exe bundling** for seamless deployment:
+
+**✅ No Manual Setup Required**
+- BsTool.exe packaged inside LOGReporter.exe
+- Path auto-detection on startup (no configuration needed)
+- Works in both development and packaged environments
+
+**🔧 How It Works**
+- **Development mode**: Detects BsTool.exe in project root
+- **Packaged mode**: Extracts BsTool.exe to temporary directory at runtime
+- **Manual override**: Users can specify custom BsTool.exe location if needed
+
+**📦 Building with BsTool**
+When building the executable, BsTool.exe is automatically included:
+```powershell
+# BsTool.exe must be in project root
+pyinstaller --clean LOGReporter_PyQt5.spec
+```
+
+The packaged executable includes BsTool.exe and automatically detects its location. See [BUILD-INSTRUCTIONS.md](BUILD-INSTRUCTIONS.md) for complete build details.
 
 ### Dual Memory System
 - **Project Memory**: Stores project-specific entities, relationships, and implementation details using the `project_memory` MCP server

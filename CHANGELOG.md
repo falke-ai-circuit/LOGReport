@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### BsTool Bundling and Path Auto-Detection (2025-10-13)
+- [FEATURE] **BsTool.exe Bundling** - BsTool.exe now bundled with LOGReporter executable via PyInstaller, eliminating need for separate BsTool.exe distribution. Users can run single LOGReporter.exe without manual path configuration
+- [FEATURE] **Automatic Path Detection** - BsTool path field in UI auto-populates on application startup using hybrid detection algorithm. Works in both development mode (project root) and packaged mode (PyInstaller _MEIPASS temp directory)
+- [FEATURE] **Manual Path Override** - Users can manually enter or browse for custom BsTool.exe location if needed. Custom paths persist across sessions via QSettings
+- [IMPLEMENTATION] Created `src/commander/utils/bstool_path_resolver.py` utility with get_bstool_path() function implementing 3-tier detection: (1) sys._MEIPASS (PyInstaller onefile temp extraction), (2) sys.executable directory (PyInstaller onedir mode), (3) project root (development mode)
+- [IMPLEMENTATION] Modified `src/commander/ui/bstool_tab.py` to call _auto_populate_bstool_path() during __init__(), populating bstool_path_edit QLineEdit field automatically
+- [IMPLEMENTATION] Updated `src/commander/services/bstool_command_service.py` to use centralized bstool_path_resolver utility instead of inline path detection
+- [CONFIGURATION] Updated `LOGReporter_PyQt5.spec` binaries section: `(os.path.abspath('BsTool.exe'), '.')` ensures BsTool.exe bundled in PyInstaller build
+- [TESTING] User validated bundling: Renamed BsTool.exe in repository root after build, bundled executable still worked (confirms PyInstaller extracts from build-time capture, independent of runtime repository state)
+- [TESTING] Created comprehensive test scripts: `scripts/quick_test_bstool.ps1` (5-step automated test), `scripts/test_bundled_exe.ps1` (full 3-scenario suite), `docs/TESTING_BSTOOL_BUNDLING.md` (documentation with validation checklist)
+- [MODIFIED] `src/commander/utils/bstool_path_resolver.py` (+103 lines) - New utility module for centralized path detection
+- [MODIFIED] `src/commander/ui/bstool_tab.py` (+15 lines) - Added _auto_populate_bstool_path() method called during initialization
+- [MODIFIED] `src/commander/services/bstool_command_service.py` (+2 lines) - Import and use bstool_path_resolver utility
+- [MODIFIED] `TODO.md` (line 50) - Marked BsTool bundling task complete
+- [CREATED] `scripts/quick_test_bstool.ps1` (100 lines) - Quick automated test script for bundling validation
+- [CREATED] `scripts/test_bundled_exe.ps1` (200 lines) - Comprehensive test script with 3 scenarios
+- [CREATED] `docs/TESTING_BSTOOL_BUNDLING.md` (400 lines) - Complete test documentation with procedures, checklist, troubleshooting
+- [MEMORY] Extracted 3 entities to project_memory.json: Feature_BsToolBundling (bundling details), Method_PathAutoPopulation (UI auto-fill), Pattern_PyInstallerBundling (packaging pattern)
+- [CODEGRAPH] Added 1 new module to codegraph.json: Module_commander_utils_bstool_path_resolver (utility module). Updated 2 existing modules with IMPORTS relations
+- [USER IMPACT] Users no longer need to manually locate and configure BsTool.exe path. Application works out-of-the-box with single executable distribution. Path field shows detected location for transparency while allowing manual override if needed
+
 ### UI Styling Improvements (2025-10-13)
 - [FEATURE] **Modern Scrollbar Styling** - Added custom scrollbar CSS to Commander theme for BsTool tab, Telnet tab, and Nodes tree with rounded handles (6px radius), hover states, and 12px width/height for consistent cross-platform appearance
 - [FEATURE] **Unified Highlight Color** - Changed selection highlight from #007ACC (blue) to #C969E6 (purple) matching main LOGReport window and Node Configurator (QColor(142, 45, 197).lighter()) for visual consistency across application

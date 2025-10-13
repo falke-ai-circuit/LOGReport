@@ -12,6 +12,7 @@ from enum import Enum
 
 from .theme import STYLESHEETS
 from ..widgets import ConnectionState
+from ..utils.bstool_path_resolver import get_bstool_path
 
 
 class BsToolTab(QWidget):
@@ -29,6 +30,7 @@ class BsToolTab(QWidget):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self._setup_ui()
+        self._auto_detect_bstool_path()
         
     def connect_bstool_service(self, service):
         """Connect to bstool service signals"""
@@ -194,3 +196,33 @@ class BsToolTab(QWidget):
         # Update button states
         connected = state == ConnectionState.CONNECTED
         self.execute_btn.setEnabled(connected)
+    
+    def _auto_detect_bstool_path(self):
+        """
+        Auto-detect and populate BsTool.exe path on initialization.
+        
+        This method is called during __init__ to automatically detect the bundled
+        BsTool.exe location and populate the path field. Users can still manually
+        override the detected path if needed.
+        
+        The detection handles:
+        - PyInstaller bundled mode (onefile/onedir)
+        - Development mode (project root)
+        """
+        # Only auto-populate if field is currently empty
+        current_path = self.bstool_path_edit.text().strip()
+        if current_path:
+            self.logger.debug(f"BsTool path already set: {current_path}")
+            return
+        
+        # Detect path using centralized utility
+        detected_path = get_bstool_path()
+        
+        if detected_path:
+            self.logger.info(f"Auto-detected BsTool.exe at: {detected_path}")
+            self.bstool_path_edit.setText(detected_path)
+            # Emit signal to notify path has been set
+            self.bstool_path_changed.emit(detected_path)
+        else:
+            self.logger.warning("Could not auto-detect BsTool.exe path")
+            # Leave field empty - user will need to manually set it
