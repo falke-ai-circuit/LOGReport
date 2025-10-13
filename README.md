@@ -213,6 +213,68 @@ Additional documentation for key components and features:
 - [Token Processing](docs/api_token_utilities.md) - FBC/RPC handling
 - [Node Management](docs/node_manager_configuration.md) - Device tree configuration
 
+## Testing
+
+### Test Suite Organization
+
+The project uses a **hierarchical test structure** for scalable organization:
+
+```
+tests/
+├── unit/               # Isolated component tests
+│   ├── sys_file/       # SYS file parsing & loading
+│   ├── token_detection/  # Token identification
+│   └── test_log_creator.py  # PDF log file creation
+├── integration/        # Multi-component workflows
+├── system/            # End-to-end scenarios
+│   ├── telnet/        # Telnet connection management
+│   └── ui/            # PyQt UI testing
+└── regression/        # Bug prevention tests
+```
+
+### Test Metrics (Phase 6 Baseline - 2025-01-13)
+- **Total Tests**: 226 collected (89 files)
+- **Pass Rate**: 87.1% (27/31 executable tests)
+- **Performance**: 0.34s total runtime, 0.02s slowest test
+- **Coverage**: LogCreator (100% passing), Token Detection (100% passing), SYS File Parser (75% passing)
+
+### Environment Blockers
+- **Python 3.13**: telnetlib removed (22 tests blocked)
+- **PyQt6**: DLL load errors (31 tests blocked)
+- **Executable Subset**: 35/89 tests (39%)
+
+### Running Tests
+
+**Full Suite**:
+```powershell
+python -m pytest tests/ -v
+```
+
+**Specific Category**:
+```powershell
+python -m pytest tests/unit/ -v           # Unit tests only
+python -m pytest tests/integration/ -v    # Integration tests
+```
+
+**Coverage Report**:
+```powershell
+python -m pytest tests/ --cov=src --cov-report=html
+```
+
+**With Performance Timing**:
+```powershell
+python -m pytest tests/ --durations=10
+```
+
+### Known Issues
+- **AL Node Parsing**: 4/4 AL (AL-Link) tests fail with off-by-one token extraction (systematic issue)
+- **Import Paths**: 74 tests blocked by missing `src.` prefix in utils/commander imports
+- **Fixture Schema**: 13 tests blocked by 'token_id' key mismatch in test fixtures
+
+See [Phase 6 Validation Report](logs/tests_analysis_PHASE_6_VALIDATION_20250113.md) for detailed analysis.
+
+---
+
 ## Code Structure Analysis
 
 The project maintains an automatically-generated **code graph** (`codegraph.json`) that provides a complete hierarchical representation of the `src/` codebase:

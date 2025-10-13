@@ -1,0 +1,543 @@
+{
+  "summary": {
+    "source_modules": 71,
+    "test_files": 88,
+    "aligned": 13,
+    "integration": 45,
+    "orphaned": 30,
+    "untested": 57
+  },
+  "mappings": [
+    {
+      "source": "INTEGRATION",
+      "test": "commander/integration/test_bstool_context_menu_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "commander/system/test_bstool_path_persistence_e2e.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "commander/system/test_bstool_system_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/system/test_bstool_ui_output.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "commander/system/test_bstool_ui_output_e2e.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "commander.services.bstool_command_service",
+      "test": "commander/test_bstool_command_service.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "commander/test_bstool_copy_to_log_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_bstool_import.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_bstool_tab_ui.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_button_actions.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_button_styling.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_clear_log.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_clear_subgroup_log_files.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_clear_subgroup_log_files_v2.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "commander.services.clipboard_monitor",
+      "test": "commander/test_clipboard_monitor.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "commander.ui.commander_window",
+      "test": "commander/test_commander_window.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_copy_to_log_functionality.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_fbc_subsection_context_menu.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "commander.utils.log_filename_parser",
+      "test": "commander/test_log_filename_parser.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_log_write_notification_display.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "commander.log_writer",
+      "test": "commander/test_log_writer.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_log_writer_additional.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_print_all_nodes_button.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_rpc_command_generation.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_rpc_log_path.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "commander/test_rpc_token_detection.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "commander.services.session_player",
+      "test": "commander/test_session_player.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "commander.services.session_recorder",
+      "test": "commander/test_session_recorder.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "commander/test_token_detection_end_to_end.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/bstool/test_bstool_append.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/bstool/test_bstool_bundling.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/bstool/test_bstool_color_updates.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/command_queue/test_command_execution.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/command_queue/test_command_queue_sequential.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/command_queue/test_hierarchical_command_execution.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/command_queue/test_hierarchical_manual.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/command_queue/test_sequential_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_click_telnet_command_input.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_color_logic.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_color_update_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_config_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "node_config_parser",
+      "test": "integration/node_management/test_node_config_parser.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_config_sys_file_ui.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_config_transformation.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_config_validation.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_hierarchical_commands.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_print_commands.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/node_management/test_node_tree_presenter_signals.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/telnet/test_telnet_command_output.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/telnet/test_telnet_connect.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/telnet/test_telnet_connect_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/telnet/test_telnet_connection.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/telnet/test_telnet_copy_to_log_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/test_multi_file_report_generation.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/test_processor_integration.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/token_detection/test_context_menu_tokens.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/token_detection/test_fbc_token_detection.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/token_detection/test_token_detection_end_to_end.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_auto_connect_initialization.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_debugger_connection_management.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_pause_resume_cancel.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_pause_resume_cancel_buttons.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_print_all_nodes_auto_connect.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_qt_append_behavior.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_qt_behavior.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_smart_tab_switching.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_startup_color_logic.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "integration/ui_behavior/test_tree_expansion.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "INTEGRATION",
+      "test": "memory_optimization/test_memory_workflow.py",
+      "status": "\ud83d\udd17 INTEGRATION"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "regression/bstool_issues/test_bstool_context_menu_fix.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "regression/ui_issues/test_auto_expansion_fix.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "system/command_queue/test_sequential_output_display.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "system/sys_file/test_sys_file_parsing.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "system/sys_file/test_sys_file_parsing_v2.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "system/telnet/test_telnet_connection_management.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/node_management/test_node_manager_simple.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/node_management/test_node_suffix_stripping.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "commander.presenters.node_tree_presenter",
+      "test": "unit/node_management/test_node_tree_presenter.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/rpc_commands/test_rpc_normalization.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "sys_file_loader",
+      "test": "unit/sys_file/test_sys_file_loader.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/sys_file/test_sys_file_parser.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "generator",
+      "test": "unit/test_generator.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "log_creator",
+      "test": "unit/test_log_creator.py",
+      "status": "\u2705 ALIGNED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/token_detection/test_multiple_tokens.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/token_detection/test_token_detection.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/token_detection/test_token_detection_simple.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "ORPHANED",
+      "test": "unit/token_detection/test_token_detection_standalone.py",
+      "status": "\u26a0\ufe0f ORPHANED"
+    },
+    {
+      "source": "commander.utils.token_utils",
+      "test": "unit/token_detection/test_token_utils.py",
+      "status": "\u2705 ALIGNED"
+    }
+  ],
+  "untested_modules": [
+    "gui",
+    "gui_workers",
+    "main",
+    "node_config_dialog",
+    "processor",
+    "commander.command_queue",
+    "commander.constants",
+    "commander.contracts",
+    "commander.icons",
+    "commander.main_window",
+    "commander.models",
+    "commander.node_manager",
+    "commander.observable_model",
+    "commander.qt_init",
+    "commander.session_manager",
+    "commander.telnet_client",
+    "commander.widgets",
+    "commander",
+    "utils.file_utils",
+    "commander.commands.telnet_commands",
+    "commander.presenters.commander_presenter",
+    "commander.presenters.commander_presenter_utils",
+    "commander.presenters.node_tree_presenter_logic",
+    "commander.presenters.session_presenter",
+    "commander.presenters",
+    "commander.services.bstool_worker",
+    "commander.services.commander_service",
+    "commander.services.context_menu_filter",
+    "commander.services.context_menu_service",
+    "commander.services.error_handler",
+    "commander.services.error_reporter",
+    "commander.services.fbc_command_service",
+    "commander.services.hierarchical_command_service",
+    "commander.services.logging_service",
+    "commander.services.log_command_service",
+    "commander.services.queue_management_service",
+    "commander.services.rpc_command_service",
+    "commander.services.sequential_command_processor",
+    "commander.services.status_service",
+    "commander.services.telnet_service",
+    "commander.services.threading_service",
+    "commander.services",
+    "commander.ui.bstool_tab",
+    "commander.ui.commander_ui_factory",
+    "commander.ui.node_tree_view",
+    "commander.ui.session_view",
+    "commander.ui.telnet_tab",
+    "commander.ui.theme",
+    "commander.utils.circuit_breaker",
+    "commander.utils.constants",
+    "commander.utils.error_detection",
+    "commander.utils.retry_utils",
+    "commander.utils.telnet_filters",
+    "commander.utils",
+    "commander.services.error_reporting.interface",
+    "commander.services.error_reporting.reporter",
+    "commander.services.error_reporting"
+  ],
+  "orphaned_tests": [
+    "commander/system/test_bstool_ui_output.py",
+    "commander/test_bstool_import.py",
+    "commander/test_bstool_tab_ui.py",
+    "commander/test_button_actions.py",
+    "commander/test_button_styling.py",
+    "commander/test_clear_log.py",
+    "commander/test_clear_subgroup_log_files.py",
+    "commander/test_clear_subgroup_log_files_v2.py",
+    "commander/test_copy_to_log_functionality.py",
+    "commander/test_fbc_subsection_context_menu.py",
+    "commander/test_log_write_notification_display.py",
+    "commander/test_log_writer_additional.py",
+    "commander/test_print_all_nodes_button.py",
+    "commander/test_rpc_command_generation.py",
+    "commander/test_rpc_log_path.py",
+    "commander/test_rpc_token_detection.py",
+    "regression/bstool_issues/test_bstool_context_menu_fix.py",
+    "regression/ui_issues/test_auto_expansion_fix.py",
+    "system/command_queue/test_sequential_output_display.py",
+    "system/sys_file/test_sys_file_parsing.py",
+    "system/sys_file/test_sys_file_parsing_v2.py",
+    "system/telnet/test_telnet_connection_management.py",
+    "unit/node_management/test_node_manager_simple.py",
+    "unit/node_management/test_node_suffix_stripping.py",
+    "unit/rpc_commands/test_rpc_normalization.py",
+    "unit/sys_file/test_sys_file_parser.py",
+    "unit/token_detection/test_multiple_tokens.py",
+    "unit/token_detection/test_token_detection.py",
+    "unit/token_detection/test_token_detection_simple.py",
+    "unit/token_detection/test_token_detection_standalone.py"
+  ]
+}

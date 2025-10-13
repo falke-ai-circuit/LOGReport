@@ -1,5 +1,10 @@
 """
-Test telnet connection manag    def test_verify_system_mode_already_in_system(self, telnet_session):
+Test telnet connection management system integration
+"""
+import pytest
+from unittest.mock import Mock, patch, MagicMock
+
+def test_verify_system_mode_already_in_system(telnet_session):
         """Test verification when already in system mode"""
         # Mock responses: yes response, clear response, then System Commands
         telnet_session.connection.read_very_eager.side_effect = [

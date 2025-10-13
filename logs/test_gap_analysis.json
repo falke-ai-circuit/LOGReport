@@ -1,0 +1,822 @@
+{
+  "p0_critical": [
+    {
+      "module": "gui",
+      "loc": 381,
+      "complexity": 87.6,
+      "classes": 1,
+      "functions": 19,
+      "priority_score": 90,
+      "reasons": [
+        "core module",
+        "large (381 LOC)",
+        "complex (score: 87.6)"
+      ]
+    },
+    {
+      "module": "node_config_dialog",
+      "loc": 778,
+      "complexity": 116.8,
+      "classes": 1,
+      "functions": 14,
+      "priority_score": 90,
+      "reasons": [
+        "core module",
+        "large (778 LOC)",
+        "complex (score: 116.8)"
+      ]
+    },
+    {
+      "module": "commander.services.context_menu_service",
+      "loc": 439,
+      "complexity": 97.9,
+      "classes": 4,
+      "functions": 15,
+      "priority_score": 60,
+      "reasons": [
+        "large (439 LOC)",
+        "complex (score: 97.9)",
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.hierarchical_command_service",
+      "loc": 352,
+      "complexity": 67.2,
+      "classes": 2,
+      "functions": 8,
+      "priority_score": 60,
+      "reasons": [
+        "large (352 LOC)",
+        "complex (score: 67.2)",
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.sequential_command_processor",
+      "loc": 956,
+      "complexity": 166.1,
+      "classes": 2,
+      "functions": 25,
+      "priority_score": 60,
+      "reasons": [
+        "large (956 LOC)",
+        "complex (score: 166.1)",
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.telnet_service",
+      "loc": 417,
+      "complexity": 76.7,
+      "classes": 1,
+      "functions": 12,
+      "priority_score": 60,
+      "reasons": [
+        "large (417 LOC)",
+        "complex (score: 76.7)",
+        "service layer"
+      ]
+    }
+  ],
+  "p1_high": [
+    {
+      "module": "commander.command_queue",
+      "loc": 420,
+      "complexity": 88.0,
+      "classes": 4,
+      "functions": 10,
+      "priority_score": 50,
+      "reasons": [
+        "large (420 LOC)",
+        "complex (score: 88.0)"
+      ]
+    },
+    {
+      "module": "commander.node_manager",
+      "loc": 789,
+      "complexity": 133.4,
+      "classes": 1,
+      "functions": 23,
+      "priority_score": 50,
+      "reasons": [
+        "large (789 LOC)",
+        "complex (score: 133.4)"
+      ]
+    },
+    {
+      "module": "commander.session_manager",
+      "loc": 508,
+      "complexity": 140.3,
+      "classes": 6,
+      "functions": 27,
+      "priority_score": 50,
+      "reasons": [
+        "large (508 LOC)",
+        "complex (score: 140.3)"
+      ]
+    },
+    {
+      "module": "main",
+      "loc": 42,
+      "complexity": 9.2,
+      "classes": 0,
+      "functions": 1,
+      "priority_score": 40,
+      "reasons": [
+        "core module"
+      ]
+    },
+    {
+      "module": "processor",
+      "loc": 105,
+      "complexity": 33.5,
+      "classes": 1,
+      "functions": 8,
+      "priority_score": 40,
+      "reasons": [
+        "core module"
+      ]
+    }
+  ],
+  "p2_medium": [
+    {
+      "module": "commander.services.error_reporter",
+      "loc": 84,
+      "complexity": 50.4,
+      "classes": 5,
+      "functions": 7,
+      "priority_score": 30,
+      "reasons": [
+        "complex (score: 50.4)",
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.contracts",
+      "loc": 161,
+      "complexity": 60.1,
+      "classes": 2,
+      "functions": 16,
+      "priority_score": 20,
+      "reasons": [
+        "complex (score: 60.1)"
+      ]
+    },
+    {
+      "module": "commander.ui.bstool_tab",
+      "loc": 196,
+      "complexity": 52.1,
+      "classes": 1,
+      "functions": 12,
+      "priority_score": 20,
+      "reasons": [
+        "complex (score: 52.1)"
+      ]
+    },
+    {
+      "module": "commander.ui.node_tree_view",
+      "loc": 255,
+      "complexity": 82.5,
+      "classes": 1,
+      "functions": 24,
+      "priority_score": 20,
+      "reasons": [
+        "complex (score: 82.5)"
+      ]
+    }
+  ],
+  "p3_low": [
+    {
+      "module": "commander.services.bstool_worker",
+      "loc": 203,
+      "complexity": 33.8,
+      "classes": 1,
+      "functions": 2,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.commander_service",
+      "loc": 120,
+      "complexity": 34.5,
+      "classes": 1,
+      "functions": 6,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.context_menu_filter",
+      "loc": 211,
+      "complexity": 42.6,
+      "classes": 1,
+      "functions": 7,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.error_handler",
+      "loc": 168,
+      "complexity": 42.3,
+      "classes": 1,
+      "functions": 9,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.fbc_command_service",
+      "loc": 101,
+      "complexity": 30.1,
+      "classes": 1,
+      "functions": 6,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.logging_service",
+      "loc": 163,
+      "complexity": 36.3,
+      "classes": 1,
+      "functions": 6,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.log_command_service",
+      "loc": 25,
+      "complexity": 13.5,
+      "classes": 1,
+      "functions": 2,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.queue_management_service",
+      "loc": 36,
+      "complexity": 3.6,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.rpc_command_service",
+      "loc": 113,
+      "complexity": 31.3,
+      "classes": 1,
+      "functions": 6,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.status_service",
+      "loc": 63,
+      "complexity": 22.3,
+      "classes": 1,
+      "functions": 5,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.threading_service",
+      "loc": 63,
+      "complexity": 20.8,
+      "classes": 1,
+      "functions": 4,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services",
+      "loc": 0,
+      "complexity": 0,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.error_reporting.interface",
+      "loc": 47,
+      "complexity": 20.7,
+      "classes": 2,
+      "functions": 2,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.error_reporting.reporter",
+      "loc": 0,
+      "complexity": 0,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "commander.services.error_reporting",
+      "loc": 0,
+      "complexity": 0,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 10,
+      "reasons": [
+        "service layer"
+      ]
+    },
+    {
+      "module": "gui_workers",
+      "loc": 20,
+      "complexity": 11.5,
+      "classes": 1,
+      "functions": 2,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.constants",
+      "loc": 43,
+      "complexity": 10.8,
+      "classes": 1,
+      "functions": 0,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.icons",
+      "loc": 109,
+      "complexity": 42.4,
+      "classes": 0,
+      "functions": 14,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.main_window",
+      "loc": 86,
+      "complexity": 33.1,
+      "classes": 1,
+      "functions": 8,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.models",
+      "loc": 44,
+      "complexity": 19.4,
+      "classes": 2,
+      "functions": 2,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.observable_model",
+      "loc": 8,
+      "complexity": 6.3,
+      "classes": 1,
+      "functions": 0,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.qt_init",
+      "loc": 36,
+      "complexity": 9.1,
+      "classes": 0,
+      "functions": 2,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.telnet_client",
+      "loc": 201,
+      "complexity": 41.6,
+      "classes": 1,
+      "functions": 7,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.widgets",
+      "loc": 80,
+      "complexity": 28.0,
+      "classes": 2,
+      "functions": 4,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander",
+      "loc": 0,
+      "complexity": 0,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "utils.file_utils",
+      "loc": 248,
+      "complexity": 34.8,
+      "classes": 0,
+      "functions": 4,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.commands.telnet_commands",
+      "loc": 114,
+      "complexity": 46.4,
+      "classes": 2,
+      "functions": 12,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.presenters.commander_presenter",
+      "loc": 193,
+      "complexity": 46.3,
+      "classes": 1,
+      "functions": 8,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.presenters.commander_presenter_utils",
+      "loc": 174,
+      "complexity": 36.9,
+      "classes": 1,
+      "functions": 5,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.presenters.node_tree_presenter_logic",
+      "loc": 62,
+      "complexity": 20.7,
+      "classes": 1,
+      "functions": 2,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.presenters.session_presenter",
+      "loc": 115,
+      "complexity": 35.0,
+      "classes": 1,
+      "functions": 6,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.presenters",
+      "loc": 0,
+      "complexity": 0,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.ui.commander_ui_factory",
+      "loc": 85,
+      "complexity": 28.0,
+      "classes": 1,
+      "functions": 6,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.ui.session_view",
+      "loc": 54,
+      "complexity": 16.9,
+      "classes": 1,
+      "functions": 2,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.ui.telnet_tab",
+      "loc": 186,
+      "complexity": 42.1,
+      "classes": 1,
+      "functions": 8,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.ui.theme",
+      "loc": 159,
+      "complexity": 30.4,
+      "classes": 2,
+      "functions": 2,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.utils.circuit_breaker",
+      "loc": 115,
+      "complexity": 40.5,
+      "classes": 2,
+      "functions": 8,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.utils.constants",
+      "loc": 27,
+      "complexity": 8.7,
+      "classes": 1,
+      "functions": 0,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.utils.error_detection",
+      "loc": 82,
+      "complexity": 11.2,
+      "classes": 0,
+      "functions": 1,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.utils.retry_utils",
+      "loc": 132,
+      "complexity": 40.2,
+      "classes": 2,
+      "functions": 7,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.utils.telnet_filters",
+      "loc": 46,
+      "complexity": 7.1,
+      "classes": 0,
+      "functions": 1,
+      "priority_score": 0,
+      "reasons": []
+    },
+    {
+      "module": "commander.utils",
+      "loc": 0,
+      "complexity": 0,
+      "classes": 0,
+      "functions": 0,
+      "priority_score": 0,
+      "reasons": []
+    }
+  ],
+  "performance_tests_needed": [
+    {
+      "type": "throughput",
+      "description": "Command queue throughput test",
+      "target": "commander.command_queue",
+      "suggested_file": "tests/performance/test_command_queue_throughput.py"
+    },
+    {
+      "type": "concurrency",
+      "description": "Telnet session concurrency test",
+      "target": "commander.services.telnet_service",
+      "suggested_file": "tests/performance/test_telnet_concurrency.py"
+    },
+    {
+      "type": "memory",
+      "description": "Memory leak detection in long-running sessions",
+      "target": "commander.session_manager",
+      "suggested_file": "tests/performance/test_memory_leak_detection.py"
+    }
+  ],
+  "orphaned_reclassification": [
+    {
+      "test": "commander/system/test_bstool_ui_output.py",
+      "name": "bstool_ui_output",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "commander/test_bstool_import.py",
+      "name": "bstool_import",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "commander/test_bstool_tab_ui.py",
+      "name": "bstool_tab_ui",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "commander/test_button_actions.py",
+      "name": "button_actions",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "commander/test_button_styling.py",
+      "name": "button_styling",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "commander/test_clear_log.py",
+      "name": "clear_log",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "commander/test_clear_subgroup_log_files.py",
+      "name": "clear_subgroup_log_files",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "commander/test_clear_subgroup_log_files_v2.py",
+      "name": "clear_subgroup_log_files_v2",
+      "recommendation": "investigate_duplicate",
+      "reason": "version suffix detected"
+    },
+    {
+      "test": "commander/test_copy_to_log_functionality.py",
+      "name": "copy_to_log_functionality",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "commander/test_fbc_subsection_context_menu.py",
+      "name": "fbc_subsection_context_menu",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "commander/test_log_write_notification_display.py",
+      "name": "log_write_notification_display",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "commander/test_log_writer_additional.py",
+      "name": "log_writer_additional",
+      "recommendation": "investigate_duplicate",
+      "reason": "version suffix detected"
+    },
+    {
+      "test": "commander/test_print_all_nodes_button.py",
+      "name": "print_all_nodes_button",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "commander/test_rpc_command_generation.py",
+      "name": "rpc_command_generation",
+      "recommendation": "align_with_rpc_service",
+      "reason": "RPC command functionality"
+    },
+    {
+      "test": "commander/test_rpc_log_path.py",
+      "name": "rpc_log_path",
+      "recommendation": "align_with_rpc_service",
+      "reason": "RPC command functionality"
+    },
+    {
+      "test": "commander/test_rpc_token_detection.py",
+      "name": "rpc_token_detection",
+      "recommendation": "align_with_token_utils",
+      "reason": "token-related functionality"
+    },
+    {
+      "test": "regression/bstool_issues/test_bstool_context_menu_fix.py",
+      "name": "bstool_context_menu_fix",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "regression/ui_issues/test_auto_expansion_fix.py",
+      "name": "auto_expansion_fix",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "system/command_queue/test_sequential_output_display.py",
+      "name": "sequential_output_display",
+      "recommendation": "reclassify_as_integration",
+      "reason": "behavioral/UI test pattern"
+    },
+    {
+      "test": "system/sys_file/test_sys_file_parsing.py",
+      "name": "sys_file_parsing",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "system/sys_file/test_sys_file_parsing_v2.py",
+      "name": "sys_file_parsing_v2",
+      "recommendation": "investigate_duplicate",
+      "reason": "version suffix detected"
+    },
+    {
+      "test": "system/telnet/test_telnet_connection_management.py",
+      "name": "telnet_connection_management",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "unit/node_management/test_node_manager_simple.py",
+      "name": "node_manager_simple",
+      "recommendation": "investigate_duplicate",
+      "reason": "version suffix detected"
+    },
+    {
+      "test": "unit/node_management/test_node_suffix_stripping.py",
+      "name": "node_suffix_stripping",
+      "recommendation": "align_with_node_manager",
+      "reason": "node management functionality"
+    },
+    {
+      "test": "unit/rpc_commands/test_rpc_normalization.py",
+      "name": "rpc_normalization",
+      "recommendation": "align_with_rpc_service",
+      "reason": "RPC command functionality"
+    },
+    {
+      "test": "unit/sys_file/test_sys_file_parser.py",
+      "name": "sys_file_parser",
+      "recommendation": "review_manually",
+      "reason": "unclear module mapping"
+    },
+    {
+      "test": "unit/token_detection/test_multiple_tokens.py",
+      "name": "multiple_tokens",
+      "recommendation": "align_with_token_utils",
+      "reason": "token-related functionality"
+    },
+    {
+      "test": "unit/token_detection/test_token_detection.py",
+      "name": "token_detection",
+      "recommendation": "align_with_token_utils",
+      "reason": "token-related functionality"
+    },
+    {
+      "test": "unit/token_detection/test_token_detection_simple.py",
+      "name": "token_detection_simple",
+      "recommendation": "investigate_duplicate",
+      "reason": "version suffix detected"
+    },
+    {
+      "test": "unit/token_detection/test_token_detection_standalone.py",
+      "name": "token_detection_standalone",
+      "recommendation": "investigate_duplicate",
+      "reason": "version suffix detected"
+    }
+  ],
+  "missing_test_types": [
+    {
+      "category": "edge_cases",
+      "description": "Error handling and boundary conditions",
+      "priority": "P1",
+      "suggested_locations": [
+        "tests/unit/edge_cases/test_null_handling.py",
+        "tests/unit/edge_cases/test_boundary_conditions.py",
+        "tests/unit/edge_cases/test_error_propagation.py"
+      ]
+    },
+    {
+      "category": "regression",
+      "description": "Known bug regression tests (only 2 currently)",
+      "priority": "P2",
+      "suggested_locations": [
+        "tests/regression/telnet_issues/",
+        "tests/regression/command_queue_issues/"
+      ]
+    }
+  ]
+}
