@@ -75,16 +75,18 @@ NEXT: [proceed_to_next_phase|alternative_action]
 ### Phase 1: REMEMBER ⚠️ MANDATORY
 **Objective**: Load existing knowledge from memory and documentation  
 **Critical**: ALWAYS load memory layers at initialization | Codegraph loaded in ASSESS phase | ⚠️ **FULL FILE LOADING REQUIRED** - Read ENTIRE files (all lines) for global_memory.json, project_memory.json (workflows may only load parts)  
-**Actions**: Load global_memory.json COMPLETE (all Global.* entities, ALL LINES) → Load project_memory.json COMPLETE (all Project.* entities, ALL LINES) → Review file memory (README, CHANGELOG, TODO, docs/) → Search session memory (logs/workflow_*.md) → Validate hierarchy (4-layer pattern)  
+**Actions**: Load global_memory.json COMPLETE (all Global.* entities, ALL LINES) → Load project_memory.json COMPLETE (all Project.* entities, ALL LINES) → **VERIFY LOAD: Report last 2 entries from each file with hierarchy patterns to confirm complete loading** → Review file memory (README, CHANGELOG, TODO, docs/) → Search session memory (logs/workflow_*.md) → Validate hierarchy (4-layer pattern)  
 **Strategy**: Global+Project = load at init FULLY (read entire files end-to-end), available all phases | Codegraph = loaded in ASSESS FULLY (read entire file), available ASSESS→TEST | Files = scan key docs | Sessions = review recent logs  
-**Completion**: Standard + `MEMORY:[global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count]]`
+**Verification Check**: ⚠️ **MANDATORY** - Include in completion status: Last entry hierarchy from global_memory.json (e.g., "Global.Domain.Workflows") + Last entry hierarchy from project_memory.json (e.g., "Project.Testing.Coverage.Feature_*") to prove full file read  
+**Completion**: Standard + `MEMORY:[global_entities:[count] global_patterns:[Pattern.*] | project_entities:[count] project_domains:[Domain.Cluster] | clusters_loaded:[list] | docs_reviewed:[files] | workflows_analyzed:[count] | **VERIFIED_LOAD:[global_last:"hierarchy_pattern" project_last:"hierarchy_pattern" confirms_complete:YES]**]`
 
 ### Phase 2: ASSESS ⚠️ CODEGRAPH LOAD POINT
 **Objective**: Validate environment and load codebase structure into context  
 **Critical**: Load codegraph.json HERE - makes it available for all subsequent phases | ⚠️ **FULL FILE LOADING REQUIRED** - Read ENTIRE codegraph.json (all lines, all entities, all relations)  
-**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → **LOAD codegraph.json into context** (read entire file end-to-end, ALL LINES, ALL ENTITIES) → identify gaps → query loaded codegraph for relevant modules/classes → create initial CEPH  
+**Actions**: Check structure → verify environment (Python, deps, venv) → validate tools (pytest, linters) → review state → **LOAD codegraph.json into context** (read entire file end-to-end, ALL LINES, ALL ENTITIES) → **VERIFY LOAD: Report last 2 Module entries with hierarchy patterns to confirm complete loading** → identify gaps → query loaded codegraph for relevant modules/classes → create initial CEPH  
 **CEPH**: `CURRENT:[facts + state + environment + constraints] | EXPECTED:[target + acceptance_criteria] | PROBLEM:[one_sentence + scope] | HYPOTHESES:[H1:cause→prediction→test] | EVIDENCE:[logs + metrics + existing_code]`  
-**Completion**: Standard + `CEPH:[initial context created]` + `CODEGRAPH:[loaded:YES modules:N classes:N methods:N relations:N]` + `CODEGRAPH_REFS:[modules:[list] classes:[list] relevant_relations:[count]]`
+**Verification Check**: ⚠️ **MANDATORY** - Include in completion status: Last Module entry hierarchy from codegraph.json (e.g., "Code.Tests.Unit.Module_*") to prove full file read  
+**Completion**: Standard + `CEPH:[initial context created]` + `CODEGRAPH:[loaded:YES modules:N classes:N methods:N relations:N **| VERIFIED_LOAD:[codegraph_last:"Code.*.*.Module_name" confirms_complete:YES]**]` + `CODEGRAPH_REFS:[modules:[list] classes:[list] relevant_relations:[count]]`
 
 ### Phase 3: ANALYZE
 **Objective**: Investigate patterns and root causes  
@@ -164,17 +166,17 @@ markdown
 **Files**: `project_memory.json` (Project.*) | `global_memory.json` (Global.*) | `codegraph.json` (Code.*)
 
 ### Operations by Phase
-| Phase | Action | Strategy |
-|-------|--------|----------|
-| **REMEMBER (1)** | Load | global_memory.json (Global.* all) + project_memory.json (Project.* all) + docs/ + logs/ | ⚠️ **READ ENTIRE FILES (all lines)**  |
-| **ASSESS (2) 🔑** | Load codegraph | Read entire codegraph.json end-to-end (ALL LINES, ALL ENTITIES, ALL RELATIONS) → Code.* entities available phases 2-8 |
-| **ANALYZE (3)** | Query | Trace IMPORTS/BELONGS_TO/DOCUMENTED_IN for dependencies, structure, context |
-| **ARCHITECT (4)** | Impact | Query affected modules (reverse IMPORTS), downstream deps, inheritance |
-| **IMPLEMENT (5) ⚠️** | Reference | Match signatures, patterns, class structures, conventions from loaded codegraph |
-| **DEBUG (6) ⚠️** | Trace | Follow CALLS chains, locate implementations, track dependency flow |
-| **TEST (7)** | Map surface | Query methods needing tests, identify coverage gaps |
-| **LEARN (8) ⚠️** | Persist | Extract 3+ entities → temp JSONL → append → verify count → cleanup |
-| **LOG (10)** | Reconstruct | Create logs/workflow_*.md (NOT memory persistence) |
+| Phase | Action | Strategy | Verification |
+|-------|--------|----------|--------------|
+| **REMEMBER (1)** | Load | global_memory.json (Global.* all) + project_memory.json (Project.* all) + docs/ + logs/ | ⚠️ **READ ENTIRE FILES (all lines)** | ⚠️ Report last 2 entries with hierarchy from each file |
+| **ASSESS (2) 🔑** | Load codegraph | Read entire codegraph.json end-to-end (ALL LINES, ALL ENTITIES, ALL RELATIONS) → Code.* entities available phases 2-8 | ⚠️ Report last 2 Module entries with hierarchy |
+| **ANALYZE (3)** | Query | Trace IMPORTS/BELONGS_TO/DOCUMENTED_IN for dependencies, structure, context | Confirm codegraph queries return results |
+| **ARCHITECT (4)** | Impact | Query affected modules (reverse IMPORTS), downstream deps, inheritance | Reference specific codegraph entities in decisions |
+| **IMPLEMENT (5) ⚠️** | Reference | Match signatures, patterns, class structures, conventions from loaded codegraph | List CODE_PATTERNS used from codegraph |
+| **DEBUG (6) ⚠️** | Trace | Follow CALLS chains, locate implementations, track dependency flow | Show EXECUTION_TRACE from codegraph |
+| **TEST (7)** | Map surface | Query methods needing tests, identify coverage gaps | List TEST_SURFACE mapped from codegraph |
+| **LEARN (8) ⚠️** | Persist | Extract 3+ entities → temp JSONL → append → verify count → cleanup | Report line count before→after for both files |
+| **LOG (10)** | Reconstruct | Create logs/workflow_*.md (NOT memory persistence) | N/A |
 
 **Codegraph Load**: ASSESS (phase 2) reads entire codegraph.json into context (ALL LINES) | Available through LEARN (phase 8) | Query by pattern (`Code.Module.*name*`), trace relations (BELONGS_TO, IMPORTS), map dependencies  
 **Codegraph Mandatory**: IMPLEMENT (5), DEBUG (6), LEARN (8) for new code | Recommended: ANALYZE (3), ARCHITECT (4), TEST (7)
@@ -201,7 +203,7 @@ Phase transitions: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE 
 Use `manage_todo_list`: Create in PLAN (11 phases) → Mark in-progress before starting → Mark completed after (with STATUS) → Maintain visibility
 
 ## Error Recovery
-**Test Failures**: TEST → DEBUG (re-hypothesis) → IMPLEMENT (fix) → TEST (verify) | **Blocked Phase**: Document in BLOCKERS → skip to LOG → create workflow_partial_*.md | **Memory Load Failure**: Verify files exist → check JSONL format → validate 4-layer pattern | **Codegraph Missing**: Proceed without (manual IMPLEMENT/DEBUG) → create in LEARN
+**Test Failures**: TEST → DEBUG (re-hypothesis) → IMPLEMENT (fix) → TEST (verify) | **Blocked Phase**: Document in BLOCKERS → skip to LOG → create workflow_partial_*.md | **Memory Load Failure**: Verify files exist → check JSONL format → validate 4-layer pattern → **re-read entire file with verification** → report last entries to confirm | **Codegraph Missing**: Proceed without (manual IMPLEMENT/DEBUG) → create in LEARN | **Incomplete Load Detected**: Missing last entries in verification → re-read file completely → confirm counts → report hierarchies | **Context Lost**: Query returns no results → reload file in current phase → verify with test query → proceed with fresh context
 
 ---
 

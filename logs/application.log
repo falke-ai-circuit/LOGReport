@@ -34333,3 +34333,5 @@ pic  IREX ERROR  POLL ERROR   RESP FAIL  IREX COUNT     TIMEOUT
 2025-10-12 17:18:25,148 - root - DEBUG - CommandWorker.run: Final processed response length: 1319
 2025-10-12 17:18:25,148 - root - DEBUG - CommandWorker.run: Finished command: print from fbc rupi counters 1630000, success=True
 2025-10-12 17:18:25,149 - root - DEBUG - CommandWorker.run: Emitting finished signal for command: print from fbc rupi counters 1630000
+2025-10-13 11:24:04,085 - root - DEBUG - TokenValidator initialized
+2025-10-13 11:24:04,085 - root - DEBUG - TokenRateLimiter initialized with max_tokens_per_second=100
