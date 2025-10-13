@@ -152,7 +152,7 @@ class LogReportGUI(QMainWindow):
         self.process_btn = QPushButton("Generate Report")
         self.process_btn.clicked.connect(self._process_logs)
 
-        self.generate_btn = QPushButton("Generate")
+        self.generate_btn = QPushButton("Save Report")
         btn_layout.addWidget(self.select_btn)
         btn_layout.addWidget(self.process_btn)
         btn_layout.addWidget(self.generate_btn)

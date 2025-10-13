@@ -1,0 +1,101 @@
+This is a log file for AP06_192-168-0-16_202.rpc.
+Generated on 2025-10-12 12:12:08.[2025-10-12 12:13:40] print from fbc rupi counters 2020000
+print fro fbc rpi countrs 202000
+
+        Getting FIELD BUS error counters from RUPI(8344) from FBC agent 2020000
+
+pic  IREX ERROR  POLL ERROR   RESP FAIL  IREX COUNT     TIMEOUT
+---  ----------  ----------   ---------  ----------     -------
+  0           0           0           0           0          99
+  1           0           0           0           0           0
+  2           0           0           0           0           0
+  3           0           0           0           0           0
+  4           0           0           0           0           0
+  5           0           0           0           0           0
+  6           0           0           0           0           0
+  7           0           0           0           0           0
+  8           0           0           0           0           0
+  9           0           0           0           0           0
+ 10           0           0           0           0           0
+ 11           0           0           0           0           0
+ 12           0           0           0           0           0
+ 13           0           0           0           0           0
+ 14           0           0           0           0           0
+ 15           0           0           0           0           0
+
+ Unknown command:         0
+[2025-10-12 15:45:04] print from fbc rupi counters 2020000
+print from fbc rupi ounters202000
+
+        Getting FIELD BUS error counters from RUPI(8344) from FBC agent 2020000
+
+pic  IREX ERROR  POLL ERROR   RESP FAIL  IREX COUNT     TIMEOUT
+---  ----------  ----------   ---------  ----------     -------
+  0           0           0           0           0         100
+  1           0           0           0           0           0
+  2           0           0           0           0           0
+  3           0           0           0           0           0
+  4           0           0           0           0           0
+  5           0           0           0           0           0
+  6           0           0           0           0           0
+  7           0           0           0           0           0
+  8           0           0           0           0           0
+  9           0           0           0           0           0
+ 10           0           0           0           0           0
+ 11           0           0           0           0           0
+ 12           0           0           0           0           0
+ 13           0           0           0           0           0
+ 14           0           0           0           0           0
+ 15           0           0           0           0           0
+
+ Unknown command:         0
+[2025-10-12 16:14:52] print from fbc rupi counters 2020000
+print fro fbc rupicounters 020000
+
+        Getting FIELD BUS error counters from RUPI(8344) from FBC agent 2020000
+
+pic  IREX ERROR  POLL ERROR   RESP FAIL  IREX COUNT     TIMEOUT
+---  ----------  ----------   ---------  ----------     -------
+  0           0           0           0           0         100
+  1           0           0           0           0           0
+  2           0           0           0           0           0
+  3           0           0           0           0           0
+  4           0           0           0           0           0
+  5           0           0           0           0           0
+  6           0           0           0           0           0
+  7           0           0           0           0           0
+  8           0           0           0           0           0
+  9           0           0           0           0           0
+ 10           0           0           0           0           0
+ 11           0           0           0           0           0
+ 12           0           0           0           0           0
+ 13           0           0           0           0           0
+ 14           0           0           0           0           0
+ 15           0           0           0           0           0
+
+ Unknown command:         0
+[2025-10-13 08:20:47] print from fbc rupi counters 2020000
+print from fbc rupi couners 202000
+
+        Getting FIELD BUS error counters from RUPI(8344) from FBC agent 2020000
+
+pic  IREX ERROR  POLL ERROR   RESP FAIL  IREX COUNT     TIMEOUT
+---  ----------  ----------   ---------  ----------     -------
+  0           0           0           0           0         100
+  1           0           0           0           0           0
+  2           0           0           0           0           0
+  3           0           0           0           0           0
+  4           0           0           0           0           0
+  5           0           0           0           0           0
+  6           0           0           0           0           0
+  7           0           0           0           0           0
+  8           0           0           0           0           0
+  9           0           0           0           0           0
+ 10           0           0           0           0           0
+ 11           0           0           0           0           0
+ 12           0           0           0           0           0
+ 13           0           0           0           0           0
+ 14           0           0           0           0           0
+ 15           0           0           0           0           0
+
+ Unknown command:         0

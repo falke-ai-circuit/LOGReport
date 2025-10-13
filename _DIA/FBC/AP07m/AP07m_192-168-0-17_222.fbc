@@ -1,0 +1,79 @@
+This is a log file for AP07m_192-168-0-17_222.fbc.
+Generated on 2025-10-12 12:12:08.[2025-10-12 12:13:57] print from fbc io structure 2220000
+print fro fb io stuctur 222000
+
+        Getting FBC Utilization Rate from FBC agent 2220000
+
+Display Field Bus Configuration via agent 2220000
+---------------------------------------------------
+ IBC  0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15     sum
+   0 Di16Di16Di16Di16Di16Di16Do16Do16Do16Do16Do16Ai8 Ai8 Ao4 Ai8        15
+   1 Di16Di16Do16Do16Ai8                                                 5
+   2 Di16Di16Do16Do16Ai8                                                 5
+   3 Di16Di16Do16Do16Ai8                                                 5
+   4 Di16Di16Di16Di16Di16Di16Do16Do16Do16Do16Do16Ai8 Ai8 Ao4 Ai8        15
+   5 Di16Di16Do16Do16Ai8                                                 5
+    6 Not Exists
+   7 Di16Di16Di16Di16Do16Do16                                            6
+   8 Di16Di16Di16Di16Do16Do16Di16Do16Ai8                                 9
+    9 Not Exists
+   10 Not Exists
+   11 Not Exists
+   12 Not Exists
+   13 Not Exists
+   14 Not Exists
+   15 Not Exists
+ Total sum: 65 I/O-units, 928 Channels(552 input, 376 output)
+ DI16P   : 29,DO16P   : 23,AI8C    : 11,AO4C    :  2,
+[2025-10-12 15:45:21] print from fbc io structure 2220000
+print from fc io strcture 220000
+
+        Getting FBC Utilization Rate from FBC agent 2220000
+
+Display Field Bus Configuration via agent 2220000
+---------------------------------------------------
+ IBC  0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15     sum
+   0 Di16Di16Di16Di16Di16Di16Do16Do16Do16Do16Do16Ai8 Ai8 Ao4 Ai8        15
+   1 Di16Di16Do16Do16Ai8                                                 5
+   2 Di16Di16Do16Do16Ai8                                                 5
+   3 Di16Di16Do16Do16Ai8                                                 5
+   4 Di16Di16Di16Di16Di16Di16Do16Do16Do16Do16Do16Ai8 Ai8 Ao4 Ai8        15
+   5 Di16Di16Do16Do16Ai8                                                 5
+    6 Not Exists
+   7 Di16Di16Di16Di16Do16Do16                                            6
+   8 Di16Di16Di16Di16Do16Do16Di16Do16Ai8                                 9
+    9 Not Exists
+   10 Not Exists
+   11 Not Exists
+   12 Not Exists
+   13 Not Exists
+   14 Not Exists
+   15 Not Exists
+ Total sum: 65 I/O-units, 928 Channels(552 input, 376 output)
+ DI16P   : 29,DO16P   : 23,AI8C    : 11,AO4C    :  2,
+[2025-10-13 08:21:03] print from fbc io structure 2220000
+print from fbc io structure 220000
+
+        Getting FBC Utilization Rate from FBC agent 2220000
+
+Display Field Bus Configuration via agent 2220000
+---------------------------------------------------
+ IBC  0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15     sum
+   0 Di16Di16Di16Di16Di16Di16Do16Do16Do16Do16Do16Ai8 Ai8 Ao4 Ai8        15
+   1 Di16Di16Do16Do16Ai8                                                 5
+   2 Di16Di16Do16Do16Ai8                                                 5
+   3 Di16Di16Do16Do16Ai8                                                 5
+   4 Di16Di16Di16Di16Di16Di16Do16Do16Do16Do16Do16Ai8 Ai8 Ao4 Ai8        15
+   5 Di16Di16Do16Do16Ai8                                                 5
+    6 Not Exists
+   7 Di16Di16Di16Di16Do16Do16                                            6
+   8 Di16Di16Di16Di16Do16Do16Di16Do16Ai8                                 9
+    9 Not Exists
+  10 Not Exists
+   11 Not Exists
+   12 Not Exists
+   13 Not Exists
+   14 Not Exists
+   15 Not Exists
+ Total sum: 65 I/O-units, 928 Channels(552 input, 376 output)
+ DI16P   : 29,DO16P   : 23,AI8C    : 11,AO4C    :  2,

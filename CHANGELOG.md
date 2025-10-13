@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Report Generation Improvements (2025-10-13)
+- [FEATURE] **Node-Based Report Organization** - Reports now group log content by node name (AP01, AP02m, AL01, etc.) instead of flat file list, processing all file types for each node before moving to next node
+- [FEATURE] **File Type Ordering** - Within each node, files processed in consistent order: .fbc → .rpc → .log → .lis (defined by TYPE_ORDER constant)
+- [FEATURE] **Clickable Table of Contents (PDF)** - PDF reports include clickable navigation at beginning with href links to node chapters, using anchor bookmarks (<a name="node"/>) for navigation targets
+- [FEATURE] **Automatic Table of Contents (DOCX)** - Word documents generate TOC automatically via add_heading() hierarchical structure (level 1=nodes, level 2=files)
+- [FEATURE] **Intelligent Line Wrapping** - Long lines in .log files automatically wrap at 80 characters (scientifically calculated: Courier 10pt × 80 chars = 480 points = 169.33mm, fits within 170mm usable width on A4 page with 20mm margins)
+- [FEATURE] **Button Rename** - Changed "Generate" button label to "Save Report" for clarity in main GUI
+- [IMPLEMENTATION] Added 5 new methods to src/generator.py: extract_node_from_filename() (regex AP\d{2}[mr]?|AL\d{2}), group_logs_by_node() (Dict[str, Dict[str, List[Dict]]] structure), wrap_long_lines() (textwrap with break_long_words=True for continuous chars), generate_pdf() (rewritten with TOC + anchors), generate_docx() (rewritten with hierarchical headings)
+- [IMPLEMENTATION] Try/except import pattern for runtime/test compatibility: `try: from utils.file_utils except: from src.utils.file_utils`
+- [BUGFIX] Fixed node manager QLayout error preventing multiple node deletions - removed duplicate init_ui() + populate_node_list() calls from node_config_dialog.py remove_node() method (lines 324-325)
+- [TESTING] Created comprehensive test suite tests/unit/test_report_generation_improvements.py with 24 tests (100% passing): NodeExtraction (6 tests), LogGrouping (4 tests), LineWrapping (6 tests), PDFGeneration (3 tests), DOCXGeneration (3 tests), Integration (2 tests)
+- [TESTING] Scientific width validation: reportlab.pdfbase.pdfmetrics.stringWidth('A'*80, 'Courier', 10) = 480 points = 169.33mm < 170mm usable width
+- [MODIFIED] `src/generator.py` (+120 lines) - Added node extraction, grouping, wrapping methods; rewrote PDF/DOCX generation with TOC and hierarchical structure
+- [MODIFIED] `src/gui.py` (line 155) - Changed button label from "Generate" to "Save Report"
+- [MODIFIED] `src/node_config_dialog.py` (-2 lines) - Removed duplicate init_ui() call in remove_node() method
+- [MODIFIED] `TODO.md` (line 56) - Marked report generation task complete with implementation details
+- [MEMORY] Extracted 4 entities to project_memory.json: Feature_NodeBasedOrganization, Feature_AnchorBookmarks, Feature_IntelligentLineWrapping, Feature_ComprehensiveTestCoverage
+- [CODEGRAPH] Added 2 module entities to codegraph.json: Module_generator (node-based report generation), Module_test_report_generation_improvements (comprehensive test coverage)
+- [USER VALIDATION] Line width calculation verified through 3 iterations (90→100→80 chars), user confirmed TOC missing then added, right edge overflow then fixed with scientific calculation
+
 ### Vertical Mode Protocol (VMP) Integration (2025-10-13)
 - [ARCHITECTURE] **Unified Workflow Interruption Management** - Replaced IRP (Interruption Response Protocol) with VMP (Vertical Mode Protocol) providing unified handling of user questions and agent-detected blockers via single stack-based protocol
 - [DESIGN] **Stack-Based Context Preservation** - Implemented PUSH/POP operations with breadcrumb navigation (← arrows), max depth 5 levels, emergency POP_ALL for circular dependencies. CEPH context accumulates evidence across stack levels

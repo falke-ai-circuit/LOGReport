@@ -321,9 +321,6 @@ class NodeConfigDialog(QDialog):
             else:
                 self.on_node_selected()  # This will clear fields
         
-        self.init_ui()
-        self.populate_node_list()
-        
     def init_ui(self):
         main_layout = QHBoxLayout()
         

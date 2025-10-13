@@ -13,7 +13,10 @@ LOGReport is a comprehensive tool for converting multiple log files from industr
 
 The application features:
 - **Recursive directory scanning**: Automatically discovers log files in nested folder structures
-- **Multi-format report generation**: Creates professional PDF or Word documents
+- **Multi-format report generation**: Creates professional PDF or Word documents with node-based organization
+- **Node-based organization**: Groups logs by node name (AP01, AP02m, AL01) with file type ordering (.fbc→.rpc→.log→.lis)
+- **Clickable Table of Contents**: PDF reports include clickable navigation with anchor bookmarks for each node chapter
+- **Intelligent line wrapping**: Automatically wraps long lines at 80 characters (verified for A4 page width) to prevent text overflow
 - **Flexible content filtering**: Configure line limits, ranges, and filtering modes
 - **Commander integration**: Full support for telnet/BsTool-based log collection from industrial devices
 
