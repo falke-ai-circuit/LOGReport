@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### UI Styling Improvements (2025-10-13)
+- [FEATURE] **Modern Scrollbar Styling** - Added custom scrollbar CSS to Commander theme for BsTool tab, Telnet tab, and Nodes tree with rounded handles (6px radius), hover states, and 12px width/height for consistent cross-platform appearance
+- [FEATURE] **Unified Highlight Color** - Changed selection highlight from #007ACC (blue) to #C969E6 (purple) matching main LOGReport window and Node Configurator (QColor(142, 45, 197).lighter()) for visual consistency across application
+- [FEATURE] **Tree Header Styling** - Added QHeaderView::section CSS to style "Nodes" tree header with dark theme colors (BACKGROUND_MEDIUM #3D3D3D) matching rest of Commander window
+- [IMPLEMENTATION] Added 4 new ColorPalette constants: SCROLLBAR_BACKGROUND (#2D2D30), SCROLLBAR_HANDLE (#5D5D5D), SCROLLBAR_HANDLE_HOVER (#6D6D6D), SCROLLBAR_HANDLE_PRESSED (#4D4D4D)
+- [IMPLEMENTATION] Enhanced StyleSheetManager.get_application_stylesheet() with ~50 lines of QScrollBar CSS (vertical/horizontal), QTreeWidget::item pseudo-classes (selected, hover), QHeaderView::section styling
+- [IMPLEMENTATION] Updated get_telnet_tab_stylesheet() with matching scrollbar styling for consistency
+- [MODIFIED] `src/commander/ui/theme.py` (+80 lines) - Updated ColorPalette and StyleSheetManager with scrollbar styling, unified highlight color, header styling
+- [NOTE] Windows native title bar color cannot be changed via Qt stylesheets (OS limitation)
+
 ### Report Generation Improvements (2025-10-13)
 - [FEATURE] **Node-Based Report Organization** - Reports now group log content by node name (AP01, AP02m, AL01, etc.) instead of flat file list, processing all file types for each node before moving to next node
 - [FEATURE] **File Type Ordering** - Within each node, files processed in consistent order: .fbc → .rpc → .log → .lis (defined by TYPE_ORDER constant)

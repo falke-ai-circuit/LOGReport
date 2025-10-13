@@ -27,7 +27,15 @@ class ColorPalette:
     # UI element colors
     BORDER_COLOR: Final[str] = "#3E3E42"
     INPUT_BACKGROUND: Final[str] = "#252526"
-    SELECTION_BACKGROUND: Final[str] = "#007ACC"
+    # Unified highlight color matching LOGReport main window and Node Configurator
+    # QColor(142, 45, 197).lighter() converts to approximately #C969E6
+    SELECTION_BACKGROUND: Final[str] = "#C969E6"
+    
+    # Scrollbar colors
+    SCROLLBAR_BACKGROUND: Final[str] = "#2D2D30"
+    SCROLLBAR_HANDLE: Final[str] = "#5D5D5D"
+    SCROLLBAR_HANDLE_HOVER: Final[str] = "#6D6D6D"
+    SCROLLBAR_HANDLE_PRESSED: Final[str] = "#4D4D4D"
     
     # Status colors
     STATUS_SUCCESS: Final[str] = "lime"
@@ -90,6 +98,75 @@ class StyleSheetManager:
                 border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
                 selection-background-color: """ + ColorPalette.SELECTION_BACKGROUND + """;
             }
+            QTreeWidget {
+                selection-background-color: """ + ColorPalette.SELECTION_BACKGROUND + """;
+            }
+            QTreeWidget::item:selected {
+                background-color: """ + ColorPalette.SELECTION_BACKGROUND + """;
+                color: #000000;
+            }
+            QTreeWidget::item:hover {
+                background-color: """ + ColorPalette.BACKGROUND_HIGHLIGHT + """;
+            }
+            QHeaderView::section {
+                background-color: """ + ColorPalette.BACKGROUND_MEDIUM + """;
+                color: """ + ColorPalette.TEXT_PRIMARY + """;
+                padding: 4px;
+                border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
+                font-weight: bold;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: """ + ColorPalette.SCROLLBAR_BACKGROUND + """;
+                width: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE + """;
+                min-height: 20px;
+                border-radius: 6px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_HOVER + """;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_PRESSED + """;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+            QScrollBar:horizontal {
+                border: none;
+                background: """ + ColorPalette.SCROLLBAR_BACKGROUND + """;
+                height: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE + """;
+                min-width: 20px;
+                border-radius: 6px;
+                margin: 2px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_HOVER + """;
+            }
+            QScrollBar::handle:horizontal:pressed {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_PRESSED + """;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                border: none;
+                background: none;
+                width: 0px;
+            }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+                background: none;
+            }
             QFrame {
                 border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
             }
@@ -150,6 +227,58 @@ class StyleSheetManager:
                 color: """ + ColorPalette.TEXT_PRIMARY + """;
                 border: 1px solid """ + ColorPalette.BORDER_COLOR + """;
                 selection-background-color: """ + ColorPalette.SELECTION_BACKGROUND + """;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: """ + ColorPalette.SCROLLBAR_BACKGROUND + """;
+                width: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE + """;
+                min-height: 20px;
+                border-radius: 6px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_HOVER + """;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_PRESSED + """;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+            QScrollBar:horizontal {
+                border: none;
+                background: """ + ColorPalette.SCROLLBAR_BACKGROUND + """;
+                height: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE + """;
+                min-width: 20px;
+                border-radius: 6px;
+                margin: 2px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_HOVER + """;
+            }
+            QScrollBar::handle:horizontal:pressed {
+                background: """ + ColorPalette.SCROLLBAR_HANDLE_PRESSED + """;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                border: none;
+                background: none;
+                width: 0px;
+            }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+                background: none;
             }
         """
 
