@@ -16,6 +16,38 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 - **Knowledge Capture**: Extract learnings to memory (`[MemoryType].[Domain].[SubCluster].[EntityType]_[Name]`)
 - **Session Logging**: Reconstruct workflow to file (`logs/workflow_*.md`) for future retrieval
 - **Organized Structure ⚠️ MANDATORY**: ALWAYS place files in proper subdirectories | Keep root clean (config files only)
+- **Interruption Resilience**: Emit IRP template when workflow interrupted → preserve specialist role → maintain TASK/PHASE context → resume seamlessly
+
+## Interruption Response Protocol (IRP)
+
+**Objective**: Maintain workflow context across user interruptions | Prevents context loss | Enables seamless resumption  
+**Critical**: Agent MUST emit IRP when user interrupts mid-workflow (questions, changes, feedback, new info)
+
+### IRP Template
+
+🔄 IRP
+MODE: [specialist_role_emoji_name]
+TASK: [one_sentence_workflow]
+PHASE: [N_PHASE_NAME]
+STATUS: [last_completed_action]
+
+[Address user's interruption]
+
+RESUMING: [MODE] → [PHASE] → [next_specific_action]
+
+**Mode Detection** (agent adopts current phase's specialist mindset):
+
+| User Interrupt | Mode | Phase | Icon |
+|----------------|------|-------|------|
+| "Why bug?" / "What's wrong?" | Debugger | 6_DEBUG | 🐛 |
+| "How design?" / "What approach?" | Architect | 4_ARCHITECT | 🏗️ |
+| "Implement X" / "Add feature Y" | Coder | 5_IMPLEMENT | 💻 |
+| "Tests pass?" / "Check results" | Tester | 7_TEST | 🧪 |
+| "Why behavior?" / "Analyze pattern" | Analyzer | 3_ANALYZE | 🔬 |
+| "Update docs" / "Explain usage" | Documenter | 9_DOCUMENT | 📚 |
+| General question | Current Phase Role | Current Phase | Current Icon |
+
+**Rules**: Max 6 lines (excluding answer) | TASK = persist original workflow | STATUS = last action | RESUMING = explicit next action | Answer between STATUS and RESUMING
 
 ## Completion Format (All Phases)
 
@@ -166,7 +198,8 @@ markdown
 **See `.github/instructions/structure.md`**: Directory organization (root clean) | File placement by phase (table-driven) | Document structure by type | Memory file structure (hierarchy, organization, update rules) | Naming conventions | Size limits
 
 ## Communication
-Phase transitions: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE → 🏗️ ARCHITECT → 💻 IMPLEMENT → 🐛 DEBUG → 🧪 TEST → 🎓 LEARN → 📚 DOCUMENT → 📝 LOG
+Phase transitions: 📋 PLAN → 🧠 REMEMBER → 🔍 ASSESS → 🔬 ANALYZE → 🏗️ ARCHITECT → 💻 IMPLEMENT → 🐛 DEBUG → 🧪 TEST → 🎓 LEARN → 📚 DOCUMENT → 📝 LOG  
+**Interruptions**: Use 🔄 IRP template → maintain MODE/TASK/PHASE → answer user → RESUMING statement → continue workflow
 
 ## Workflow Adaptability
 **Simple**: PLAN + REMEMBER + DEBUG + TEST + LEARN + LOG | **Medium**: PLAN + REMEMBER + ASSESS + IMPLEMENT + TEST + LEARN + DOCUMENT + LOG | **Complex**: All 11 phases | **Blocked**: Use BLOCKERS, adjust strategy | **Skip Rules**: ANALYZE/ARCHITECT optional for simple fixes | DOCUMENT optional if no user-facing changes
