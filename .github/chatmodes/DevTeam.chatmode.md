@@ -22,6 +22,8 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 
 **Objective**: Stack-based workflow management | Handle interruptions (user questions, agent blockers) → preserve context → resolve → resume | PUSH/POP operations | Breadcrumb navigation
 
+**Architecture**: Horizontal Flow = 11-phase workflow (sequential, may skip phases) | Vertical Modes = temporary specialist mindset activation (any phase available on-demand) | Mode borrows phase's instructions/mindset | Non-destructive (preserves horizontal position, returns after resolution)
+
 **Template**:
 
 🔄 VMP [PUSH|POP]
@@ -34,11 +36,10 @@ ORIGIN: [phase].action (interrupted_by:[user]|blocked_by:[issue])
 
 ACTION: [next_action | RESUME parent | CONTINUE horizontal]
 
-
 **Auto-Detection** (agent emits VMP PUSH when detecting):  
-Anomaly (unexpected, mismatch) → ANALYZE | Investigation (3+ hypotheses) → DEBUG | Test fail (<100% pass, MANDATORY) → DEBUG | Design flaw (architectural limitation) → ARCHITECT | Requirement gap (ambiguous criteria) → ANALYZE
+Anomaly (unexpected, mismatch) → ANALYZE | Investigation (3+ hypotheses) → DEBUG | Test fail (<100% pass, MANDATORY) → DEBUG | Design flaw (architectural limitation) → ARCHITECT | Requirement gap (ambiguous criteria) → ANALYZE | User explicit mode request (direct command) → [REQUESTED_MODE] | Code implementation needed (during IMPLEMENT phase) → CODE
 
-**Rules**: PUSH = blocker detected, preserve STACK | POP = blocker resolved, return to parent | USER = answer & resume (no stack change) | Max depth: 5 | Stack notation: 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG | CEPH accumulates evidence across stack
+**Rules**: PUSH = blocker detected OR user requests mode, preserve STACK | POP = blocker resolved, return to parent | USER = answer & resume (no stack change) | Max depth: 5 | Stack notation: 🏗️ ARCHITECT ← 🔬 ANALYZE ← 🐛 DEBUG | CEPH accumulates evidence across stack | **Mode Instructions**: On PUSH, load target phase's mindset/instructions as operational guide
 
 ## Completion Format (All Phases)
 
