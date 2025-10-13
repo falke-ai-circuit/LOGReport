@@ -23,7 +23,7 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 **Objective**: Maintain workflow context across user interruptions | Prevents context loss | Enables seamless resumption  
 **Critical**: Agent MUST emit IRP when user interrupts mid-workflow (questions, changes, feedback, new info)
 
-### IRP Template
+**Template**:
 
 🔄 IRP
 MODE: [specialist_role_emoji_name]
@@ -35,19 +35,8 @@ STATUS: [last_completed_action]
 
 RESUMING: [MODE] → [PHASE] → [next_specific_action]
 
-**Mode Detection** (agent adopts current phase's specialist mindset):
 
-| User Interrupt | Mode | Phase | Icon |
-|----------------|------|-------|------|
-| "Why bug?" / "What's wrong?" | Debugger | 6_DEBUG | 🐛 |
-| "How design?" / "What approach?" | Architect | 4_ARCHITECT | 🏗️ |
-| "Implement X" / "Add feature Y" | Coder | 5_IMPLEMENT | 💻 |
-| "Tests pass?" / "Check results" | Tester | 7_TEST | 🧪 |
-| "Why behavior?" / "Analyze pattern" | Analyzer | 3_ANALYZE | 🔬 |
-| "Update docs" / "Explain usage" | Documenter | 9_DOCUMENT | 📚 |
-| General question | Current Phase Role | Current Phase | Current Icon |
-
-**Rules**: Max 6 lines (excluding answer) | TASK = persist original workflow | STATUS = last action | RESUMING = explicit next action | Answer between STATUS and RESUMING
+**Rules**: Max 6 lines (excluding answer) | MODE = current phase specialist (🐛 Debugger, 🏗️ Architect, 💻 Coder, 🧪 Tester, 🔬 Analyzer, � Documenter) | TASK = persist original workflow | STATUS = last action | RESUMING = explicit next action | Answer between STATUS and RESUMING
 
 ## Completion Format (All Phases)
 
@@ -122,11 +111,12 @@ NEXT: [proceed_to_next_phase|alternative_action]
 **Completion**: Standard + `CEPH:[updated with debugging evidence]` + `LEARNINGS:[pattern:[debugging_insights] | approach:[diagnostic_methods]]` + `EXECUTION_TRACE:[call_chain:[methods] affected_classes:[list] dependency_issues:[count]]`
 
 ### Phase 7: TEST ⚠️ MANDATORY
-**Objective**: Validate solution comprehensively  
+**Objective**: Validate solution comprehensively against original user request  
 **Mindset**: Tester - systematic validation and quality gates  
-**Critical**: Tests NOT optional | 100% pass required | Failed tests = incomplete  
-**Actions**: **Map test surface using loaded codegraph** (methods needing tests, existing patterns, untested paths) → create comprehensive test file (unit + integration + edge cases) → run `python -m pytest <test_file> -v` → verify ALL tests pass (9/9, not 5/9) → if ANY fail: return to DEBUG → fix → re-run → repeat until 100% pass → proceed to LEARN only after 100% pass  
-**Completion**: Standard + `CEPH:[validated with test evidence]` + `LEARNINGS:[pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS:[test:file_path:coverage_info]` + `METRICS:[measurement_with_deltas]` ⚠️ MANDATORY DELTAS + `TEST_SURFACE:[methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]`
+**Critical**: Tests NOT optional | 100% pass required | Failed tests = incomplete | Validate against user prompt | User confirmation required for complex/non-conclusive tests  
+**Test Scope** (adaptive): Simple fixes = unit tests | Features = unit + integration | Architecture changes = unit + integration + regression | Always = validate user prompt acceptance criteria  
+**Actions**: Extract acceptance criteria from user prompt → **map test surface using loaded codegraph** (methods needing tests, existing patterns, untested paths) → create appropriate test coverage → run `python -m pytest <test_file> -v` → verify ALL tests pass (9/9, not 5/9) → **if ANY fail: route by type** (logic errors → DEBUG | design flaws → ARCHITECT | requirements mismatch → ANALYZE) → fix → re-run → repeat until 100% pass → **if tests complex/non-conclusive/UI/UX: request user validation** → proceed to LEARN only after 100% pass + user validation (if needed)  
+**Completion**: Standard + `CEPH:[validated with test evidence]` + `LEARNINGS:[pattern:[testing_insights] | approach:[validation_methods]]` + `ARTIFACTS:[test:file_path:coverage_info]` + `METRICS:[measurement_with_deltas]` ⚠️ MANDATORY DELTAS + `TEST_SURFACE:[methods_tested:[N/M] classes_covered:[list] edge_cases:[count]]` + `USER_VALIDATION:[prompt_criteria_met + user_confirmed:yes/no/not_needed]`
 
 ### Phase 8: LEARN ⚠️ MANDATORY
 **Objective**: Persist learnings to project_memory.json AND codegraph.json (BOTH required)  
