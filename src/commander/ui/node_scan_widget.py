@@ -10,10 +10,42 @@ from PyQt5.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem, QCheckBox,
     QHeaderView
 )
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt
+from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRunnable, QThreadPool, QObject
 from PyQt5.QtGui import QColor, QFont
 from pathlib import Path
 import logging
+
+from ..services.fbc_comparison_service import FbcComparisonService, ComparisonResult
+
+
+class ComparisonWorkerSignals(QObject):
+    """Signals for ComparisonWorker"""
+    finished = pyqtSignal(object)  # ComparisonResult
+    error = pyqtSignal(str)  # Error message
+
+
+class ComparisonWorker(QRunnable):
+    """Worker thread for executing comparison asynchronously"""
+    
+    def __init__(self, comparison_service, node_name, token_id, file_data):
+        super().__init__()
+        self.comparison_service = comparison_service
+        self.node_name = node_name
+        self.token_id = token_id
+        self.file_data = file_data
+        self.signals = ComparisonWorkerSignals()
+    
+    def run(self):
+        """Execute comparison in background thread"""
+        try:
+            result = self.comparison_service.compare_with_live(
+                self.node_name,
+                self.token_id,
+                self.file_data
+            )
+            self.signals.finished.emit(result)
+        except Exception as e:
+            self.signals.error.emit(str(e))
 
 
 class NodeScanWidget(QWidget):
@@ -37,6 +69,18 @@ class NodeScanWidget(QWidget):
         self.current_data = None  # Parsed FbcTableData
         self.current_file = None
         self.logger = logging.getLogger(__name__)
+        
+        # Comparison service (only if telnet_service provided)
+        self.comparison_service = None
+        if self.telnet_service:
+            self.comparison_service = FbcComparisonService(
+                telnet_service=self.telnet_service,
+                fbc_parser_service=self.parser_service
+            )
+        
+        # Thread pool for async comparison
+        self.thread_pool = QThreadPool()
+        self.thread_pool.setMaxThreadCount(1)  # Sequential execution
         
         # Auto-refresh configuration
         self.auto_refresh_timer = QTimer()
@@ -321,19 +365,103 @@ class NodeScanWidget(QWidget):
     
     def _on_compare_clicked(self):
         """Handle Compare Live button click"""
-        if not self.current_data or not self.telnet_service:
-            self.status_message.emit("Cannot compare: no data or telnet service", 3000)
+        if not self.current_data or not self.comparison_service:
+            self.status_message.emit("Cannot compare: no data or comparison service", 3000)
             return
         
-        self.logger.info(f"Compare requested for {self.node_name}, file type: {self.current_data.file_type}")
-        self.status_message.emit(f"Comparing {self.current_data.file_type} data with live system...", 0)
+        # Extract token ID from file or command
+        token_id = self._extract_token_id()
+        if not token_id:
+            self.status_message.emit("Cannot extract token ID from file", 3000)
+            return
         
-        # TODO: Implement live comparison in Phase 3
-        # For Phase 1, just emit signal
+        self.logger.info(f"Compare requested for {self.node_name}, token {token_id}, file type: {self.current_data.file_type}")
+        
+        # Disable button during comparison
+        self.compare_btn.setEnabled(False)
+        self.compare_btn.setText("Comparing...")
+        self.match_label.setText("⏳")
+        
+        # Emit signal
         self.comparison_started.emit()
         
-        # Placeholder: Simulate comparison result
-        self.status_message.emit("Live comparison not yet implemented (Phase 3)", 5000)
+        # Create worker for async comparison
+        worker = ComparisonWorker(
+            self.comparison_service,
+            self.node_name,
+            token_id,
+            self.current_data
+        )
+        
+        # Connect signals
+        worker.signals.finished.connect(self._on_comparison_finished)
+        worker.signals.error.connect(self._on_comparison_error)
+        
+        # Start worker in thread pool
+        self.thread_pool.start(worker)
+    
+    def _extract_token_id(self) -> str:
+        """Extract token ID from current file or data"""
+        if not self.current_data:
+            return ""
+        
+        # Try to extract from command
+        if self.current_data.command:
+            # FBC: "print from fbc io structure 0010000" -> "001"
+            # RPC: "print from fbc rupi counters 0010000" -> "001"
+            import re
+            match = re.search(r'(\d{3})\d{4}$', self.current_data.command)
+            if match:
+                return match.group(1)
+        
+        # Try to extract from filename
+        if self.current_file:
+            # AP01m_FBC_001_20251014_103000.fbc -> "001"
+            filename = Path(self.current_file).stem
+            parts = filename.split('_')
+            for part in parts:
+                if part.isdigit() and len(part) == 3:
+                    return part
+        
+        return ""
+    
+    def _on_comparison_finished(self, result: ComparisonResult):
+        """Handle comparison completion"""
+        self.logger.info(f"Comparison finished: success={result.success}, match={result.match_percentage:.1f}%")
+        
+        # Re-enable button
+        self.compare_btn.setEnabled(True)
+        self.compare_btn.setText("Compare Live")
+        
+        if result.success:
+            # Apply color coding to table
+            self.apply_comparison_results(result.to_dict())
+            
+            # Update match label
+            self.match_label.setText(f"✓ {result.match_percentage:.0f}%")
+            
+            # Status message
+            self.status_message.emit(
+                f"Comparison complete: {result.match_percentage:.1f}% match "
+                f"({len(result.matches)} matches, {len(result.differences)} differences, {len(result.errors)} errors)",
+                5000
+            )
+        else:
+            # Show error
+            self.match_label.setText("✗")
+            self.status_message.emit(f"Comparison failed: {result.error_message}", 5000)
+    
+    def _on_comparison_error(self, error_msg: str):
+        """Handle comparison error"""
+        self.logger.error(f"Comparison error: {error_msg}")
+        
+        # Re-enable button
+        self.compare_btn.setEnabled(True)
+        self.compare_btn.setText("Compare Live")
+        self.match_label.setText("✗")
+        
+        # Show error
+        self.status_message.emit(f"Comparison error: {error_msg}", 5000)
     
     def _on_auto_refresh_toggled(self, checked):
         """Handle auto-refresh checkbox toggle"""
@@ -397,13 +525,19 @@ class NodeScanWidget(QWidget):
             self.countdown_label.setText("Next: 0s")
     
     def apply_comparison_results(self, results: dict):
-        """Highlight table cells based on comparison results"""
-        # TODO: Implement in Phase 3
-        # results structure: {
-        #   'matches': [(row, col), ...],
-        #   'differences': [(row, col, file_val, live_val), ...],
-        #   'errors': [(row, col, error_msg), ...]
-        # }
+        """
+        Highlight table cells based on comparison results.
+        
+        Args:
+            results: Dictionary from ComparisonResult.to_dict()
+                {
+                    'matches': [(row, col), ...],
+                    'differences': [(row, col, file_val, live_val), ...],
+                    'errors': [(row, col, error_msg), ...]
+                }
+        """
+        self.logger.debug(f"Applying comparison results: {len(results.get('matches', []))} matches, "
+                         f"{len(results.get('differences', []))} differences, {len(results.get('errors', []))} errors")
         
         matches = results.get('matches', [])
         differences = results.get('differences', [])
@@ -414,12 +548,13 @@ class NodeScanWidget(QWidget):
             item = self.table_widget.item(row, col)
             if item:
                 item.setBackground(QColor("#4CAF50"))  # Green
+                item.setToolTip("Match: File and live data are identical")
         
         for row, col, file_val, live_val in differences:
             item = self.table_widget.item(row, col)
             if item:
                 item.setBackground(QColor("#FFC107"))  # Yellow
-                item.setToolTip(f"File: {file_val}\nLive: {live_val}")
+                item.setToolTip(f"Difference:\nFile: {file_val}\nLive: {live_val}")
         
         for row, col, error_msg in errors:
             item = self.table_widget.item(row, col)
@@ -427,12 +562,13 @@ class NodeScanWidget(QWidget):
                 item.setBackground(QColor("#F44336"))  # Red
                 item.setToolTip(f"Error: {error_msg}")
         
-        # Calculate match percentage
+        # Calculate and display match percentage
         total_cells = len(matches) + len(differences) + len(errors)
         if total_cells > 0:
             match_pct = (len(matches) / total_cells) * 100
             self.match_label.setText(f"✓ {match_pct:.0f}%")
         
+        # Emit signal
         self.comparison_completed.emit(results)
     
     def update_file_list(self, token_files):
