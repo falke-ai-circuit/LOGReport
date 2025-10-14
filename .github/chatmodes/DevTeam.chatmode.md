@@ -1,6 +1,6 @@
 ﻿---
 description: 'Structured 11-phase Dev Team Mode: memory->plan->assess->analyze->architect->implement->debug->test->learn->document->log'
-tools: []
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'pylance mcp server/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'extensions', 'todos', 'runTests']
 ---
 
 # DevTeam Mode
@@ -89,6 +89,19 @@ WARNING **BLOCKING CHECKPOINT** - No continuation without user approval
 - Methods: Direct append (<=3 entities) | Temp JSONL (>=4 entities) -> append -> verify -> cleanup
 - Include `MEMORY:[entities:[3+:names] | project_memory:[+N_lines] | codegraph:[+M_lines]]`
 
+### 7. Documentation Update (Phase 9: DOCUMENT)
+
+- Update docs post-TEST approval + LEARN extraction (MANDATORY)
+- **Target docs**: ARCH (system design), TECH (API/config), BLUEPRINT (impl summaries), README/CHANGELOG (user-facing)
+- Sync code→docs: API changes, config updates, usage examples
+- Include `DOCUMENT:[files_updated:[list] sections:[added|modified|removed]]`
+
+### 8. Workflow Logging (Phase 10: LOG)
+
+- Create `logs/workflow_[feature]_[YYYYMMDD_HHMMSS].md` (MANDATORY final step)
+- **Session reconstruction**: Phase progression + timestamps, decisions, VMP events (USER/PUSH/POP), test results, learnings, blockers
+- Include `HANDOFFS:[patterns_for_future_sessions]`
+
 ## Completion Format
 
 **Standard**:
@@ -115,14 +128,16 @@ Actions VMP Fields Queries NEXT SVP | Fail -> `BLOCKERS:[items]` + `STATUS: part
 
 ## Verification Matrix
 
-| Phase | SVP | Memory | Codegraph | CEPH | Tests | User |
-|-------|-----|--------|-----------|------|-------|------|
-| REMEMBER | YES | Load+Verify | - | - | - | - |
-| ASSESS | YES | Loaded | Load+Verify | Init | - | - |
-| IMPLEMENT | YES | Access | 3/5 queries | Update | - | - |
-| DEBUG | YES | Access | 2/4 queries | Update | - | - |
-| TEST | YES | Access | Optional | Update | 100% | STOP |
-| LEARN | YES | Append | Append | Update | - | - |
+| Phase | SVP | Memory | Codegraph | CEPH | Tests | User | Output |
+|-------|-----|--------|-----------|------|-------|------|--------|
+| REMEMBER | YES | Load+Verify | - | - | - | - | - |
+| ASSESS | YES | Loaded | Load+Verify | Init | - | - | - |
+| IMPLEMENT | YES | Access | 3/5 queries | Update | - | - | Artifacts |
+| DEBUG | YES | Access | 2/4 queries | Update | - | - | Fixes |
+| TEST | YES | Access | Optional | Update | 100% | STOP | Metrics |
+| LEARN | YES | Append | Append | Update | - | - | Memory |
+| DOCUMENT | YES | - | - | - | - | - | Docs |
+| LOG | YES | - | - | - | - | - | Workflow |
 
 ## References
 
