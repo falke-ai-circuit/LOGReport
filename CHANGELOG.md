@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### UI Bug Fixes and Theme Improvements (2025-10-14)
+- [BUGFIX] **Context Menu Dark Theme** - Fixed context menus displaying with default OS styling instead of application dark theme. Added STYLESHEETS import and menu.setStyleSheet() call in ContextMenuService.show_context_menu() before menu.exec(). Context menus now match application styling with grey highlights and dark background.
+- [BUGFIX] **BsTool Clean Output Display** - Fixed duplicate/wrapped BsTool output by preventing decorative formatting for .log files. Added early return in commander_window.py on_log_write_notification() (line 431) when file extension is .log. BsTool output now goes directly via bstool_output_signal without "📝 Writing to" and "✓ Content written" wrappers that appear for .fbc/.rpc/.lis files.
+- [FEATURE] **Unified Grey Selection Highlight** - Changed selection highlight color from purple/pink to grey across entire application. Updated ColorPalette.SELECTION_BACKGROUND in theme.py (line 32) from #C969E6 to #5D5D5D and QPalette.Highlight in gui.py (line 81) from QColor(142,45,197) to QColor(93,93,93). Affects Commander window, Main window, and Node Configurator selections.
+- [TECHNICAL] Root cause: Dual signal paths for BsTool output - direct path (BsToolWorker.signals.finished → bstool_output_signal) + indirect path (log_writer.log_write_completed → on_log_write_notification decorative formatting). Fixed by skipping indirect path for .log files using file extension check.
+- [MODIFIED] `src/commander/services/context_menu_service.py` (+1 import, +1 line) - Added STYLESHEETS import (line 28) and menu.setStyleSheet() call (line 259)
+- [MODIFIED] `src/commander/ui/commander_window.py` (+1 line) - Added early return for .log files in on_log_write_notification() at line 431
+- [MODIFIED] `src/commander/ui/theme.py` (1 value change) - Changed SELECTION_BACKGROUND from #C969E6 to #5D5D5D (line 32)
+- [MODIFIED] `src/gui.py` (1 value change) - Changed QPalette.Highlight from QColor(142,45,197).lighter() to QColor(93,93,93) (line 81)
+
 ### BsTool Bundling and Path Auto-Detection (2025-10-13)
 - [FEATURE] **BsTool.exe Bundling** - BsTool.exe now bundled with LOGReporter executable via PyInstaller, eliminating need for separate BsTool.exe distribution. Users can run single LOGReporter.exe without manual path configuration
 - [FEATURE] **Automatic Path Detection** - BsTool path field in UI auto-populates on application startup using hybrid detection algorithm. Works in both development mode (project root) and packaged mode (PyInstaller _MEIPASS temp directory)

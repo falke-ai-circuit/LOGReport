@@ -25,6 +25,7 @@ from .context_menu_filter import ContextMenuFilterService
 from ..models import NodeToken
 from ..node_manager import NodeManager
 from ..utils.token_utils import normalize_token, is_fbc_token, is_rpc_token
+from ..ui.theme import STYLESHEETS
 
 
 class ContextMenuService:
@@ -254,6 +255,8 @@ class ContextMenuService:
         if added_actions:
             # Show menu at cursor position (only if position is provided)
             if position:
+                # Apply dark theme styling to match rest of UI
+                menu.setStyleSheet(STYLESHEETS.get_application_stylesheet())
                 menu.exec(position)
                 logging.debug(f"Context menu displayed with {len(menu.actions())} actions")
             else:

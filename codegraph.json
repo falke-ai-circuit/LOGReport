@@ -317,3 +317,7 @@
 {"type":"relation","from":"Code.Module.commander_utils_bstool_path_resolver","to":"Code.Domain.Commander","relationType":"BELONGS_TO"}
 {"type":"relation","from":"Code.Module.commander_ui_bstool_tab","to":"Code.Module.commander_utils_bstool_path_resolver","relationType":"IMPORTS"}
 {"type":"relation","from":"Code.Module.commander_services_bstool_command_service","to":"Code.Module.commander_utils_bstool_path_resolver","relationType":"IMPORTS"}
+{"type":"entity","name":"Code.Module.context_menu_service","entityType":"Module","observations":["Updated: Added STYLESHEETS import line 28, menu.setStyleSheet() line 259","Dark theme styling for context menus integrated","upd:2025-10-14,refs:0"]}
+{"type":"entity","name":"Code.Module.commander_window","entityType":"Module","observations":["Updated: Added .log file skip logic in on_log_write_notification line 431","Prevents decorative output wrappers for BsTool .log files","upd:2025-10-14,refs:0"]}
+{"type":"entity","name":"Code.Module.theme","entityType":"Module","observations":["Updated: SELECTION_BACKGROUND changed from #C969E6 to #5D5D5D line 32","Grey highlight color for consistent application theme","upd:2025-10-14,refs:0"]}
+{"type":"entity","name":"Code.Module.gui","entityType":"Module","observations":["Updated: QPalette.Highlight changed from QColor(142,45,197) to QColor(93,93,93) line 81","Unified grey selection color across main window and node configurator","upd:2025-10-14,refs:0"]}

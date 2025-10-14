@@ -27,9 +27,9 @@ class ColorPalette:
     # UI element colors
     BORDER_COLOR: Final[str] = "#3E3E42"
     INPUT_BACKGROUND: Final[str] = "#252526"
-    # Unified highlight color matching LOGReport main window and Node Configurator
-    # QColor(142, 45, 197).lighter() converts to approximately #C969E6
-    SELECTION_BACKGROUND: Final[str] = "#C969E6"
+    # Unified highlight color - grey for subtle highlighting throughout UI
+    # Changed from purple (#C969E6) to grey for consistent dark theme
+    SELECTION_BACKGROUND: Final[str] = "#5D5D5D"
     
     # Scrollbar colors
     SCROLLBAR_BACKGROUND: Final[str] = "#2D2D30"

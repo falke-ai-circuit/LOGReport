@@ -49,6 +49,37 @@ class BsToolWorker(QRunnable):
         # Build command string for logging/display
         import shlex
         self.command = f"{self.bstool_path} {self.bstool_args}"
+    
+    def _is_bstool_status_message(self, line: str) -> bool:
+        """
+        Check if a line is a BsTool status message that should be filtered out.
+        
+        Args:
+            line: Line to check (already stripped)
+            
+        Returns:
+            True if line is a status message, False if it's actual log content
+        """
+        # Filter out ALL BsTool's progress/status messages
+        # Only show actual log file content
+        
+        # FILTER: All "Writing to" messages (progress indicators)
+        if "Writing to" in line:
+            return True
+            
+        # FILTER: All "Content written" messages (completion indicators)  
+        if "Content written to" in line:
+            return True
+            
+        # FILTER: "Now the future log" messages
+        if "Now the future log" in line:
+            return True
+        
+        # FILTER: Lines starting with checkmark (status indicators)
+        if line.startswith("✔") or line.startswith("✓"):
+            return True
+            
+        return False
         
     def run(self):
         """
@@ -135,8 +166,10 @@ class BsToolWorker(QRunnable):
             output_lines = []
             if stdout_output:
                 for line in stdout_output.splitlines():
-                    if line.strip():
-                        output_lines.append(line.strip())
+                    stripped = line.strip()
+                    # Filter out BsTool's own status messages to keep only actual log content
+                    if stripped and not self._is_bstool_status_message(stripped):
+                        output_lines.append(stripped)
             
             if stderr_output:
                 output_lines.append(f"ERROR: {stderr_output.strip()}")

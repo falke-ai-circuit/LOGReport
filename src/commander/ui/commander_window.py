@@ -409,11 +409,11 @@ class CommanderWindow(QMainWindow):
         """
         Handle log write completion and display the actual content in appropriate tab.
         
-        Shows the actual content being written to .lis, .fbc, .log, and .rpc files,
-        making it clear and visible what's being received and written to files.
+        Shows the actual content being written to .lis, .fbc, .rpc files.
+        SKIPS .log files since BsTool handles its own output via bstool_output_signal.
         Routes output based on file extension:
-        - .fbc, .rpc, .lis → Telnet tab
-        - .log → BsTool tab
+        - .fbc, .rpc, .lis → Telnet tab (with decorative headers)
+        - .log → SKIP (BsTool tab gets output directly from BsToolWorker)
         
         Args:
             log_path: Path to the log file that was written
@@ -426,9 +426,13 @@ class CommanderWindow(QMainWindow):
         filename = os.path.basename(log_path) if log_path != "N/A" else "unknown file"
         file_ext = os.path.splitext(filename)[1].lower() if log_path != "N/A" else ""
         
-        # Determine which tab to write to based on file extension
-        # .log files go to BsTool tab, everything else (.fbc, .rpc, .lis) goes to Telnet tab
-        target_tab = self.bstool_tab if file_ext == ".log" else self.telnet_tab
+        # SKIP decorative output for .log files - BsTool handles its own display
+        # This prevents duplicate/wrapped output in BsTool tab
+        if file_ext == ".log":
+            return
+        
+        # For FBC/RPC/LIS files, show decorative output in Telnet tab
+        target_tab = self.telnet_tab
         
         # Display the actual content with a header showing which file it's being written to
         if success:

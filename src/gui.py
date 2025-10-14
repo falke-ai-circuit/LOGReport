@@ -77,7 +77,8 @@ class LogReportGUI(QMainWindow):
         dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
         dark_palette.setColor(QPalette.ButtonText, Qt.white)
         dark_palette.setColor(QPalette.BrightText, Qt.red)
-        dark_palette.setColor(QPalette.Highlight, QColor(142, 45, 197).lighter())
+        # Changed from purple QColor(142, 45, 197).lighter() to grey for consistent theme
+        dark_palette.setColor(QPalette.Highlight, QColor(93, 93, 93))
         dark_palette.setColor(QPalette.HighlightedText, Qt.black)
         QApplication.instance().setPalette(dark_palette)
 
