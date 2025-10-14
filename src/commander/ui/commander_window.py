@@ -81,7 +81,10 @@ class CommanderWindow(QMainWindow):
         self.fbc_service = FbcCommandService(self.node_manager, self.command_queue, self.log_writer, self)
         self.rpc_service = RpcCommandService(self.node_manager, self.command_queue, self)
         
-        # Setup UI first
+        # Initialize Telnet Service (needed by UI factory)
+        self.telnet_service = TelnetService(self.session_manager)
+        
+        # Setup UI (requires telnet_service to exist)
         self.init_ui()
         
         # Initialize BsTool service (pass command_queue for synchronization)
@@ -108,9 +111,6 @@ class CommanderWindow(QMainWindow):
             self.fbc_service,
             self.rpc_service
         )
-        
-        # Initialize Telnet Service
-        self.telnet_service = TelnetService(self.session_manager)
         
         # Connect FBC and RPC services to Telnet service for debugger connection management
         self.fbc_service.set_telnet_service(self.telnet_service)
@@ -316,7 +316,11 @@ class CommanderWindow(QMainWindow):
         """Initialize the main UI components"""
         # Create main layout
         from commander.ui.commander_ui_factory import CommanderUIFactory
-        self.ui_factory = CommanderUIFactory(bstool_path=self.bstool_path)
+        self.ui_factory = CommanderUIFactory(
+            bstool_path=self.bstool_path,
+            node_manager=self.node_manager,
+            telnet_service=self.telnet_service
+        )
         main_widget = self.ui_factory.get_main_widget()
         self.setCentralWidget(main_widget)
         
@@ -368,6 +372,18 @@ class CommanderWindow(QMainWindow):
     def populate_node_tree(self):
         """Lazy-loading tree population - only loads top-level nodes initially"""
         self.node_tree_presenter.populate_node_tree()
+        
+        # Populate Scan tab with node subtabs (Phase 1)
+        print(f"[COMMANDER DEBUG] Checking scan_tab: hasattr(session_view)={hasattr(self, 'session_view')}")
+        if hasattr(self, 'session_view'):
+            print(f"[COMMANDER DEBUG] session_view.scan_tab = {self.session_view.scan_tab}")
+            if self.session_view.scan_tab:
+                print(f"[COMMANDER DEBUG] Calling scan_tab.populate_nodes()")
+                self.session_view.scan_tab.populate_nodes()
+            else:
+                print(f"[COMMANDER DEBUG] scan_tab is None!")
+        else:
+            print(f"[COMMANDER DEBUG] No session_view attribute!")
     
     def _on_node_double_clicked(self, item):
         """Wrapper method to handle node double-click events"""

@@ -19,16 +19,22 @@ class CommanderUIFactory:
     Factory for creating and managing UI components.
     """
     
-    def __init__(self, bstool_path=None):
+    def __init__(self, bstool_path=None, node_manager=None, telnet_service=None):
         """Initialize the UI factory."""
         self.bstool_path = bstool_path
+        self.node_manager = node_manager
+        self.telnet_service = telnet_service
         self._create_components()
         
     def _create_components(self):
         """Create UI components."""
         # Create main views
         self.node_tree_view = NodeTreeView()
-        self.session_view = SessionView(bstool_path=self.bstool_path)
+        self.session_view = SessionView(
+            bstool_path=self.bstool_path,
+            node_manager=self.node_manager,
+            telnet_service=self.telnet_service
+        )
         
         # Access tabs through session view
         self.bstool_tab = self.session_view.bstool_tab
