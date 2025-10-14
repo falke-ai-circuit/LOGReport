@@ -21,7 +21,6 @@ except ImportError as e:
         def __init__(self, *args, **kwargs):
             raise RuntimeError("PyQt5 QMenu not available")
 
-from .context_menu_filter import ContextMenuFilterService
 from ..models import NodeToken
 from ..node_manager import NodeManager
 from ..utils.token_utils import normalize_token, is_fbc_token, is_rpc_token
@@ -31,16 +30,14 @@ from ..ui.theme import STYLESHEETS
 class ContextMenuService:
     """Service for handling context menu operations and actions"""
 
-    def __init__(self, node_manager: NodeManager, context_menu_filter: ContextMenuFilterService):
+    def __init__(self, node_manager: NodeManager):
         """
         Initialize the context menu service.
 
         Args:
             node_manager: Manager for node operations
-            context_menu_filter: Service for filtering context menu items
         """
         self.node_manager = node_manager
-        self.context_menu_filter = context_menu_filter
         self.presenter = None
         logging.debug("ContextMenuService initialized")
 
@@ -73,26 +70,17 @@ class ContextMenuService:
             node_name = item_data.get('node_name')
             
             if node_name:
-                # Check if node hierarchical commands should be shown
-                if self.context_menu_filter.should_show_command(
-                    node_name=node_name,
-                    section_type=None,
-                    command_type="execute_all_hierarchical",
-                    command_category="node"
-                ):
-                    logging.debug(f"Adding print commands option for node {node_name}")
-                    
-                    # Create action for executing all print commands
-                    print_action = QAction(f"Execute All Print Commands for {node_name}", menu)
-                    if self.presenter:
-                        # Connect action to presenter method
-                        print_action.triggered.connect(
-                            lambda: self.presenter.process_node_print_commands(node_name)
-                        )
-                    menu.addAction(print_action)
-                    added_actions = True
-                else:
-                    logging.debug(f"Hierarchical command filtered out for node {node_name}")
+                logging.debug(f"Adding print commands option for node {node_name}")
+                
+                # Create action for executing all print commands
+                print_action = QAction(f"Execute All Print Commands for {node_name}", menu)
+                if self.presenter:
+                    # Connect action to presenter method
+                    print_action.triggered.connect(
+                        lambda: self.presenter.process_node_print_commands(node_name)
+                    )
+                menu.addAction(print_action)
+                added_actions = True
 
         # Handle section items (FBC/RPC/LOG subgroups)
         elif item_data and isinstance(item_data, dict) and 'section_type' in item_data:
@@ -100,16 +88,6 @@ class ContextMenuService:
             node_name = item_data.get("node")
 
             if section_type in ["FBC", "RPC", "LOG"] and node_name:
-                # Use context menu filter service to determine visibility
-                if not self.context_menu_filter.should_show_command(
-                    node_name=node_name,
-                    section_type=section_type,
-                    command_type="all",
-                    command_category="subgroup"
-                ):
-                    logging.debug(f"Context menu filtered out for {section_type} subgroup of {node_name}")
-                    return False
-
                 logging.debug(f"Context menu processing {section_type} subgroup for node {node_name}")
 
                 # Get all tokens of the specified type for this node
@@ -152,22 +130,16 @@ class ContextMenuService:
                     added_actions = True
 
                 # Add action for clearing all subgroup log files
-                if self.context_menu_filter.should_show_command(
-                    node_name=node_name,
-                    section_type=section_type,
-                    command_type="clear_all_subgroup_files",
-                    command_category="subgroup"
-                ):
-                    clear_action = QAction(f"Clear All {section_type} Log Files for {node_name}", menu)
-                    if self.presenter:
-                        mock_subgroup_item = self._get_current_item_from_data(item_data)
-                        clear_action.triggered.connect(
-                            lambda: self.presenter.clear_subgroup_log_files(
-                                mock_subgroup_item
-                            )
+                clear_action = QAction(f"Clear All {section_type} Log Files for {node_name}", menu)
+                if self.presenter:
+                    mock_subgroup_item = self._get_current_item_from_data(item_data)
+                    clear_action.triggered.connect(
+                        lambda: self.presenter.clear_subgroup_log_files(
+                            mock_subgroup_item
                         )
-                    menu.addAction(clear_action)
-                    added_actions = True
+                    )
+                menu.addAction(clear_action)
+                added_actions = True
 
         # Handle token items (individual token files)
         elif item_data and isinstance(item_data, dict) and 'token' in item_data:
@@ -179,49 +151,57 @@ class ContextMenuService:
                 logging.debug(f"Context menu processing token item: type={token_type}, id={token_id}, node={node_name}")
 
                 if token_type == "FBC":
-                    # Check if FBC token commands should be shown
-                    if not self.context_menu_filter.should_show_command(
-                        node_name=node_name,
-                        section_type=token_type,
-                        command_type="all",
-                        command_category="token"
-                    ):
-                        logging.debug(f"Context menu filtered out FBC token command for {token_id}")
-                    else:
-                        token_str = str(token_id)
-                        action = QAction(f"Print FieldBus Structure (Token {token_str})", menu)
-                        if self.presenter:
-                            # Connect action to presenter method
-                            action.triggered.connect(
-                                lambda: self._handle_fbc_token_action(node_name, token_id)
-                            )
-                        menu.addAction(action)
-                        added_actions = True
+                    token_str = str(token_id)
+                    
+                    # Print FieldBus Structure action
+                    action = QAction(f"Print FieldBus Structure (Token {token_str})", menu)
+                    if self.presenter:
+                        action.triggered.connect(
+                            lambda: self._handle_fbc_token_action(node_name, token_id)
+                        )
+                    menu.addAction(action)
+                    added_actions = True
+                    
+                    # Scan FieldBus Structure action
+                    scan_action = QAction(f"Scan FieldBus Structure (Token {token_str})", menu)
+                    if self.presenter:
+                        file_path = item_data.get('file_path') or item_data.get('log_path')
+                        scan_action.triggered.connect(
+                            lambda: self._handle_scan_token_action(node_name, token_id, file_path, "FBC")
+                        )
+                    menu.addAction(scan_action)
+                    added_actions = True
 
                 elif token_type == "RPC":
-                    # Check if RPC token commands should be shown
-                    if not self.context_menu_filter.should_show_command(
-                        node_name=node_name,
-                        section_type=token_type,
-                        command_type="all",
-                        command_category="token"
-                    ):
-                        logging.debug(f"Context menu filtered out RPC token command for {token_id}")
-                    else:
-                        display_token = token_id.split('_')[-1] if '_' in token_id else token_id
-                        print_action = QAction(f"Print Rupi counters Token '{display_token}'", menu)
-                        clear_action = QAction(f"Clear Rupi counters '{display_token}'", menu)
-                        if self.presenter:
-                            # Connect actions to presenter methods
-                            print_action.triggered.connect(
-                                lambda: self._handle_rpc_token_action(node_name, token_id, "print")
-                            )
-                            clear_action.triggered.connect(
-                                lambda: self._handle_rpc_token_action(node_name, token_id, "clear")
-                            )
-                        menu.addAction(print_action)
-                        menu.addAction(clear_action)
-                        added_actions = True
+                    display_token = token_id.split('_')[-1] if '_' in token_id else token_id
+                    
+                    # Print Rupi counters action
+                    print_action = QAction(f"Print Rupi counters Token '{display_token}'", menu)
+                    if self.presenter:
+                        print_action.triggered.connect(
+                            lambda: self._handle_rpc_token_action(node_name, token_id, "print")
+                        )
+                    menu.addAction(print_action)
+                    added_actions = True
+                    
+                    # Clear Rupi counters action
+                    clear_action = QAction(f"Clear Rupi counters '{display_token}'", menu)
+                    if self.presenter:
+                        clear_action.triggered.connect(
+                            lambda: self._handle_rpc_token_action(node_name, token_id, "clear")
+                        )
+                    menu.addAction(clear_action)
+                    added_actions = True
+                    
+                    # Scan FieldBus Structure action for RPC files
+                    scan_action = QAction(f"Scan FieldBus Structure (Token {display_token})", menu)
+                    if self.presenter:
+                        file_path = item_data.get('file_path') or item_data.get('log_path')
+                        scan_action.triggered.connect(
+                            lambda: self._handle_scan_token_action(node_name, token_id, file_path, "RPC")
+                        )
+                    menu.addAction(scan_action)
+                    added_actions = True
 
                 elif token_type == "LOG":
                     # For LOG tokens, add BsTool action similar to regular log files
@@ -426,6 +406,25 @@ class ContextMenuService:
         if self.presenter:
             # Use presenter method to process the BsTool command
             self.presenter.process_bstool_command(log_file_path)
+    
+    def _handle_scan_token_action(self, node_name: str, token_id: str, file_path: str, file_type: str) -> None:
+        """
+        Handle Scan FieldBus structure context menu action.
+        Opens Scan tab, selects the node subtab, selects the file, and triggers comparison.
+        Auto-connects to telnet if not connected (2 retry method).
+
+        Args:
+            node_name: Name of the node
+            token_id: ID of the token
+            file_path: Path to the .fbc or .rpc file
+            file_type: Type of file ("FBC" or "RPC")
+        """
+        logging.info(f"Scan FieldBus structure triggered for {file_type} token {token_id} on node {node_name}")
+        logging.debug(f"File path: {file_path}")
+        
+        if self.presenter:
+            # Delegate to presenter to route to commander_window
+            self.presenter.process_scan_token_action(node_name, token_id, file_path, file_type)
 
     def validate_node_structure(self, item_data: Dict[str, Any]) -> Optional[str]:
         """

@@ -5,7 +5,6 @@ from PyQt5.QtWidgets import QMainWindow, QStatusBar, QFileDialog
 from PyQt5.QtCore import QSettings, pyqtSignal
 
 from ..services.context_menu_service import ContextMenuService
-from ..services.context_menu_filter import ContextMenuFilterService
 from ..services.fbc_command_service import FbcCommandService
 from ..services.rpc_command_service import RpcCommandService
 from ..services.commander_service import CommanderService
@@ -74,9 +73,6 @@ class CommanderWindow(QMainWindow):
         # Initialize Status Service
         self.status_service = StatusService()
         
-        # Initialize context menu filter service
-        self.context_menu_filter = ContextMenuFilterService()
-        
         # Initialize FBC and RPC services
         self.fbc_service = FbcCommandService(self.node_manager, self.command_queue, self.log_writer, self)
         self.rpc_service = RpcCommandService(self.node_manager, self.command_queue, self)
@@ -117,7 +113,7 @@ class CommanderWindow(QMainWindow):
         self.rpc_service.set_telnet_service(self.telnet_service)
         
         # Initialize context menu service
-        self.context_menu_service = ContextMenuService(self.node_manager, self.context_menu_filter)
+        self.context_menu_service = ContextMenuService(self.node_manager)
         
         # Connect status service AFTER UI is created
         self.status_service.status_updated.connect(self.statusBar().showMessage)
