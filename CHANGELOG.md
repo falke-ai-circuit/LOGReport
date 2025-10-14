@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+### Scan Tab Phase 1 Implementation (2025-10-14)
+- [FEATURE] **Scan Tab - Node-Based File Viewer** - Added new "Scan" tab in Commander Center for viewing FBC (Field Bus Configuration) and RPC (RUPI Counter) token file contents. Tab includes automatic per-node subtabs (e.g., AP01, AP02m, AP06) populated from loaded node configuration, providing centralized inspection without manual file navigation.
+- [FEATURE] **Unified FBC/RPC Parser** - Implemented `FbcParserService` (349 lines) with dual-format parsing: FBC files (I/O tables with agent columns) and RPC files (error counter tables with 6 fixed columns). Parser auto-detects file type via filename pattern (*.fbc, *_err.rpc) and uses 10 regex patterns (6 FBC-specific, 4 RPC-specific) to extract headers, data rows, totals, and metadata (timestamp, command, agent ID).
+- [FEATURE] **Dark Theme Table Display** - Each node subtab includes QTableWidget with monospace font (Consolas 10pt), alternating row backgrounds (#1E1E1E base, #252526 alternate), dark headers (#3D3D3D), and high-contrast text (#DCDCDC). Auto-resizes columns to content and preserves column alignment for tabular data.
+- [FEATURE] **Mixed File Dropdown** - File selector (QComboBox) per node combines both FBC and RPC files from `_DIA/FBC/{node}/` and `_DIA/RPC/{node}/` directories. Files sorted by modification time (newest first) with most recent file auto-loading on subtab open.
+- [FEATURE] **Placeholder Controls** - Phase 1 includes disabled UI elements for future phases: "Compare Live" button (Phase 3 telnet-based live comparison), auto-refresh checkbox + interval dropdown (Phase 2 enhanced styling).
+- [IMPLEMENTATION] Created `src/commander/services/fbc_parser_service.py` (349 lines) with `FbcTableData` dataclass and parsing methods. Handles edge cases: missing headers, malformed rows, whitespace, unknown file types (default to FBC).
+- [IMPLEMENTATION] Created `src/commander/ui/scan_tab.py` (161 lines) with `ScanTab` class hosting QTabWidget for node subtabs. Methods: `populate_nodes()` iterates `NodeManager.get_all_nodes()`, `_get_node_token_files()` scans FBC/RPC directories.
+- [IMPLEMENTATION] Created `src/commander/ui/node_scan_widget.py` (455 lines) with `NodeScanWidget` class for per-node UI. Methods: `load_token_file()` parses and displays file, `_create_table_from_data()` builds QTableWidget, `_get_most_recent_file()` sorts by mtime.
+- [IMPLEMENTATION] Modified `src/commander/ui/session_view.py` (lines 48-56) to conditionally create Scan tab if `node_manager` available. Requires `telnet_service` parameter for Phase 3 integration.
+- [IMPLEMENTATION] Modified `src/commander/ui/commander_window.py` (line 85) to move `telnet_service` initialization before `init_ui()` call. Added `scan_tab.populate_nodes()` call in `populate_node_tree()` method after node tree population.
+- [IMPLEMENTATION] Modified `src/commander/ui/commander_ui_factory.py` to accept and pass `node_manager` and `telnet_service` parameters through constructor chain (CommanderWindow → Factory → SessionView).
+- [BUGFIX] **Node Iteration** - Changed `populate_nodes()` from `nodes.keys()` to `List[Node]` iteration. `NodeManager.get_all_nodes()` returns `List[Node]` not dict, requiring `sorted(nodes, key=lambda n: n.name)` instead of `sorted(nodes.keys())`.
+- [BUGFIX] **Path Construction** - Removed double `_DIA` prefix in `_get_node_token_files()`. `log_root` from `NodeManager` already includes `_DIA`, so path construction changed from `Path(log_root) / "_DIA" / "FBC"` to `Path(log_root) / "FBC"`.
+- [BUGFIX] **Dark Theme Styling** - Fixed white backgrounds for table cells, checkbox, and corner button. Applied comprehensive CSS stylesheet with `QTableWidget::item`, `QHeaderView::section`, `QTableCornerButton::section`, and `QCheckBox` indicator styling.
+- [TESTING] Created `tests/test_fbc_parser_service.py` (338 lines, 29 unit tests) with 100% pass rate (0.21s runtime). Test classes: TestFileTypeDetection (3 tests), TestFBCParsing (6 tests), TestRPCParsing (5 tests), TestMetadataExtraction (5 tests), TestEdgeCases (6 tests), TestRealFileIntegration (2 tests), TestRawContentPreservation (2 tests).
+- [DOCUMENTATION] Created `docs/technical/TECH_scan_tab_usage.md` (2847 words) comprehensive technical guide covering: architecture (component hierarchy, key classes), usage guide (accessing tab, viewing files, table display), file discovery (directory structure, sorting), parsing logic (file type detection, regex patterns), dark theme styling (color palette, CSS chain), integration points, API reference, debugging, testing, future enhancements (Phases 2-4).
+- [MEMORY] Extracted 3 entities to `project_memory.json`: Feature.Commander.Scan.Tab_ScanTab (node subtab population), Method.Parser.FBC.Service_parse_dual_format (dual regex patterns), Pattern.PyQt5.Table.Strategy_cell_highlighting (dark theme colors).
+- [CODEGRAPH] Added 3 new modules to `codegraph.json`: Module_commander_services_fbc_parser_service (parser service), Module_commander_ui_scan_tab (main tab), Module_commander_ui_node_scan_widget (per-node widget). Added 10 relations (domain membership + imports).
+- [BLUEPRINT] Followed `docs/blueprints/BLUEPRINT_scan_tab_v1.md` (643 lines) for Phase 1 implementation. Phases 2-4 deferred: Phase 2 (enhanced table styling), Phase 3 (live comparison engine), Phase 4 (error handling polish).
+- [MODIFIED] `src/commander/services/fbc_parser_service.py` (+349 lines) - New parser service module
+- [MODIFIED] `src/commander/ui/scan_tab.py` (+161 lines) - New main Scan tab module
+- [MODIFIED] `src/commander/ui/node_scan_widget.py` (+455 lines) - New per-node widget module
+- [MODIFIED] `tests/test_fbc_parser_service.py` (+338 lines) - New unit test suite
+- [MODIFIED] `src/commander/ui/session_view.py` (+12 lines) - Conditional Scan tab creation
+- [MODIFIED] `src/commander/ui/commander_window.py` (+5 lines) - Telnet service init order, scan tab population
+- [MODIFIED] `src/commander/ui/commander_ui_factory.py` (+4 lines) - Parameter propagation chain
+- [MODIFIED] `docs/technical/TECH_scan_tab_usage.md` (+2847 words) - New technical documentation
+- [MODIFIED] `project_memory.json` (+3 entities) - Memory extraction
+- [MODIFIED] `codegraph.json` (+3 modules, +10 relations) - Codebase structure update
+- [USER IMPACT] Users can now view FBC/RPC token file contents directly in Commander Center without opening external file managers or text editors. Node-based organization streamlines inspection of multiple tokens per node. Auto-loading most recent file saves manual file selection steps. Dark theme consistency maintains visual harmony with rest of Commander UI. Future phases will add live telnet comparison (Phase 3) for real-time config validation.
+
 ### UI Bug Fixes and Theme Improvements (2025-10-14)
 - [BUGFIX] **Context Menu Dark Theme** - Fixed context menus displaying with default OS styling instead of application dark theme. Added STYLESHEETS import and menu.setStyleSheet() call in ContextMenuService.show_context_menu() before menu.exec(). Context menus now match application styling with grey highlights and dark background.
 - [BUGFIX] **BsTool Clean Output Display** - Fixed duplicate/wrapped BsTool output by preventing decorative formatting for .log files. Added early return in commander_window.py on_log_write_notification() (line 431) when file extension is .log. BsTool output now goes directly via bstool_output_signal without "📝 Writing to" and "✓ Content written" wrappers that appear for .fbc/.rpc/.lis files.
