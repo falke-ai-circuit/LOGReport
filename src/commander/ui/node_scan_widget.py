@@ -369,6 +369,25 @@ class NodeScanWidget(QWidget):
             self.status_message.emit("Cannot compare: no data or comparison service", 3000)
             return
         
+        # Auto-connect to telnet if not connected
+        if self.telnet_service:
+            is_connected = (hasattr(self.telnet_service, 'telnet_session') and 
+                          self.telnet_service.telnet_session and 
+                          self.telnet_service.telnet_session.is_connected)
+            
+            if not is_connected:
+                self.logger.info("Telnet not connected, attempting auto-connect...")
+                self.status_message.emit("Connecting to telnet debugger...", 3000)
+                
+                # Use existing auto-connect method
+                success = self.telnet_service._ensure_debugger_connection()
+                if not success:
+                    self.status_message.emit("✗ Failed to connect to telnet debugger", 5000)
+                    return
+                
+                self.logger.info("Auto-connect successful")
+                self.status_message.emit("Connected to telnet debugger", 2000)
+        
         # Extract token ID from file or command
         token_id = self._extract_token_id()
         if not token_id:
@@ -527,6 +546,7 @@ class NodeScanWidget(QWidget):
     def apply_comparison_results(self, results: dict):
         """
         Highlight table cells based on comparison results.
+        Changes text color only (not cell background) for inner table values.
         
         Args:
             results: Dictionary from ComparisonResult.to_dict()
@@ -543,24 +563,38 @@ class NodeScanWidget(QWidget):
         differences = results.get('differences', [])
         errors = results.get('errors', [])
         
-        # Color cells based on comparison
+        # Get headers to identify PIC column
+        headers = []
+        if self.current_data and self.current_data.headers:
+            headers = [h.upper() for h in self.current_data.headers]
+        
+        # Color text based on comparison (skip PIC column)
         for row, col in matches:
             item = self.table_widget.item(row, col)
             if item:
-                item.setBackground(QColor("#4CAF50"))  # Green
-                item.setToolTip("Match: File and live data are identical")
+                # Check if this is PIC column (should not be colored)
+                header = self.table_widget.horizontalHeaderItem(col)
+                if header and header.text().upper() != 'PIC':
+                    item.setForeground(QColor("#4CAF50"))  # Green text
+                    item.setToolTip("Match: File and live data are identical")
         
         for row, col, file_val, live_val in differences:
             item = self.table_widget.item(row, col)
             if item:
-                item.setBackground(QColor("#FFC107"))  # Yellow
-                item.setToolTip(f"Difference:\nFile: {file_val}\nLive: {live_val}")
+                # Check if this is PIC column (should not be colored)
+                header = self.table_widget.horizontalHeaderItem(col)
+                if header and header.text().upper() != 'PIC':
+                    item.setForeground(QColor("#FFC107"))  # Yellow text
+                    item.setToolTip(f"Difference:\nFile: {file_val}\nLive: {live_val}")
         
         for row, col, error_msg in errors:
             item = self.table_widget.item(row, col)
             if item:
-                item.setBackground(QColor("#F44336"))  # Red
-                item.setToolTip(f"Error: {error_msg}")
+                # Check if this is PIC column (should not be colored)
+                header = self.table_widget.horizontalHeaderItem(col)
+                if header and header.text().upper() != 'PIC':
+                    item.setForeground(QColor("#F44336"))  # Red text
+                    item.setToolTip(f"Error: {error_msg}")
         
         # Calculate and display match percentage
         total_cells = len(matches) + len(differences) + len(errors)
@@ -588,3 +622,40 @@ class NodeScanWidget(QWidget):
                 self.file_selector.setCurrentIndex(index)
         elif token_files:
             self._load_most_recent_file()
+    
+    def select_file_and_compare(self, file_path: str) -> bool:
+        """
+        Select file from dropdown and trigger immediate comparison.
+        Called from context menu "Scan FieldBus structure" action.
+        
+        Args:
+            file_path: Full path to the .fbc or .rpc file
+            
+        Returns:
+            bool: True if file was found and comparison triggered, False otherwise
+        """
+        from pathlib import Path
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        filename = Path(file_path).name
+        
+        # Find file in combobox
+        index = self.file_selector.findText(filename)
+        if index == -1:
+            logger.warning(f"File {filename} not found in file selector dropdown")
+            return False
+        
+        # Select file in dropdown
+        self.file_selector.setCurrentIndex(index)
+        logger.info(f"Selected file {filename} in dropdown (index {index})")
+        
+        # Trigger file load (this calls _on_file_selected)
+        # _on_file_selected will load the file content into the table
+        self._on_file_selected(index)
+        
+        # Trigger comparison immediately
+        self._on_compare_clicked()
+        logger.info(f"Triggered comparison for {filename}")
+        
+        return True

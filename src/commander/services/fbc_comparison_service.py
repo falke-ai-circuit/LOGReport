@@ -236,8 +236,8 @@ class FbcComparisonService:
         """
         Compare file data with live data cell-by-cell.
         
-        Compares ALL cells in the file table, identifying matches, differences, and errors.
-        Handles variable column counts by comparing via header names.
+        Compares rows by matching PIC values (not by row index) to handle cases where
+        telnet response has extra header lines. Compares only data columns (PIC to sum).
         
         Args:
             file_data: Parsed file table data
@@ -247,31 +247,66 @@ class FbcComparisonService:
             ComparisonResult with detailed comparison statistics
         """
         self.logger.debug(f"Comparing tables: file has {len(file_data.rows)} rows, live has {len(live_data.rows)} rows")
+        self.logger.debug(f"File headers: {file_data.headers}")
+        self.logger.debug(f"Live headers: {live_data.headers}")
         
         matches: List[Tuple[int, int]] = []
         differences: List[CellDifference] = []
         errors: List[CellError] = []
         
-        # Create header name to index mapping for live data
+        # Create PIC-based row mapping for live data (PIC value -> row dict)
+        live_pic_map = {}
+        for live_row in live_data.rows:
+            pic_value = live_row.get('PIC') or live_row.get('pic')
+            if pic_value is not None:  # Allow 0 as valid PIC
+                # Normalize PIC value (strip whitespace, convert to string)
+                pic_normalized = str(pic_value).strip()
+                live_pic_map[pic_normalized] = live_row
+                self.logger.debug(f"Added live PIC: '{pic_normalized}' (original: {repr(pic_value)})")
+        
+        self.logger.debug(f"Live data PIC map keys: {list(live_pic_map.keys())}")
+        
+        # Create header name to index mapping
         live_header_map = {header: idx for idx, header in enumerate(live_data.headers)}
         
         # Iterate through ALL file table rows
         for row_idx, file_row in enumerate(file_data.rows):
-            # Check if row exists in live data
-            if row_idx >= len(live_data.rows):
-                # Row missing in live data - mark all cells as errors
-                for col_idx, file_header in enumerate(file_data.headers):
-                    errors.append(CellError(
-                        row=row_idx,
-                        col=col_idx,
-                        error_message="Row missing in live data"
-                    ))
+            # Get PIC value from file row
+            file_pic = file_row.get('PIC') or file_row.get('pic')
+            
+            if file_pic is None:  # Check for None specifically (allow 0)
+                # No PIC value - skip row
+                self.logger.warning(f"File row {row_idx} has no PIC value, skipping")
                 continue
             
-            live_row = live_data.rows[row_idx]
+            # Normalize PIC value for lookup (strip whitespace, convert to string)
+            file_pic_normalized = str(file_pic).strip()
+            self.logger.debug(f"Processing file row {row_idx}: PIC='{file_pic_normalized}' (original: {repr(file_pic)})")
+            self.logger.debug(f"  File row data: {dict(list(file_row.items())[:5])}...")  # Show first 5 columns
             
-            # Iterate through ALL columns in file row
+            # Find corresponding row in live data by PIC value
+            if file_pic_normalized not in live_pic_map:
+                # Row missing in live data - mark all cells as errors
+                self.logger.warning(f"File PIC '{file_pic_normalized}' not found in live data. Available: {list(live_pic_map.keys())}")
+                for col_idx, file_header in enumerate(file_data.headers):
+                    # Skip PIC column for error marking
+                    if file_header.upper() != 'PIC':
+                        errors.append(CellError(
+                            row=row_idx,
+                            col=col_idx,
+                            error_message=f"PIC {file_pic_normalized} missing in live data"
+                        ))
+                continue
+            
+            live_row = live_pic_map[file_pic_normalized]
+            self.logger.debug(f"  Live row data: {dict(list(live_row.items())[:5])}...")  # Show first 5 columns
+            
+            # Iterate through columns in file row (skip only PIC column)
             for col_idx, file_header in enumerate(file_data.headers):
+                # Skip PIC column (only compare actual I/O data and sum)
+                if file_header.upper() == 'PIC':
+                    continue
+                
                 file_value = file_row.get(file_header, "")
                 
                 # Find corresponding column in live data by header name
@@ -295,6 +330,7 @@ class FbcComparisonService:
                 if file_val_norm == live_val_norm:
                     matches.append((row_idx, col_idx))
                 else:
+                    self.logger.debug(f"DIFFERENCE at row {row_idx} col {col_idx} ({file_header}): file='{file_val_norm}' vs live='{live_val_norm}'")
                     differences.append(CellDifference(
                         row=row_idx,
                         col=col_idx,

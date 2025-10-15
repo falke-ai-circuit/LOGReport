@@ -1611,6 +1611,25 @@ class NodeTreePresenter(QObject):
             self.status_message_signal.emit(f"Executing BsTool with -errlog {errlog_node_id}", 3000)
         except Exception as e:
             self._report_error("Error processing BsTool command", e)
+    
+    def process_scan_token_action(self, node_name: str, token_id: str, file_path: str, file_type: str):
+        """
+        Process Scan FieldBus structure context menu action.
+        Routes request to CommanderWindow to open Scan tab and trigger comparison.
+        
+        Args:
+            node_name: Name of the node
+            token_id: ID of the token
+            file_path: Path to the .fbc or .rpc file
+            file_type: Type of file ("FBC" or "RPC")
+        """
+        logging.info(f"Routing scan action to CommanderWindow: node={node_name}, token={token_id}, type={file_type}")
+        
+        # Delegate to window for UI manipulation (tab switching, file selection)
+        if hasattr(self, 'window') and self.window:
+            self.window.select_node_and_execute_scan(node_name, file_path, file_type)
+        else:
+            self._report_error("CommanderWindow reference not available for scan action", None)
             
     def on_node_selected(self, item):
         """

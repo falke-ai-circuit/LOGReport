@@ -146,6 +146,9 @@ class CommanderWindow(QMainWindow):
             self.telnet_tab.get_connection_info  # Pass callback to get IP/port from telnet_tab
         )
         
+        # Set window reference for scan tab routing
+        self.node_tree_presenter.window = self
+        
         # Set presenter in context menu service
         self.context_menu_service.set_presenter(self.node_tree_presenter)
         
@@ -563,6 +566,64 @@ class CommanderWindow(QMainWindow):
             # This can happen in tests with mock objects
             # In a real application, this shouldn't occur
             event.accept() if hasattr(event, 'accept') else None
+    
+    def select_node_and_execute_scan(self, node_name: str, file_path: str, file_type: str):
+        """
+        Open Scan tab, select node subtab, select file, and execute comparison.
+        Auto-connects to telnet if not connected (2 retry method).
+        
+        Args:
+            node_name: Name of the node to select
+            file_path: Path to the .fbc or .rpc file to select
+            file_type: Type of file ("FBC" or "RPC")
+        """
+        import logging
+        from pathlib import Path
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"select_node_and_execute_scan called: node={node_name}, file={Path(file_path).name}, type={file_type}")
+        
+        try:
+            # Step 1: Auto-connect to telnet if not connected
+            is_connected = (hasattr(self.telnet_service, 'telnet_session') and 
+                          self.telnet_service.telnet_session and 
+                          self.telnet_service.telnet_session.is_connected)
+            
+            if not is_connected:
+                logger.info("Telnet not connected, attempting auto-connect...")
+                self.status_service.status_updated.emit("Connecting to telnet debugger...", 3000)
+                
+                # Use existing auto-connect method from telnet_service
+                success = self.telnet_service._ensure_debugger_connection()
+                if not success:
+                    self.status_service.show_error("Failed to connect to telnet debugger after 2 retries. Please connect manually.")
+                    return
+                
+                logger.info("Auto-connect successful")
+                self.status_service.status_updated.emit("Connected to telnet debugger", 2000)
+            
+            # Step 2: Switch to Scan tab
+            if hasattr(self, 'session_view') and self.session_view.scan_tab:
+                scan_tab = self.session_view.scan_tab
+                
+                # Find Scan tab index and switch to it
+                for i in range(self.session_view.tabs.count()):
+                    if self.session_view.tabs.widget(i) == scan_tab:
+                        self.session_view.tabs.setCurrentIndex(i)
+                        logger.info(f"Switched to Scan tab (index {i})")
+                        break
+                
+                # Step 3: Delegate to scan_tab for file selection and comparison
+                scan_tab.select_file_and_compare(node_name, file_path)
+                
+                self.status_service.status_updated.emit(f"Scan initiated for {node_name}: {Path(file_path).name}", 3000)
+            else:
+                logger.error("Scan tab not available")
+                self.status_service.show_error("Scan tab not available. Please load node configuration first.")
+                
+        except Exception as e:
+            logger.error(f"Error in select_node_and_execute_scan: {e}", exc_info=True)
+            self.status_service.show_error(f"Failed to initiate scan: {str(e)}")
 
 
 def run():

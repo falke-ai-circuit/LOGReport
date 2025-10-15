@@ -158,3 +158,40 @@ class ScanTab(QWidget):
         widget.update_file_list(token_files)
         
         self.logger.info(f"Refreshed files for node {node_name}: {len(token_files)} files")
+
+    def select_file_and_compare(self, node_name: str, file_path: str):
+        """
+        Select node subtab, select file from dropdown, and trigger comparison.
+        
+        Args:
+            node_name: Name of the node to select
+            file_path: Path to the .fbc or .rpc file to select and compare
+        """
+        from pathlib import Path
+        
+        self.logger.info(f"select_file_and_compare called: node={node_name}, file={Path(file_path).name}")
+        
+        # Step 1: Find and switch to node subtab
+        if node_name not in self.node_widgets:
+            self.logger.warning(f"Node {node_name} not found in Scan tab widgets")
+            self.status_message.emit(f"Node {node_name} not found in Scan tab", 5000)
+            return
+        
+        # Find node tab index
+        for i in range(self.node_tabs.count()):
+            if self.node_tabs.tabText(i) == node_name:
+                self.node_tabs.setCurrentIndex(i)
+                self.logger.info(f"Switched to node tab: {node_name} (index {i})")
+                break
+        
+        # Step 2: Get node widget and trigger file selection + comparison
+        node_widget = self.node_widgets[node_name]
+        
+        # Delegate to NodeScanWidget for file selection and comparison
+        success = node_widget.select_file_and_compare(file_path)
+        
+        if success:
+            self.logger.info(f"File selection and comparison triggered for {Path(file_path).name}")
+        else:
+            self.logger.warning(f"Failed to select file {Path(file_path).name} in node {node_name}")
+            self.status_message.emit(f"File not found: {Path(file_path).name}", 5000)
