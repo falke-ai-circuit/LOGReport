@@ -302,6 +302,8 @@ class FbcComparisonService:
             self.logger.debug(f"  Live row data: {dict(list(live_row.items())[:5])}...")  # Show first 5 columns
             
             # Iterate through columns in file row (skip only PIC column)
+            # Track display_col_idx separately (PIC is removed from table display)
+            display_col_idx = 0
             for col_idx, file_header in enumerate(file_data.headers):
                 # Skip PIC column (only compare actual I/O data and sum)
                 if file_header.upper() == 'PIC':
@@ -314,9 +316,10 @@ class FbcComparisonService:
                     # Column missing in live data
                     errors.append(CellError(
                         row=row_idx,
-                        col=col_idx,
+                        col=display_col_idx,  # Use display column index
                         error_message=f"Column '{file_header}' missing in live data"
                     ))
+                    display_col_idx += 1
                     continue
                 
                 live_col_idx = live_header_map[file_header]
@@ -326,17 +329,19 @@ class FbcComparisonService:
                 file_val_norm = self._normalize_cell_value(file_value)
                 live_val_norm = self._normalize_cell_value(live_value)
                 
-                # Compare values
+                # Compare values (use display_col_idx for UI mapping)
                 if file_val_norm == live_val_norm:
-                    matches.append((row_idx, col_idx))
+                    matches.append((row_idx, display_col_idx))
                 else:
-                    self.logger.debug(f"DIFFERENCE at row {row_idx} col {col_idx} ({file_header}): file='{file_val_norm}' vs live='{live_val_norm}'")
+                    self.logger.debug(f"DIFFERENCE at row {row_idx} display_col {display_col_idx} ({file_header}): file='{file_val_norm}' vs live='{live_val_norm}'")
                     differences.append(CellDifference(
                         row=row_idx,
-                        col=col_idx,
+                        col=display_col_idx,  # Use display column index
                         file_value=file_value,
                         live_value=live_value
                     ))
+                
+                display_col_idx += 1
         
         # Calculate statistics
         total_cells = len(matches) + len(differences) + len(errors)

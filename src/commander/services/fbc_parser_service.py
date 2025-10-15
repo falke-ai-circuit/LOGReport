@@ -38,9 +38,10 @@ class FbcParserService:
         self.COMMAND_RPC_PATTERN = re.compile(r'print from fbc rupi counters (\d+)')
         self.AGENT_PATTERN = re.compile(r'FBC agent (\d+)')
         
-        # FBC-specific patterns
-        self.FBC_HEADER_PATTERN = re.compile(r'\s*PIC\s+(.+?)\s*sum\s*$')
-        self.FBC_ROW_PATTERN = re.compile(r'^\s*(\d+)\s+([\w\sN]+?)\s+(\d+)\s*$')
+        # FBC-specific patterns (supports both PIC and IBC formats)
+        self.FBC_HEADER_PATTERN = re.compile(r'\s*(PIC|IBC)\s+(.+?)\s*sum\s*$')
+        # Changed: Single space \s between PIC and IO units preserves leading spaces for empty slot detection
+        self.FBC_ROW_PATTERN = re.compile(r'^\s*(\d+)\s(.+)\s(\d+)\s*$')
         self.FBC_TOTAL_PATTERN = re.compile(r'Total sum:\s*(\d+)\s*I/O-units,\s*(\d+)\s*Channels\s*\((\d+)\s*input,\s*(\d+)\s*output\)')
         self.IO_UNIT_PATTERN = re.compile(r'([A-Z]{2,3}\d)N?')  # Matches AI8, BI8, BO8, TI6, AO4, etc.
         
@@ -87,10 +88,10 @@ class FbcParserService:
     
     def _parse_fbc_content(self, lines: List[str], timestamp: str, command: str, agent_id: str, raw_content: str) -> FbcTableData:
         """Parse FBC file content (I/O configuration table)"""
-        # Find table section
-        table_start = self._find_line_matching(r'^\s*PIC\s+', lines)
+        # Find table section - support both PIC and IBC formats
+        table_start = self._find_line_matching(r'^\s*(PIC|IBC)\s+', lines)
         if table_start == -1:
-            self.logger.warning("FBC table header not found")
+            self.logger.warning("FBC table header not found (looked for PIC or IBC)")
             return FbcTableData(
                 timestamp=timestamp,
                 command=command,
@@ -193,18 +194,40 @@ class FbcParserService:
         )
     
     def _parse_fbc_header(self, header_line: str) -> List[str]:
-        """Extract column headers from FBC table header line"""
-        # Match pattern: "PIC  5  6  7  8  ... sum"
+        """Extract column headers from FBC table header line (supports PIC and IBC formats)"""
+        # Match pattern: "PIC  5  6  7  8  ... sum" or "IBC  0  1  2  3  ... sum"
         match = self.FBC_HEADER_PATTERN.match(header_line)
         if match:
             # Extract column numbers
-            columns_part = match.group(1)
+            columns_part = match.group(2)  # Changed from group(1) to group(2) since we added (PIC|IBC) capture
             column_numbers = re.findall(r'\d+', columns_part)
-            return ['PIC'] + column_numbers + ['sum']
+            return ['PIC'] + column_numbers + ['sum']  # Always use 'PIC' as key for consistency
         return ['PIC', 'sum']
     
     def _parse_fbc_row(self, line: str, headers: List[str]) -> Optional[Dict[str, str]]:
-        """Parse a single FBC data row"""
+        """
+        Parse a single FBC data row preserving empty slots and 'N' suffix.
+        
+        Format: "  PIC AI8 BI8 BO8 ... sum"
+        Empty slots show as multiple spaces (4+ chars).
+        I/O unit names can have 'N' suffix: BI8N, BO8N, etc.
+        Sometimes units are concatenated: BI8NBI8 (no space between).
+        "Not Exists" means hardware row is not used (display as N/E).
+        """
+        # Check for "Not Exists" rows
+        if 'Not Exists' in line or 'not exists' in line.lower():
+            # Extract PIC/IBC number from beginning of line
+            pic_match = re.match(r'^\s*(\d+)\s+', line)
+            if pic_match:
+                pic_number = pic_match.group(1)
+                # Create row with N/E in all card slots
+                row_data = {'PIC': pic_number}
+                for col_num in headers[1:-1]:  # Skip 'PIC' and 'sum'
+                    row_data[col_num] = 'N/E'
+                row_data['sum'] = '0'  # Not Exists means no units
+                return row_data
+            return None
+        
         match = self.FBC_ROW_PATTERN.match(line)
         if not match:
             return None
@@ -213,8 +236,21 @@ class FbcParserService:
         io_units_str = match.group(2)
         sum_value = match.group(3)
         
-        # Extract individual I/O units
-        io_units = self.IO_UNIT_PATTERN.findall(io_units_str)
+        # Extract I/O units using enhanced regex that:
+        # 1. Captures units with optional 'N' suffix: AI8, BI8N, etc. (PIC format)
+        # 2. Captures units like Di16, Do16, Ai8 (IBC format - mixed case)
+        # 3. Detects empty slots (4+ spaces)
+        # Pattern: ([A-Z][a-z]?\d+N?) matches units (both PIC and IBC formats), (\s{4,}) matches empty slots
+        io_units = []
+        pattern = r'([A-Z][A-Za-z]\d+N?)|\s{4,}'
+        
+        for match_obj in re.finditer(pattern, io_units_str):
+            if match_obj.group(1):
+                # Valid I/O unit captured
+                io_units.append(match_obj.group(1))
+            else:
+                # Empty slot (4+ spaces) - no card in that slot
+                io_units.append('')
         
         # Build row dictionary
         row_data = {'PIC': pic_number}

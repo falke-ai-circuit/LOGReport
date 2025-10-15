@@ -60,7 +60,7 @@ class NodeScanWidget(QWidget):
     refresh_interval_changed = pyqtSignal(int)  # seconds
     status_message = pyqtSignal(str, int)  # message, duration
     
-    def __init__(self, node_name, token_files, parser_service, telnet_service=None, parent=None):
+    def __init__(self, node_name, token_files, parser_service, telnet_service=None, parent=None, load_delay_ms=0):
         super().__init__(parent)
         self.node_name = node_name
         self.token_files = token_files
@@ -69,6 +69,7 @@ class NodeScanWidget(QWidget):
         self.current_data = None  # Parsed FbcTableData
         self.current_file = None
         self.logger = logging.getLogger(__name__)
+        self.load_delay_ms = load_delay_ms  # Staggered load delay
         
         # Comparison service (only if telnet_service provided)
         self.comparison_service = None
@@ -92,9 +93,10 @@ class NodeScanWidget(QWidget):
         
         self._setup_ui()
         
-        # Auto-load most recent file
-        if self.token_files:
-            self._load_most_recent_file()
+        # DISABLED: Auto-load causes crash - user must manually select file
+        # TODO: Investigate root cause of crash when loading files on startup
+        # if self.token_files:
+        #     QTimer.singleShot(self.load_delay_ms, self._load_most_recent_file)
     
     def _setup_ui(self):
         """Create file selector, table view, compare button, auto-refresh controls"""
@@ -266,6 +268,14 @@ class NodeScanWidget(QWidget):
             self.current_data = self.parser_service.parse_file(file_path)
             self.current_file = file_path
             
+            # Check if parsing succeeded
+            if not self.current_data.headers or not self.current_data.rows:
+                error_msg = f"File {Path(file_path).name} has no data or failed to parse"
+                self.logger.error(error_msg)
+                self.status_label.setText(f"Error: {error_msg}")
+                self._show_error_table(error_msg)
+                return
+            
             # Display metadata
             file_type_label = "FBC (I/O Configuration)" if self.current_data.file_type == 'FBC' else "RPC (Error Counters)"
             metadata_text = (
@@ -295,52 +305,96 @@ class NodeScanWidget(QWidget):
                 self._restart_auto_refresh()
             
         except Exception as e:
+            import traceback
             self.logger.error(f"Failed to load file {file_path}: {e}")
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
+            self.status_label.setText(f"Error: {str(e)}")
+            self._show_error_table(f"Exception: {e}")
             self.status_message.emit(f"Error loading file: {e}", 5000)
+    
+    def _show_error_table(self, error_msg: str):
+        """Display error message in table"""
+        self.table_widget.clear()
+        self.table_widget.setRowCount(1)
+        self.table_widget.setColumnCount(1)
+        self.table_widget.setHorizontalHeaderLabels(["Error"])
+        error_item = QTableWidgetItem(error_msg)
+        error_item.setForeground(QColor("#F44336"))  # Red text
+        self.table_widget.setItem(0, 0, error_item)
+        self.compare_btn.setEnabled(False)
     
     def _create_table_from_data(self, data):
         """Populate QTableWidget from parsed data"""
-        # Clear existing table
-        self.table_widget.clear()
-        self.table_widget.setRowCount(0)
-        self.table_widget.setColumnCount(0)
+        try:
+            self.logger.debug(f"_create_table_from_data called: headers={len(data.headers)}, rows={len(data.rows)}")
+            
+            # Clear existing table
+            self.table_widget.clear()
+            self.table_widget.setRowCount(0)
+            self.table_widget.setColumnCount(0)
+            
+            if not data.headers or not data.rows:
+                self.logger.warning("No data available to display in table")
+                self._show_error_table("No data available")
+                return
         
-        if not data.headers or not data.rows:
-            self.table_widget.setRowCount(1)
-            self.table_widget.setColumnCount(1)
-            self.table_widget.setItem(0, 0, QTableWidgetItem("No data available"))
-            return
-        
-        # Set table dimensions
-        self.table_widget.setRowCount(len(data.rows))
-        self.table_widget.setColumnCount(len(data.headers))
-        self.table_widget.setHorizontalHeaderLabels(data.headers)
-        
-        # Populate table cells
-        for row_idx, row_data in enumerate(data.rows):
-            for col_idx, header in enumerate(data.headers):
-                value = row_data.get(header, '')
-                item = QTableWidgetItem(str(value))
-                
-                # Center alignment for better readability
-                item.setTextAlignment(Qt.AlignCenter)
-                
-                # Default background (dark theme, not compared state)
-                # Use alternating row colors for better readability
-                if row_idx % 2 == 0:
-                    item.setBackground(QColor("#1E1E1E"))  # Dark background
-                else:
-                    item.setBackground(QColor("#252526"))  # Slightly lighter alternate
-                
-                self.table_widget.setItem(row_idx, col_idx, item)
+            # Remove PIC from headers - it will be shown as vertical row labels
+            display_headers = [h for h in data.headers if h.upper() != 'PIC']
+            self.logger.debug(f"Display headers (PIC removed): {display_headers} (count={len(display_headers)})")
+            
+            # Set table dimensions
+            self.table_widget.setRowCount(len(data.rows))
+            self.table_widget.setColumnCount(len(display_headers))
+            self.table_widget.setHorizontalHeaderLabels(display_headers)
+            self.logger.debug(f"Table dimensions set: {len(data.rows)} rows x {len(display_headers)} columns")
+            
+            # Create vertical header labels from PIC values (case-insensitive lookup)
+            vertical_labels = []
+            for row_data in data.rows:
+                # Try both uppercase and lowercase 'PIC' (FBC uses 'PIC', RPC uses 'pic')
+                pic_value = row_data.get('PIC', '') or row_data.get('pic', '')
+                vertical_labels.append(str(pic_value))
+            self.table_widget.setVerticalHeaderLabels(vertical_labels)
+            self.logger.debug(f"Vertical labels set: {vertical_labels}")
+            
+            # Populate table cells (skip PIC column)
+            for row_idx, row_data in enumerate(data.rows):
+                for col_idx, header in enumerate(display_headers):
+                    value = row_data.get(header, '')
+                    item = QTableWidgetItem(str(value))
+                    
+                    # Center alignment for better readability
+                    item.setTextAlignment(Qt.AlignCenter)
+                    
+                    # Default background (dark theme, not compared state)
+                    # Use alternating row colors for better readability
+                    if row_idx % 2 == 0:
+                        item.setBackground(QColor("#1E1E1E"))  # Dark background
+                    else:
+                        item.setBackground(QColor("#252526"))  # Slightly lighter alternate
+                    
+                    self.table_widget.setItem(row_idx, col_idx, item)
+            
+            self.logger.debug(f"Table populated successfully: {len(data.rows)} rows")
+            
+        except Exception as e:
+            import traceback
+            self.logger.error(f"Error in _create_table_from_data: {e}")
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
+            self._show_error_table(f"Table creation error: {e}")
+            raise
         
         # Resize columns to content
         self.table_widget.resizeColumnsToContents()
         
         # Adjust column widths for better display
+        # BUGFIX: Use display_headers count (PIC removed), not data.headers count
+        display_headers = [h for h in data.headers if h.upper() != 'PIC']
         header = self.table_widget.horizontalHeader()
-        for col in range(len(data.headers)):
+        for col in range(len(display_headers)):
             header.setSectionResizeMode(col, QHeaderView.Interactive)
+        
+        self.logger.debug(f"Column resize modes set for {len(display_headers)} columns")
         
         # Display totals if available
         if data.totals:

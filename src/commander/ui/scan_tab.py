@@ -78,13 +78,16 @@ class ScanTab(QWidget):
                 self.logger.debug(f"No FBC/RPC files found for node {node_name}, skipping")
                 continue
             
-            # Create widget for this node
+            # Create widget for this node with staggered load delay (100ms per widget)
+            # This prevents all widgets from loading files simultaneously
+            load_delay_ms = len(self.node_widgets) * 100
             node_widget = NodeScanWidget(
                 node_name=node_name,
                 token_files=token_files,
                 parser_service=self.parser_service,
                 telnet_service=self.telnet_service,
-                parent=self
+                parent=self,
+                load_delay_ms=load_delay_ms
             )
             
             # Connect signals
