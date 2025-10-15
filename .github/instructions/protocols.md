@@ -80,11 +80,11 @@ applyTo: '**'
 
 **Response Variants**:
 
-✅ **Full**: `[CVP: ✓CHATMODE:[SVP,VMP,Memory,Codegraph,CEPH,Completion] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none]]`
+✅ **Full**: `[CVP: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none]]`
 
-⚠️ **Partial**: `[CVP: ✓CHATMODE:[SVP,Memory] | ⚠️CHATMODE:[Codegraph:2/5] | ✓INSTRUCTIONS:[protocols,phases] | ⚠️INSTRUCTIONS:[standards:LEARNINGS_format] | 🚫VIOLATIONS:[2:Codegraph_queries,LEARNINGS_format]]`
+❌ **Failed** (example): `[CVP: ❌CHATMODE:[Memory:not_loaded] | ❌INSTRUCTIONS:[protocols:no_SVP] | 🚫VIOLATIONS:[2:critical]]`
 
-❌ **Failed**: `[CVP: ❌CHATMODE:[Memory:not_loaded,VMP:missing] | ❌INSTRUCTIONS:[protocols:no_SVP,standards:no_VERIFIED_LOAD] | 🚫VIOLATIONS:[4:Memory_not_loaded,VMP_missing,SVP_not_emitted,VERIFIED_LOAD_missing]]`
+**See examples.md for detailed CVP usage patterns**
 
 **Critical Violations** (MUST fix): No SVP | Memory not loaded (REMEMBER) | Codegraph not loaded (ASSESS) | <100% test pass (TEST) | No USER_VERIFICATION (TEST) | <3 entities (LEARN) | Wrong file placement | Missing VERIFIED_LOAD | Missing METRICS deltas | Wrong LEARNINGS format | <3 queries (IMPLEMENT) | <2 queries (DEBUG)
 
@@ -96,7 +96,5 @@ applyTo: '**'
 
 **Protocol Fields** (when applicable): CVP (MANDATORY every phase) | STACK (VMP depth≥1) | CEPH (ASSESS+) | MEMORY+VERIFIED_LOAD (REMEMBER) | LEARNINGS (specialist) | METRICS+deltas (TEST)
 
-**Compliance**: ✓Actions ✓VMP ✓Fields ✓Queries ✓NEXT ✓SVP ✓CVP | Fail→BLOCKERS+STATUS:partial
-
-**Phase Transitions**: ✓Complete ✓Requirements ✓Stack ✓CEPH ✓SVP ✓CVP
+**Compliance**: ✓Actions ✓VMP ✓Fields ✓Queries ✓NEXT ✓SVP ✓CVP | Fail→BLOCKERS+STATUS:partial | **Phase Transitions**: ✓Complete ✓Requirements ✓Stack ✓CEPH ✓SVP ✓CVP
 

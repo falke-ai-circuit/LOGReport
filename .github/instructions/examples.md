@@ -29,6 +29,19 @@ applyTo: '**'
 
 **❌ Failed**: `[CVP: ❌CHATMODE:[Memory:not_loaded] | ❌INSTRUCTIONS:[protocols:no_SVP] | 🚫VIOLATIONS:[2:critical]]`
 
+## CVP Usage in Real Workflows
+
+**Pattern**: Emit CVP as FIRST LINE before STATUS in every phase completion. Self-verify against chatmode + all 5 instruction files. Critical violations (❌) BLOCK next phase until fixed.
+
+**Example Phase Completion with CVP**:
+```
+[CVP: ✓CHATMODE:[SVP,Codegraph:5/5,CEPH,LEARNINGS] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none]]
+STATUS: completed
+PHASE: IMPLEMENT
+TASKS: [x][x][x][x][x][x][ ][ ][ ][ ][ ]
+...rest of completion format...
+```
+
 ## Completion Format Examples
 
 **REMEMBER Phase**:

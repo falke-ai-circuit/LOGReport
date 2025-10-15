@@ -1,4 +1,4 @@
----
+﻿---
 applyTo: '**'
 ---
 
@@ -28,17 +28,17 @@ applyTo: '**'
 **Out**: Standard + `CEPH:[init]` + `CODEGRAPH:[loaded:YES summary:[modules:N classes:M methods:P relations:[counts]] | VERIFIED_LOAD:[codegraph_complete:YES structure_valid:YES]]` + `CODEGRAPH_REFS:[modules/classes]` + `DOCS_REVIEWED:[files]`
 
 ### Phase 3: ANALYZE
-**⚠️ SVP**: `[SVP: ⚡PHASE→🔬ANALYZE | 📚STACK→... | ✓TASK→3/11 | 🎯NEXT→map_arch]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→🔬ANALYZE | 📚STACK→... | ✓TASK→3/11 | 🎯NEXT→map_arch]`  
 **Do**: Map architecture → query codegraph (BELONGS_TO, IMPORTS, DOCUMENTED_IN) → analyze dataflow/patterns → identify causes/edges → evolve CEPH  
 **Out**: Standard + `CEPH:[updated]` + `LEARNINGS:[pattern:[X]|approach:[Y]]` ⚠️ MANDATORY
 
 ### Phase 4: ARCHITECT
-**⚠️ SVP**: `[SVP: ⚡PHASE→🏗️ARCHITECT | 📚STACK→... | ✓TASK→4/11 | 🎯NEXT→design]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→🏗️ARCHITECT | 📚STACK→... | ✓TASK→4/11 | 🎯NEXT→design]`  
 **Do**: Design architecture → query impact (reverse IMPORTS, dependencies) → plan models/interfaces → document decisions → consider scale/maintainability → evolve CEPH  
 **Out**: Standard + `CEPH:[updated]` + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `IMPACT_ANALYSIS:[modules:[list] deps:[N] surface:[classes]]`
 
 ### Phase 5: IMPLEMENT ⚠️ MANDATORY CODEGRAPH
-**⚠️ SVP**: `[SVP: ⚡PHASE→💻IMPLEMENT | 📚STACK→... | ✓TASK→5/11 | 🎯NEXT→query_patterns]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→💻IMPLEMENT | 📚STACK→... | ✓TASK→5/11 | 🎯NEXT→query_patterns]`  
 **Do**: Implement per architecture → **query codegraph (3 of 5)** → write clean code (<500 lines) → follow conventions → errors/logging → preserve behavior → create tests → evolve CEPH
 
 **Codegraph Queries (min 3 of 5)**:
@@ -47,42 +47,27 @@ applyTo: '**'
 **Out**: Standard + `CEPH:[updated]` + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[type:path:desc]` + `CODE_PATTERNS:[methods:[list] structures:[N]]`
 
 ### Phase 6: DEBUG ⚠️ MANDATORY CODEGRAPH
-**⚠️ SVP**: `[SVP: ⚡PHASE→🐛DEBUG | 📚STACK→... | ✓TASK→6/11 | 🎯NEXT→hypotheses]`  
+### Phase 6: DEBUG ⚠️ MANDATORY CODEGRAPH
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→🐛DEBUG | 📚STACK→... | ✓TASK→6/11 | 🎯NEXT→hypotheses]`  
 **Do**: Form 3-5 hypotheses (H1:cause→prediction→test) → distill to 1-2 → trace in codegraph (IMPORTS, BELONGS_TO, DOCUMENTED_IN) → add logs → validate → fix → verify → rerun → evolve CEPH  
 **Out**: Standard + `CEPH:[updated]` + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `EXECUTION_TRACE:[chain:[methods] classes:[list] issues:[N]]`
 
 ### Phase 7: TEST ⚠️ MANDATORY
-**⚠️ SVP**: `[SVP: ⚡PHASE→🧪TEST | 📚STACK→... | ✓TASK→7/11 | 🎯NEXT→run_tests]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→🧪TEST | 📚STACK→... | ✓TASK→7/11 | 🎯NEXT→run_tests]`  
 **Do**: Extract acceptance criteria → map surface via codegraph → create coverage → run pytest -v → **100% pass MANDATORY** → IF fail: route (logic→DEBUG | design→ARCHITECT | requirements→ANALYZE) → **CHECKPOINT: Present results, request verify, 🛑 WAIT** → IF confirm: LEARN | IF reject: fix  
 **Out**: Standard + `CEPH:[validated]` + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[test:path:coverage]` + `METRICS:[WITH_DELTAS]` ⚠️ + `TEST_SURFACE:[methods:[N/M] classes:[list] edges:[N]]` + `USER_VERIFICATION:[presented+awaiting_confirmation:YES]` ⚠️
 
 ### Phase 8: LEARN ⚠️ MANDATORY
-**⚠️ SVP**: `[SVP: ⚡PHASE→🎓LEARN | 📚STACK→... | ✓TASK→8/11 | 🎯NEXT→extract]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→🎓LEARN | 📚STACK→... | ✓TASK→8/11 | 🎯NEXT→extract]`  
 **Do**: Extract 3+ entities (Feature+Method+Pattern) → create temp JSONL → append project_memory.json → verify count → cleanup | Update codegraph (Module+Class) → append → verify → cleanup
 
-**Methods** (choose based on size):
-- **≤3 entities**: Direct append
-```powershell
-@('{"type":"entity",...}','{"type":"relation",...}') | Add-Content project_memory.json -Encoding UTF8
-```
-- **≥4 entities**: Temp file
-```powershell
-$entities=@('...');$entities|Out-File misc/temp/learn.jsonl -Encoding UTF8
-$before=(Get-Content project_memory.json).Count
-Get-Content misc/temp/learn.jsonl|Add-Content project_memory.json -Encoding UTF8
-$after=(Get-Content project_memory.json).Count;Write-Host "Added $($after-$before) lines"
-Remove-Item misc/temp/learn.jsonl
-```
-
-**Out**: Standard + `MEMORY:[entities:[3+:names] | project_memory:[+N_lines] | codegraph:[+M_lines] | verified:[before→after]]`
-
 ### Phase 9: DOCUMENT
-**⚠️ SVP**: `[SVP: ⚡PHASE→📚DOCUMENT | 📚STACK→... | ✓TASK→9/11 | 🎯NEXT→update]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→📚DOCUMENT | 📚STACK→... | ✓TASK→9/11 | 🎯NEXT→update]`  
 **Do**: Update README → CHANGELOG → docs/ (templates) → extract TODOs → document API/breaking changes → user guides  
 **Out**: Standard + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[doc:path:desc]` + `DOCUMENT:[impact+changes+integration+examples]`
 
 ### Phase 10: LOG
-**⚠️ SVP**: `[SVP: ⚡PHASE→📝LOG | 📚STACK→... | ✓TASK→10/11 | 🎯NEXT→reconstruct]`  
+**⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→📝LOG | 📚STACK→... | ✓TASK→10/11 | 🎯NEXT→reconstruct]`  
 **Do**: Review Phase 0-9 → reconstruct chronologically → capture tasks+completions+CEPH+learnings+artifacts → create `logs/workflow_[feature]_[YYYYMMDD_HHMMSS].md` → single atomic write  
 **Out**: Standard + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[log:logs/workflow_*.md]` + `HANDOFFS:[patterns+strategies+approaches]`
 

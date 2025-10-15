@@ -24,15 +24,11 @@ applyTo: '**'
 ### Project Memory
 `{"type":"entity", "name":"Project.[Domain].[Cluster].[Name]", "entityType":"[Type]", "observations":["Description with architecture/implementation details.", "Integration: signals/handlers/components used.", "created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0"]}`
 
-### Codegraph Module
-`{"type":"entity","name":"Code.Module.{path}","entityType":"Module","observations":["{description} | {N} class, {M} funcs, uses {frameworks}","Methods: {signatures}","Deps: {imports}","upd:YYYY-MM-DD,refs:0"]}`
-
-### Codegraph Class
-`{"type":"entity","name":"Code.Class.{path}.{ClassName}","entityType":"Class","observations":["{purpose} | extends {base}","upd:YYYY-MM-DD,refs:0"]}`
+### Codegraph
+`{"type":"entity","name":"Code.Module.{path}","entityType":"Module","observations":["{description} | {N} class, {M} funcs","upd:YYYY-MM-DD,refs:0"]}`
 
 ### Relations
-**Required**: BELONGS_TO (Module→Domain, Class→Module) | IMPORTS (Module→Module)  
-**Rules**: Read codegraph.json examples first | Match existing format exactly
+**Required**: BELONGS_TO (Module→Domain, Class→Module) | IMPORTS (Module→Module) | **Rules**: Read codegraph.json examples first | Match existing format exactly
 
 ## Documentation Standards
 
