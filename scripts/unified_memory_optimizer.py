@@ -193,47 +193,76 @@ class UnifiedMemoryOptimizer:
         
         Removal categories:
         1. MemoryType entities (organizational metadata, no workflow value)
-        2. Cluster/Domain/Type meta entities (hierarchy via relations)
+        2. ORPHANED metadata entities (Cluster/Domain/Type NOT connected to memory entities)
         3. Generic documentation (README/TODO extractions)
         4. Low-value entities (<2 observations or all <25 chars)
         5. Obsolete entities (no refs 90+ days)
         6. Overly verbose (>500 chars - will be condensed instead)
+        
+        NOTE: Valid hierarchical entities (connected to memory entities) are KEPT
         """
         removable = []
         entity_names = {e['name'] for e in self.entities}
-        connected_entities = set()
+        
+        # Build connection maps
+        outgoing_connections = defaultdict(set)  # entity -> what it connects to
+        incoming_connections = defaultdict(set)  # entity -> what connects to it
         
         for rel in self.relations:
-            if rel.get('from') in entity_names:
-                connected_entities.add(rel['from'])
-            if rel.get('to') in entity_names:
-                connected_entities.add(rel['to'])
+            from_entity = rel.get('from')
+            to_entity = rel.get('to')
+            if from_entity in entity_names and to_entity in entity_names:
+                outgoing_connections[from_entity].add(to_entity)
+                incoming_connections[to_entity].add(from_entity)
         
-        disconnected = entity_names - connected_entities
+        # Identify hierarchy vs regular entities
+        hierarchy_entities = {e['name'] for e in self.entities if any(
+            e['name'].startswith(p) for p in [f'{self.prefix}.Domain.', f'{self.prefix}.Cluster.', f'{self.prefix}.Type.']
+        )}
+        regular_entities = entity_names - hierarchy_entities
+        
+        # Calculate disconnected entities (no incoming or outgoing connections)
+        connected_entities = set(outgoing_connections.keys()) | set(incoming_connections.keys())
+        disconnected_entities = entity_names - connected_entities
+        
+        # Find orphaned metadata: hierarchy entities with NO connections FROM regular entities
+        orphaned_metadata = set()
+        for hier_entity in hierarchy_entities:
+            # Check if ANY regular entity connects to this hierarchy entity
+            regular_sources = incoming_connections[hier_entity] & regular_entities
+            if not regular_sources:
+                # No regular entities connect to this hierarchy entity -> orphaned metadata
+                orphaned_metadata.add(hier_entity)
         
         for entity in self.entities:
             name = entity['name']
             entity_type = entity.get('entityType', '')
             observations = entity.get('observations', [])
             
-            # Skip hierarchy entities (will be regenerated in Phase 2)
-            if any(name.startswith(p) for p in [f'{self.prefix}.Domain.', f'{self.prefix}.Cluster.', f'{self.prefix}.Type.']):
-                continue
-            
             should_remove = False
             reason = ""
             
-            # 1. Remove MemoryType entities (organizational metadata only)
-            if entity_type == 'MemoryType':
+            # 1. Remove ORPHANED hierarchy entities (not connected to any regular entities)
+            if name in orphaned_metadata:
+                should_remove = True
+                reason = "orphaned_metadata_no_memory_connections"
+            
+            # Skip valid hierarchy entities (connected to memory entities)
+            elif name in hierarchy_entities:
+                continue
+            
+            # 2. Remove MemoryType entities (organizational metadata only)
+            elif entity_type == 'MemoryType':
                 should_remove = True
                 reason = "meta_type_organizational"
             
-            # 2. Remove Cluster/Domain/Type meta entities
-            elif entity_type in ['Cluster', 'Domain', 'Type'] or '_Cluster' in name or '_Domain' in name or '_Type' in name:
+            # 3. Remove entities with 'Cluster'/'Domain'/'Type' in entityType but NOT in hierarchy
+            # (These are misclassified organizational entities)
+            elif entity_type in ['Cluster', 'Domain', 'Type'] and name not in hierarchy_entities:
                 should_remove = True
-                reason = "hierarchy_meta_entity"
+                reason = "misclassified_meta_entity"
             
-            # 3. Remove generic documentation entities (README/TODO extractions)
+            # 4. Remove generic documentation entities (README/TODO extractions)
             elif entity_type == 'Document' and any(kw in name for kw in [
                 'Project_Overview', 'Project_Features', 'Project_Requirements', 
                 'Project_Installation', 'Project_Usage', 'Project_Tasks'
@@ -241,18 +270,18 @@ class UnifiedMemoryOptimizer:
                 should_remove = True
                 reason = "generic_documentation"
             
-            # 4. Remove low-value entities (minimal observations)
+            # 5. Remove low-value entities (minimal observations)
             elif len(observations) <= 1 or (len(observations) == 2 and all(len(obs) < 25 for obs in observations)):
                 should_remove = True
                 reason = "low_value_minimal_obs"
             
-            # 5. Remove obsolete entities (no refs for 90+ days)
+            # 6. Remove obsolete entities (no refs for 90+ days)
             elif self._is_obsolete(entity):
                 should_remove = True
                 reason = "obsolete_no_refs_90d"
             
-            # 6. Disconnected entities with no value (verbose ones will be condensed)
-            elif name in disconnected and len(observations) <= 2:
+            # 7. Disconnected regular entities with no value (not connected to anything)
+            elif name not in outgoing_connections and name not in incoming_connections and len(observations) <= 2:
                 should_remove = True
                 reason = "disconnected_minimal_value"
             
@@ -661,9 +690,9 @@ class UnifiedMemoryOptimizer:
         connectivity_ok = len(orphaned_entities) == 0 and len(orphaned_clusters) == 0 and len(orphaned_domains) == 0
         
         if connectivity_ok:
-            self.log("✅ Connectivity: 100% (all entities connected)")
+            self.log("[OK] Connectivity: 100% (all entities connected)")
         else:
-            self.log(f"⚠️  Connectivity issues: {len(orphaned_entities)} orphaned entities, {len(orphaned_clusters)} orphaned clusters, {len(orphaned_domains)} orphaned domains")
+            self.log(f"[WARN] Connectivity issues: {len(orphaned_entities)} orphaned entities, {len(orphaned_clusters)} orphaned clusters, {len(orphaned_domains)} orphaned domains")
         
         # Check ratios
         self.log("Checking ratios...")
@@ -671,22 +700,22 @@ class UnifiedMemoryOptimizer:
         cd_ok = stats['cd_ratio'] >= self.target_ratio
         dt_ok = stats['dt_ratio'] >= 2.0
         
-        self.log(f"  Entity:Cluster = {stats['ec_ratio']:.1f}:1 {'✅' if ec_ok else '⚠️'} (target {self.target_ratio}:1+)")
-        self.log(f"  Cluster:Domain = {stats['cd_ratio']:.1f}:1 {'✅' if cd_ok else '⚠️'} (target {self.target_ratio}:1+)")
-        self.log(f"  Domain:Type = {stats['dt_ratio']:.1f}:1 {'✅' if dt_ok else '⚠️'} (target 2:1+)")
+        self.log(f"  Entity:Cluster = {stats['ec_ratio']:.1f}:1 {'[OK]' if ec_ok else '[WARN]'} (target {self.target_ratio}:1+)")
+        self.log(f"  Cluster:Domain = {stats['cd_ratio']:.1f}:1 {'[OK]' if cd_ok else '[WARN]'} (target {self.target_ratio}:1+)")
+        self.log(f"  Domain:Type = {stats['dt_ratio']:.1f}:1 {'[OK]' if dt_ok else '[WARN]'} (target 2:1+)")
         
         # Check 4-layer hierarchy
         hierarchy_ok = stats['clusters'] > 0 and stats['domains'] > 0 and stats['types'] > 0
-        self.log(f"  4-Layer Hierarchy: {'✅' if hierarchy_ok else '⚠️'}")
+        self.log(f"  4-Layer Hierarchy: {'[OK]' if hierarchy_ok else '[WARN]'}")
         
         # Overall result
         all_ok = connectivity_ok and ec_ok and cd_ok and dt_ok and hierarchy_ok
         
         self.log("=" * 70)
         if all_ok:
-            self.log("✅ VALIDATION PASSED - All requirements met")
+            self.log("[OK] VALIDATION PASSED - All requirements met")
         else:
-            self.log("⚠️  VALIDATION INCOMPLETE - Some requirements not met")
+            self.log("[WARN] VALIDATION INCOMPLETE - Some requirements not met")
         self.log("=" * 70)
         
         return all_ok
