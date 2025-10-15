@@ -17,7 +17,7 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 - **Knowledge Capture**: Extract learnings to memory (`[Type].[Domain].[Cluster].[EntityType]_[Name]`)
 - **Session Logging**: Reconstruct workflow to `logs/workflow_*.md` for retrieval
 - **Organized Structure WARNING**: Place files in proper subdirectories | Keep root clean (see `.github/instructions/structure.md`)
-- **Protocols**: SVP (Self-Verify), VMP (Vertical Mode), CEPH (Context Evolution) - see `.github/instructions/protocols.md`
+- **Protocols**: SVP (Self-Verify), VMP (Vertical Mode), CEPH (Context Evolution), CVP (Compliance Verification) - see `.github/instructions/protocols.md`
 
 ## Workflow
 
@@ -102,63 +102,38 @@ WARNING **BLOCKING CHECKPOINT** - No continuation without user approval
 - **Session reconstruction**: Phase progression + timestamps, decisions, VMP events (USER/PUSH/POP), test results, learnings, blockers
 - Include `HANDOFFS:[patterns_for_future_sessions]`
 
+### 9. CVP (Compliance Verification Protocol)
+
+**Emit at END of EVERY phase** (before STATUS): `[CVP: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none|items]]`
+
+Self-verify against chatmode + all instruction files. Critical violations BLOCK next phase. See `.github/instructions/protocols.md` for full specification.
+
 ## Completion Format
 
-**Standard**:
-```
-STATUS: [completed|partial|failed]
-PHASE: [name]
-TASKS: [phase_list with current: completed, others: pending/done]
-DISCOVERIES: [findings + insights + decisions]
-BLOCKERS: [none|issues]
-NEXT: [proceed_to_next|alternative]
-```
+**Standard** (emit in order): `[CVP: ...]` → STATUS → PHASE → TASKS → DISCOVERIES → BLOCKERS → NEXT
 
-**Optional Fields** (when applicable):
-- `STACK:[breadcrumb] (depth:N)` (VMP depth >= 1)
-- `CEPH:[...]` (ASSESS onwards)
-- `MEMORY:[...+VERIFIED_LOAD]` (REMEMBER)
-- `LEARNINGS:[pattern:[X]|approach:[Y]]` WARNING MANDATORY FORMAT (specialist phases)
-- `ARTIFACTS:[type:path:desc]` (IMPLEMENT, TEST, LEARN, DOCUMENT)
-- `METRICS:[data]` WARNING WITH DELTAS: `95%(+15%)|9/9(+9)` (TEST)
-- `DOCUMENT:[updates]` (DOCUMENT) | `HANDOFFS:[patterns]` (LOG)
-
-**Compliance Check** (before STATUS):
-Actions VMP Fields Queries NEXT SVP | Fail -> `BLOCKERS:[items]` + `STATUS: partial`
+**Optional**: STACK (VMP depth≥1) | CEPH (ASSESS+) | MEMORY+VERIFIED_LOAD (REMEMBER) | LEARNINGS (specialist) | ARTIFACTS (code/test/doc) | METRICS+deltas (TEST) | DOCUMENT | HANDOFFS (LOG)
 
 ## Verification Matrix
 
-| Phase | SVP | Memory | Codegraph | CEPH | Tests | User | Output |
-|-------|-----|--------|-----------|------|-------|------|--------|
-| REMEMBER | YES | Load+Verify | - | - | - | - | - |
-| ASSESS | YES | Loaded | Load+Verify | Init | - | - | - |
-| IMPLEMENT | YES | Access | 3/5 queries | Update | - | - | Artifacts |
-| DEBUG | YES | Access | 2/4 queries | Update | - | - | Fixes |
-| TEST | YES | Access | Optional | Update | 100% | STOP | Metrics |
-| LEARN | YES | Append | Append | Update | - | - | Memory |
-| DOCUMENT | YES | - | - | - | - | - | Docs |
-| LOG | YES | - | - | - | - | - | Workflow |
+| Phase | SVP | Memory | Codegraph | CEPH | Tests | User | CVP | Output |
+|-------|-----|--------|-----------|------|-------|------|-----|--------|
+| PLAN | ✓ | - | - | - | - | - | ✓ | Tasks |
+| REMEMBER | ✓ | Load+Verify | - | - | - | - | ✓ | MEMORY |
+| ASSESS | ✓ | Loaded | Load+Verify | Init | - | - | ✓ | CEPH |
+| ANALYZE | ✓ | Access | Optional | Update | - | - | ✓ | LEARNINGS |
+| ARCHITECT | ✓ | Access | Optional | Update | - | - | ✓ | LEARNINGS |
+| IMPLEMENT | ✓ | Access | 3/5 queries | Update | - | - | ✓ | ARTIFACTS |
+| DEBUG | ✓ | Access | 2/4 queries | Update | - | - | ✓ | Fixes |
+| TEST | ✓ | Access | Optional | Update | 100% | STOP | ✓ | METRICS |
+| LEARN | ✓ | Append | Append | Update | - | - | ✓ | +Memory |
+| DOCUMENT | ✓ | - | - | - | - | - | ✓ | Docs |
+| LOG | ✓ | - | - | - | - | - | ✓ | Workflow |
 
-## References
+## Task Tracking / Error Recovery
 
-- **Phases**: `.github/instructions/phases.md` - Complete 11-phase workflow specifications
-- **Protocols**: `.github/instructions/protocols.md` - SVP, VMP, CEPH specifications
-- **Examples**: `.github/instructions/examples.md` - VMP activation patterns, error recovery
-- **Standards**: `.github/instructions/standards.md` - Memory templates, quality standards
-- **Structure**: `.github/instructions/structure.md` - Directory organization, file placement
+**Progress**: `TASKS: PLAN[DONE] REMEMBER[DONE] ASSESS-> ... LOG`
 
-## Task Tracking
+**Recovery**: Test fail→DEBUG | Design flaw→ARCHITECT | Anomaly→ANALYZE | Repeated→ASSESS
 
-Use `TASKS:` field in completion format to show workflow progress:
-```
-TASKS: PLAN[DONE] REMEMBER[DONE] ASSESS[DONE] ANALYZE-> ARCHITECT IMPLEMENT DEBUG TEST LEARN DOCUMENT LOG
-```
-
-## Error Recovery
-
-- Test failure -> VMP PUSH -> DEBUG (investigate)
-- Design flaw -> VMP PUSH -> ARCHITECT (redesign)
-- Pattern anomaly -> VMP PUSH -> ANALYZE (research)
-- Repeated issue -> VMP PUSH -> ASSESS (reframe problem)
-
-See `.github/instructions/examples.md` for detailed error recovery patterns.
+See `.github/instructions/` for detailed specifications (phases.md, protocols.md, examples.md, standards.md, structure.md)

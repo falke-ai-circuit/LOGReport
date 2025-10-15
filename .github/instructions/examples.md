@@ -48,48 +48,28 @@ USER: "What does validation do?"
 [SVP: ⚡PHASE→🔬ANALYZE | 📚STACK→depth:2→🐛DEBUG←💻IMPLEMENT | ✓TASK→map | 🎯NEXT→trace]
 ```
 
-## Error Recovery Patterns
+## Error Recovery / Auto-Detection
 
-| Scenario | Detection | Action | Example |
-|----------|-----------|--------|---------|
-| **Test Failure** | <100% pass | 🔄 VMP PUSH DEBUG → 3-5 hypotheses → fix → POP | TEST(1/9 fail) → DEBUG(H1:logic_order) → fixed → POP TEST(9/9) |
-| **Repeated Failures** | 2+ same issue | 🔄 VMP PUSH ASSESS → identify systemic → fix → POP | DEBUG(path fail 2x) → ASSESS(standards) → normalize → POP |
-| **Design Flaw** | Limitation found | 🔄 VMP PUSH ARCHITECT → alternatives → POP | TEST(widget limit) → ARCHITECT(custom delegate) → POP |
-| **Anomaly** | Unexpected behavior | 🔄 VMP PUSH ANALYZE → root cause → POP | IMPLEMENT(font broken) → ANALYZE(QTextEdit issue) → POP |
-| **Memory Fail** | File missing | Verify exists → check format → validate pattern → re-read | Load error → check JSONL → validate 4-layer → reload |
-| **Codegraph Missing** | File not found | Proceed without → create in LEARN | ASSESS(no file) → skip queries → LEARN(create new) |
-| **User Verify Timeout** | No response | DO NOT auto-proceed → re-present → escalate | TEST(await) → no answer → re-present results |
+| Scenario | Detection | Action |
+|----------|-----------|--------|
+| **Test Failure** | <100% pass | PUSH DEBUG → hypotheses → fix → POP |
+| **Repeated** | 2+ same issue | PUSH ASSESS → systemic → fix → POP |
+| **Design Flaw** | Limitation | PUSH ARCHITECT → alternatives → POP |
+| **Anomaly** | Unexpected | PUSH ANALYZE → root cause → POP |
+| **Memory/Codegraph Missing** | File not found | Verify/proceed without → create in LEARN |
+| **User Verify Timeout** | No response | DO NOT auto-proceed → re-present |
 
-## Auto-Detection Triggers
-
-| Pattern | Condition | Target | Example |
-|---------|-----------|--------|---------|
-| **Test Failure** | <100% pass | DEBUG | `9/9 REQUIRED but 8/9 passed` → DEBUG |
-| **Repeated** | Same issue 2+ | ASSESS | `Path error 2nd occurrence` → ASSESS |
-| **Design Flaw** | Architecture block | ARCHITECT | `Widget cannot support feature` → ARCHITECT |
-| **Anomaly** | Unexpected | ANALYZE | `Font rendering breaks alignment` → ANALYZE |
-| **Requirement Gap** | Ambiguous criteria | ANALYZE | `Unclear what "valid" means` → ANALYZE |
-| **User Request** | Direct command | [MODE] | `"Can you explain the architecture?"` → ARCHITECT |
-| **Circular Dep** | Import loop | ANALYZE | `ModuleA imports ModuleB imports ModuleA` → ANALYZE |
+**Triggers**: Test fail→DEBUG | Repeated→ASSESS | Design→ARCHITECT | Anomaly→ANALYZE | User→[MODE] | Circular→ANALYZE
 
 ## CEPH Evolution Examples
 
-**Simple Task** (validation fix):
-```
-ASSESS: CURRENT:[Rejects AP01M] EXPECTED:[Accept all types] HYPOTHESES:[H1:Pattern update needed]
-TEST: CURRENT:[Updated pattern] EXPECTED:[MET] HYPOTHESES:[H1:CONFIRMED] EVIDENCE:[9/9 pass]
-```
+**Simple**: `ASSESS: CURRENT:[Rejects AP01M] EXPECTED:[Accept all] HYPOTHESES:[H1:Pattern update] → TEST: EXPECTED:[MET] EVIDENCE:[9/9 pass]`
 
-**Complex Task** (UI component):
-```
-ASSESS: CURRENT:[No UI] EXPECTED:[Tree widget] PROBLEM:[No selection] HYPOTHESES:[H1:New widget | H2:Extend existing]
-ANALYZE: CURRENT:[QTreeWidget identified] HYPOTHESES:[H1:VALIDATED | H2:REJECTED] EVIDENCE:[Docs confirm hierarchy support]
-ARCHITECT: CURRENT:[Design finalized] EXPECTED:[Tree+delegate] HYPOTHESES:[H1:CONFIRMED] EVIDENCE:[Impact:2 modules]
-IMPLEMENT: CURRENT:[Implemented tree+delegate] HYPOTHESES:[H1:COMPLETE]
-TEST: CURRENT:[Tested] EXPECTED:[MET] HYPOTHESES:[H1:CONFIRMED] EVIDENCE:[12/12 pass, 95%(+15%)]
-```
+**Complex**: `ASSESS: CURRENT:[No UI] EXPECTED:[Tree widget] HYPOTHESES:[H1:New widget|H2:Extend] → ANALYZE: H1:VALIDATED|H2:REJECTED → ARCHITECT: EXPECTED:[Tree+delegate] → IMPLEMENT → TEST: EXPECTED:[MET] EVIDENCE:[12/12,95%(+15%)]`
 
 ## Compliance Checklists
+
+**Note**: These checklists are now verified automatically through CVP (Compliance Verification Protocol). See CVP section in protocols.md for full specification.
 
 **REMEMBER Phase**:
 ☐ Load global_memory (domains+3/domain)  
@@ -126,4 +106,33 @@ TEST: CURRENT:[Tested] EXPECTED:[MET] HYPOTHESES:[H1:CONFIRMED] EVIDENCE:[12/12 
 ❌ **Skip VMP Block**: Describe "going to debug" → ✅ Emit `🔄 VMP PUSH` block  
 ❌ **Wrong LEARNINGS**: `LEARNINGS:[We fixed the bug]` → ✅ `LEARNINGS:[pattern:[X]|approach:[Y]]`  
 ❌ **No Deltas**: `METRICS:[coverage=95%]` → ✅ `METRICS:[coverage=95%(+15%) | tests=9/9(+9)]`  
-❌ **Forget CEPH**: Create in ASSESS, never update → ✅ Update at each phase (CURRENT/EXPECTED/EVIDENCE)
+❌ **Forget CEPH**: Create in ASSESS, never update → ✅ Update at each phase (CURRENT/EXPECTED/EVIDENCE)  
+❌ **Skip CVP**: Complete phase without compliance check → ✅ ALWAYS emit `[CVP: ...]` before STATUS
+
+## CVP Examples
+
+**Full Compliance** (IMPLEMENT):
+```
+[CVP: ✓CHATMODE:[SVP,Codegraph:5/5,CEPH,LEARNINGS,Completion] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none]]
+STATUS: completed | PHASE: IMPLEMENT | BLOCKERS: none
+LEARNINGS: pattern:[Validation pattern for normalization] | approach:[Query signatures first]
+NEXT: proceed_to_debug
+```
+
+**Partial Compliance** (IMPLEMENT, insufficient queries):
+```
+[CVP: ✓CHATMODE:[SVP,CEPH] | ⚠️CHATMODE:[Codegraph:2/5] | ✓INSTRUCTIONS:[protocols,standards] | ⚠️INSTRUCTIONS:[phases:insufficient_queries] | 🚫VIOLATIONS:[1:Insufficient_queries]]
+STATUS: partial | PHASE: IMPLEMENT | BLOCKERS: Need 3/5 codegraph queries (have 2)
+NEXT: add_1_query_complete_implement
+```
+
+**Critical Violation** (TEST, auto-proceeded):
+```
+[CVP: ✓CHATMODE:[SVP,Tests:100%] | ❌CHATMODE:[USER_VERIFICATION:missing] | ❌INSTRUCTIONS:[phases:checkpoint_violated,standards:METRICS_no_deltas] | 🚫VIOLATIONS:[2:USER_VERIFICATION,METRICS_deltas]]
+STATUS: failed | PHASE: TEST | BLOCKERS: CRITICAL - No USER_VERIFICATION requested, METRICS missing deltas
+NEXT: revert_present_results_request_verify
+```
+
+**CVP Integration**: Complete work → Self-check 6 files (chatmode, protocols, phases, standards, structure, examples) → Emit CVP → If violations: BLOCKERS + fix → Emit completion
+
+

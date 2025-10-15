@@ -44,55 +44,59 @@ applyTo: '**'
 
 **Operations**: PUSH=preserve+depth+1 | POP=merge+depth-1 | USER=no stack change | CEPH accumulates
 
-### Memory Verification Template
-
-```
-MEMORY:[
-  global_memory:[file_lines:847 domains:5 patterns:12 entities:45] |
-  project_memory:[file_lines:1203 domains:5 clusters:8 entities:67] |
-  VERIFIED_LOAD:[line_counts_match:YES summaries_complete:YES]
-]
-```
-
-**Enforcement**: No `VERIFIED_LOAD` or `line_counts` → INCOMPLETE
+**Memory Verification**: `MEMORY:[global_memory:[file_lines:N domains:X] | project_memory:[file_lines:M clusters:Y] | VERIFIED_LOAD:[line_counts_match:YES summaries_complete:YES]]` | No VERIFIED_LOAD → INCOMPLETE
 
 ## CEPH (Context Evolution Protocol)
 
-**Structure**: `CEPH:[CURRENT:[facts+state] | EXPECTED:[target+criteria] | PROBLEM:[statement] | HYPOTHESES:[H1:cause→prediction→test] | EVIDENCE:[logs+metrics]]`
+**Structure**: `CEPH:[CURRENT:[state] | EXPECTED:[target] | PROBLEM:[statement] | HYPOTHESES:[H1:cause→prediction→test] | EVIDENCE:[results]]`
 
-**Component Updates**:
+**Updates**: CURRENT (ASSESS init, after phases) | EXPECTED (ASSESS init, ARCHITECT refined, TEST validated) | PROBLEM (ASSESS init, rarely) | HYPOTHESES (ANALYZE form, DEBUG 3-5, TEST validate) | EVIDENCE (throughout, TEST final)
 
-| Component | When | Example |
-|-----------|------|---------|
-| CURRENT | ASSESS(init), after phases | `[9 methods, PyQt5 widgets]` |
-| EXPECTED | ASSESS(init), ARCHITECT(refined), TEST(validated) | `[Tree widget + selection]` |
-| PROBLEM | ASSESS(init), rarely | `[No UI for node selection]` |
-| HYPOTHESES | ANALYZE(form), DEBUG(3-5), TEST(validate) | `[H1:QTreeWidget→hierarchy→docs]` |
-| EVIDENCE | Throughout, TEST(final) | `[9/9 pass, 95%(+15%)]` |
+**Evolution**: Simple=ASSESS→TEST | Complex=ASSESS→ANALYZE→ARCHITECT→IMPLEMENT→TEST
 
-**Hypothesis Format**: `HN:cause→prediction→test` | Start 3-5 → distill to 1-2 most likely
+## CVP (Compliance Verification Protocol)
 
-**Evolution**: Simple=ASSESS→TEST | Complex=ASSESS→ANALYZE→ARCHITECT→IMPLEMENT→TEST (update at each phase)
+**Emit at END of EVERY phase** (before STATUS): `[CVP: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none|items]]`
+
+**Purpose**: Self-verify compliance with chatmode + instruction files | Critical violations BLOCK next phase
+
+**Verification Scope**: Chatmode (principles, workflow, protocols, format) | protocols.md (SVP, VMP, CEPH, Memory) | phases.md (requirements, outputs, transitions) | standards.md (templates, quality, format) | structure.md (organization, placement, naming) | examples.md (patterns, anti-patterns, checklists)
+
+**Check by Phase**:
+
+| Phase | Must Have | Common Violations |
+|-------|-----------|-------------------|
+| PLAN | SVP, TASKS, decomposition | Missing task list |
+| REMEMBER | SVP, Memory loaded, VERIFIED_LOAD, file_lines | Fake load, no verification |
+| ASSESS | SVP, Codegraph loaded, VERIFIED_LOAD, CEPH init, docs | Partial load, no summary |
+| ANALYZE | SVP, CEPH updated, LEARNINGS format, queries | Wrong LEARNINGS format |
+| ARCHITECT | SVP, CEPH updated, LEARNINGS, impact analysis | No impact analysis |
+| IMPLEMENT | SVP, 3/5 codegraph queries, CEPH, LEARNINGS, structure.md | <3 queries, wrong location |
+| DEBUG | SVP, 2/4 codegraph queries, hypotheses, CEPH, LEARNINGS | No hypotheses, no queries |
+| TEST | SVP, 100% pass, USER_VERIFICATION, METRICS+deltas, CEPH | Auto-proceed, no deltas, <100% |
+| LEARN | SVP, 3+ entities, both files updated, line verification | <3 entities, no verification |
+| DOCUMENT | SVP, docs updated, DOCUMENT field, structure.md | Skipped, wrong location |
+| LOG | SVP, workflow file created, HANDOFFS, reconstruction | Missing file, incomplete |
+
+**Response Variants**:
+
+✅ **Full**: `[CVP: ✓CHATMODE:[SVP,VMP,Memory,Codegraph,CEPH,Completion] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none]]`
+
+⚠️ **Partial**: `[CVP: ✓CHATMODE:[SVP,Memory] | ⚠️CHATMODE:[Codegraph:2/5] | ✓INSTRUCTIONS:[protocols,phases] | ⚠️INSTRUCTIONS:[standards:LEARNINGS_format] | 🚫VIOLATIONS:[2:Codegraph_queries,LEARNINGS_format]]`
+
+❌ **Failed**: `[CVP: ❌CHATMODE:[Memory:not_loaded,VMP:missing] | ❌INSTRUCTIONS:[protocols:no_SVP,standards:no_VERIFIED_LOAD] | 🚫VIOLATIONS:[4:Memory_not_loaded,VMP_missing,SVP_not_emitted,VERIFIED_LOAD_missing]]`
+
+**Critical Violations** (MUST fix): No SVP | Memory not loaded (REMEMBER) | Codegraph not loaded (ASSESS) | <100% test pass (TEST) | No USER_VERIFICATION (TEST) | <3 entities (LEARN) | Wrong file placement | Missing VERIFIED_LOAD | Missing METRICS deltas | Wrong LEARNINGS format | <3 queries (IMPLEMENT) | <2 queries (DEBUG)
+
+**Integration**: Complete work → Self-check all 6 files → Emit CVP → If violations: add BLOCKERS, STATUS: partial, fix → Emit completion format
 
 ## Completion Format
 
-**Standard**:
-```
-STATUS: [completed|partial|failed]
-PHASE: [name]
-TASKS: [list]
-DISCOVERIES: [findings]
-BLOCKERS: [none|issues]
-NEXT: [action]
-```
+**Standard** (in order): `[CVP: ...]` → STATUS → PHASE → TASKS → DISCOVERIES → BLOCKERS → NEXT
 
-**Protocol Fields** (when applicable):
-- `STACK:[breadcrumb] (depth:N)` (VMP depth≥1)
-- `CEPH:[...]` (ASSESS onwards)
-- `MEMORY:[...+VERIFIED_LOAD]` (REMEMBER)
-- `LEARNINGS:[pattern:[X]|approach:[Y]]` ⚠️ MANDATORY (specialist phases)
-- `METRICS:[...]` ⚠️ WITH DELTAS: `95%(+15%)|9/9(+9)` (TEST)
+**Protocol Fields** (when applicable): CVP (MANDATORY every phase) | STACK (VMP depth≥1) | CEPH (ASSESS+) | MEMORY+VERIFIED_LOAD (REMEMBER) | LEARNINGS (specialist) | METRICS+deltas (TEST)
 
-**Compliance Check**: ✓Actions ✓VMP ✓Fields ✓Queries ✓NEXT ✓SVP | Fail→`BLOCKERS:[items]`+`STATUS:partial`
+**Compliance**: ✓Actions ✓VMP ✓Fields ✓Queries ✓NEXT ✓SVP ✓CVP | Fail→BLOCKERS+STATUS:partial
 
-**Phase Transitions**: ✓Complete ✓Requirements ✓Stack ✓CEPH ✓SVP
+**Phase Transitions**: ✓Complete ✓Requirements ✓Stack ✓CEPH ✓SVP ✓CVP
+
