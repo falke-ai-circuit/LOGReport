@@ -65,11 +65,24 @@ class SimpleCodeGraphUpdater:
         print("="*60)
         
         if self.output_path.exists():
-            with open(self.output_path, 'r', encoding='utf-8') as f:
+            with open(self.output_path, 'r', encoding='utf-8-sig') as f:
                 lines = f.readlines()
             
-            entities = [json.loads(line) for line in lines if '"type":"entity"' in line]
-            relations = [json.loads(line) for line in lines if '"type":"relation"' in line]
+            entities = []
+            relations = []
+            for i, line in enumerate(lines, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    if '"type":"entity"' in line:
+                        entities.append(json.loads(line))
+                    elif '"type":"relation"' in line:
+                        relations.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    print(f"Warning: Skipping invalid JSON at line {i}: {e}")
+                    continue
+            
             size_kb = self.output_path.stat().st_size / 1024
             
             print(f"Existing codegraph:")
