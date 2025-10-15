@@ -1,7 +1,7 @@
 """
 Session View
 
-This view provides the session interface with Telnet and BsTool tabs.
+The SessionView provides the session interface with Telnet and BsTool tabs.
 """
 
 from PyQt5.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
@@ -20,12 +20,13 @@ class SessionView(QWidget):
     # Signals
     copy_to_log_clicked = pyqtSignal()
     
-    def __init__(self, bstool_path=None, node_manager=None, telnet_service=None):
+    def __init__(self, bstool_path=None, node_manager=None, telnet_service=None, get_connection_info_callback=None):
         """Initialize the SessionView."""
         super().__init__()
         self.bstool_path = bstool_path
         self.node_manager = node_manager
         self.telnet_service = telnet_service
+        self.get_connection_info_callback = get_connection_info_callback
         self._setup_ui()
         
     def _setup_ui(self):
@@ -50,7 +51,8 @@ class SessionView(QWidget):
             self.scan_tab = ScanTab(
                 node_manager=self.node_manager,
                 telnet_service=self.telnet_service,
-                parent=self
+                parent=self,
+                get_connection_info_callback=self.get_connection_info_callback
             )
             self.tab_widget.addTab(self.scan_tab, "Scan")
         else:
@@ -66,3 +68,26 @@ class SessionView(QWidget):
         
         # Connect signals
         self.telnet_tab.copy_to_log_clicked.connect(self.copy_to_log_clicked.emit)
+        
+        # Connect main tab change signal to pause/resume auto-refresh
+        self.tab_widget.currentChanged.connect(self._on_main_tab_changed)
+    
+    def _on_main_tab_changed(self, index):
+        """
+        Handle main tab change - pause/resume auto-refresh on Scan tab.
+        
+        When user switches to/from Scan tab, pause auto-refresh on inactive tabs
+        and resume on the active tab to avoid unnecessary background comparisons.
+        """
+        if not self.scan_tab:
+            return
+        
+        # Get current tab name
+        current_tab = self.tab_widget.widget(index)
+        
+        if current_tab == self.scan_tab:
+            # Switched TO Scan tab - resume auto-refresh on active node
+            self.scan_tab.resume_active_auto_refresh()
+        else:
+            # Switched AWAY from Scan tab - pause all auto-refresh
+            self.scan_tab.pause_all_auto_refresh()

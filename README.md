@@ -44,6 +44,34 @@ pyinstaller --clean LOGReporter_PyQt5.spec
 
 The packaged executable includes BsTool.exe and automatically detects its location. See [BUILD-INSTRUCTIONS.md](BUILD-INSTRUCTIONS.md) for complete build details.
 
+### Scan Tab - Live Configuration Viewer
+
+**NEW in Phase 3+4**: Commander Center includes a powerful Scan tab for real-time FBC/RPC file viewing and live comparison.
+
+**📊 Phase 1 - File Viewing:**
+- Per-node subtabs with automatic population
+- Unified FBC/RPC file viewer with dropdown file selector
+- Auto-load most recent file per node
+- Tabular display with dark theme styling
+- Context menu for copying file paths
+
+**🔄 Phase 3 - Live Comparison:**
+- Real-time telnet-based FBC comparison engine
+- Cell-by-cell difference detection with color coding (🟢 green=match, 🟡 yellow=diff)
+- Configurable auto-refresh (5s/10s/30s/60s intervals)
+- Auto-connect to telnet on comparison start
+- Enhanced parser support (PIC 0, N suffix, Not Exists, IBC format, mixed-case)
+
+**✨ Phase 4 - UI Polish:**
+- Tab-aware auto-refresh (pauses when switching away, resumes on return)
+- Status message propagation (comparison progress, results, errors)
+- Seamless integration with main UI workflow
+
+**🎯 User Impact:**
+Compare live FBC configurations with saved files without leaving Commander Center. Auto-refresh keeps you updated during troubleshooting sessions. Intelligent pause/resume ensures minimal network traffic when working on other tabs.
+
+See [docs/technical/TECH_scan_tab_usage.md](docs/technical/TECH_scan_tab_usage.md) for detailed usage guide and API documentation.
+
 ### Dual Memory System
 - **Project Memory**: Stores project-specific entities, relationships, and implementation details using the `project_memory` MCP server
 - **Global Memory**: Maintains reusable patterns, best practices, and cross-project knowledge using the `global_memory` MCP server

@@ -60,12 +60,13 @@ class NodeScanWidget(QWidget):
     refresh_interval_changed = pyqtSignal(int)  # seconds
     status_message = pyqtSignal(str, int)  # message, duration
     
-    def __init__(self, node_name, token_files, parser_service, telnet_service=None, parent=None, load_delay_ms=0):
+    def __init__(self, node_name, token_files, parser_service, telnet_service=None, parent=None, load_delay_ms=0, get_connection_info_callback=None):
         super().__init__(parent)
         self.node_name = node_name
         self.token_files = token_files
         self.parser_service = parser_service
         self.telnet_service = telnet_service
+        self.get_connection_info_callback = get_connection_info_callback  # Callback to get IP/port from Telnet tab
         self.current_data = None  # Parsed FbcTableData
         self.current_file = None
         self.logger = logging.getLogger(__name__)
@@ -90,13 +91,14 @@ class NodeScanWidget(QWidget):
         self.countdown_timer = QTimer()
         self.countdown_timer.timeout.connect(self._update_countdown)
         self.remaining_seconds = 0
+        self._auto_refresh_paused = False  # Track pause state for tab switching
         
         self._setup_ui()
         
-        # DISABLED: Auto-load causes crash - user must manually select file
-        # TODO: Investigate root cause of crash when loading files on startup
-        # if self.token_files:
-        #     QTimer.singleShot(self.load_delay_ms, self._load_most_recent_file)
+        # FIX 1: Auto-load most recent file on widget initialization
+        # Use QTimer to defer loading until after UI is fully initialized
+        if self.token_files:
+            QTimer.singleShot(100, self._load_most_recent_file)
     
     def _setup_ui(self):
         """Create file selector, table view, compare button, auto-refresh controls"""
@@ -417,6 +419,25 @@ class NodeScanWidget(QWidget):
             if 'unknown_command' in totals:
                 self.status_label.setText(f"Unknown command: {totals['unknown_command']}")
     
+    def _get_telnet_connection_info(self):
+        """
+        Get telnet connection info (IP, port) using the provided callback.
+        
+        Returns:
+            tuple: (ip_address, port) or (None, None) if not available
+        """
+        if not self.get_connection_info_callback:
+            self.logger.warning("_get_telnet_connection_info: No callback provided")
+            return None, None
+        
+        try:
+            ip, port = self.get_connection_info_callback()
+            self.logger.debug(f"Retrieved telnet connection info: {ip}:{port}")
+            return ip, port
+        except Exception as e:
+            self.logger.error(f"_get_telnet_connection_info error: {e}")
+            return None, None
+    
     def _on_compare_clicked(self):
         """Handle Compare Live button click"""
         if not self.current_data or not self.comparison_service:
@@ -433,14 +454,25 @@ class NodeScanWidget(QWidget):
                 self.logger.info("Telnet not connected, attempting auto-connect...")
                 self.status_message.emit("Connecting to telnet debugger...", 3000)
                 
-                # Use existing auto-connect method
+                # Get connection info from Telnet tab (traverse parent chain)
+                ip_address, port = self._get_telnet_connection_info()
+                if not ip_address:
+                    self.status_message.emit("✗ No telnet IP configured. Please set IP in Telnet tab.", 5000)
+                    return
+                
+                # Populate debugger IP in telnet_service for auto-connect
+                self.telnet_service.debugger_ip_address = ip_address
+                self.telnet_service.debugger_port = port
+                self.logger.info(f"Set debugger IP to {ip_address}:{port} for auto-connect")
+                
+                # Use existing auto-connect method with retry logic
                 success = self.telnet_service._ensure_debugger_connection()
                 if not success:
-                    self.status_message.emit("✗ Failed to connect to telnet debugger", 5000)
+                    self.status_message.emit("✗ Failed to connect to telnet debugger after retries", 5000)
                     return
                 
                 self.logger.info("Auto-connect successful")
-                self.status_message.emit("Connected to telnet debugger", 2000)
+                self.status_message.emit("✓ Connected to telnet debugger", 2000)
         
         # Extract token ID from file or command
         token_id = self._extract_token_id()
@@ -449,6 +481,10 @@ class NodeScanWidget(QWidget):
             return
         
         self.logger.info(f"Compare requested for {self.node_name}, token {token_id}, file type: {self.current_data.file_type}")
+        
+        # Emit status message for comparison start
+        file_name = Path(self.current_file).name if self.current_file else "unknown"
+        self.status_message.emit(f"Comparing {self.node_name} ({file_name}) with live data...", 0)
         
         # Disable button during comparison
         self.compare_btn.setEnabled(False)
@@ -513,16 +549,19 @@ class NodeScanWidget(QWidget):
             # Update match label
             self.match_label.setText(f"✓ {result.match_percentage:.0f}%")
             
-            # Status message
+            # Status message with match summary
+            file_name = Path(self.current_file).name if self.current_file else "file"
+            total_cells = len(result.matches) + len(result.differences) + len(result.errors)
             self.status_message.emit(
-                f"Comparison complete: {result.match_percentage:.1f}% match "
-                f"({len(result.matches)} matches, {len(result.differences)} differences, {len(result.errors)} errors)",
+                f"✓ {self.node_name} ({file_name}): {result.match_percentage:.0f}% match "
+                f"({len(result.matches)}/{total_cells} cells)",
                 5000
             )
         else:
             # Show error
             self.match_label.setText("✗")
-            self.status_message.emit(f"Comparison failed: {result.error_message}", 5000)
+            file_name = Path(self.current_file).name if self.current_file else "file"
+            self.status_message.emit(f"✗ {self.node_name} ({file_name}): {result.error_message}", 5000)
     
     def _on_comparison_error(self, error_msg: str):
         """Handle comparison error"""
@@ -579,6 +618,31 @@ class NodeScanWidget(QWidget):
         if self.auto_refresh_checkbox.isChecked():
             self._stop_auto_refresh()
             self._start_auto_refresh()
+    
+    def pause_auto_refresh(self):
+        """
+        Pause auto-refresh temporarily (e.g., when tab switched away).
+        Preserves checkbox state so it can resume when tab becomes active again.
+        """
+        if self.auto_refresh_checkbox.isChecked() and not self._auto_refresh_paused:
+            self.auto_refresh_timer.stop()
+            self.countdown_timer.stop()
+            self._auto_refresh_paused = True
+            self.logger.debug(f"Auto-refresh paused for {self.node_name}")
+    
+    def resume_auto_refresh(self):
+        """
+        Resume auto-refresh if it was paused (e.g., when tab becomes active).
+        Only resumes if checkbox is still checked.
+        """
+        if self.auto_refresh_checkbox.isChecked() and self._auto_refresh_paused:
+            self._auto_refresh_paused = False
+            self._start_auto_refresh()
+            self.logger.debug(f"Auto-refresh resumed for {self.node_name}")
+    
+    def is_auto_refresh_active(self):
+        """Check if auto-refresh is currently running (not paused)"""
+        return self.auto_refresh_checkbox.isChecked() and not self._auto_refresh_paused
     
     def _on_auto_refresh_timeout(self):
         """Triggered when auto-refresh interval elapses"""
@@ -711,5 +775,38 @@ class NodeScanWidget(QWidget):
         # Trigger comparison immediately
         self._on_compare_clicked()
         logger.info(f"Triggered comparison for {filename}")
+        
+        return True
+    
+    def select_file_only(self, file_path: str) -> bool:
+        """
+        Select file from dropdown WITHOUT triggering comparison.
+        Called when user clicks .fbc/.rpc file in node tree while on Scan tab.
+        
+        Args:
+            file_path: Full path to the .fbc or .rpc file
+            
+        Returns:
+            bool: True if file was found and selected, False otherwise
+        """
+        from pathlib import Path
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        filename = Path(file_path).name
+        
+        # Find file in combobox
+        index = self.file_selector.findText(filename)
+        if index == -1:
+            logger.warning(f"File {filename} not found in file selector dropdown")
+            return False
+        
+        # Select file in dropdown
+        self.file_selector.setCurrentIndex(index)
+        logger.info(f"Selected file {filename} in dropdown (index {index}) without comparison")
+        
+        # Trigger file load (this calls _on_file_selected)
+        # _on_file_selected will load the file content into the table
+        self._on_file_selected(index)
         
         return True

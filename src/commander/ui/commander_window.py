@@ -2,7 +2,7 @@
 Commander Window - Main UI view for the Commander application
 """
 from PyQt5.QtWidgets import QMainWindow, QStatusBar, QFileDialog
-from PyQt5.QtCore import QSettings, pyqtSignal
+from PyQt5.QtCore import QSettings, pyqtSignal, Qt
 
 from ..services.context_menu_service import ContextMenuService
 from ..services.fbc_command_service import FbcCommandService
@@ -197,6 +197,10 @@ class CommanderWindow(QMainWindow):
         self.telnet_service.command_finished_signal.connect(self.command_finished)
         self.telnet_service.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
         
+        # Connect Scan tab status messages to main status bar (after session_view initialized)
+        if hasattr(self.session_view, 'scan_tab') and self.session_view.scan_tab:
+            self.session_view.scan_tab.status_message.connect(self.status_service.show_message)
+        
         # Connect Telnet tab signals
         self.telnet_tab.execute_clicked.connect(self.execute_telnet_command)
         self.telnet_tab.connect_clicked.connect(self.toggle_telnet_connection)
@@ -327,10 +331,14 @@ class CommanderWindow(QMainWindow):
         self.node_tree_view = self.ui_factory.node_tree_view
         self.session_view = self.ui_factory.session_view
         
-        # Access components from session_view
+        # Access components from session_view (must be done BEFORE setting callback)
         self.session_tabs = self.session_view.tab_widget
         self.telnet_tab = self.session_view.telnet_tab
         self.bstool_tab = self.session_view.bstool_tab
+        
+        # Set connection info callback for Scan tab auto-connect (after telnet_tab is assigned)
+        if hasattr(self.session_view, 'scan_tab') and self.session_view.scan_tab:
+            self.session_view.scan_tab.get_connection_info_callback = self.telnet_tab.get_connection_info
         
         # Status Bar
         self.setStatusBar(QStatusBar())
@@ -506,8 +514,30 @@ class CommanderWindow(QMainWindow):
         Handle the command_generated_signal from NodeTreePresenter.
         Updates the command input of the active tab (Telnet or BsTool) with the received command.
         Uses check_scroll=False for user-initiated actions (always switch).
+        
+        FIX 2: If user is already on Scan tab and clicks .fbc/.rpc file, stay on Scan tab
+        and auto-select the file in the Scan tab instead of switching to Telnet.
         """
         if token_type in ["FBC", "RPC"]:
+            # Check if user is currently on Scan tab
+            if hasattr(self, 'session_view') and self.session_view.scan_tab:
+                current_tab = self.session_view.tab_widget.currentWidget()
+                scan_tab = self.session_view.scan_tab
+                
+                if current_tab == scan_tab:
+                    # User is on Scan tab - stay there and auto-select file
+                    # Extract file path from node tree selection
+                    selected_items = self.node_tree_view.selectedItems()
+                    if selected_items:
+                        item_data = selected_items[0].data(0, Qt.ItemDataRole.UserRole)
+                        if item_data and "log_path" in item_data:
+                            file_path = item_data["log_path"]
+                            # Auto-select file in Scan tab WITHOUT comparison
+                            scan_tab.select_file_only(file_path)
+                            logging.info(f"FIX 2: Stayed on Scan tab, auto-selected {file_path}")
+                            return  # Don't switch to Telnet tab
+            
+            # Default behavior: switch to Telnet tab
             self.telnet_tab.command_input.setText(command)
             self.telnet_tab.command_input.setFocus()
             self._smart_switch_to_tab(self.telnet_tab, check_scroll=False)  # User action, force switch
@@ -591,32 +621,43 @@ class CommanderWindow(QMainWindow):
             
             if not is_connected:
                 logger.info("Telnet not connected, attempting auto-connect...")
-                self.status_service.status_updated.emit("Connecting to telnet debugger...", 3000)
+                self.status_service.show_message("Connecting to telnet debugger...", 3000)
                 
-                # Use existing auto-connect method from telnet_service
+                # Get connection info from Telnet tab and populate debugger IP
+                ip_address, port = self.telnet_tab.get_connection_info()
+                if not ip_address:
+                    self.status_service.show_error("No telnet IP configured. Please set IP in Telnet tab.")
+                    return
+                
+                # Populate debugger IP in telnet_service for auto-connect
+                self.telnet_service.debugger_ip_address = ip_address
+                self.telnet_service.debugger_port = port
+                logger.info(f"Set debugger IP to {ip_address}:{port} for auto-connect")
+                
+                # Use existing auto-connect method with retry logic (2 attempts, 10s delay)
                 success = self.telnet_service._ensure_debugger_connection()
                 if not success:
                     self.status_service.show_error("Failed to connect to telnet debugger after 2 retries. Please connect manually.")
                     return
                 
                 logger.info("Auto-connect successful")
-                self.status_service.status_updated.emit("Connected to telnet debugger", 2000)
+                self.status_service.show_message("Connected to telnet debugger", 2000)
             
             # Step 2: Switch to Scan tab
             if hasattr(self, 'session_view') and self.session_view.scan_tab:
                 scan_tab = self.session_view.scan_tab
                 
                 # Find Scan tab index and switch to it
-                for i in range(self.session_view.tabs.count()):
-                    if self.session_view.tabs.widget(i) == scan_tab:
-                        self.session_view.tabs.setCurrentIndex(i)
+                for i in range(self.session_view.tab_widget.count()):
+                    if self.session_view.tab_widget.widget(i) == scan_tab:
+                        self.session_view.tab_widget.setCurrentIndex(i)
                         logger.info(f"Switched to Scan tab (index {i})")
                         break
                 
                 # Step 3: Delegate to scan_tab for file selection and comparison
                 scan_tab.select_file_and_compare(node_name, file_path)
                 
-                self.status_service.status_updated.emit(f"Scan initiated for {node_name}: {Path(file_path).name}", 3000)
+                self.status_service.show_message(f"Scan initiated for {node_name}: {Path(file_path).name}", 3000)
             else:
                 logger.error("Scan tab not available")
                 self.status_service.show_error("Scan tab not available. Please load node configuration first.")

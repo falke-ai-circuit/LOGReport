@@ -20,10 +20,11 @@ class ScanTab(QWidget):
     comparison_completed = pyqtSignal(str, dict)  # node_name, results
     status_message = pyqtSignal(str, int)  # message, duration
     
-    def __init__(self, node_manager: NodeManager, telnet_service=None, parent=None):
+    def __init__(self, node_manager: NodeManager, telnet_service=None, parent=None, get_connection_info_callback=None):
         super().__init__(parent)
         self.node_manager = node_manager
         self.telnet_service = telnet_service
+        self.get_connection_info_callback = get_connection_info_callback  # Callback to get telnet IP/port
         self.parser_service = FbcParserService()
         self.node_widgets = {}  # {node_name: NodeScanWidget}
         self.logger = logging.getLogger(__name__)
@@ -37,6 +38,10 @@ class ScanTab(QWidget):
         
         # Create tab widget for node subtabs
         self.node_tabs = QTabWidget()
+        
+        # Connect to tab change signal to pause/resume auto-refresh
+        self.node_tabs.currentChanged.connect(self._on_node_tab_changed)
+        
         layout.addWidget(self.node_tabs)
         
         self.setLayout(layout)
@@ -87,7 +92,8 @@ class ScanTab(QWidget):
                 parser_service=self.parser_service,
                 telnet_service=self.telnet_service,
                 parent=self,
-                load_delay_ms=load_delay_ms
+                load_delay_ms=load_delay_ms,
+                get_connection_info_callback=self.get_connection_info_callback  # Pass callback
             )
             
             # Connect signals
@@ -198,3 +204,88 @@ class ScanTab(QWidget):
         else:
             self.logger.warning(f"Failed to select file {Path(file_path).name} in node {node_name}")
             self.status_message.emit(f"File not found: {Path(file_path).name}", 5000)
+    
+    def select_file_only(self, file_path: str) -> bool:
+        """
+        Select file in the appropriate node widget WITHOUT triggering comparison.
+        Used when user clicks .fbc/.rpc file while already on Scan tab.
+        
+        Args:
+            file_path: Full path to the file to select
+            
+        Returns:
+            bool: True if file was found and selected, False otherwise
+        """
+        from pathlib import Path
+        
+        # Extract node name from file path
+        # Path format: D:\_APP\LOGReport\_DIA\FBC\AP01\AP01_192-168-0-11_162.fbc
+        path_obj = Path(file_path)
+        node_name = path_obj.parent.name  # Get parent directory name (e.g., "AP01")
+        
+        # Find matching node widget (handle both "AP01" and "AP01 192.168.0.11" formats)
+        node_widget = None
+        for widget_node_name, widget in self.node_widgets.items():
+            if widget_node_name.split()[0] == node_name:
+                node_widget = widget
+                node_name = widget_node_name  # Use full name for tab switching
+                break
+        
+        if not node_widget:
+            self.logger.warning(f"Node {node_name} not found in Scan tab")
+            return False
+        
+        # Switch to the correct node subtab
+        for i in range(self.node_tabs.count()):
+            if self.node_tabs.tabText(i) == node_name:
+                self.node_tabs.setCurrentIndex(i)
+                self.logger.info(f"Switched to node tab: {node_name} (index {i})")
+                break
+        
+        # Delegate to NodeScanWidget for file selection WITHOUT comparison
+        success = node_widget.select_file_only(file_path)
+        
+        if success:
+            self.logger.info(f"File {Path(file_path).name} selected without comparison")
+        else:
+            self.logger.warning(f"Failed to select file {Path(file_path).name} in node {node_name}")
+        
+        return success
+    
+    def _on_node_tab_changed(self, index):
+        """
+        Handle node subtab change - pause auto-refresh on inactive tabs.
+        
+        When user switches between node subtabs, pause auto-refresh on the
+        previously active node and resume on the newly active node (if enabled).
+        """
+        if index < 0:
+            return
+        
+        # Pause all node widgets
+        for widget in self.node_widgets.values():
+            widget.pause_auto_refresh()
+        
+        # Resume auto-refresh only on the currently active node
+        current_node_name = self.node_tabs.tabText(index)
+        if current_node_name in self.node_widgets:
+            active_widget = self.node_widgets[current_node_name]
+            active_widget.resume_auto_refresh()
+            self.logger.debug(f"Tab switched to {current_node_name}, auto-refresh resumed")
+    
+    def pause_all_auto_refresh(self):
+        """Pause auto-refresh on all node widgets (called when Scan tab loses focus)"""
+        for widget in self.node_widgets.values():
+            widget.pause_auto_refresh()
+        self.logger.debug("Paused auto-refresh on all nodes (Scan tab inactive)")
+    
+    def resume_active_auto_refresh(self):
+        """Resume auto-refresh only on currently visible node (called when Scan tab gains focus)"""
+        current_index = self.node_tabs.currentIndex()
+        if current_index >= 0:
+            current_node_name = self.node_tabs.tabText(current_index)
+            if current_node_name in self.node_widgets:
+                active_widget = self.node_widgets[current_node_name]
+                active_widget.resume_auto_refresh()
+                self.logger.debug(f"Resumed auto-refresh on active node {current_node_name}")
+

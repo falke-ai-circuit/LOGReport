@@ -33,7 +33,8 @@ class CommanderUIFactory:
         self.session_view = SessionView(
             bstool_path=self.bstool_path,
             node_manager=self.node_manager,
-            telnet_service=self.telnet_service
+            telnet_service=self.telnet_service,
+            get_connection_info_callback=None  # Will be set later by CommanderWindow
         )
         
         # Access tabs through session view

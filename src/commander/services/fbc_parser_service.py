@@ -109,9 +109,30 @@ class FbcParserService:
         header_line = lines[table_start]
         headers = self._parse_fbc_header(header_line)
         
+        # Determine data start line: Check if line after header is a separator or data
+        # In telnet responses, data starts immediately (no separator)
+        # In .fbc files, there's usually an empty line or dashes
+        data_start_line = table_start + 1
+        if table_start + 1 < len(lines):
+            next_line = lines[table_start + 1].strip()
+            # Check if next line is data (matches PIC row pattern OR "Not Exists") vs separator
+            is_data_row = (next_line and 
+                          (self.FBC_ROW_PATTERN.match(next_line) or 
+                           'Not Exists' in next_line or 
+                           'not exists' in next_line.lower()))
+            
+            if is_data_row:
+                # Next line is data - start parsing from table_start + 1
+                data_start_line = table_start + 1
+                self.logger.debug(f"No separator detected - data starts at line {data_start_line}")
+            else:
+                # Next line is separator or empty - start from table_start + 2
+                data_start_line = table_start + 2
+                self.logger.debug(f"Separator detected at line {table_start + 1} - data starts at line {data_start_line}")
+        
         # Parse data rows
         rows = []
-        for i in range(table_start + 2, table_end if table_end != -1 else len(lines)):
+        for i in range(data_start_line, table_end if table_end != -1 else len(lines)):
             line = lines[i].strip()
             if not line or line.startswith('---') or line.startswith('==='):
                 continue
@@ -119,6 +140,9 @@ class FbcParserService:
             row_data = self._parse_fbc_row(line, headers)
             if row_data:
                 rows.append(row_data)
+                self.logger.debug(f"Parsed row: PIC={row_data.get('PIC')}, sum={row_data.get('sum')}")
+            else:
+                self.logger.warning(f"Failed to parse row {i}: {repr(line)}")
         
         # Parse totals section
         totals = self._parse_fbc_totals(lines[table_end:] if table_end != -1 else [])
