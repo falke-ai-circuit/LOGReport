@@ -182,7 +182,7 @@ class StyleSheetManager:
             }
             QTabBar::tab:selected {
                 background-color: """ + ColorPalette.BACKGROUND_DARK + """;
-                border-bottom: 2px solid """ + ColorPalette.ACCENT_BLUE + """;
+                border-bottom: 2px solid """ + ColorPalette.BACKGROUND_HIGHLIGHT + """;
             }
             QTabBar::tab:hover:!selected {
                 background-color: """ + ColorPalette.BUTTON_BACKGROUND_HOVER + """;

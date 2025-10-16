@@ -322,3 +322,4 @@
 {"type":"relation","from":"Code.Type.Codebase","to":"Doc:docs/technical/TECH_codegraph.md","relationType":"DOCUMENTED_IN"}
 {"type":"relation","from":"Code.Domain.Commander","to":"Doc:docs/architecture/ARCH_command_system.md","relationType":"DOCUMENTED_IN"}
 {"type":"relation","from":"Code.Domain.Core","to":"Doc:docs/architecture/ARCH_memory_system.md","relationType":"DOCUMENTED_IN"}
+{"type": "method", "module": "src.commander.ui.node_scan_widget", "class": "NodeScanWidget", "name": "_on_selection_changed", "signature": "_on_selection_changed(self)", "docstring": "Handle cell selection changes. Swaps between file and live values while preserving comparison colors.", "line_start": 440, "line_end": 527}

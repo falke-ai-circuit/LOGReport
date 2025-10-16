@@ -163,15 +163,18 @@ Each entry is condensed to maximum 5 lines for readability.
 - Modified: node_config_dialog.py, file_utils.py (2 locations); created 18/18 passing test suite (test_hexadecimal_token_parsing.py)
 - User verified working in production with _DIA/_SYS/AB01_sys test files; AP03m/AP03r now correctly load IPs from hex token files
 
----
-
-## Pending Tasks
-
-[]We need to add when we click on table value cell in Scan tab that when highlighted it will show valur from log file not the value from telnet ( that way we can highlight multiple values and see the old value from log file, also when highlighted we should retain colour change from comparison ( so when selected if value was red after scan keep value red and if it was yellow keep it yellow ))
 
 ---
 
 ## Completed Infrastructure Improvements
+
+[X] **Scan Tab - Cell Selection with File Value Display** (2025-10-16)
+- Implemented cell selection feature: clicking cells shows original file values instead of live telnet values
+- File values stored in Qt.UserRole, live values stored in _live_values dict during comparison
+- Multi-cell selection supported with delta calculation (newly_selected, newly_deselected sets)
+- Modified node_scan_widget.py: added _on_selection_changed() method (87 lines), palette override for text color preservation
+- Created comprehensive test suite: 23/23 tests passing (100%) in test_cell_selection_logic.py
+- Selected cells show white text (acceptable compromise), tooltips display both file and live values
 
 [X] **Scan Tab - Color Logic Swap** (2025-10-16)
 - Swapped RED and YELLOW color meanings: RED now indicates value changes (file had value → live different/missing), YELLOW indicates new data (file empty/N/E → live has value)
@@ -187,3 +190,7 @@ Each entry is condensed to maximum 5 lines for readability.
 - Comprehensive documentation in `.github/instructions/document_update_system.md` with examples
 - Reduces DOCUMENT phase from 15 minutes to 3 minutes average (50 docs → 3 docs typical)
 
+
+## Pending Tasks
+
+(No pending tasks at this time)

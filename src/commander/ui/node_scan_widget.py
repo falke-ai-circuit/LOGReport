@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QHeaderView
 )
 from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRunnable, QThreadPool, QObject
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor, QFont, QPalette
 from pathlib import Path
 import logging
 
@@ -71,6 +71,12 @@ class NodeScanWidget(QWidget):
         self.current_file = None
         self.logger = logging.getLogger(__name__)
         self.load_delay_ms = load_delay_ms  # Staggered load delay
+        
+        # Cell selection state tracking
+        self._live_values = {}  # (row, col) -> live_value_str (populated during comparison)
+        self._selected_cells = set()  # Track (row, col) currently selected
+        self._selection_in_progress = False  # Prevent recursive signal updates
+        self._selection_connected = False  # Track if itemSelectionChanged signal connected
         
         # Comparison service (only if telnet_service provided)
         self.comparison_service = None
@@ -145,11 +151,11 @@ class NodeScanWidget(QWidget):
                 border: 1px solid #3E3E42;
             }
             QCheckBox::indicator:checked {
-                background-color: #007ACC;
-                border: 1px solid #007ACC;
+                background-color: #5D5D5D;
+                border: 1px solid #5D5D5D;
             }
             QCheckBox::indicator:hover {
-                border: 1px solid #007ACC;
+                border: 1px solid #5D5D5D;
             }
         """)
         refresh_layout.addWidget(self.auto_refresh_checkbox)
@@ -184,6 +190,8 @@ class NodeScanWidget(QWidget):
         self.table_widget.setFont(monospace_font)
         
         # Apply dark theme styling to table
+        # NOTE: QTableWidget::item:selected does NOT specify 'color' property
+        # This allows the item's foreground color (set via setForeground()) to be preserved
         self.table_widget.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;
@@ -196,7 +204,8 @@ class NodeScanWidget(QWidget):
                 padding: 4px;
             }
             QTableWidget::item:selected {
-                background-color: #5D5D5D;
+                background-color: rgba(93, 93, 93, 0.3);
+                border: 2px solid #5D5D5D;
             }
             QHeaderView::section {
                 background-color: #3D3D3D;
@@ -210,6 +219,15 @@ class NodeScanWidget(QWidget):
                 border: 1px solid #3E3E42;
             }
         """)
+        
+        # CRITICAL: Override Qt's palette to prevent HighlightedText from changing text color
+        # When items are selected, Qt normally applies QPalette::HighlightedText color (black/white)
+        # We want to preserve the item's foreground color (set via setForeground())
+        palette = self.table_widget.palette()
+        # Set HighlightedText to be transparent/inherit from Text role
+        # This prevents Qt from overriding our programmatic colors
+        palette.setColor(QPalette.HighlightedText, palette.color(QPalette.Text))
+        self.table_widget.setPalette(palette)
         
         layout.addWidget(self.table_widget)
         
@@ -365,6 +383,12 @@ class NodeScanWidget(QWidget):
                     value = row_data.get(header, '')
                     item = QTableWidgetItem(str(value))
                     
+                    # Store file value in Qt.UserRole for selection display
+                    item.setData(Qt.UserRole, str(value))
+                    
+                    # Initialize comparison state to empty (will be set during comparison)
+                    item.setData(Qt.UserRole + 1, "")
+                    
                     # Center alignment for better readability
                     item.setTextAlignment(Qt.AlignCenter)
                     
@@ -378,6 +402,12 @@ class NodeScanWidget(QWidget):
                     self.table_widget.setItem(row_idx, col_idx, item)
             
             self.logger.debug(f"Table populated successfully: {len(data.rows)} rows")
+            
+            # Connect selection changed signal (once per widget lifetime)
+            if not self._selection_connected:
+                self.table_widget.itemSelectionChanged.connect(self._on_selection_changed)
+                self._selection_connected = True
+                self.logger.debug("Connected itemSelectionChanged signal")
             
         except Exception as e:
             import traceback
@@ -401,6 +431,99 @@ class NodeScanWidget(QWidget):
         # Display totals if available
         if data.totals:
             self._display_totals(data)
+    
+    def _on_selection_changed(self):
+        """
+        Handle cell selection changes.
+        When cells are selected, display file values instead of live values.
+        When deselected, restore live values.
+        Preserves comparison colors (red/yellow/green).
+        """
+        if self._selection_in_progress:
+            return
+        
+        try:
+            self._selection_in_progress = True
+            
+            # Get currently selected cells
+            selected_ranges = self.table_widget.selectedRanges()
+            current_selection = set()
+            
+            for range_item in selected_ranges:
+                for row in range(range_item.topRow(), range_item.bottomRow() + 1):
+                    for col in range(range_item.leftColumn(), range_item.rightColumn() + 1):
+                        current_selection.add((row, col))
+            
+            # Calculate newly selected cells
+            newly_selected = current_selection - self._selected_cells
+            
+            # Calculate newly deselected cells
+            newly_deselected = self._selected_cells - current_selection
+            
+            # Update newly selected cells to show file values
+            for row, col in newly_selected:
+                item = self.table_widget.item(row, col)
+                if item:
+                    file_value = item.data(Qt.UserRole)
+                    if file_value is not None:
+                        # Store live value if not already stored
+                        if (row, col) not in self._live_values:
+                            self._live_values[(row, col)] = item.text()
+                        
+                        # Display file value
+                        item.setText(str(file_value))
+                        
+                        # Get comparison state
+                        comparison_state = item.data(Qt.UserRole + 1) or ""
+                        
+                        # For YELLOW cells (value_appeared), remove color when showing empty file value
+                        # For RED/GREEN cells, color is already set and preserved via stylesheet
+                        if comparison_state == "value_appeared":
+                            # Reset to default text color (showing empty/N/E from file)
+                            item.setForeground(QColor("#DCDCDC"))  # Default text color
+                        
+                        # Update tooltip to show both values
+                        live_value = self._live_values.get((row, col), "")
+                        
+                        if comparison_state and live_value != file_value:
+                            tooltip = f"File: {file_value}\nLive: {live_value}\nState: {comparison_state}"
+                        else:
+                            tooltip = f"File: {file_value}"
+                        
+                        item.setToolTip(tooltip)
+            
+            # Update newly deselected cells to restore live values
+            for row, col in newly_deselected:
+                item = self.table_widget.item(row, col)
+                if item and (row, col) in self._live_values:
+                    # Restore live value
+                    live_value = self._live_values[(row, col)]
+                    item.setText(live_value)
+                    
+                    # Restore original tooltip and color (comparison-based)
+                    file_value = item.data(Qt.UserRole)
+                    comparison_state = item.data(Qt.UserRole + 1) or ""
+                    
+                    if comparison_state == "match":
+                        item.setForeground(QColor("#4CAF50"))  # Green
+                        item.setToolTip("Match: File and live data are identical")
+                    elif comparison_state == "difference":
+                        item.setForeground(QColor("#F44336"))  # Red
+                        item.setToolTip(f"Value Changed:\nFile: {file_value}\nLive: {live_value}")
+                    elif comparison_state == "value_appeared":
+                        item.setForeground(QColor("#FFC107"))  # Yellow - restore color
+                        item.setToolTip(f"New Data Appeared:\nFile: {file_value or '(empty)'}\nLive: {live_value}")
+                    elif comparison_state == "error":
+                        item.setForeground(QColor("#F44336"))  # Red
+                        item.setToolTip(f"Error: {live_value}")
+                    else:
+                        item.setToolTip("")
+            
+            # Update tracked selection
+            self._selected_cells = current_selection
+            
+        finally:
+            self._selection_in_progress = False
     
     def _display_totals(self, data):
         """Display totals information below table"""
@@ -665,12 +788,14 @@ class NodeScanWidget(QWidget):
         """
         Highlight table cells based on comparison results.
         Changes text color only (not cell background) for inner table values.
+        Stores live values and comparison states for selection display.
         
         Args:
             results: Dictionary from ComparisonResult.to_dict()
                 {
                     'matches': [(row, col), ...],
                     'differences': [(row, col, file_val, live_val), ...],
+                    'value_appeared': [(row, col, file_val, live_val), ...],
                     'errors': [(row, col, error_msg), ...]
                 }
         """
@@ -678,6 +803,10 @@ class NodeScanWidget(QWidget):
                          f"{len(results.get('differences', []))} differences (RED), "
                          f"{len(results.get('value_appeared', []))} value_appeared (YELLOW), "
                          f"{len(results.get('errors', []))} errors")
+        
+        # Clear previous live values and selection state before applying new comparison
+        self._live_values = {}
+        self._selected_cells = set()  # Clear selection to avoid stale references
         
         matches = results.get('matches', [])
         differences = results.get('differences', [])
@@ -696,6 +825,14 @@ class NodeScanWidget(QWidget):
                 # Check if this is PIC column (should not be colored)
                 header = self.table_widget.horizontalHeaderItem(col)
                 if header and header.text().upper() != 'PIC':
+                    # Store live value (current text) before any potential selection changes
+                    live_value = item.text()
+                    self._live_values[(row, col)] = live_value
+                    
+                    # Store comparison state
+                    item.setData(Qt.UserRole + 1, "match")
+                    
+                    # Apply color and tooltip
                     item.setForeground(QColor("#4CAF50"))  # Green text
                     item.setToolTip("Match: File and live data are identical")
         
@@ -706,6 +843,16 @@ class NodeScanWidget(QWidget):
                 # Check if this is PIC column (should not be colored)
                 header = self.table_widget.horizontalHeaderItem(col)
                 if header and header.text().upper() != 'PIC':
+                    # Update cell text to show live value
+                    item.setText(live_val)
+                    
+                    # Store live value
+                    self._live_values[(row, col)] = live_val
+                    
+                    # Store comparison state
+                    item.setData(Qt.UserRole + 1, "difference")
+                    
+                    # Apply color and tooltip
                     item.setForeground(QColor("#F44336"))  # Red text
                     item.setToolTip(f"Value Changed:\nFile: {file_val}\nLive: {live_val}")
         
@@ -716,6 +863,16 @@ class NodeScanWidget(QWidget):
                 # Check if this is PIC column (should not be colored)
                 header = self.table_widget.horizontalHeaderItem(col)
                 if header and header.text().upper() != 'PIC':
+                    # Update cell text to show live value
+                    item.setText(live_val)
+                    
+                    # Store live value
+                    self._live_values[(row, col)] = live_val
+                    
+                    # Store comparison state
+                    item.setData(Qt.UserRole + 1, "value_appeared")
+                    
+                    # Apply color and tooltip
                     item.setForeground(QColor("#FFC107"))  # Yellow text
                     item.setToolTip(f"New Data Appeared:\nFile: {file_val or '(empty)'}\nLive: {live_val}")
         
@@ -725,6 +882,13 @@ class NodeScanWidget(QWidget):
                 # Check if this is PIC column (should not be colored)
                 header = self.table_widget.horizontalHeaderItem(col)
                 if header and header.text().upper() != 'PIC':
+                    # Store live value (error message)
+                    self._live_values[(row, col)] = error_msg
+                    
+                    # Store comparison state
+                    item.setData(Qt.UserRole + 1, "error")
+                    
+                    # Apply color and tooltip
                     item.setForeground(QColor("#F44336"))  # Red text
                     item.setToolTip(f"Error: {error_msg}")
         
