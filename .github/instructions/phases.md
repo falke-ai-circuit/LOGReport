@@ -63,8 +63,9 @@ applyTo: '**'
 
 ### Phase 9: DOCUMENT
 **⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→📚DOCUMENT | 📚STACK→... | ✓TASK→9/11 | 🎯NEXT→update]`  
-**Do**: Update README → CHANGELOG → docs/ (templates) → extract TODOs → document API/breaking changes → user guides  
-**Out**: Standard + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[doc:path:desc]` + `DOCUMENT:[impact+changes+integration+examples]`
+**Do**: **INCREMENTAL UPDATE WORKFLOW** → Check `logs/.last_document_update.json` → Determine which docs need updates based on changes → Update only affected docs (README/CHANGELOG/TODO/docs/) → Update tracker with new timestamps → extract TODOs → document API/breaking changes → user guides  
+**Incremental Logic**: Load tracker → Compare current feature scope vs last update → Update TODO if new completion → Update CHANGELOG if user-facing → Update README if API/architecture change → Update docs/ if technical specs changed → Record updates in tracker  
+**Out**: Standard + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[doc:path:desc]` + `DOCUMENT:[impact+changes+integration+examples+tracker_updated:YES]`
 
 ### Phase 10: LOG
 **⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→📝LOG | 📚STACK→... | ✓TASK→10/11 | 🎯NEXT→reconstruct]`  

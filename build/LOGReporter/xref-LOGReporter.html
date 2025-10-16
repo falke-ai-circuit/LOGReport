@@ -2804,7 +2804,9 @@ imported by:
  &#8226;   <a href="#commander.session_manager">commander.session_manager</a>
  &#8226;   <a href="#commander.ui.bstool_tab">commander.ui.bstool_tab</a>
  &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#commander.ui.node_tree_view">commander.ui.node_tree_view</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
  &#8226;   <a href="#commander.ui.session_view">commander.ui.session_view</a>
  &#8226;   <a href="#commander.ui.telnet_tab">commander.ui.telnet_tab</a>
  &#8226;   <a href="#commander.widgets">commander.widgets</a>
@@ -2837,6 +2839,7 @@ imported by:
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.services.clipboard_monitor">commander.services.clipboard_monitor</a>
  &#8226;   <a href="#commander.ui.bstool_tab">commander.ui.bstool_tab</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#commander.ui.node_tree_view">commander.ui.node_tree_view</a>
  &#8226;   <a href="#commander.ui.telnet_tab">commander.ui.telnet_tab</a>
  &#8226;   <a href="#gui">gui</a>
@@ -2874,7 +2877,9 @@ imported by:
  &#8226;   <a href="#commander.ui.bstool_tab">commander.ui.bstool_tab</a>
  &#8226;   <a href="#commander.ui.commander_ui_factory">commander.ui.commander_ui_factory</a>
  &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#commander.ui.node_tree_view">commander.ui.node_tree_view</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
  &#8226;   <a href="#commander.ui.session_view">commander.ui.session_view</a>
  &#8226;   <a href="#commander.ui.telnet_tab">commander.ui.telnet_tab</a>
  &#8226;   <a href="#commander.widgets">commander.widgets</a>
@@ -6103,6 +6108,7 @@ imported by:
  &#8226;   <a href="#commander.services.logging_service">commander.services.logging_service</a>
  &#8226;   <a href="#commander.services.rpc_command_service">commander.services.rpc_command_service</a>
  &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
 
   </div>
 
@@ -6287,6 +6293,8 @@ imported by:
  &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
  &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
+ &#8226;   <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
  &#8226;   <a href="#commander.services.logging_service">commander.services.logging_service</a>
  &#8226;   <a href="#commander.services.rpc_command_service">commander.services.rpc_command_service</a>
  &#8226;   <a href="#commander.services.sequential_command_processor">commander.services.sequential_command_processor</a>
@@ -6422,8 +6430,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#commander.services">commander.services</a>
- &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
- &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
 
   </div>
 
@@ -6438,7 +6444,6 @@ imports:
  &#8226;   <a href="#commander.models">commander.models</a>
  &#8226;   <a href="#commander.node_manager">commander.node_manager</a>
  &#8226;   <a href="#commander.services">commander.services</a>
- &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
  &#8226;   <a href="#commander.ui.theme">commander.ui.theme</a>
  &#8226;   <a href="#commander.utils.token_utils">commander.utils.token_utils</a>
  &#8226;   <a href="#logging">logging</a>
@@ -6474,6 +6479,49 @@ imported by:
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
  &#8226;   <a href="#commander.services.sequential_command_processor">commander.services.sequential_command_processor</a>
  &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="commander.services.fbc_comparison_service"></a>
+  <a target="code" href="///D:/_APP/LOGReport/src/commander/services/fbc_comparison_service.py" type="text/plain"><tt>commander.services.fbc_comparison_service</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#commander.services">commander.services</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
+ &#8226;   <a href="#dataclasses">dataclasses</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="commander.services.fbc_parser_service"></a>
+  <a target="code" href="///D:/_APP/LOGReport/src/commander/services/fbc_parser_service.py" type="text/plain"><tt>commander.services.fbc_parser_service</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#commander.services">commander.services</a>
+ &#8226;   <a href="#dataclasses">dataclasses</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
 
   </div>
 
@@ -6705,7 +6753,9 @@ imported by:
     <a href="#commander.ui.bstool_tab">commander.ui.bstool_tab</a>
  &#8226;   <a href="#commander.ui.commander_ui_factory">commander.ui.commander_ui_factory</a>
  &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#commander.ui.node_tree_view">commander.ui.node_tree_view</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
  &#8226;   <a href="#commander.ui.session_view">commander.ui.session_view</a>
  &#8226;   <a href="#commander.ui.telnet_tab">commander.ui.telnet_tab</a>
  &#8226;   <a href="#commander.ui.theme">commander.ui.theme</a>
@@ -6778,7 +6828,6 @@ imports:
  &#8226;   <a href="#commander.qt_init">commander.qt_init</a>
  &#8226;   <a href="#commander.services.bstool_command_service">commander.services.bstool_command_service</a>
  &#8226;   <a href="#commander.services.commander_service">commander.services.commander_service</a>
- &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
  &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
  &#8226;   <a href="#commander.services.rpc_command_service">commander.services.rpc_command_service</a>
@@ -6790,6 +6839,7 @@ imports:
  &#8226;   <a href="#commander.ui.theme">commander.ui.theme</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
  &#8226;   <a href="#sys">sys</a>
 
   </div>
@@ -6797,6 +6847,30 @@ imports:
 imported by:
     <a href="#commander">commander</a>
  &#8226;   <a href="#gui">gui</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="commander.ui.node_scan_widget"></a>
+  <a target="code" href="///D:/_APP/LOGReport/src/commander/ui/node_scan_widget.py" type="text/plain"><tt>commander.ui.node_scan_widget</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
+ &#8226;   <a href="#PyQt5.QtGui">PyQt5.QtGui</a>
+ &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
+ &#8226;   <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.ui">commander.ui</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#traceback">traceback</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
 
   </div>
 
@@ -6826,6 +6900,29 @@ imported by:
 </div>
 
 <div class="node">
+  <a name="commander.ui.scan_tab"></a>
+  <a target="code" href="///D:/_APP/LOGReport/src/commander/ui/scan_tab.py" type="text/plain"><tt>commander.ui.scan_tab</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
+ &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
+ &#8226;   <a href="#commander.node_manager">commander.node_manager</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
+ &#8226;   <a href="#commander.ui">commander.ui</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#commander.ui.session_view">commander.ui.session_view</a>
+
+  </div>
+
+</div>
+
+<div class="node">
   <a name="commander.ui.session_view"></a>
   <a target="code" href="///D:/_APP/LOGReport/src/commander/ui/session_view.py" type="text/plain"><tt>commander.ui.session_view</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
@@ -6834,6 +6931,7 @@ imports:
  &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
  &#8226;   <a href="#commander.ui">commander.ui</a>
  &#8226;   <a href="#commander.ui.bstool_tab">commander.ui.bstool_tab</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
  &#8226;   <a href="#commander.ui.telnet_tab">commander.ui.telnet_tab</a>
  &#8226;   <a href="#commander.ui.theme">commander.ui.theme</a>
 
@@ -8325,6 +8423,8 @@ imports:
 imported by:
     <a href="#commander.command_queue">commander.command_queue</a>
  &#8226;   <a href="#commander.models">commander.models</a>
+ &#8226;   <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
  &#8226;   <a href="#commander.session_manager">commander.session_manager</a>
  &#8226;   <a href="#pprint">pprint</a>
 
@@ -14242,6 +14342,7 @@ imports:
  &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#importlib._bootstrap">importlib._bootstrap</a>
  &#8226;   <a href="#importlib._bootstrap_external">importlib._bootstrap_external</a>
+ &#8226;   <a href="#importlib.machinery">importlib.machinery</a>
  &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#warnings">warnings</a>
 
@@ -14380,6 +14481,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#ctypes.util">ctypes.util</a>
+ &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#importlib.abc">importlib.abc</a>
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
@@ -15226,6 +15328,8 @@ imported by:
  &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
  &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
  &#8226;   <a href="#commander.services.fbc_command_service">commander.services.fbc_command_service</a>
+ &#8226;   <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
  &#8226;   <a href="#commander.services.logging_service">commander.services.logging_service</a>
  &#8226;   <a href="#commander.services.rpc_command_service">commander.services.rpc_command_service</a>
  &#8226;   <a href="#commander.services.sequential_command_processor">commander.services.sequential_command_processor</a>
@@ -15235,7 +15339,9 @@ imported by:
  &#8226;   <a href="#commander.session_manager">commander.session_manager</a>
  &#8226;   <a href="#commander.ui.bstool_tab">commander.ui.bstool_tab</a>
  &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#commander.ui.node_tree_view">commander.ui.node_tree_view</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
  &#8226;   <a href="#commander.utils.bstool_path_resolver">commander.utils.bstool_path_resolver</a>
  &#8226;   <a href="#commander.utils.circuit_breaker">commander.utils.circuit_breaker</a>
  &#8226;   <a href="#commander.utils.error_detection">commander.utils.error_detection</a>
@@ -24088,6 +24194,10 @@ imports:
   <div class="import">
 imported by:
     <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
+ &#8226;   <a href="#commander.ui.commander_window">commander.ui.commander_window</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
+ &#8226;   <a href="#commander.ui.scan_tab">commander.ui.scan_tab</a>
  &#8226;   <a href="#generator">generator</a>
  &#8226;   <a href="#gui">gui</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
@@ -24771,7 +24881,10 @@ imported by:
  &#8226;   <a href="#commander.presenters.node_tree_presenter">commander.presenters.node_tree_presenter</a>
  &#8226;   <a href="#commander.services.clipboard_monitor">commander.services.clipboard_monitor</a>
  &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
+ &#8226;   <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
  &#8226;   <a href="#commander.session_manager">commander.session_manager</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#commander.utils.error_detection">commander.utils.error_detection</a>
  &#8226;   <a href="#commander.utils.token_utils">commander.utils.token_utils</a>
  &#8226;   <a href="#csv">csv</a>
@@ -28980,6 +29093,7 @@ imported by:
  &#8226;   <a href="#cgi">cgi</a>
  &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#commander.command_queue">commander.command_queue</a>
+ &#8226;   <a href="#commander.ui.node_scan_widget">commander.ui.node_scan_widget</a>
  &#8226;   <a href="#concurrent.futures.process">concurrent.futures.process</a>
  &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
@@ -29214,6 +29328,8 @@ imported by:
  &#8226;   <a href="#commander.services.clipboard_monitor">commander.services.clipboard_monitor</a>
  &#8226;   <a href="#commander.services.context_menu_filter">commander.services.context_menu_filter</a>
  &#8226;   <a href="#commander.services.context_menu_service">commander.services.context_menu_service</a>
+ &#8226;   <a href="#commander.services.fbc_comparison_service">commander.services.fbc_comparison_service</a>
+ &#8226;   <a href="#commander.services.fbc_parser_service">commander.services.fbc_parser_service</a>
  &#8226;   <a href="#commander.services.logging_service">commander.services.logging_service</a>
  &#8226;   <a href="#commander.services.sequential_command_processor">commander.services.sequential_command_processor</a>
  &#8226;   <a href="#commander.services.session_player">commander.services.session_player</a>

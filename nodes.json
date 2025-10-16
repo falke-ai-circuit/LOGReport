@@ -58,6 +58,12 @@
                 "protocol": "telnet"
             },
             {
+                "token_id": "184",
+                "token_type": "FBC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
                 "token_id": "182",
                 "token_type": "RPC",
                 "port": 23,
@@ -65,6 +71,12 @@
             },
             {
                 "token_id": "183",
+                "token_type": "RPC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "184",
                 "token_type": "RPC",
                 "port": 23,
                 "protocol": "telnet"
@@ -77,6 +89,12 @@
             },
             {
                 "token_id": "183",
+                "token_type": "LOG",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "184",
                 "token_type": "LOG",
                 "port": 23,
                 "protocol": "telnet"
@@ -100,6 +118,12 @@
                 "protocol": "telnet"
             },
             {
+                "token_id": "384",
+                "token_type": "FBC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
                 "token_id": "382",
                 "token_type": "RPC",
                 "port": 23,
@@ -107,6 +131,12 @@
             },
             {
                 "token_id": "383",
+                "token_type": "RPC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "384",
                 "token_type": "RPC",
                 "port": 23,
                 "protocol": "telnet"
@@ -119,6 +149,12 @@
             },
             {
                 "token_id": "383",
+                "token_type": "LOG",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "384",
                 "token_type": "LOG",
                 "port": 23,
                 "protocol": "telnet"
@@ -127,7 +163,7 @@
     },
     {
         "name": "AP03m",
-        "ip_address": "",
+        "ip_address": "192.168.0.13",
         "tokens": [
             {
                 "token_id": "1a2",
@@ -142,6 +178,12 @@
                 "protocol": "telnet"
             },
             {
+                "token_id": "1a4",
+                "token_type": "FBC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
                 "token_id": "1a2",
                 "token_type": "RPC",
                 "port": 23,
@@ -149,6 +191,12 @@
             },
             {
                 "token_id": "1a3",
+                "token_type": "RPC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "1a4",
                 "token_type": "RPC",
                 "port": 23,
                 "protocol": "telnet"
@@ -161,6 +209,12 @@
             },
             {
                 "token_id": "1a3",
+                "token_type": "LOG",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "1a4",
                 "token_type": "LOG",
                 "port": 23,
                 "protocol": "telnet"
@@ -169,7 +223,7 @@
     },
     {
         "name": "AP03r",
-        "ip_address": "",
+        "ip_address": "192.168.0.29",
         "tokens": [
             {
                 "token_id": "3a2",
@@ -184,6 +238,12 @@
                 "protocol": "telnet"
             },
             {
+                "token_id": "3a4",
+                "token_type": "FBC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
                 "token_id": "3a2",
                 "token_type": "RPC",
                 "port": 23,
@@ -191,6 +251,12 @@
             },
             {
                 "token_id": "3a3",
+                "token_type": "RPC",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "3a4",
                 "token_type": "RPC",
                 "port": 23,
                 "protocol": "telnet"
@@ -203,6 +269,12 @@
             },
             {
                 "token_id": "3a3",
+                "token_type": "LOG",
+                "port": 23,
+                "protocol": "telnet"
+            },
+            {
+                "token_id": "3a4",
                 "token_type": "LOG",
                 "port": 23,
                 "protocol": "telnet"
@@ -211,7 +283,7 @@
     },
     {
         "name": "AP04",
-        "ip_address": "",
+        "ip_address": "192.168.0.14",
         "tokens": [
             {
                 "token_id": "1c2",
@@ -253,7 +325,7 @@
     },
     {
         "name": "AP05",
-        "ip_address": "",
+        "ip_address": "192.168.0.15",
         "tokens": [
             {
                 "token_id": "1e2",

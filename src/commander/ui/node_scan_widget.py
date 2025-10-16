@@ -551,7 +551,7 @@ class NodeScanWidget(QWidget):
             
             # Status message with match summary
             file_name = Path(self.current_file).name if self.current_file else "file"
-            total_cells = len(result.matches) + len(result.differences) + len(result.errors)
+            total_cells = len(result.matches) + len(result.differences) + len(result.value_appeared) + len(result.errors)
             self.status_message.emit(
                 f"✓ {self.node_name} ({file_name}): {result.match_percentage:.0f}% match "
                 f"({len(result.matches)}/{total_cells} cells)",
@@ -675,10 +675,13 @@ class NodeScanWidget(QWidget):
                 }
         """
         self.logger.debug(f"Applying comparison results: {len(results.get('matches', []))} matches, "
-                         f"{len(results.get('differences', []))} differences, {len(results.get('errors', []))} errors")
+                         f"{len(results.get('differences', []))} differences (RED), "
+                         f"{len(results.get('value_appeared', []))} value_appeared (YELLOW), "
+                         f"{len(results.get('errors', []))} errors")
         
         matches = results.get('matches', [])
         differences = results.get('differences', [])
+        value_appeared = results.get('value_appeared', [])
         errors = results.get('errors', [])
         
         # Get headers to identify PIC column
@@ -696,14 +699,25 @@ class NodeScanWidget(QWidget):
                     item.setForeground(QColor("#4CAF50"))  # Green text
                     item.setToolTip("Match: File and live data are identical")
         
+        # RED: File had value -> Live is different (actual problem)
         for row, col, file_val, live_val in differences:
             item = self.table_widget.item(row, col)
             if item:
                 # Check if this is PIC column (should not be colored)
                 header = self.table_widget.horizontalHeaderItem(col)
                 if header and header.text().upper() != 'PIC':
+                    item.setForeground(QColor("#F44336"))  # Red text
+                    item.setToolTip(f"Value Changed:\nFile: {file_val}\nLive: {live_val}")
+        
+        # YELLOW: File was empty/N/E -> Live has value (new data appeared)
+        for row, col, file_val, live_val in value_appeared:
+            item = self.table_widget.item(row, col)
+            if item:
+                # Check if this is PIC column (should not be colored)
+                header = self.table_widget.horizontalHeaderItem(col)
+                if header and header.text().upper() != 'PIC':
                     item.setForeground(QColor("#FFC107"))  # Yellow text
-                    item.setToolTip(f"Difference:\nFile: {file_val}\nLive: {live_val}")
+                    item.setToolTip(f"New Data Appeared:\nFile: {file_val or '(empty)'}\nLive: {live_val}")
         
         for row, col, error_msg in errors:
             item = self.table_widget.item(row, col)
@@ -715,7 +729,7 @@ class NodeScanWidget(QWidget):
                     item.setToolTip(f"Error: {error_msg}")
         
         # Calculate and display match percentage
-        total_cells = len(matches) + len(differences) + len(errors)
+        total_cells = len(matches) + len(differences) + len(value_appeared) + len(errors)
         if total_cells > 0:
             match_pct = (len(matches) / total_cells) * 100
             self.match_label.setText(f"✓ {match_pct:.0f}%")

@@ -56,10 +56,26 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
     lines = file_content.splitlines()
 
     # Extract IP address only if sys_file_path is provided and it's a token-specific file
-    # Token-specific files have numeric names like 181.sys, 41.sys
+    # Token-specific files can be:
+    # 1. Pure decimal (e.g., 181, 41, 21) - max 5 chars
+    # 2. Bare hexadecimal (e.g., 1a1, 3a1, 1c1, 1e1) - max 5 chars
+    # 3. Prefixed hex (e.g., 0x1a1, x3a1) - max 7 chars (0x + 5)
     if sys_file_path:
         file_stem = sys_file_path.stem
-        is_token_file = file_stem.isdigit() or (file_stem.lower().startswith(('0x', 'x')) and len(file_stem) <= 5)
+        is_token_file = False
+        
+        # Check if it's a pure decimal token (with length constraint)
+        if file_stem.isdigit() and len(file_stem) <= 5:
+            is_token_file = True
+        # Check if it's a hexadecimal token (with or without 0x/x prefix)
+        elif file_stem.lower().startswith(('0x', 'x')):
+            # Remove prefix and check if remaining chars are hex
+            hex_part = file_stem[2:] if file_stem.lower().startswith('0x') else file_stem[1:]
+            if all(c in '0123456789abcdefABCDEF' for c in hex_part) and len(hex_part) <= 5:
+                is_token_file = True
+        # Check if it's a bare hexadecimal token (no 0x prefix but contains hex digits)
+        elif all(c in '0123456789abcdefABCDEF' for c in file_stem) and len(file_stem) <= 5:
+            is_token_file = True
         
         if is_token_file:
             for line in lines:
@@ -158,7 +174,20 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
     # This allows the caller to extract just the IP without getting node structure
     if extracted_ip and sys_file_path:
         file_stem = sys_file_path.stem
-        is_token_file = file_stem.isdigit() or (file_stem.lower().startswith(('0x', 'x')) and len(file_stem) <= 5)
+        is_token_file = False
+        
+        # Check if it's a pure decimal token (with length constraint)
+        if file_stem.isdigit() and len(file_stem) <= 5:
+            is_token_file = True
+        # Check if it's a hexadecimal token (with or without 0x/x prefix)
+        elif file_stem.lower().startswith(('0x', 'x')):
+            # Remove prefix and check if remaining chars are hex
+            hex_part = file_stem[2:] if file_stem.lower().startswith('0x') else file_stem[1:]
+            if all(c in '0123456789abcdefABCDEF' for c in hex_part) and len(hex_part) <= 5:
+                is_token_file = True
+        # Check if it's a bare hexadecimal token (no 0x prefix but contains hex digits)
+        elif all(c in '0123456789abcdefABCDEF' for c in file_stem) and len(file_stem) <= 5:
+            is_token_file = True
         
         if is_token_file:
             # Return a single "dummy" node with just the IP for mapping purposes

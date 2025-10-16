@@ -274,17 +274,32 @@ AL02 192 al02_common
   - Token appears in both `_main_token` field and `tokens` list
   - Example: `AL01` has `_main_token=191`, `tokens=[191]`
 
-#### Token-Specific Files (e.g., `181.sys`, `41.sys`)
+#### Token-Specific Files (e.g., `181.sys`, `41.sys`, `1a1.sys`, `3a1.sys`)
 
 ```
 # Token-specific file format - contains IP address for specific token
-# Filename pattern: {token_id}.sys (numeric only)
+# Filename patterns (max 5 chars for bare format):
+#   - Pure decimal: 181.sys, 41.sys, 21.sys
+#   - Bare hexadecimal: 1a1.sys, 3a1.sys, 1c1.sys, 1e1.sys, 4a1.sys
+#   - Prefixed hexadecimal: 0x1a1.sys, x3a1.sys
 IP=192.168.0.12
 PORT=23
 DESCRIPTION=AP02m main token IP address
 ```
 
 **Purpose:** Provides IP addresses for individual tokens, automatically associated with nodes via the `_main_token` field.
+
+**Token ID Format:** 
+- **Decimal tokens**: Pure numeric (e.g., `181`, `41`, `21`, `201`, `221`)
+- **Hexadecimal tokens (bare)**: No prefix, contains hex digits a-f (e.g., `1a1`, `3a1`, `1c1`, `1e1`, `4a1`, `4c1`)
+- **Hexadecimal tokens (prefixed)**: With `0x` or `x` prefix (e.g., `0x1a1`, `x3a1`)
+- **Length constraint**: Maximum 5 characters for bare format (decimal or hex), up to 7 for prefixed (`0x` + 5 chars)
+
+**Examples:**
+- `181.sys` → token ID `181` (decimal)
+- `1a1.sys` → token ID `1a1` (hexadecimal, for AP03m main token)
+- `3a1.sys` → token ID `3a1` (hexadecimal, for AP03r reserve token)
+- `0x1c1.sys` → token ID `0x1c1` (prefixed hexadecimal)
 
 ### SYS Parser Implementation
 

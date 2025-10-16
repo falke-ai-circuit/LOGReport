@@ -614,8 +614,27 @@ Generated on $DATETIME."""
             # Categorize files into main and token-specific sys files
             for file_path in file_paths:
                 file_name = Path(file_path).stem  # Get filename without extension
-                # Token-specific files are typically numeric (e.g., 181, 41)
-                if file_name.isdigit() or (file_name.lower().startswith(('0x', 'x')) and len(file_name) <= 5):
+                # Token-specific files can be:
+                # 1. Pure decimal (e.g., 181, 41, 21) - max 5 chars
+                # 2. Bare hexadecimal (e.g., 1a1, 3a1, 1c1, 1e1) - max 5 chars
+                # 3. Prefixed hex (e.g., 0x1a1, x3a1) - max 7 chars (0x + 5)
+                # Main files are text names (e.g., AB01_sys)
+                is_token_file = False
+                
+                # Check if it's a pure decimal token (with length constraint)
+                if file_name.isdigit() and len(file_name) <= 5:
+                    is_token_file = True
+                # Check if it's a hexadecimal token (with or without 0x/x prefix)
+                elif file_name.lower().startswith(('0x', 'x')):
+                    # Remove prefix and check if remaining chars are hex
+                    hex_part = file_name[2:] if file_name.lower().startswith('0x') else file_name[1:]
+                    if all(c in '0123456789abcdefABCDEF' for c in hex_part) and len(hex_part) <= 5:
+                        is_token_file = True
+                # Check if it's a bare hexadecimal token (no 0x prefix but contains hex digits)
+                elif all(c in '0123456789abcdefABCDEF' for c in file_name) and len(file_name) <= 5:
+                    is_token_file = True
+                
+                if is_token_file:
                     token_sys_files.append(file_path)
                 else:
                     main_sys_files.append(file_path)

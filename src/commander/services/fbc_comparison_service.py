@@ -26,6 +26,15 @@ class CellDifference:
 
 
 @dataclass
+class CellValueAppeared:
+    """Represents a cell where value appeared in live data (was empty/N/E in file)"""
+    row: int
+    col: int
+    file_value: str
+    live_value: str
+
+
+@dataclass
 class CellError:
     """Represents an error in cell comparison"""
     row: int
@@ -41,7 +50,8 @@ class ComparisonResult:
     match_percentage: float
     total_cells: int
     matches: List[Tuple[int, int]]  # List of (row, col) for matching cells
-    differences: List[CellDifference]  # List of cell differences
+    differences: List[CellDifference]  # List of cell differences (file had value -> live different/missing) - RED
+    value_appeared: List[CellValueAppeared]  # List of cells where value appeared (file empty/N/E -> live has value) - YELLOW
     errors: List[CellError]  # List of cell errors
     error_message: Optional[str] = None  # Overall comparison error (telnet/parse failure)
     
@@ -56,6 +66,10 @@ class ComparisonResult:
             'differences': [
                 (d.row, d.col, d.file_value, d.live_value) 
                 for d in self.differences
+            ],
+            'value_appeared': [
+                (v.row, v.col, v.file_value, v.live_value)
+                for v in self.value_appeared
             ],
             'errors': [
                 (e.row, e.col, e.error_message) 
@@ -112,6 +126,7 @@ class FbcComparisonService:
                     total_cells=0,
                     matches=[],
                     differences=[],
+                    value_appeared=[],
                     errors=[],
                     error_message=f"Telnet command failed: {telnet_response}"
                 )
@@ -127,6 +142,7 @@ class FbcComparisonService:
                     total_cells=0,
                     matches=[],
                     differences=[],
+                    value_appeared=[],
                     errors=[],
                     error_message="Failed to parse telnet response"
                 )
@@ -145,6 +161,7 @@ class FbcComparisonService:
                 total_cells=0,
                 matches=[],
                 differences=[],
+                value_appeared=[],
                 errors=[],
                 error_message=f"Connection error: {str(e)}"
             )
@@ -157,6 +174,7 @@ class FbcComparisonService:
                 total_cells=0,
                 matches=[],
                 differences=[],
+                value_appeared=[],
                 errors=[],
                 error_message=f"Comparison failed: {str(e)}"
             )
@@ -232,12 +250,32 @@ class FbcComparisonService:
             self.logger.error(f"Failed to parse telnet response: {e}", exc_info=True)
             return None
     
+    def _is_empty_value(self, value: str) -> bool:
+        """
+        Check if a value is considered empty (empty string, 'N/E', 'N', or whitespace).
+        
+        Args:
+            value: Cell value to check
+            
+        Returns:
+            True if value is empty/N/E, False otherwise
+        """
+        if not value:
+            return True
+        normalized = str(value).strip().upper()
+        return normalized in ('', 'N/E', 'N', 'NOT EXISTS')
+    
     def _compare_tables(self, file_data: FbcTableData, live_data: FbcTableData) -> ComparisonResult:
         """
         Compare file data with live data cell-by-cell.
         
         Compares rows by matching PIC values (not by row index) to handle cases where
         telnet response has extra header lines. Compares only data columns (PIC to sum).
+        
+        Color logic:
+        - GREEN: Values match
+        - RED: File had a value -> Live is different or missing (actual problem)
+        - YELLOW: File was empty/N/E -> Live has a value (new data appeared)
         
         Args:
             file_data: Parsed file table data
@@ -252,6 +290,7 @@ class FbcComparisonService:
         
         matches: List[Tuple[int, int]] = []
         differences: List[CellDifference] = []
+        value_appeared: List[CellValueAppeared] = []
         errors: List[CellError] = []
         
         # Create PIC-based row mapping for live data (PIC value -> row dict)
@@ -333,23 +372,38 @@ class FbcComparisonService:
                 if file_val_norm == live_val_norm:
                     matches.append((row_idx, display_col_idx))
                 else:
-                    self.logger.debug(f"DIFFERENCE at row {row_idx} display_col {display_col_idx} ({file_header}): file='{file_val_norm}' vs live='{live_val_norm}'")
-                    differences.append(CellDifference(
-                        row=row_idx,
-                        col=display_col_idx,  # Use display column index
-                        file_value=file_value,
-                        live_value=live_value
-                    ))
+                    # Check if file value was empty/N/E and live value has data
+                    file_was_empty = self._is_empty_value(file_value)
+                    live_has_value = not self._is_empty_value(live_value)
+                    
+                    if file_was_empty and live_has_value:
+                        # YELLOW: File was empty/N/E -> Live has value (new data appeared)
+                        self.logger.debug(f"VALUE_APPEARED at row {row_idx} display_col {display_col_idx} ({file_header}): file='{file_val_norm}' (empty) -> live='{live_val_norm}' (has value)")
+                        value_appeared.append(CellValueAppeared(
+                            row=row_idx,
+                            col=display_col_idx,
+                            file_value=file_value,
+                            live_value=live_value
+                        ))
+                    else:
+                        # RED: File had value -> Live is different or missing (actual problem)
+                        self.logger.debug(f"DIFFERENCE at row {row_idx} display_col {display_col_idx} ({file_header}): file='{file_val_norm}' vs live='{live_val_norm}'")
+                        differences.append(CellDifference(
+                            row=row_idx,
+                            col=display_col_idx,  # Use display column index
+                            file_value=file_value,
+                            live_value=live_value
+                        ))
                 
                 display_col_idx += 1
         
         # Calculate statistics
-        total_cells = len(matches) + len(differences) + len(errors)
+        total_cells = len(matches) + len(differences) + len(value_appeared) + len(errors)
         match_percentage = (len(matches) / total_cells * 100) if total_cells > 0 else 0.0
         
         self.logger.info(
-            f"Comparison complete: {len(matches)} matches, {len(differences)} differences, "
-            f"{len(errors)} errors, {match_percentage:.1f}% match"
+            f"Comparison complete: {len(matches)} matches, {len(differences)} differences (RED), "
+            f"{len(value_appeared)} value_appeared (YELLOW), {len(errors)} errors, {match_percentage:.1f}% match"
         )
         
         return ComparisonResult(
@@ -359,6 +413,7 @@ class FbcComparisonService:
             total_cells=total_cells,
             matches=matches,
             differences=differences,
+            value_appeared=value_appeared,
             errors=errors,
             error_message=None
         )
