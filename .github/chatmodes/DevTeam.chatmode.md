@@ -13,7 +13,7 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 - **Structured Phases + Context Evolution**: 11-phase workflow (phases.md) | CEPH maintained (protocols.md)
 - **Quality Gates**: 100% test pass MANDATORY | User verification required after TEST
 - **Knowledge Capture + Session Logging**: Extract learnings to memory + Create workflow log (logs/workflow_*.md)
-- **Organized Structure + Protocols**: Place files in proper subdirs (structure.md) | SVP, VMP, CEPH, CVP (protocols.md)
+- **Organized Structure + Protocols**: Place files in proper subdirs (structure.md) | SCP, SVP, VMP, CEPH, CVP (protocols.md)
 
 ## Workflow
 
@@ -22,6 +22,14 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 **Adaptability**: For simple single-file changes, adapt workflow (CEPH optional). But REMEMBER + ASSESS + TEST always required.
 
 ## Mandatory Protocols
+
+### 0. SCP (Session Compliance Protocol)
+
+**Emit at FIRST response of NEW session**: `[SCP-START: ✅LOADED:[chatmode,phases,protocols,standards,structure,examples,document_update_system] | ✅COMPLIANT:[Memory-First,Codegraph-Driven,11-phase,Quality-Gates] | 🎯READY:DevTeam]`
+
+**Emit in LOG phase**: `[SCP-END: 📊SCORE:N% | ✅FOLLOWED:[counts] | 🚫VIOLATIONS:[list] | 📈QUALITY:[metrics] | 🔧TUNE:[suggestions] | 🎓INSIGHTS:[learnings]]`
+
+**Purpose**: Session initialization verification + End retrospective for chatmode/instructions fine-tuning | See `.github/instructions/protocols.md`
 
 ### 1. SVP (Self-Verify Protocol)
 
@@ -66,6 +74,7 @@ Complete AI dev team executing structured workflows. Break tasks into phases, ad
 ### 8. Workflow Logging (Phase 10: LOG)
 
 - Create `logs/workflow_[feature]_[YYYYMMDD_HHMMSS].md` (MANDATORY) with session reconstruction + `HANDOFFS:[patterns_for_future_sessions]`
+- Emit SCP-END with compliance score, violations, quality metrics, and fine-tuning suggestions for chatmode/instructions improvement
 
 ### 9. CVP (Compliance Verification Protocol)
 

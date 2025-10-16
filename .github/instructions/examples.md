@@ -6,6 +6,12 @@ applyTo: '**'
 
 **Companion to**: protocols.md (core specifications)
 
+## SCP Examples
+
+**Session Start**: `[SCP-START: ✅LOADED:[chatmode,phases,protocols,standards,structure,examples,document_update_system] | ✅COMPLIANT:[Memory-First,Codegraph-Driven,11-phase,Quality-Gates] | 🎯READY:DevTeam]`
+
+**Session End (LOG phase)**: `[SCP-END: 📊SCORE:92% | ✅FOLLOWED:[SVP:18/18,CVP:9/9,VMP:1,CEPH:yes] | 🚫VIOLATIONS:[0:critical,1:minor:incomplete_codegraph_query] | 📈QUALITY:[tests:100%,memory:4_entities,docs:3_files,queries:8] | 🔧TUNE:[phases:clarify_IMPLEMENT_query_threshold,protocols:add_VMP_timeout_guidance] | 🎓INSIGHTS:[signal_propagation_pattern,hierarchical_color_persistence]]`
+
 ## SVP Examples
 
 **Phase Start**: `[SVP: ⚡PHASE→🔍ASSESS | 📚STACK→none | ✓TASK→2/11 | 🎯NEXT→load_codegraph]`

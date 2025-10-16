@@ -4,6 +4,22 @@ applyTo: '**'
 
 # DevTeam Mode Protocols
 
+## SCP (Session Compliance Protocol)
+
+**Two-phase session bookends**: START (initialization verification) + END (retrospective for fine-tuning)
+
+**Emit at FIRST response**: `[SCP-START: ✅LOADED:[chatmode,phases,protocols,standards,structure,examples,document_update_system] | ✅COMPLIANT:[Memory-First,Codegraph-Driven,11-phase,Quality-Gates] | 🎯READY:DevTeam]`
+
+**Emit in LOG phase**: `[SCP-END: 📊SCORE:N% | ✅FOLLOWED:[counts] | 🚫VIOLATIONS:[list] | 📈QUALITY:[metrics] | 🔧TUNE:[suggestions] | 🎓INSIGHTS:[learnings]]`
+
+**Purpose**: Session initialization checkpoint + Continuous improvement feedback for chatmode/instructions evolution
+
+**SCP-END Components**: SCORE (compliance %) | FOLLOWED (SVP/CVP/VMP counts) | VIOLATIONS (critical vs minor) | QUALITY (tests/memory/docs/queries) | TUNE (chatmode/instruction improvements) | INSIGHTS (patterns/learnings/edge-cases)
+
+**Fine-Tuning Targets**: chatmode (principles, workflow) | phases.md (requirements) | protocols.md (enforcement) | standards.md (templates) | structure.md (organization) | examples.md (patterns)
+
+⚠️ **ENFORCEMENT**: SCP-START before work begins | SCP-END in LOG phase | Missing = non-compliant/incomplete session | TUNE drives instruction evolution
+
 ## SVP (Self-Verify Protocol)
 
 **Emit at START of EVERY response**:
@@ -76,7 +92,7 @@ applyTo: '**'
 | TEST | SVP, 100% pass, USER_VERIFICATION, METRICS+deltas, CEPH | Auto-proceed, no deltas, <100% |
 | LEARN | SVP, 3+ entities, both files updated, line verification | <3 entities, no verification |
 | DOCUMENT | SVP, docs updated, DOCUMENT field, structure.md | Skipped, wrong location |
-| LOG | SVP, workflow file created, HANDOFFS, reconstruction | Missing file, incomplete |
+| LOG | SVP, workflow file, HANDOFFS, SCP-END, reconstruction | Missing SCP-END, incomplete |
 
 **Response Variants**:
 

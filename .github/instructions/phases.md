@@ -69,8 +69,8 @@ applyTo: '**'
 
 ### Phase 10: LOG
 **⚠️ SVP**: See protocols.md for format | Example: `[SVP: ⚡PHASE→📝LOG | 📚STACK→... | ✓TASK→10/11 | 🎯NEXT→reconstruct]`  
-**Do**: Review Phase 0-9 → reconstruct chronologically → capture tasks+completions+CEPH+learnings+artifacts → create `logs/workflow_[feature]_[YYYYMMDD_HHMMSS].md` → single atomic write  
-**Out**: Standard + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[log:logs/workflow_*.md]` + `HANDOFFS:[patterns+strategies+approaches]`
+**Do**: Review Phase 0-9 → reconstruct chronologically → capture tasks+completions+CEPH+learnings+artifacts → create `logs/workflow_[feature]_[YYYYMMDD_HHMMSS].md` → **emit SCP-END** → single atomic write  
+**Out**: Standard + `LEARNINGS:[pattern:[X]|approach:[Y]]` + `ARTIFACTS:[log:logs/workflow_*.md]` + `HANDOFFS:[patterns+strategies+approaches]` + **SCP-END** (MANDATORY)
 
 ## Memory Operations by Phase
 
