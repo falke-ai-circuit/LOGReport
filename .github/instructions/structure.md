@@ -98,3 +98,23 @@ codegraph.json              # Code structure entities
 ## Size Limits
 
 **Source**: <500 lines/file | **Observations**: 80-120 chars | **Codegraph descriptions**: 1-3 lines
+
+## Instruction File Limits ⚠️ MAINTAIN
+
+**Optimal Line Counts** (updated 2025-10-19):
+
+| File | Current | Optimal Range | Hard Max | Purpose |
+|------|---------|---------------|----------|---------|
+| **chatmode.md** | 117 | 60-120 | 130 | High-level overview, must stay lean |
+| **phases.md** | 97 | 70-100 | 120 | Phase workflow specifications |
+| **standards.md** | 107 | 70-110 | 130 | Quality standards, format templates |
+| **protocols.md** | 107 | 75-120 | 150 | Core protocol definitions (densest) |
+| **structure.md** | 120 | 70-100 | 110 | File organization reference |
+| **examples.md** | 155 | 100-150 | 180 | Pattern demonstrations (teaching) |
+| **TOTAL** | **703** | **445-700** | **820** | Full instruction set |
+
+**Token Budget**: Current ~9.8K tokens | Optimal 8K-12K | Hard Max 15K tokens
+
+**Growth Management**: Archive old examples → Compress prose to tables → Split if >hard max → One source of truth per concept
+
+**Review Triggers**: Single file >optimal → Total >12K tokens → Compliance degradation detected

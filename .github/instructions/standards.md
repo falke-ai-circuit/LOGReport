@@ -9,89 +9,64 @@ applyTo: '**'
 **Pattern**: `[Type].[Domain].[Cluster].[EntityType]_[Name]` (MANDATORY 4 levels, no orphans)  
 **Files**: `project_memory.json` (Project.*) | `global_memory.json` (Global.*) | `codegraph.json` (Code.*)
 
-### Components
-**Type**: Project | Global | Code | Tool | Config  
-**Domain**: Frontend | Backend | Architecture | Data | DevOps | Integration | Commander | Core | Services  
-**Cluster**: UI | API | Testing | Database | CI | Command | ContextMenu | NodeTree | etc.  
-**EntityType**: Component | Service | Pattern | Workflow | Model | Handler | Tool | Config | Module | Class | Method | Function
+**Components**: Type (Project|Global|Code|Tool|Config) | Domain (Frontend|Backend|Architecture|Data|DevOps|Integration|Commander|Core|Services) | Cluster (UI|API|Testing|Database|CI|Command|ContextMenu|NodeTree) | EntityType (Component|Service|Pattern|Workflow|Model|Handler|Tool|Config|Module|Class|Method|Function)
 
-### Validation
-✅ 4-layer path | 80-120 char observations | 8 metadata fields (created, modified, accessed, refs, usage, path, hash, obs_check) | hierarchy connections  
-❌ Missing layers | >120 chars | orphaned entities | vague names
+**Validation**: ✅ 4-layer path, 80-120 char observations, 8 metadata fields (created/modified/accessed/refs/usage/path/hash/obs_check), hierarchy connections | ❌ Missing layers, >120 chars, orphaned entities, vague names
 
 ## Memory Templates
 
-### Project Memory
-`{"type":"entity", "name":"Project.[Domain].[Cluster].[Name]", "entityType":"[Type]", "observations":["Description with architecture/implementation details.", "Integration: signals/handlers/components used.", "created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0"]}`
+**Project**: `{"type":"entity", "name":"Project.[Domain].[Cluster].[Name]", "entityType":"[Type]", "observations":["Description with architecture/implementation.", "Integration: signals/handlers/components.", "created:YYYY-MM-DD,modified:YYYY-MM-DD,refs:0"]}`
 
-### Codegraph
-`{"type":"entity","name":"Code.Module.{path}","entityType":"Module","observations":["{description} | {N} class, {M} funcs","upd:YYYY-MM-DD,refs:0"]}`
+**Codegraph**: `{"type":"entity","name":"Code.Module.{path}","entityType":"Module","observations":["{description} | {N} class, {M} funcs","upd:YYYY-MM-DD,refs:0"]}`
 
-### Relations
-**Required**: BELONGS_TO (Module→Domain, Class→Module) | IMPORTS (Module→Module) | **Rules**: Read codegraph.json examples first | Match existing format exactly
+**Relations**: Required (BELONGS_TO:Module→Domain,Class→Module | IMPORTS:Module→Module) | Rules: Read codegraph.json examples first, match existing format exactly
 
-## Documentation Standards
+## Standards
 
-### Templates by Type
-| Type | Location | Structure | Purpose |
-|------|----------|-----------|---------|
-| **ARCH** | `docs/architecture/` | Overview→Architecture→Components→Decisions→Implementation | System design, architectural decisions, patterns |
-| **BLUEPRINT** | `docs/blueprints/` | Overview→Requirements→Architecture→Plan→Testing→Resources | Implementation plans, project phases |
-| **TECH** | `docs/technical/` | Overview→Architecture→API→Config→Security→Performance | API specs, configurations, technical procedures |
-| **GUIDE** | `docs/user/` | Overview→Getting Started→Concepts→Procedures→Troubleshooting | User workflows, features, how-to guides |
+**Code**: <500 lines/file | Single responsibility | Understandable | Efficient | Validate inputs | Graceful errors  
+**Testing**: 100% pass MANDATORY | Unit+Integration+Edge | `pytest <file> -v` | ALL pass (9/9 not 5/9) | Fail→DEBUG  
+**Documentation**: Sync with code | All public APIs | Include examples | Update in DOCUMENT phase  
+**Logging**: Structured | Capture all phase completions | Session records `logs/workflow_*.md` | Chronological
 
-**Rules**: Sync with code | Document all public APIs | Include usage examples | Update in DOCUMENT phase
+**Doc Templates**: ARCH (`docs/architecture/`: Overview→Architecture→Components→Decisions→Implementation) | BLUEPRINT (`docs/blueprints/`: Overview→Requirements→Architecture→Plan→Testing→Resources) | TECH (`docs/technical/`: Overview→Architecture→API→Config→Security→Performance) | GUIDE (`docs/user/`: Overview→Start→Concepts→Procedures→Troubleshooting)
 
-## Quality Standards
-
-**Code**: <500 lines/file | Single responsibility | Understandable by future devs | Efficient (not premature) | Validate inputs | Graceful error handling  
-**Testing**: 100% pass MANDATORY | Unit + Integration + Edge cases | `python -m pytest <test_file> -v` | ALL tests pass (9/9, not 5/9) | Failed = return to DEBUG  
-**Documentation**: Sync with code | All public APIs documented | Include examples | Update in DOCUMENT phase  
-**Logging**: Structured format | Capture all phase completions | Session records in `logs/workflow_*.md` | Chronological reconstruction
-
-## Codegraph Standards
-
-**Update Triggers**: NEW files (Module + Class + Methods) | MODIFIED files (update Module entity)  
-**Content**: 1-3 lines max | Structure + dependencies + purpose only | Match existing tone  
-**Metadata**: `upd:YYYY-MM-DD,refs:0` (MANDATORY)
-
-**Update Process**: Read existing entries → extract/update entities → create temp JSONL → append to codegraph.json → verify line count → cleanup
+**Codegraph**: Triggers (NEW→Module+Class+Methods | MODIFIED→update Module) | Content (1-3 lines max, structure+deps+purpose, match tone) | Metadata (`upd:YYYY-MM-DD,refs:0` MANDATORY) | Process (read existing→extract/update→temp JSONL→append→verify→cleanup)
 
 ## Communication Standards
 
-**Phase Indicators**: 📋 PLAN | 🧠 REMEMBER | 🔍 ASSESS | 🔬 ANALYZE | 🏗️ ARCHITECT | 💻 IMPLEMENT | 🐛 DEBUG | 🧪 TEST | 🎓 LEARN | 📚 DOCUMENT | 📝 LOG
+**Phases**: 📋PLAN | 🧠REMEMBER | 🔍ASSESS | 🔬ANALYZE | 🏗️ARCHITECT | 💻IMPLEMENT | 🐛DEBUG | 🧪TEST | 🎓LEARN | 📚DOCUMENT | 📝LOG
 
-**Status Format**:
+**Status**:
 ```
-STATUS: [completed|partial|failed]
-PHASE: [PHASE_NAME]
-TASKS: [phase_list with current phase: completed, others: pending/done]
-DISCOVERIES: [key_findings + insights + decisions]
+STATUS: [complete|partial|failed]
+PHASE: [NAME]
+TASKS: [phase_list with current→completed/pending/done]
+DISCOVERIES: [key_findings+insights+decisions]
 BLOCKERS: [none|specific_issues]
-NEXT: [proceed_to_next_phase|alternative_action]
+NEXT: [next_phase|alternative]
 ```
 
-**Optional Fields**: `STACK:[breadcrumb] (depth:N)` (VMP vertical mode, depth ≥ 1) | `CEPH:[context]` (ASSESS+) | `MEMORY:[entities_loaded]` (REMEMBER) | `LEARNINGS:[pattern:[X] | approach:[Y]]` (specialist phases) | `ARTIFACTS:[type:path:description]` (IMPLEMENT, TEST, LEARN, DOCUMENT) | `METRICS:[measurement_with_deltas]` (TEST, MUST include Δ) | `DOCUMENT:[updates]` (DOCUMENT) | `HANDOFFS:[future_patterns]` (LOG)
+**Optional**: STACK:[breadcrumb](depth:N) (index≥1) | CEPH:[context] (ASSESS+) | MEMORY:[entities] (REMEMBER) | LEARNINGS:[pattern:[X]|approach:[Y]] (specialist) | ARTIFACTS:[type:path:desc] (IMPLEMENT/TEST/LEARN/DOCUMENT) | METRICS:[measurement_with_Δ] (TEST, MANDATORY Δ) | DOCUMENT:[updates] (DOCUMENT) | COMMIT:[type(scope):message] (LOG/FINALIZE) | HANDOFFS:[future_patterns] (LOG) | ADJUST:[drift→correction] (SCP-PHASE self-regulation)
 
 ## Format Requirements ⚠️ MANDATORY
 
-### VMP (Vertical Mode Protocol)
-**Rule**: Use 🔄 VMP for interruptions and blockers | PUSH/POP/USER operations | Stack notation with ← arrows
+**NWP**: Use NWP (Nested Workflow Procedure) for workflow nesting | NEST/RETURN operations | Stack notation with → arrows  
+✅ `[SCP-NWP: 🔄NEST→test_failure | 📚INDEX:[0→1] | �REASON:validation_failed | 📍FROM:IMPLEMENT | �️PHASES:[1,2,6,7,8]]`  
+✅ `[SCP-NWP: 🔄RETURN←test_failure | 📚INDEX:[1→0] | ✅RESOLVED | 📍RESUME:IMPLEMENT | 🔄MERGE:[CEPH+learnings]]`  
+❌ Freeform context switching without NWP protocol
 
-✅ `🔄 VMP PUSH | STACK: 🏗️ ARCHITECT ← 🔬 ANALYZE (depth:2)`  
-✅ `🔄 VMP | STACK: 💻 IMPLEMENT (depth:0)` (user interruption)  
-❌ Freeform context switching without VMP block
+**Metrics (TEST)**: ALWAYS include (Δ±X%) or (+N) showing change from baseline  
+✅ `METRICS:[coverage=95%(+15%)|tests=9/9(+9)]`  
+❌ `METRICS:[coverage=95%|tests=9/9]` (missing Δ)
 
-### Metrics (TEST Phase)
-**Rule**: ALWAYS include (Δ±X%) or (+N) showing change from baseline
+**Learnings (Specialist)**: ALWAYS use `pattern:[X]|approach:[Y]` with pipe separator  
+✅ `LEARNINGS:[pattern:[Centralized validation]|approach:[Color coding feedback]]`  
+❌ Freeform text without pattern:|approach: structure
 
-✅ `METRICS:[coverage=95%(+15%) src:pytest scope:unit | tests=9/9(+9) src:pytest scope:integration]`  
-❌ `METRICS:[coverage=95% | tests=9/9]` (missing +Δ deltas)
+**Commit (LOG/FINALIZE)**: `type(scope): brief summary` imperative | Types: feat|fix|refactor|docs|test|chore|perf|style | Length: 50-72 chars  
+✅ `COMMIT:[feat(classifier): add pattern discovery]` | `COMMIT:[fix(gui): remove duplicate method]`  
+❌ Long-winded | Past tense | Vague
 
-**First Implementation**: Use (+N) showing new additions
-
-### Learnings (Specialist Phases)
-**Rule**: ALWAYS use `pattern:[X] | approach:[Y]` with pipe separator
-
-✅ `LEARNINGS:[pattern:[Centralized validation for DRY] | approach:[Color coding in populate_node_list for real-time feedback]]`  
-❌ Free-form text, bullet points, or paragraphs without pattern:|approach: structure
+**ADJUST (SCP-PHASE)**: `drift_type→correction_action` or `none` | Scope: SCP-PHASE=compliance drift at phase gates | Usage: Auto-correction, prevents protocol abandonment  
+✅ `🔧ADJUST:[none]` | `🔧ADJUST:[query_deficit→add_BELONGS_TO+IMPORTS]` | `🔧ADJUST:[skipped_IMPLEMENT→return_to_phase_5]`  
+❌ Generic "fix it" without drift→action mapping | Vague corrections

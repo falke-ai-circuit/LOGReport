@@ -4,5 +4,9 @@ PyQt5==5.15.11
 PyQt5-Qt5==5.15.2
 pyinstaller==6.5.0
 
+# Telnet support for Python 3.13+
+# telnetlib was removed in Python 3.13, use external package
+telnetlib; python_version >= '3.13'
+
 # For system testing, also install dependencies from requirements-test.txt
 # pip install -r requirements-test.txt

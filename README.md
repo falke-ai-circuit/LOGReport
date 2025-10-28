@@ -37,12 +37,23 @@ LOGReporter includes **automatic BsTool.exe bundling** for seamless deployment:
 
 **📦 Building with BsTool**
 When building the executable, BsTool.exe is automatically included:
+
+**PyInstaller (Fast - 2-3 minutes):**
 ```powershell
 # BsTool.exe must be in project root
 pyinstaller --clean LOGReporter_PyQt5.spec
 ```
 
-The packaged executable includes BsTool.exe and automatically detects its location. See [BUILD-INSTRUCTIONS.md](BUILD-INSTRUCTIONS.md) for complete build details.
+**Nuitka (Optimized - 15-25 minutes, 2-4x faster runtime):**
+```powershell
+# Recommended for production - smaller size, better performance
+.\build_nuitka.bat
+```
+
+The packaged executable includes BsTool.exe and automatically detects its location. See:
+- [BUILD-INSTRUCTIONS.md](BUILD-INSTRUCTIONS.md) - PyInstaller builds (fast, development)
+- [NUITKA_BUILD_INSTRUCTIONS.md](NUITKA_BUILD_INSTRUCTIONS.md) - Nuitka builds (optimized, production)
+- [QUICK_BUILD_NUITKA.md](QUICK_BUILD_NUITKA.md) - Quick reference for Nuitka
 
 ### Scan Tab - Live Configuration Viewer
 

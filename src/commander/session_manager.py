@@ -2,7 +2,12 @@
 Session Manager
 Handles Telnet and FTP session connections
 """
-import telnetlib
+try:
+    import telnetlib
+except ModuleNotFoundError:
+    # Python 3.13+ fallback
+    from .telnet_compat import telnetlib
+    
 import socket
 import time
 import re

@@ -8,87 +8,101 @@ applyTo: '**'
 
 ## SCP Examples
 
-**Session Start**: `[SCP-START: ✅LOADED:[chatmode,phases,protocols,standards,structure,examples,document_update_system] | ✅COMPLIANT:[Memory-First,Codegraph-Driven,11-phase,Quality-Gates] | 🎯READY:DevTeam]`
+### Session Initialization
 
-**Session End (LOG phase)**: `[SCP-END: 📊SCORE:92% | ✅FOLLOWED:[SVP:18/18,CVP:9/9,VMP:1,CEPH:yes] | 🚫VIOLATIONS:[0:critical,1:minor:incomplete_codegraph_query] | 📈QUALITY:[tests:100%,memory:4_entities,docs:3_files,queries:8] | 🔧TUNE:[phases:clarify_IMPLEMENT_query_threshold,protocols:add_VMP_timeout_guidance] | 🎓INSIGHTS:[signal_propagation_pattern,hierarchical_color_persistence]]`
+**SCP-START**: Load chatmode+5 → Verify Memory-First+Codegraph+multi-phase+Quality-Gates → Init NWP(index=0)+tracking → Emit `[SCP-START: ✅LOADED:[chatmode,phases,protocols,standards,structure,examples] | ✅COMPLIANT:[Memory-First,Codegraph-Driven,11-phase,Quality-Gates] | 🎯READY:DevTeam | 📚NWP:[index=0,depth=0]]`
+### Phase Completion (Quality Gates)
 
-## SVP Examples
+**SCP-PHASE (full)**: `[SCP-PHASE: ✓CHATMODE:[Codegraph:5/5,CEPH,LEARNINGS] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none] | 🔧ADJUST:[none] | 📚NWP:[index:0,phase:5/11]]`
 
-**Phase Start**: `[SVP: ⚡PHASE→🔍ASSESS | 📚STACK→none | ✓TASK→2/11 | 🎯NEXT→load_codegraph]`
-**Within Phase**: `[SVP: 🎯NEXT→query_class_relations]`
-**VMP Push**: `[SVP: ⚡PHASE→🐛DEBUG | 📚STACK→1 (IMPLEMENT→DEBUG) | ✓TASK→blocker | 🎯NEXT→analyze_test_failure]`
-**User Question**: `[SVP: 🎯NEXT→answer_user_question]`
+**SCP-PHASE (warnings)**: `[SCP-PHASE: ✓CHATMODE:[CEPH] | ✓CHATMODE:[Codegraph:2/5] | 🚫VIOLATIONS:[1:query_deficit] | 🔧ADJUST:[insufficient_queries→add_BELONGS_TO+IMPORTS+CALLS] | 📚NWP:[index:1,phase:5/8]]`
 
-## CEPH Evolution Example (Real Workflow)
+**SCP-PHASE (critical)**: `[SCP-PHASE: ✓CHATMODE:[Memory:not_loaded] | ✓INSTRUCTIONS:[protocols] | 🚫VIOLATIONS:[1:critical] | 🔧ADJUST:[missing_memory→load_global+project] | 📚NWP:[index:0,phase:1/11]]`
 
-**ASSESS**: `CEPH:[CURRENT:gap_identified | EXPECTED:feature_complete | PROBLEM:status_messages_isolated | HYPOTHESES:H1:signal_chain | EVIDENCE:existing_patterns]`
+### NWP Transitions
 
-**IMPLEMENT**: `CEPH:[CURRENT:implementation_complete | EXPECTED:same | PROBLEM:same | HYPOTHESES:same | EVIDENCE:files_modified]`
+**NEST**: `[SCP-NWP: 🔄NEST→test_failure | 📚INDEX:[0→1] | 🎯REASON:validation_failed | 📍FROM:IMPLEMENT | 🗂️PHASES:[1,2,6,7,8]]`
 
-**TEST**: `CEPH:[CURRENT:validated | EXPECTED:achieved | PROBLEM:resolved | HYPOTHESES:validated | EVIDENCE:tests_pass]`
+**RETURN**: `[SCP-NWP: 🔄RETURN←test_failure | 📚INDEX:[1→0] | ✅RESOLVED | 📍RESUME:IMPLEMENT | 🔄MERGE:[CEPH+fix]]`
 
-## CVP Response Examples
+**NEST (nested)**: `[SCP-NWP: 🔄NEST→user_request | 📚INDEX:[1→2] | 🎯REASON:architecture_question | 📍FROM:DEBUG | 🗂️PHASES:[2,3,7,8]]`
 
-**✅ Full Compliance**: `[CVP: ✓CHATMODE:[SVP,Memory,Codegraph,CEPH] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none]]`
+**RETURN (nested)**: `[SCP-NWP: 🔄RETURN←user_request | 📚INDEX:[2→1] | ✅RESOLVED | 📍RESUME:DEBUG | 🔄MERGE:[CEPH+insights]]`
+### Manual Status & Session End
 
-**⚠️ Partial**: `[CVP: ✓CHATMODE:[SVP,Memory] | ⚠️CHATMODE:[Codegraph:2/5] | 🚫VIOLATIONS:[1:insufficient_queries]]`
+**SCP-CHECK**: `[SCP-CHECK: 📊PHASE:IMPLEMENT | ✅STATUS:in_progress | 📚INDEX:0 | 🗂️STACK:0 | 🎯NEXT:complete_validation]` | Nested: `[SCP-CHECK: 📊PHASE:DEBUG | ✅STATUS:investigating | 📚INDEX:1 | 🗂️STACK:1 | 🎯NEXT:test_H2]`
 
-**❌ Failed**: `[CVP: ❌CHATMODE:[Memory:not_loaded] | ❌INSTRUCTIONS:[protocols:no_SVP] | 🚫VIOLATIONS:[2:critical]]`
+**SCP-END**: `[SCP-END: 📊SCORE:92% | ✅FOLLOWED:[SCP-PHASE:9/9,NWP:1,CEPH:yes] | 🚫VIOLATIONS:[0:critical,1:minor:incomplete_query] | 📈QUALITY:[tests:100%,memory:4_entities,docs:3_files,queries:8] | 🔧TUNE:[phases:clarify_IMPLEMENT_threshold] | 🎓INSIGHTS:[signal_propagation] | 💬COMMIT:"fix(classifier): implement pattern-priority logic" | 📚NWP:[nested_count:1,max_depth:1,total_phases:17]]`
 
-## CVP Usage in Real Workflows
+## NWP Stack Example
 
-**Pattern**: Emit CVP as FIRST LINE before STATUS in every phase completion. Self-verify against chatmode + all 5 instruction files. Critical violations (❌) BLOCK next phase until fixed.
-
-**Example Phase Completion with CVP**:
+**Single Nesting**: IMPLEMENT (5/11, 60%) → Test fail → nested DEBUG → fix → return → IMPLEMENT (80%)
 ```
-[CVP: ✓CHATMODE:[SVP,Codegraph:5/5,CEPH,LEARNINGS] | ✓INSTRUCTIONS:[protocols,phases,standards,structure] | 🚫VIOLATIONS:[none]]
-STATUS: completed
-PHASE: IMPLEMENT
-TASKS: [x][x][x][x][x][x][ ][ ][ ][ ][ ]
-...rest of completion format...
+[SCP-NWP: 🔄NEST→test_failure | 📚INDEX:[0→1] | 🎯REASON:validation_failed | 📍FROM:IMPLEMENT | 🗂️PHASES:[1,2,6,7,8]]
+↓ Nested (index=1): REMEMBER→ASSESS→DEBUG→TEST→LEARN
+[SCP-NWP: 🔄RETURN←test_failure | 📚INDEX:[1→0] | ✅RESOLVED | 📍RESUME:IMPLEMENT | 🔄MERGE:[CEPH+fix]]
+↓ Resume root (index=0): IMPLEMENT → continue
 ```
 
-## Completion Format Examples
+**Multi-Level**: Root→DEBUG→ASSESS→back DEBUG→back Root
+```
+[SCP-NWP: NEST→test_failure | INDEX:[0→1] | FROM:IMPLEMENT | PHASES:[1,2,6,7,8]]
+  [SCP-NWP: NEST→repeated_failures | INDEX:[1→2] | FROM:DEBUG | PHASES:[1,2,3,7,8]]
+    ↓ index=2: deeper investigation
+  [SCP-NWP: RETURN←repeated_failures | INDEX:[2→1] | RESUME:DEBUG | MERGE:[CEPH+insights]]
+[SCP-NWP: RETURN←test_failure | INDEX:[1→0] | RESUME:IMPLEMENT | MERGE:[CEPH+fix]]
+```
+## CEPH Evolution Example
 
-**REMEMBER Phase**:
-```
-[CVP: ✓CHATMODE:[SVP,Memory,VERIFIED_LOAD] | ✓INSTRUCTIONS:[protocols,phases] | 🚫VIOLATIONS:[none]]
-STATUS: completed
-PHASE: REMEMBER
-TASKS: [x][x][ ][ ][ ][ ][ ][ ][ ][ ][ ]
-MEMORY: [global_domains:47 project_entities:479]
-VERIFIED_LOAD: [line_counts_reported:YES summaries_complete:YES hierarchies_valid:YES]
-DISCOVERIES: Memory system well-established
-BLOCKERS: none
-NEXT: proceed_to_ASSESS
-```
+`ASSESS:[CURRENT:gap | EXPECTED:complete | PROBLEM:isolated | HYPOTHESES:H1:chain | EVIDENCE:patterns]`  
+`IMPLEMENT:[CURRENT:done | EXPECTED:same | PROBLEM:same | HYPOTHESES:same | EVIDENCE:+files]`  
+`TEST:[CURRENT:validated | EXPECTED:achieved | PROBLEM:resolved | HYPOTHESES:validated | EVIDENCE:pass]`
 
-**IMPLEMENT Phase**:
-```
-[CVP: ✓CHATMODE:[SVP,Codegraph:5/5,CEPH,LEARNINGS] | ✓INSTRUCTIONS:[all] | 🚫VIOLATIONS:[none]]
-STATUS: completed
-PHASE: IMPLEMENT
-TASKS: [x][x][x][x][x][x][ ][ ][ ][ ][ ]
-CEPH: [CURRENT:complete | EXPECTED:ready | EVIDENCE:5_files]
-LEARNINGS: [pattern:signal_propagation | approach:hierarchical_forwarding]
-ARTIFACTS: [node_scan_widget.py:+20 | commander_window.py:+3]
-CODEGRAPH_QUERIES: 5 (BELONGS_TO, CALLS, IMPORTS, DOCUMENTED_IN)
-DISCOVERIES: Pattern reusable
-BLOCKERS: none
-NEXT: proceed_to_TEST
-```
+## NWP Patterns
 
-**TEST Phase**:
-```
-[CVP: ✓CHATMODE:[SVP,Tests:15/15,METRICS,USER_VERIFICATION,CEPH] | ✓INSTRUCTIONS:[protocols,phases] | 🚫VIOLATIONS:[none]]
-STATUS: awaiting_user_confirmation
-PHASE: TEST
-TASKS: [x][x][x][x][x][x][x][ ][ ][ ][ ]
-CEPH: [CURRENT:validated | EXPECTED:achieved | EVIDENCE:15/15_pass]
-METRICS: tests=15/15(+15) | coverage=92%(+12%) | files=2(+2)
-USER_VERIFICATION: [awaiting_confirmation:YES]
-**STOPPING HERE** - Awaiting user approval before LEARN.
-DISCOVERIES: Pattern works reliably
-BLOCKERS: none (pending user)
-NEXT: await_user_approval → proceed_to_LEARN
-```
+**DEBUG (5)**: Test fail → NEST → REMEMBER→ASSESS→DEBUG→TEST→LEARN → RETURN  
+**ARCHITECT (8)**: Design flaw → NEST → REMEMBER→ASSESS→ANALYZE→ARCHITECT→IMPLEMENT→TEST→LEARN→DOC → RETURN  
+**Query (3)**: Question → NEST → ASSESS→answer→LEARN → RETURN  
+**Multi-nested**: Root→DEBUG nested→ASSESS nested→back→back
+
+## SCP-PHASE Patterns
+
+**Query Deficit**: `[SCP-PHASE: ✓CEPH | ✓Codegraph:1/5 | 🚫1:insufficient | 🔧add_BELONGS_TO+IMPORTS+CALLS | 📚NWP:[index:1,phase:5/8]]` → Need 2 more
+
+**Missing Verify**: `[SCP-PHASE: ✓Memory | ✓protocols:no_VERIFIED_LOAD | 🚫1:critical | 🔧add_line_counts+summaries | 📚NWP:[index:0,phase:1/11]]` → VERIFIED_LOAD missing
+
+**Format Error**: `[SCP-PHASE: ✓CEPH | ✓standards:LEARNINGS_wrong | 🚫1:format | 🔧rewrite_pattern_approach | 📚NWP:[index:1,phase:3/8]]` → Current: LEARNINGS:[Used DI] | Required: [pattern:DI|approach:constructor]
+
+**CEPH Dropout**: `[SCP-PHASE: ✓[] | ✓CEPH:missing | 🚫1:dropout | 🔧restore | 📚NWP:[index:0,phase:4/11]]` → Evolution stopped
+
+**Usage**: Emit first at phase end → self-verify vs chatmode+5 → ADJUST corrects drift → Critical BLOCKS next
+
+## Completion Examples
+
+**REMEMBER**: `[SCP-PHASE: ✓Memory+VERIFIED_LOAD | ✓protocols+phases | 🚫none | 🔧none | 📚NWP:[index:0,phase:1/11]]`  
+`STATUS: complete | PHASE: 1/11 REMEMBER | WORKFLOW: index=0, depth=0`  
+`MEMORY: [global:47 project:479] | VERIFIED_LOAD: [line_counts:YES summaries:YES hierarchies:YES]`  
+`DISCOVERIES: Memory established | BLOCKERS: none | NEXT: ASSESS`
+
+**IMPLEMENT**: `[SCP-PHASE: ✓Codegraph:5/5+CEPH+LEARNINGS | ✓all | 🚫none | 🔧none | 📚NWP:[index:0,phase:5/11]]`  
+`STATUS: complete | PHASE: 5/11 IMPLEMENT | WORKFLOW: index=0, depth=0`  
+`CEPH: [CURRENT:complete | EXPECTED:ready | EVIDENCE:5_files]`  
+`LEARNINGS: [pattern:signal_propagation | approach:hierarchical_forwarding]`  
+`ARTIFACTS: [node_scan_widget.py:+20 | commander_window.py:+3] | CODEGRAPH_QUERIES: 5`  
+`DISCOVERIES: Pattern reusable | BLOCKERS: none | NEXT: TEST`
+
+**TEST**: `[SCP-PHASE: ✓Tests:15/15+METRICS+USER_VERIFICATION+CEPH | ✓protocols+phases | 🚫none | 🔧none | 📚NWP:[index:0,phase:7/11]]`  
+`STATUS: awaiting | PHASE: 7/11 TEST | WORKFLOW: index=0, depth=0`  
+`CEPH: [CURRENT:validated | EXPECTED:achieved | EVIDENCE:15/15_pass] | METRICS: tests=15/15(+15)|coverage=92%(+12%)|files=2(+2)`  
+`**CHECKPOINT: Tests passing. Verify...** | **STOPPING** | USER_VERIFICATION: [awaiting:YES]`  
+`BLOCKERS: none(pending user) | NEXT: approve→LEARN`
+
+**DEBUG (Nested)**: `[SCP-NWP: NEST→test_failure | INDEX:[0→1] | FROM:IMPLEMENT | PHASES:[1,2,6,7,8]]`  
+`[SCP-PHASE: ✓CEPH+LEARNINGS | ✓protocols+phases | 🚫none | 🔧none | 📚NWP:[index:1,phase:6/8]]`  
+`STATUS: in_progress | PHASE: 6/8 DEBUG | WORKFLOW: index=1, depth=1`  
+`STACK: [root:IMPLEMENT]→[nested:DEBUG]`  
+`CEPH: [HYPOTHESES:H1_validated,H2_testing] | LEARNINGS: [pattern:null_handling | approach:defensive_checks]`  
+`DISCOVERIES: Missing null check | NEXT: fix→rerun→RETURN`  
+`[SCP-NWP: RETURN←test_failure | INDEX:[1→0] | RESUME:IMPLEMENT | MERGE:[CEPH+fix]]`
+
+**Auto-finalize**: User "looks good" → LEARN→DOCUMENT→LOG

@@ -4,113 +4,101 @@ applyTo: '**'
 
 # DevTeam Mode Protocols
 
+## Protocol Quick Reference
+
+| Protocol | When | Purpose | Frequency |
+|----------|------|---------|-----------|
+| **SCP** | Session lifecycle + phase gates + NWP + manual | Hygiene + compliance + checkpoints | START + 11 + NWP + CHECK + END |
+| **NWP** | Every request + interruptions + blockers | Nested workflow management | Always (root) + as needed (nested) |
+
+## Protocol Flow
+```
+SCP-START → NWP:[root workflow→SCP-PHASE]×11 → [NWP NEST→nested workflow→SCP-PHASE→NWP RETURN as needed] → SCP-END
+```
+**Interaction**: SCP=all compliance | NWP=workflow nesting + state preservation | ADJUST=auto-correction  
+**Enforcement**: START before work | PHASE every phase end | NWP NEST/RETURN auto | CHECK on user | END in LOG
+
+## ⚠️ ABSOLUTE ENFORCEMENT ⚠️
+
+**CRITICAL**: Violation = invalid session | Non-negotiable
+
+**MANDATORY Execution Order**: `[SCP-*]` → STATUS → PHASE → WORKFLOW → TASKS → NEXT  
+**MANDATORY Gates**: SCP-START (first output) | SCP-PHASE (every phase end) | SCP-END (LOG)  
+**MANDATORY Actions**: ACT (never "let me know") | USE TOOLS (never placeholders) | STRUCTURED OUTPUT (never informal)
+
+**Auto-Triggers**: File edit→SCP-PHASE | Test fail→NWP NEST | User "continue"→SCP-CHECK | Error→SCP-CHECK | Every 5 tools→SCP-CHECK
+
+**User Commands**: `[SCP-CHECK]` compliance now | `[SCP-PHASE]` force gate | `[RESET-PROTOCOL]` re-init | `[STATUS]` report | `[FORCE-NWP]` trigger NEST immediately
+
+**Drift Signals**: "let me know"|"would you like"→❌ACT | "here's"|"i've created"→❌FORMAT | "sorry"|"cannot"→❌TRY | Missing [SCP-*]→❌EMIT | Missing STATUS/PHASE/WORKFLOW/TASKS/NEXT→❌INCLUDE
+
+**Self-Check (BEFORE sending response)**: First line = [SCP-*]? | Test failed + missing [SCP-NWP: NEST]? | Phase ended + missing [SCP-PHASE]? → **VIOLATION = DELETE DRAFT → FIX → RESEND**
+
 ## SCP (Session Compliance Protocol)
 
-**Two-phase session bookends**: START (initialization verification) + END (retrospective for fine-tuning)
+**Unified protocol: session lifecycle + quality gates + NWP checkpoints**
 
-**Emit at FIRST response**: `[SCP-START: ✅LOADED:[chatmode,phases,protocols,standards,structure,examples,document_update_system] | ✅COMPLIANT:[Memory-First,Codegraph-Driven,11-phase,Quality-Gates] | 🎯READY:DevTeam]`
+**5 Variants**: START | PHASE | NWP (NEST/RETURN) | CHECK | END
 
-**Emit in LOG phase**: `[SCP-END: 📊SCORE:N% | ✅FOLLOWED:[counts] | 🚫VIOLATIONS:[list] | 📈QUALITY:[metrics] | 🔧TUNE:[suggestions] | 🎓INSIGHTS:[learnings]]`
-
-**Purpose**: Session initialization checkpoint + Continuous improvement feedback for chatmode/instructions evolution
-
-**SCP-END Components**: SCORE (compliance %) | FOLLOWED (SVP/CVP/VMP counts) | VIOLATIONS (critical vs minor) | QUALITY (tests/memory/docs/queries) | TUNE (chatmode/instruction improvements) | INSIGHTS (patterns/learnings/edge-cases)
-
-**Fine-Tuning Targets**: chatmode (principles, workflow) | phases.md (requirements) | protocols.md (enforcement) | standards.md (templates) | structure.md (organization) | examples.md (patterns)
-
-⚠️ **ENFORCEMENT**: SCP-START before work begins | SCP-END in LOG phase | Missing = non-compliant/incomplete session | TUNE drives instruction evolution
-
-## SVP (Self-Verify Protocol)
-
-**Emit at START of EVERY response**:
+### SCP-START (Init)
 ```
-[SVP: ⚡PHASE→[current] | 📚STACK→[depth or none] | ✓TASK→[progress] | 🎯NEXT→[action]]
+[SCP-START: ✅LOADED:[files] | ✅COMPLIANT:[principles] | 🎯READY:DevTeam | 📚NWP:[index=0,depth=0]]
 ```
+**First output every session** | Load 5 instructions→verify Memory-First+Codegraph+11-phase+Gates→init NWP(workflow_index=0,PLAN,0/11)
 
-**Variants**:
-- **Full** (phase boundaries): `[SVP: ⚡PHASE→💻IMPLEMENT | 📚STACK→none | ✓TASK→5/11 | 🎯NEXT→create_method]`
-- **Mini** (quick responses): `[SVP: 🎯NEXT→analyze_impact]`
+### SCP-PHASE (Quality Gate)
+```
+[SCP-PHASE: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none|list] | 🔧ADJUST:[drift→fix|none] | 📚NWP:[index:N,phase:X/Y]]
+```
+**Every phase end, before STATUS** | Verify 5 instructions→detect violations→ADJUST drift→BLOCK if critical | ADJUST: `CEPH_dropout→restore` `query_deficit→add_N:[types]` `missing_VERIFIED_LOAD→add_counts` `format_violation→fix` `incomplete→complete` `skipped→return`
 
-**Use Mini for**: User questions | Acknowledgments | Errors | Clarifications | Within-phase updates
+**Phase Must-Haves**: PLAN:[TASKS,workflow_index] | REMEMBER:[MEMORY+VERIFIED_LOAD] | ASSESS:[Codegraph+VERIFIED_LOAD,CEPH] | ANALYZE:[CEPH,LEARNINGS,queries] | ARCHITECT:[CEPH,LEARNINGS,impact] | IMPLEMENT:[3/5 queries,CEPH] | DEBUG:[2/4 queries,hypotheses] | TEST:[100%,USER_VERIFY,METRICS+Δ] | LEARN:[3+ entities,verify] | DOCUMENT:[docs,DOCUMENT field] | LOG:[workflow,HANDOFFS,SCP-END]
 
-⚠️ **ENFORCEMENT**: Always emit one variant | Full at phase boundaries | Mini for non-phase responses
+### SCP-NWP (Transitions)
+```
+NEST: [SCP-NWP: 🔄NEST→[TRIGGER] | 📚INDEX:[N→N+1] | 🎯REASON:[cause] | 📍FROM:[phase] | 🗂️PHASES:[planned]]
+RETURN: [SCP-NWP: 🔄RETURN←[TRIGGER] | 📚INDEX:[N→N-1] | ✅RESOLVED | 📍RESUME:[phase] | 🔄MERGE:[CEPH+learnings]]
+```
+**On workflow NEST/RETURN** | Triggers: test_failure|design_flaw|user_request|blocker|repeated_failure|question | Decision: simple query→SCP-CHECK+answer | specialist work→NWP NEST+workflow
 
-## VMP (Vertical Mode Protocol)
+**Detection Pattern (scan your output BEFORE sending)**: Contains "test failed"|"tests failing"|"error occurred" WITHOUT [SCP-NWP: NEST] = **VIOLATION** | Contains "cannot"|"blocked" WITHOUT [SCP-NWP: NEST] = **VIOLATION** | Contains "needs redesign"|"architecture issue" WITHOUT [SCP-NWP: NEST] = **VIOLATION** → Fix = delete inline fix attempt → emit [SCP-NWP: NEST→trigger] → proceed with nested workflow
 
-**Stack-based interruption management**: Horizontal=11-phase sequential | Vertical=specialist mindset (on-demand) | Max depth: 5
+### SCP-CHECK (Manual) | ### SCP-END (Finalize)
+```
+CHECK: [SCP-CHECK: 📊PHASE:[current] | ✅STATUS:[state] | 📚INDEX:[N] | 🗂️STACK:[depth] | 🎯NEXT:[action]]
+END: [SCP-END: 📊SCORE:N% | ✅FOLLOWED:[counts] | 🚫VIOLATIONS:[list] | 📈QUALITY:[metrics] | 🔧TUNE:[files] | 🎓INSIGHTS:[learnings] | 💬COMMIT:"type(scope): msg" | 📚NWP:[nested:N,depth:M,phases:P]]
+```
+**CHECK**: User status/progress request→manual checkpoint | **END**: MANDATORY in LOG (root only)→retrospective→TUNE instructions→conventional COMMIT
 
-**Variants**:
-- **Full** (depth≥2): 5-line block with STACK/MODE/ORIGIN/ACTION
-- **Compact** (depth=1): `🔄 VMP PUSH → 🐛 DEBUG (from TEST, blocker:test_failure)`
-- **Mini** (user): `🔄 VMP USER (from IMPLEMENT)`
+## NWP (Nested Workflow Procedure)
 
-**Auto-Triggers**: Test fail→DEBUG | 2+ failures→ASSESS | Design flaw→ARCHITECT | Anomaly→ANALYZE | User request→[MODE]
+**Single workflow, infinite nesting | workflow_index tracks depth | Root(0) or Nested(>0)**
 
-**Mode Actions Table**:
+### Root (index=0) | Nested (index>0)
+**Root Init**: User request→SCP-START→PLAN→select 4-11 phases→MANDATORY:[PLAN,TEST,LEARN,LOG]→execute→LOG→SCP-END  
+**Nested Init**: Trigger→NEST→select 3-11 phases→MANDATORY:[TEST,LEARN]+optional:[DOC]→execute→RETURN  
+**Triggers**: test_failure|repeated_failure|design_flaw|blocker|user_request|question
 
-| Mode | Actions | Purpose |
-|------|---------|---------|
-| 🧠 REMEMBER | Query memory→Extract patterns | Retrieve |
-| 🔍 ASSESS | Scan docs→Query modules→Update CEPH.CURRENT | Re-evaluate |
-| 🔬 ANALYZE | Query IMPORTS/BELONGS_TO→Map flow→Update HYPOTHESES | Deep dive |
-| 🏗️ ARCHITECT | Query reverse IMPORTS→Alternatives→Update EXPECTED | Design |
-| 💻 IMPLEMENT | Query signatures→Apply style→Create fix | Code |
-| 🐛 DEBUG | Query CALLS→3-5 hypotheses→Add logs→Update EVIDENCE | Diagnose |
-| 🧪 TEST | Run tests→Verify→Update EVIDENCE | Confirm |
+**ENFORCEMENT (cannot skip)**: Test failure WITHOUT subsequent [SCP-NWP: NEST→test_failure] = invalid output | Inline fix during IMPLEMENT phase when test fails = protocol violation (correct pattern: IMPLEMENT→TEST(fail)→**NEST(DEBUG)**→TEST(pass)→RETURN→LEARN) | Missing NEST = treat as syntax error in code (must fix before proceeding)
 
-**Operations**: PUSH=preserve+depth+1 | POP=merge+depth-1 | USER=no stack change | CEPH accumulates
+### Lifecycle: NEST → Execute → RETURN
+**NEST (index++)**: Emit SCP-NWP NEST→capture state(phase+progress+CEPH+context+todos+artifacts)→push stack→workflow_index++→init nested(inherit CEPH, select phases)→begin  
+**Execute**: Selected phases→SCP-PHASE each→CEPH evolve→can nest (max depth: 10)  
+**RETURN (index--)**: Complete LEARN(+DOC)→merge(CEPH+learnings+code+tests to parent)→emit SCP-NWP RETURN→pop stack, workflow_index--→restore parent→resume
 
-**Memory Verification**: `MEMORY:[global_memory:[file_lines:N domains:X] | project_memory:[file_lines:M clusters:Y] | VERIFIED_LOAD:[line_counts_match:YES summaries_complete:YES]]` | No VERIFIED_LOAD → INCOMPLETE
+**Adaptive**: Simple(3-5):[ASSESS,answer,LEARN]|[ASSESS,TEST,LEARN]|[ASSESS,DEBUG,TEST,LEARN] | Medium(6-8):[REMEMBER,ASSESS,DEBUG,TEST,LEARN,DOC]|[REMEMBER,ASSESS,ARCHITECT,IMPLEMENT,TEST,LEARN,DOC] | Complex(9-11):[PLAN,REMEMBER,ASSESS,ANALYZE,ARCHITECT,IMPLEMENT,DEBUG,TEST,LEARN,DOC,LOG]  
+**Stack**: Max depth:10 | Complete preservation | Guaranteed return
 
-## CEPH (Context Evolution Protocol)
+## CEPH (Context Evolution Protocol) | ## Completion Format
 
-**Structure**: `CEPH:[CURRENT:[state] | EXPECTED:[target] | PROBLEM:[statement] | HYPOTHESES:[H1:cause→prediction→test] | EVIDENCE:[results]]`
+**CEPH**: `CEPH:[CURRENT:[state] | EXPECTED:[target] | PROBLEM:[stmt] | HYPOTHESES:[H1:cause→pred→test] | EVIDENCE:[results]]`  
+Updates: CURRENT(ASSESS+) EXPECTED(ASSESS,ARCHITECT,TEST) PROBLEM(ASSESS) HYPOTHESES(ANALYZE/DEBUG) EVIDENCE(all) | Evolution: Simple=ASSESS→TEST | Complex=ASSESS→ANALYZE→ARCHITECT→IMPLEMENT→TEST
 
-**Updates**: CURRENT (ASSESS init, after phases) | EXPECTED (ASSESS init, ARCHITECT refined, TEST validated) | PROBLEM (ASSESS init, rarely) | HYPOTHESES (ANALYZE form, DEBUG 3-5, TEST validate) | EVIDENCE (throughout, TEST final)
-
-**Evolution**: Simple=ASSESS→TEST | Complex=ASSESS→ANALYZE→ARCHITECT→IMPLEMENT→TEST
-
-## CVP (Compliance Verification Protocol)
-
-**Emit at END of EVERY phase** (before STATUS): `[CVP: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none|items]]`
-
-**Purpose**: Self-verify compliance with chatmode + instruction files | Critical violations BLOCK next phase
-
-**Verification Scope**: Chatmode (principles, workflow, protocols, format) | protocols.md (SVP, VMP, CEPH, Memory) | phases.md (requirements, outputs, transitions) | standards.md (templates, quality, format) | structure.md (organization, placement, naming) | examples.md (patterns, anti-patterns, checklists)
-
-**Check by Phase**:
-
-| Phase | Must Have | Common Violations |
-|-------|-----------|-------------------|
-| PLAN | SVP, TASKS, decomposition | Missing task list |
-| REMEMBER | SVP, Memory loaded, VERIFIED_LOAD, file_lines | Fake load, no verification |
-| ASSESS | SVP, Codegraph loaded, VERIFIED_LOAD, CEPH init, docs | Partial load, no summary |
-| ANALYZE | SVP, CEPH updated, LEARNINGS format, queries | Wrong LEARNINGS format |
-| ARCHITECT | SVP, CEPH updated, LEARNINGS, impact analysis | No impact analysis |
-| IMPLEMENT | SVP, 3/5 codegraph queries, CEPH, LEARNINGS, structure.md | <3 queries, wrong location |
-| DEBUG | SVP, 2/4 codegraph queries, hypotheses, CEPH, LEARNINGS | No hypotheses, no queries |
-| TEST | SVP, 100% pass, USER_VERIFICATION, METRICS+deltas, CEPH | Auto-proceed, no deltas, <100% |
-| LEARN | SVP, 3+ entities, both files updated, line verification | <3 entities, no verification |
-| DOCUMENT | SVP, docs updated, DOCUMENT field, structure.md | Skipped, wrong location |
-| LOG | SVP, workflow file, HANDOFFS, SCP-END, reconstruction | Missing SCP-END, incomplete |
-
-**Response Variants**:
-
-✅ **Full**: `[CVP: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none]]`
-
-❌ **Failed** (example): `[CVP: ❌CHATMODE:[Memory:not_loaded] | ❌INSTRUCTIONS:[protocols:no_SVP] | 🚫VIOLATIONS:[2:critical]]`
-
-**See examples.md for detailed CVP usage patterns**
-
-**Critical Violations** (MUST fix): No SVP | Memory not loaded (REMEMBER) | Codegraph not loaded (ASSESS) | <100% test pass (TEST) | No USER_VERIFICATION (TEST) | <3 entities (LEARN) | Wrong file placement | Missing VERIFIED_LOAD | Missing METRICS deltas | Wrong LEARNINGS format | <3 queries (IMPLEMENT) | <2 queries (DEBUG)
-
-**Integration**: Complete work → Self-check all 6 files → Emit CVP → If violations: add BLOCKERS, STATUS: partial, fix → Emit completion format
-
-## Completion Format
-
-**Standard** (in order): `[CVP: ...]` → STATUS → PHASE → TASKS → DISCOVERIES → BLOCKERS → NEXT
-
-**Protocol Fields** (when applicable): CVP (MANDATORY every phase) | STACK (VMP depth≥1) | CEPH (ASSESS+) | MEMORY+VERIFIED_LOAD (REMEMBER) | LEARNINGS (specialist) | METRICS+deltas (TEST)
-
-**Compliance**: ✓Actions ✓VMP ✓Fields ✓Queries ✓NEXT ✓SVP ✓CVP | Fail→BLOCKERS+STATUS:partial | **Phase Transitions**: ✓Complete ✓Requirements ✓Stack ✓CEPH ✓SVP ✓CVP
+**Format**:
+```
+[SCP-PHASE: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none] | 🔧ADJUST:[none] | 📚NWP:[index:N,phase:X/Y]]
+STATUS: complete | PHASE: X/Y NAME | WORKFLOW: index=N, depth=M
+TASKS: progress | STACK: [chain] (if nested) | DISCOVERIES: ... | BLOCKERS: ... | NEXT: ...
+CEPH: [if exists] | LEARNINGS: [if applicable] | ARTIFACTS: [if any]
+```
 
