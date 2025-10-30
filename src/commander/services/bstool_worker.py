@@ -114,6 +114,12 @@ class BsToolWorker(QRunnable):
             
             self.logger.debug(f"BsToolWorker.run: Executing command: {' '.join(command_list)}")
             
+            # CRITICAL: Set cwd to BsTool.exe directory for bundled executables
+            # In Nuitka onefile mode, BsTool.exe extracts to {TEMP}\LOGReporter\
+            # BsTool.exe may depend on its working directory to find resources
+            bstool_dir = os.path.dirname(self.bstool_path)
+            self.logger.debug(f"BsToolWorker.run: Setting working directory to: {bstool_dir}")
+            
             # Start subprocess
             # NOTE: stdin=subprocess.DEVNULL indicates non-interactive execution
             # BsTool should exit automatically after processing -errlog command
@@ -125,7 +131,8 @@ class BsToolWorker(QRunnable):
                 stderr=stderr_temp_file,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
+                cwd=bstool_dir  # Set working directory to BsTool.exe location
             )
             
             self.logger.info(f"BsToolWorker.run: Subprocess started with PID: {process.pid}")

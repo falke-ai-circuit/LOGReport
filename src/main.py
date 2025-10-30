@@ -21,14 +21,13 @@ if __name__ == "__main__":
     if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1] == "--gui"):
         app = QApplication(sys.argv)
         
-        # Determine if running as a PyInstaller bundle
-        if getattr(sys, 'frozen', False):
-            # If frozen, the executable path is sys.executable
-            application_path = os.path.dirname(sys.executable)
-            bstool_path = os.path.join(application_path, "BsTool.exe")
-        else:
-            # If not frozen, assume development environment
-            bstool_path = os.path.abspath("BsTool.exe")
+        # Use centralized BsTool path resolver for consistent behavior
+        from commander.utils.bstool_path_resolver import get_bstool_path
+        bstool_path = get_bstool_path()
+        
+        if not bstool_path:
+            print("WARNING: BsTool.exe not found. BsTool functionality will be disabled.")
+            print("Please ensure BsTool.exe is in the correct location.")
 
         window = LogReportGUI(bstool_path=bstool_path)
         window.show()

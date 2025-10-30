@@ -1658,7 +1658,7 @@ class NodeTreePresenter(QObject):
                 elif token_type == "BSTOOL":
                     # For BSTOOL, construct the command manually
                     node_id = self._extract_node_id_from_log_path(item_data["log_path"])
-                    bstool_path = self.bstool_service._get_bstool_path()
+                    bstool_path = self.bstool_service.get_bstool_path()
                     if node_id and bstool_path:
                         command = f"{bstool_path} -errlog {node_id}"
                     else:

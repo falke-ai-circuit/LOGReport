@@ -31,11 +31,50 @@ class BsToolCommandService(QObject):
         self.logger = logging.getLogger(__name__)
         self.is_executing = False  # Track if BsTool is currently executing (LEGACY - kept for backward compatibility)
         
+        # Centralized BsTool path management
+        # This path can be set from the UI or auto-detected
+        self._bstool_path = None  # Will be set by set_bstool_path() or auto-detected
+        
         # Initialize connection state but don't emit signal until UI is ready
         # The UI will set its initial state when connecting to the service
         # from ..widgets import ConnectionState
         # self.connection_state_signal.emit(ConnectionState.CONNECTED)
         
+    def set_bstool_path(self, path: str):
+        """
+        Set the BsTool.exe path to use for all operations.
+        This should be called by the UI when the path changes.
+        
+        Args:
+            path: Absolute path to BsTool.exe
+        """
+        if path and validate_bstool_path(path):
+            self._bstool_path = path
+            self.logger.info(f"BsTool path set to: {path}")
+        elif path:
+            self.logger.warning(f"Invalid BsTool path provided: {path}")
+        else:
+            self._bstool_path = None
+            self.logger.info("BsTool path cleared, will use auto-detection")
+    
+    def get_bstool_path(self) -> str:
+        """
+        Get the current BsTool.exe path.
+        Returns the centralized path if set, otherwise auto-detects.
+        
+        Returns:
+            str: Path to BsTool.exe or empty string if not found
+        """
+        # Priority 1: Use centralized path if explicitly set
+        if self._bstool_path:
+            self.logger.debug(f"Using centralized BsTool path: {self._bstool_path}")
+            return self._bstool_path
+        
+        # Priority 2: Auto-detect using path resolver
+        detected_path = self._get_bstool_path()
+        self.logger.debug(f"Auto-detected BsTool path: {detected_path}")
+        return detected_path
+    
     def try_acquire_execution(self) -> bool:
         """
         Atomically check and set execution state.
@@ -77,8 +116,8 @@ class BsToolCommandService(QObject):
         from ..widgets import ConnectionState
         self.connection_state_signal.emit(ConnectionState.CONNECTING)
         
-        # Get the path to bstool.exe
-        bstool_path = self._get_bstool_path()
+        # Get the path to bstool.exe (uses centralized path or auto-detection)
+        bstool_path = self.get_bstool_path()
         if not bstool_path:
             error_msg = "Could not locate bstool.exe"
             self.logger.error(error_msg)
@@ -129,7 +168,7 @@ class BsToolCommandService(QObject):
     def execute_command(self, command_str: str):
         """
         Execute bstool.exe with the specified command string.
-        This is kept for backward compatibility with the UI tab.
+        Uses the centralized BsTool path (set from UI or auto-detected).
         
         Args:
             command_str (str): Full command string to execute
@@ -151,8 +190,8 @@ class BsToolCommandService(QObject):
         from ..widgets import ConnectionState
         self.connection_state_signal.emit(ConnectionState.CONNECTING)
         
-        # Get the path to bstool.exe
-        bstool_path = self._get_bstool_path()
+        # Get the path to bstool.exe (uses centralized path or auto-detection)
+        bstool_path = self.get_bstool_path()
         if not bstool_path:
             error_msg = "Could not locate bstool.exe"
             self.logger.error(error_msg)
@@ -209,6 +248,12 @@ class BsToolCommandService(QObject):
             # Emit status message
             self.status_message_signal.emit("bstool command process started", 3000)
             
+            # CRITICAL: Set cwd to BsTool.exe directory for bundled executables
+            # In Nuitka onefile mode, BsTool.exe extracts to {TEMP}\LOGReporter\
+            # BsTool.exe may depend on its working directory to find resources
+            bstool_dir = os.path.dirname(command[0]) if command else None
+            self.logger.debug(f"Setting working directory to: {bstool_dir}")
+            
             # Start the subprocess
             with self.process_lock:
                 self.process = subprocess.Popen(
@@ -218,7 +263,8 @@ class BsToolCommandService(QObject):
                     stderr=subprocess.PIPE,
                     text=True,
                     bufsize=1,
-                    universal_newlines=True
+                    universal_newlines=True,
+                    cwd=bstool_dir  # Set working directory to BsTool.exe location
                 )
                 
             self.logger.info(f"bstool process started with PID: {self.process.pid}")
@@ -316,8 +362,8 @@ class BsToolCommandService(QObject):
             self.status_message_signal.emit(error_msg, 5000)
             return
         
-        # Get BsTool path
-        bstool_path = self._get_bstool_path()
+        # Get BsTool path (uses centralized path or auto-detection)
+        bstool_path = self.get_bstool_path()
         if not bstool_path or not os.path.exists(bstool_path):
             error_msg = f"BsTool.exe not found at {bstool_path}"
             self.logger.error(error_msg)
@@ -423,6 +469,13 @@ class BsToolCommandService(QObject):
             self.logger.debug(f"DEBUG_MARK: Redirecting stderr to temporary file: {stderr_temp_file.name}")
 
             # Start the subprocess
+            # CRITICAL: Set cwd to BsTool.exe directory for bundled executables
+            # In Nuitka onefile mode, BsTool.exe extracts to {TEMP}\LOGReporter\
+            # BsTool.exe may depend on its working directory to find resources
+            bstool_dir = os.path.dirname(command[0]) if command else None
+            
+            self.logger.debug(f"DEBUG_MARK: Setting working directory to: {bstool_dir}")
+            
             with self.process_lock:
                 self.process = subprocess.Popen(
                     command,
@@ -432,7 +485,8 @@ class BsToolCommandService(QObject):
                     stderr=stderr_temp_file, # Redirect stderr to temporary file
                     text=True,
                     bufsize=1,
-                    universal_newlines=True
+                    universal_newlines=True,
+                    cwd=bstool_dir  # Set working directory to BsTool.exe location
                 )
                 
             self.logger.info(f"DEBUG_MARK: subprocess.Popen called with command: {command}, env: {env}. PID: {self.process.pid}")
@@ -601,7 +655,7 @@ class BsToolCommandService(QObject):
         Returns:
             str: The generated bstool command string
         """
-        bstool_path = self._get_bstool_path()
+        bstool_path = self.get_bstool_path()
         if not bstool_path:
             return "bstool.exe not found"
             

@@ -1,0 +1,69 @@
+[2025-10-29 18:36:11.304] ================================================================================
+[2025-10-29 18:36:11.305] get_bstool_path() called
+[2025-10-29 18:36:11.305] sys.frozen: False
+[2025-10-29 18:36:11.306] sys.executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 18:36:11.306] sys._MEIPASS exists: False
+[2025-10-29 18:36:11.306] Development mode - checking project root: C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 18:36:11.307] Path exists: False
+[2025-10-29 18:36:11.307] FAILURE: BsTool.exe NOT FOUND at C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 18:36:11.308] Returning empty string
+[2025-10-29 18:36:14.006] ================================================================================
+[2025-10-29 18:36:14.008] get_bstool_path() called
+[2025-10-29 18:36:14.008] sys.frozen: False
+[2025-10-29 18:36:14.008] sys.executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 18:36:14.008] sys._MEIPASS exists: False
+[2025-10-29 18:36:14.009] Development mode - checking project root: C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 18:36:14.009] Path exists: False
+[2025-10-29 18:36:14.009] FAILURE: BsTool.exe NOT FOUND at C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 18:36:14.011] Returning empty string
+[2025-10-29 18:54:39.025] ================================================================================
+[2025-10-29 18:54:39.026] get_bstool_path() called
+[2025-10-29 18:54:39.027] sys.frozen: False
+[2025-10-29 18:54:39.027] sys.executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 18:54:39.028] sys._MEIPASS exists: False
+[2025-10-29 18:54:39.028] Development mode - checking project root: D:\_APP\LOGReport\BsTool.exe
+[2025-10-29 18:54:39.029] Path exists: True
+[2025-10-29 18:54:39.042] SUCCESS: Found BsTool.exe at D:\_APP\LOGReport\BsTool.exe
+[2025-10-29 18:54:51.637] ================================================================================
+[2025-10-29 18:54:51.638] get_bstool_path() called
+[2025-10-29 18:54:51.638] sys.frozen: False
+[2025-10-29 18:54:51.639] sys.executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 18:54:51.639] sys._MEIPASS exists: False
+[2025-10-29 18:54:51.640] Development mode - checking project root: D:\_APP\LOGReport\BsTool.exe
+[2025-10-29 18:54:51.640] Path exists: True
+[2025-10-29 18:54:51.662] SUCCESS: Found BsTool.exe at D:\_APP\LOGReport\BsTool.exe
+[2025-10-29 18:55:01.687] ================================================================================
+[2025-10-29 18:55:01.688] get_bstool_path() called
+[2025-10-29 18:55:01.688] sys.frozen: False
+[2025-10-29 18:55:01.689] sys.executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 18:55:01.689] sys._MEIPASS exists: False
+[2025-10-29 18:55:01.690] Development mode - checking project root: D:\_APP\LOGReport\BsTool.exe
+[2025-10-29 18:55:01.690] Path exists: True
+[2025-10-29 18:55:01.764] SUCCESS: Found BsTool.exe at D:\_APP\LOGReport\BsTool.exe
+[2025-10-29 19:07:00.681] ================================================================================
+[2025-10-29 19:07:00.682] get_bstool_path() called
+[2025-10-29 19:07:00.682] sys.frozen: False
+[2025-10-29 19:07:00.682] sys.executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 19:07:00.683] sys._MEIPASS exists: False
+[2025-10-29 19:07:00.683] Development mode - checking project root: C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 19:07:00.683] Path exists: False
+[2025-10-29 19:07:00.684] FAILURE: BsTool.exe NOT FOUND at C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 19:07:00.684] Returning empty string
+[2025-10-29 19:13:04.368] ================================================================================
+[2025-10-29 19:13:04.369] get_bstool_path() called
+[2025-10-29 19:13:04.369] sys.frozen: False
+[2025-10-29 19:13:04.369] sys.executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 19:13:04.369] sys._MEIPASS exists: False
+[2025-10-29 19:13:04.370] Development mode - checking project root: C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 19:13:04.370] Path exists: False
+[2025-10-29 19:13:04.370] FAILURE: BsTool.exe NOT FOUND at C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 19:13:04.371] Returning empty string
+[2025-10-29 19:13:14.148] ================================================================================
+[2025-10-29 19:13:14.149] get_bstool_path() called
+[2025-10-29 19:13:14.149] sys.frozen: False
+[2025-10-29 19:13:14.150] sys.executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 19:13:14.150] sys._MEIPASS exists: False
+[2025-10-29 19:13:14.150] Development mode - checking project root: C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 19:13:14.151] Path exists: False
+[2025-10-29 19:13:14.151] FAILURE: BsTool.exe NOT FOUND at C:\Users\GORJOV~1\AppData\Local\Temp\BsTool.exe
+[2025-10-29 19:13:14.152] Returning empty string

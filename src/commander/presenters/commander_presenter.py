@@ -5,6 +5,7 @@ This presenter coordinates the main application functionality, including
 clipboard integration.
 """
 
+import os
 from PyQt5.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QTabWidget, QTextEdit, 
     QVBoxLayout, QWidget, QPushButton, QFileDialog
@@ -89,6 +90,11 @@ class CommanderPresenter(QObject):
         
         # Connect signals
         self._connect_signals()
+        
+        # Sync initial BsTool path from UI to service
+        # BsToolTab auto-detects on __init__, but signal may emit before connection
+        # so we explicitly sync the initial path here
+        self._sync_initial_bstool_path()
 
     def _connect_signals(self):
         """Connect signals between components."""
@@ -97,13 +103,39 @@ class CommanderPresenter(QObject):
             self.session_presenter._on_copy_to_log_clicked
         )
         
-        # Connect BsTool tab execute signal
+        # Connect BsTool tab signals
         self.ui_factory.bstool_tab.execute_clicked.connect(
             self.handle_bstool_execute
+        )
+        self.ui_factory.bstool_tab.bstool_path_changed.connect(
+            self.handle_bstool_path_changed
         )
         
         # BsTool service connections are handled in CommanderWindow
         # to avoid duplicate connections
+    
+    def _sync_initial_bstool_path(self):
+        """
+        Sync the initial auto-detected BsTool path from UI to service.
+        
+        BsToolTab auto-detects BsTool.exe path on initialization and populates
+        the path field. However, the bstool_path_changed signal may emit before
+        the presenter connects to it. This method explicitly syncs the initial
+        path after signal connections are established.
+        """
+        initial_path = self.ui_factory.bstool_tab.get_bstool_path()
+        if initial_path:
+            self.bstool_service.set_bstool_path(initial_path)
+    
+    def handle_bstool_path_changed(self, path: str):
+        """
+        Handle BsTool path changes from the UI.
+        Updates the centralized path in the BsToolCommandService.
+        
+        Args:
+            path: New BsTool.exe path from UI
+        """
+        self.bstool_service.set_bstool_path(path)
 
     def get_clipboard_monitor(self) -> ClipboardMonitor:
         """
@@ -182,10 +214,14 @@ class CommanderPresenter(QObject):
         """
         Handle BsTool command execution from the BsTool tab.
         
+        The BsTool path is managed centrally by the BsToolCommandService,
+        which uses the path set from the UI via handle_bstool_path_changed().
+        
         Args:
             command: Command string to execute
         """
         try:
+            # Service will use centralized path (set from UI or auto-detected)
             self.bstool_service.execute_command(command)
             self.status_message_signal.emit(f"Executing BsTool command: {command}", 3000)
         except Exception as e:
