@@ -11,13 +11,20 @@
 **Instructions** (`.github/instructions/*.md`): Reusable modules (phases.md=11-phase workflow, protocols.md=SCP+NWP, standards.md=quality, structure.md=file placement, examples.md=patterns, nwp_design.md=nesting)
 **Relationship**: Chatmode LOADS instructions → AI APPLIES all loaded knowledge → Compliance ENFORCED by this file
 
-### Session Init (BLOCKING - EVERY SESSION)
+### Session Init (BLOCKING - EVERY SESSION & EVERY NEW ROOT WORKFLOW)
 1. **Detect**: Check `customInstructions` for active chatmode (default: DevTeam)
 2. **Load**: Read `.github/chatmodes/[active].chatmode.md` COMPLETELY
 3. **Load**: Read ALL `.github/instructions/*.md` referenced in chatmode
 4. **Verify**: Confirm understanding of ALL requirements (phases, protocols, gates, standards)
 5. **Emit**: `[SCP-START: ✅LOADED:[files] | ✅COMPLIANT:[principles] | 🎯READY:[mode] | 📚NWP:[index=0,depth=0]]`
 6. **Proceed**: Apply loaded knowledge to user request
+
+**CRITICAL RULES**:
+- **First user message in session**: ALWAYS emit SCP-START
+- **After NWP completion (SCP-END emitted)**: ANY new user request = NEW ROOT WORKFLOW → emit SCP-START
+- **User says "proceed"/"continue" after workflow end**: NEW ROOT WORKFLOW → emit SCP-START
+- **User requests different task during workflow**: NEST (index++) if related | NEW ROOT (emit SCP-START) if unrelated
+- **Never continue without SCP-START**: Previous workflow completed = session state reset required
 
 **Example**:
 ```
@@ -43,6 +50,15 @@ PLAN phase: Analyze subprocess handling in Nuitka builds...
 **Multi-Phase**: [SCP-START] → PLAN → REMEMBER → ASSESS → IMPLEMENT → TEST → LEARN → LOG (each phase ends with [SCP-PHASE] gate)
 **Nested**: Test fails → [SCP-NWP: NEST] → DEBUG workflow (index++) → Fix → [SCP-NWP: RETURN] → Resume parent (index--)
 **Recovery**: Drift detected → HALT → Re-read files → Emit recovery → Resume with full compliance
+**New Root After Completion**: Previous workflow ends (SCP-END) → User requests new task → **MANDATORY SCP-START** → New root workflow (index=0)
+
+### NWP State Management (CRITICAL)
+**Active NWP (index>0)**: Continue with current workflow stack until RETURN or completion
+**Completed NWP (SCP-END emitted)**: Workflow stack cleared | Session state reset | Any new request = NEW ROOT WORKFLOW
+**Unrelated Request During Active NWP**: Evaluate scope → Related: NEST (index++) | Unrelated: Complete current first OR NEW ROOT (emit SCP-START, abandon previous)
+**"Proceed"/"Continue" After SCP-END**: ALWAYS treat as NEW ROOT WORKFLOW → emit SCP-START → Begin PLAN phase
+
+**Detection**: Last protocol = SCP-END? | workflow_index=0 AND no active work? | User message after completion? → NEW ROOT WORKFLOW
 
 ### Response Requirements (ABSOLUTE)
 ✅ **MUST**: First line = protocol tag | All mandatory fields | Structured format | Actions (not promises)
@@ -59,34 +75,6 @@ PLAN phase: Analyze subprocess handling in Nuitka builds...
 **Apply**: Root rules, output routing, forbidden locations
 **Verify**: Placement correct? → YES: proceed | NO: move/delete/block
 **Enforce**: NEVER create files in forbidden locations | ALWAYS follow routing rules
-
-### Creating New Chatmodes (Template)
-```markdown
-# [Name] Mode
-AI [role] with [key feature]. [Brief workflow description].
-
-## Core Principles
-- **Memory-First**: Load memory at init
-- **Quality-Gates**: 100% test pass mandatory
-[Add mode-specific principles]
-
-## Workflow
-[Define phases: PLAN→...→LOG or custom sequence]
-
-## Session Init
-[SCP-START: ✅LOADED:[files] | ✅COMPLIANT:[principles] | 🎯READY:[mode] | 📚NWP:[index=0,depth=0]]
-
-## Mandatory Protocols
-SCP (session hygiene) | NWP (nesting) | [Custom protocols]
-
-## Completion Format
-[Define protocol structure with mandatory/optional fields]
-
-## Recovery
-[Define drift detection + recovery actions]
-
-See `.github/instructions/` (phases, protocols, standards, structure, examples)
-```
 
 ### Enforcement Strength
 **This File Purpose**: Meta-enforcement of chatmode compliance (NOT workflow definition)

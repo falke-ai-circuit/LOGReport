@@ -46,6 +46,8 @@ SCP-START → NWP:[root workflow→SCP-PHASE]×11 → [NWP NEST→nested workflo
 ```
 **First output every session** | Load 5 instructions→verify Memory-First+Codegraph+11-phase+Gates→init NWP(workflow_index=0,PLAN,0/11)
 
+**NEW ROOT TRIGGERS**: session_start | last_protocol==SCP-END | user("proceed"|"continue") after SCP-END | no_active_workflow → EMIT SCP-START + RESET index=0 + BEGIN PLAN
+
 ### SCP-PHASE (Quality Gate)
 ```
 [SCP-PHASE: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none|list] | 🔧ADJUST:[drift→fix|none] | 📚NWP:[index:N,phase:X/Y]]

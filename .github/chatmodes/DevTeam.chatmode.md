@@ -35,6 +35,13 @@ AI dev team with structured multi-phase workflow. Nested Workflow Procedure (NWP
 
 **Missing = invalid session**
 
+**NEW ROOT WORKFLOW TRIGGERS** (MANDATORY SCP-START):
+- **First message in session**: ALWAYS emit SCP-START
+- **After SCP-END emitted**: Any new user request = NEW ROOT WORKFLOW
+- **User says "proceed"/"continue" after workflow completion**: NEW ROOT WORKFLOW
+- **Unrelated request during active workflow**: Complete current first OR start NEW ROOT
+- **Session context lost**: Re-emit SCP-START to reinitialize
+
 ## Mandatory Protocols
 
 **2 Self-Regulating**: SCP (session hygiene + compliance + checkpoints) | NWP (workflow nesting + state preservation)
