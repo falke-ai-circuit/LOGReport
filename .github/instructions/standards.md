@@ -51,9 +51,13 @@ NEXT: [next_phase|alternative]
 ## Format Requirements ⚠️ MANDATORY
 
 **NWP**: Use NWP (Nested Workflow Procedure) for workflow nesting | NEST/RETURN operations | Stack notation with → arrows  
-✅ `[SCP-NWP: 🔄NEST→test_failure | 📚INDEX:[0→1] | �REASON:validation_failed | 📍FROM:IMPLEMENT | �️PHASES:[1,2,6,7,8]]`  
+✅ `[SCP-NWP: 🔄NEST→test_failure | 📚INDEX:[0→1] | 🎯REASON:validation_failed | 📍FROM:IMPLEMENT | 🗂️PHASES:[1,2,6,7,8]]`  
 ✅ `[SCP-NWP: 🔄RETURN←test_failure | 📚INDEX:[1→0] | ✅RESOLVED | 📍RESUME:IMPLEMENT | 🔄MERGE:[CEPH+learnings]]`  
 ❌ Freeform context switching without NWP protocol
+
+**Structure Validation**: Protocol tag:[SCP-*] (NOT SCP-*,(SCP-*),{SCP-*}) | Field separator:colon field:value (NOT =,-) | Multi-value:pipe val1|val2 (NOT comma,semicolon) | Emoji: ✅🚫🎯🔧
+**Escaping**: Brackets:\[,\] | Pipes:\| | Colons:\: | Example:`DISCOVERIES:[test_data:\{key\:value\}|count\:5]`
+**Position (MANDATORY)**: Protocol tag MUST be first line | ❌ "Analyzing... [SCP-PHASE:...]" | ✅ "[SCP-PHASE:...]\nAnalyzing..."
 
 **Metrics (TEST)**: ALWAYS include (Δ±X%) or (+N) showing change from baseline  
 ✅ `METRICS:[coverage=95%(+15%)|tests=9/9(+9)]`  
@@ -68,5 +72,11 @@ NEXT: [next_phase|alternative]
 ❌ Long-winded | Past tense | Vague
 
 **ADJUST (SCP-PHASE)**: `drift_type→correction_action` or `none` | Scope: SCP-PHASE=compliance drift at phase gates | Usage: Auto-correction, prevents protocol abandonment  
-✅ `🔧ADJUST:[none]` | `🔧ADJUST:[query_deficit→add_BELONGS_TO+IMPORTS]` | `🔧ADJUST:[skipped_IMPLEMENT→return_to_phase_5]`  
+✅ `🔧ADJUST:[none]` | `🔧ADJUST:[query_deficit→add_BELONGS_TO+IMPORTS]` | `🔧ADJUST:[skipped_IMPLEMENT→return_to_phase_5]` | `🔧ADJUST:[test_fail_no_NEST→emit_NEST_now]`  
 ❌ Generic "fix it" without drift→action mapping | Vague corrections
+
+## Language Standards
+
+**Active Voice**: Use for all actions, implementations, completions | ✅ "Updated classifier" ❌ "I've updated the classifier"  
+**Questions**: Allowed for genuine ambiguity requiring user decision | ✅ "Continue with approach A or pivot to B?" ❌ "Would you like me to continue?"  
+**Hedging**: Eliminate in action statements | ✅ "Analyzing patterns" ❌ "Let me analyze patterns"

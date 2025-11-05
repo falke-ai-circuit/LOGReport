@@ -35,6 +35,8 @@ AI dev team with structured multi-phase workflow. Nested Workflow Procedure (NWP
 
 **Missing = invalid session**
 
+**SCP-START Verification**: ☐ 6 files loaded ☐ 4 principles verified ☐ NWP initialized (index=0,depth=0,state=WORKFLOW_ACTIVE) ☐ All fields in emission → Incomplete → Invalid session
+
 **NEW ROOT WORKFLOW TRIGGERS** (MANDATORY SCP-START):
 - **First message in session**: ALWAYS emit SCP-START
 - **After SCP-END emitted**: Any new user request = NEW ROOT WORKFLOW
@@ -64,25 +66,39 @@ AI dev team with structured multi-phase workflow. Nested Workflow Procedure (NWP
 
 ### 1. NWP (Nested Workflow Procedure)
 
-**Single workflow system with infinite nesting | workflow_index tracks depth**
+**Single workflow system with 2-level nesting | workflow_index tracks depth**
 
 **Root workflow (index=0)**: User request → PLAN → select phases (4-11) → execute → MUST include PLAN+TEST+LEARN+LOG
 **Nested workflow (index>0)**: Triggered → NEST → select phases (3-11) → execute → MUST include TEST+LEARN → RETURN to parent
 **Adaptive**: Complex=11 | Medium=6-8 | Simple=3-5 | Root ALWAYS: PLAN→TEST→LEARN→LOG | Nested ALWAYS: TEST→LEARN
 
-**Triggers**: Test fail→DEBUG | 2+ fail→ASSESS | Design→ARCHITECT | Blocker→ANALYZE | User interrupt→[parse intent]
+**Phase Selection**: TRIVIAL(text,1-line)→3 | SIMPLE(1-file)→4-5 | MEDIUM(2-3 files)→6-8 | COMPLEX(4+ files,redesign)→9-11
+**Mandatory**: Root(PLAN,TEST,LEARN,LOG) | Nested(TEST,LEARN,no LOG/DOCUMENT)
+
+**Triggers**: Test fail(1st→DEBUG,2nd→ANALYZE,3rd→full) | Design→ARCHITECT | Blocker→ANALYZE | User: simple("What is X?",<1min)→inline | complex("Why slow?","Fix X",>1min)→NEST
 **NEST**: Emit SCP-NWP NEST → capture state(phase+progress+CEPH+context) → push to stack → index++ → init nested → begin
 **RETURN**: Complete TEST+LEARN(+DOC if substantial) → merge(CEPH+learnings+artifacts) → emit SCP-NWP RETURN → pop stack → index-- → restore parent state → resume
-**Stack**: Max depth 10 | Full state preservation | Guaranteed return path
+**Stack**: Max depth 2 | Full state preservation | Guaranteed return path | Depth>2 alert: DISCOVERIES:[CRITICAL_NESTING:decompose]
 
 ### 2. Memory (REMEMBER)
-Load global(domains+3/domain)+project(clusters+recent10)+report lines → `VERIFIED_LOAD:[line_counts:YES summaries:YES hierarchies:YES]`
+Load global(domains+3/domain)+project(clusters+recent10)+report lines → `VERIFIED_LOAD:[line_counts:YES summaries:YES hierarchies:YES]`  
+**Global Memory**: `.github/global_memory.json` - Abstract patterns/concepts distilled from project memory for cross-project reuse  
+**Project Memory**: `project_memory.json` (root) - Project-specific concrete entities/implementations  
+**Failures**: missing→create empty, report | corrupted→repair script+report | empty→valid, report entities:0
 
 ### 3. Codegraph (ASSESS)
-Load codegraph.json ENTIRE (phases 2-8) → `VERIFIED_LOAD:[complete:YES structure:YES]` | **MANDATORY**: IMPLEMENT 3/5, DEBUG 2/4 | Recommended: ANALYZE, ARCHITECT, TEST
+Load codegraph.json ENTIRE (phases 2-8) → `VERIFIED_LOAD:[complete:YES structure:YES]` | **MANDATORY**: IMPLEMENT 3/5, DEBUG 2/4 | Recommended: ANALYZE, ARCHITECT, TEST  
+**Query Enforcement**: Tool call verification (track semantic_search) | Result usage (query→code mapping) | 0-result queries COUNT (valid discovery) | Emit: `CODEGRAPH_QUERIES:[N/5]` or `[N/4]`
+**Failures**: missing→create empty, report | corrupted→repair+report | empty→valid, report entities:0 | query=0→report, continue | timeout→retry, HALT if persists | count mismatch→HALT
 
 ### 4. Testing (TEST)
-100% pass MANDATORY | Fail→DEBUG/ARCHITECT/ANALYZE | **USER VERIFY**: SCP-PHASE → Present → `USER_VERIFICATION:[awaiting:YES]` → **STOP** → Confirm("looks good")→auto-finalize LEARN→DOC→LOG | `METRICS` with Δ: `coverage=95%(+15%)|tests=9/9(+9)`
+100% pass MANDATORY | **Fail→NEST→DEBUG** (no inline fixes) | **USER VERIFY**: SCP-PHASE → Present → `USER_VERIFICATION:[awaiting:YES]` | `BLOCKING:[LEARN,DOCUMENT,LOG]` → **🛑 STOP** → Confirm("looks good")→auto-finalize LEARN→DOC→LOG | Reject→NEST | No response (10 exchanges)→prompt | `METRICS` with Δ: `coverage=95%(+15%)|tests=9/9(+9)`
+
+**Test Failure Classification** (triggers NEST→phase):
+- Exception/crash/wrong behavior → DEBUG
+- Architecture limitation → ARCHITECT  
+- Spec misunderstanding → ANALYZE
+- Tool/environment issue → Skip test, TODO, continue (report in DISCOVERIES)
 
 ### 5. Learning (LEARN)
 Update project_memory+codegraph (BOTH) + 3+ entities | Direct(≤3) | Temp JSONL(≥4)→append→verify→cleanup | `MEMORY:[entities:[3+]|+N|+M]`

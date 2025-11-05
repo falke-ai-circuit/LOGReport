@@ -2,6 +2,16 @@
 
 **Purpose**: Memory hierarchy compliance via layer-by-layer analysis | **Focus**: **AGGRESSIVE entity condensation**+**unnecessary entry removal**+similar entity merging+hierarchical connection creation+obsolete removal | **Global Strategy**: Distill project memory→universal patterns for cross-project reuse | **Modes**: Analysis(1-4,9-12) mcp-analyze | Implementation(5-8,13-16) mcp-code/architect | **Processing**: All entities at once | **Target**: **Ultra-condensed minimal memory**+connected hierarchy+reusable patterns+obsolete-free+**bloat removal**
 
+**Memory Locations**: 
+- **Project Memory**: `project_memory.json` (root) - Project-specific concrete implementations
+- **Global Memory**: `.github/global_memory.json` - Abstract patterns distilled from project memory for cross-project reuse
+
+**Memory Relationship**:
+- **Project → Global**: During update_memory workflow Cycle 2 (Phases 9-16), universal patterns are distilled from project-specific learnings and added to global memory
+- **Abstraction Process**: Project-specific→Universal | Implementation→Pattern | Concrete→Abstract | Context-dependent→Context-agnostic
+- **LEARN Phase**: Updates project memory only (concrete entities from current session)
+- **update_memory Workflow**: Reviews project memory → Identifies reusable patterns → Distills to global memory
+
 ## 🔄 Dual-Cycle Architecture (Project → Global)
 
 **PRE-PHASE: INVENTORY & VALIDATION** - MANDATORY first step before all phases:
@@ -133,17 +143,18 @@ PRE-PHASE: INVENTORY→VALIDATION | CLEANUP: Analyze→Remove (meta entities|low
 **Usage Examples**:
 
 ```bash
-# Project memory optimization (6:1 target ratio)
+# Project memory optimization (6:1 target ratio) - root location
 python scripts/unified_memory_optimizer.py project_memory.json
 
 # Project memory with custom ratio
 python scripts/unified_memory_optimizer.py project_memory.json --target-ratio 7
 
-# Global memory optimization (3:1 target ratio)
+# Global memory optimization (3:1 target ratio) - .github/ location
+# Script auto-detects .github/global_memory.json location
 python scripts/unified_memory_optimizer.py global_memory.json --target-ratio 3
 
-# Global memory with higher ratio
-python scripts/unified_memory_optimizer.py global_memory.json --target-ratio 6
+# Explicit path to global memory
+python scripts/unified_memory_optimizer.py .github/global_memory.json --target-ratio 6
 ```
 
 **Phases Executed**:

@@ -17,11 +17,16 @@ applyTo: '**'
 
 ### 1: REMEMBER ⚠️ MANDATORY
 **Do**: Load global(domains+3/domain)+project(clusters+recent10)+report lines → verify → docs → logs  
-**Out**: MEMORY:[global:[lines:N domains:X patterns:Y] | project:[lines:M clusters:Z] | docs:[files] | VERIFIED_LOAD:[line_counts:YES summaries:YES hierarchies:YES]]
+**Global Memory**: Abstract patterns/concepts distilled from project memory (cross-project reusable knowledge) | **Location**: `.github/global_memory.json` | **Content**: Universal patterns, architectural concepts, reusable approaches  
+**Project Memory**: Project-specific entities/implementations | **Location**: `project_memory.json` (root) | **Content**: Concrete classes, methods, features, tests  
+**Out**: MEMORY:[global:[lines:N domains:X patterns:Y] | project:[lines:M clusters:Z] | docs:[files] | VERIFIED_LOAD:[line_counts:YES summaries:YES hierarchies:YES]]  
+**VERIFIED_LOAD**: Must include read_file() calls (not claims without tools) | Components: line_counts(global:N,project:M) + summaries(domains:X) + hierarchies(clusters:Y) | False positive→HALT
+**Failures**: missing→create empty+VIOLATIONS:[memory_missing→created_empty] | corrupted→repair script+VIOLATIONS:[corrupted_LX-Y→repaired] | oversized(>5000)→auto-optimizer+VIOLATIONS:[oversized_N→condensed_M] | timeout→retry+chunk(500)+VIOLATIONS:[timeout→chunked] | parse→skip+VIOLATIONS:[parse_failed]
 
 ### 2: ASSESS ⚠️ CODEGRAPH
 **Do**: Check env → review docs → **load codegraph ENTIRE** → verify(modules/classes/methods/relations) → query → create CEPH  
-**Out**: CEPH:[init] + CODEGRAPH:[loaded:YES summary:[modules:N classes:M methods:P relations:[counts]] | VERIFIED_LOAD:[complete:YES structure:YES]] + REFS:[modules/classes] + DOCS:[files]
+**Out**: CEPH:[init] + CODEGRAPH:[loaded:YES summary:[modules:N classes:M methods:P relations:[counts]] | VERIFIED_LOAD:[complete:YES structure:YES]] + REFS:[modules/classes] + DOCS:[files]  
+**Failures**: missing→create empty+VIOLATIONS:[codegraph_missing→created_empty] | corrupted→repair+VIOLATIONS:[corrupted→repaired] | empty(entities:0)→valid+DISCOVERIES:[codegraph_empty:rebuild_needed] | query=0→valid+DISCOVERIES:[query_X_returned_0],continue | timeout(>10s)→retry+VIOLATIONS:[timeout→retry],HALT if persists | count mismatch→HALT,investigate
 
 ### 3: ANALYZE
 **Do**: Map arch → query codegraph(BELONGS_TO,IMPORTS,DOCUMENTED_IN) → analyze dataflow/patterns → identify causes/edges → evolve CEPH  
@@ -36,23 +41,27 @@ applyTo: '**'
 
 **Queries (min 3/5)**: ☐ Signatures ☐ IMPORTS ☐ BELONGS_TO ☐ CALLS ☐ Naming  
 **Track**: Emit `CODEGRAPH_QUERIES:[N/5]` during work | ⚠️ 3/5 minimum or SCP-PHASE blocks
+**Pre-Implementation (BLOCKING)**: ☐ REMEMBER ☐ ASSESS ☐ PLAN ☐ Queries(3/5) → Unchecked → BLOCK edit_file
 
 **Out**: CEPH:[updated] + LEARNINGS:[pattern:[X]|approach:[Y]] + ARTIFACTS:[type:path:desc] + CODE_PATTERNS:[methods:[list] structures:[N]] + CODEGRAPH_QUERIES:[N/5]
 
 ### 6: DEBUG ⚠️ CODEGRAPH
 **Do**: Form 3-5 hypotheses(H1:cause→pred→test) → distill 1-2 → **trace codegraph (2/4 min)** → logs → validate → fix → verify → rerun → evolve CEPH  
 **Track**: Emit `CODEGRAPH_QUERIES:[N/4]` during trace | ⚠️ 2/4 minimum or SCP-PHASE blocks  
+**Queries (min 2/4)**: ☐ CALLS chains ☐ IMPORTS dependencies ☐ Class implementations ☐ Method signatures  
 **Out**: CEPH:[updated] + LEARNINGS:[pattern:[X]|approach:[Y]] + EXECUTION_TRACE:[chain:[methods] classes:[list] issues:[N]] + CODEGRAPH_QUERIES:[N/4]
 
 ### 7: TEST ⚠️ MANDATORY
-**Do**: Extract criteria → map surface(codegraph) → coverage → pytest -v → **100% MANDATORY** → IF fail: route(logic→DEBUG | design→ARCHITECT | requirements→ANALYZE) → **CHECKPOINT: Present, verify, 🛑WAIT** → confirm("looks good")→**auto-finalize** LEARN→DOC→LOG | reject→nest  
+**Do**: Extract criteria → map surface(codegraph) → coverage → pytest -v → **100% MANDATORY** → IF fail: **NEST→classify→phase** (NO inline fixes) → **🛑 CHECKPOINT: Present, emit USER_VERIFICATION:[awaiting:YES], BLOCKING:[LEARN,DOCUMENT,LOG], END RESPONSE** → **Wait** → confirm("looks good")→**auto-finalize** LEARN→DOC→LOG | reject("issue")→NEST→DEBUG
 **Out**: CEPH:[validated] + LEARNINGS:[pattern:[X]|approach:[Y]] + ARTIFACTS:[test:path:coverage] + METRICS:[WITH_Δ] ⚠️ + TEST_SURFACE:[methods:[N/M] classes:[list] edges:[N]] + USER_VERIFICATION:[awaiting:YES] ⚠️
 
 **METRICS** ⚠️: `tests=N/M(+added)|coverage=X%(±Δ)|assertions=Y(+new)|files=Z(+created)` | ✅ `tests=14/14(+14)` | ❌ `tests=14/14` (missing Δ)  
-**User Verify**: SCP-PHASE → Present → **BLOCK** → Approve→auto-finalize | Reject→nest
+**User Verify**: SCP-PHASE → Present → **BLOCK** → Approve→auto-finalize | Reject→NEST | No response(10 exchanges)→prompt
+**Failure Classification**: exception/crash/wrong_behavior→DEBUG | architecture_limit→ARCHITECT | spec_misunderstanding→ANALYZE | tool/env_issue→skip+TODO+continue
 
 ### 8: LEARN ⚠️ MANDATORY
-**Do**: Extract 3+ entities(Feature+Method+Pattern) → temp JSONL → append project_memory → verify → cleanup | Update codegraph(Module+Class) → append → verify → cleanup
+**Do**: Extract 3+ entities(Feature+Method+Pattern) → temp JSONL → append project_memory → verify count Δ → cleanup | Update codegraph(Module+Class) → append → verify → cleanup | **Global Memory**: Distill universal patterns from project learnings for cross-project reuse (updated in update_memory workflow)
+**Minimum (BLOCKING)**: <3 entities → BLOCK finalization → VIOLATIONS:[learn_minimum_not_met:N<3]
 
 ### 9: DOCUMENT
 **Do**: **INCREMENTAL** → Check `logs/.last_document_update.json` → Determine updates → Update affected(README/CHANGELOG/TODO/docs/) → Update tracker → extract TODOs → document API/breaking → guides  
@@ -60,7 +69,9 @@ applyTo: '**'
 **Out**: LEARNINGS:[pattern:[X]|approach:[Y]] + ARTIFACTS:[doc:path:desc] + DOCUMENT:[impact+changes+integration+examples+tracker:YES]
 
 ### 10: LOG
-**Do**: Review 0-9 → reconstruct chronologically → capture tasks+completions+CEPH+learnings+artifacts → create `logs/workflow_[feature]_[timestamp].md` → **SCP-END** → atomic write  
+**Do**: Review 0-9 → **AUTO-ANALYZE**(scan [SCP-*]→count violations/nests→calculate scores→extract learnings→generate TUNE+INSIGHTS) → reconstruct chronologically → capture tasks+completions+CEPH+learnings+artifacts+analysis → create `logs/workflow_[feature]_[timestamp].md` → **SCP-END** → atomic write  
+**Mandatory (Root)**: Root workflow (index=0) MUST include LOG after LEARN | Nested workflows skip LOG → Missing LOG in root→HALT+VIOLATIONS:[log_phase_missing:mandatory_in_root]
+**Analysis**: Compliance(protocols followed?)+Quality(tests/docs/memory/queries)+Process(efficiency/nesting/blockers)+Tune(instruction improvements)+Insights(technical+process learnings)
 **Out**: LEARNINGS:[pattern:[X]|approach:[Y]] + ARTIFACTS:[log:logs/workflow_*.md] + HANDOFFS:[patterns+strategies+approaches] + **SCP-END** ⚠️ + COMMIT:"type(scope): desc"
 
 ## Memory Ops by Phase

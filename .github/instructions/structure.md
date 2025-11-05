@@ -6,7 +6,7 @@ applyTo: '**'
 
 ## Directory Organization ⚠️ MANDATORY
 
-**Root**: Config files ONLY (package.json, requirements.txt, pytest.ini, .gitignore, README.md, CHANGELOG.md, TODO.md, TASKS.md, ROADMAP.md, codegraph.json, project_memory.json, global_memory.json)
+**Root**: Config files ONLY (package.json, requirements.txt, pytest.ini, .gitignore, README.md, CHANGELOG.md, TODO.md, TASKS.md, ROADMAP.md, codegraph.json, project_memory.json)
 
 ```
 src/{module}/          # Source (<500 lines/file): services/, presenters/, models/
@@ -18,12 +18,16 @@ logs/                  # Workflow logs (git-excluded): workflow_*.md, *.log
 misc/                  # scripts/ (*.ps1, *.bat, *.sh), temp/ (*_additions*.jsonl, *Copy.*), tools/
 assets/                # Static resources (images, icons)
 build/, dist/          # Build artifacts (auto-generated, git-excluded)
-.github/               # chatmodes/, instructions/
+.github/               # chatmodes/, instructions/, global_memory.json (abstract patterns)
 ```
 
-**Forbidden in Root**: test_*.py, *IMPLEMENTATION*.md, *SUMMARY*.md, *.ps1, *.bat, sample data, temp files, backups
+**Forbidden in Root**: test_*.py, *IMPLEMENTATION*.md, *SUMMARY*.md, *_additions*.jsonl, *.ps1, *.bat, sample data (*.sys, *.txt, *.json), temp files (*_temp*, *Copy*), backups (*.bak, *_backup*)
+
+**HALT Behavior**: Validation fails → VIOLATIONS:[path:rule_violated→correct_path] → BLOCK creation (NOT create then move) → Wait for user/auto-correct → Resume after corrected
 
 ## File Placement by Phase ⚠️ ENFORCE STRICTLY
+
+**Pre-Creation Validation (BLOCKING)**: ☐ Not in forbidden locations ☐ Routing correct ☐ Path matches type → Fail→VIOLATIONS:[path:wrong→correct],BLOCK,suggest
 
 | Phase | Output Type | Location | Pattern |
 |-------|-------------|----------|---------|
@@ -61,29 +65,33 @@ build/, dist/          # Build artifacts (auto-generated, git-excluded)
 ## Memory File Structure
 
 ### Memory Hierarchy
-**Files**: `project_memory.json` (Project.*) | `global_memory.json` (Global.*) | `codegraph.json` (Code.*)  
-**Pattern**: `[Type].[Domain].[Cluster].[EntityType]_[Name]` (MANDATORY 4 levels)
+**Files**: `project_memory.json` (Project.* - root) | `.github/global_memory.json` (Global.* - abstract patterns) | `codegraph.json` (Code.* - root)  
+**Pattern**: `[Type].[Domain].[Cluster].[EntityType]_[Name]` (MANDATORY 4 levels)  
+**Relationship**: Project memory contains concrete implementations → Global memory distills abstract patterns for cross-project reuse
 
 ### Memory Organization
 ```
-project_memory.json          # Project-specific entities
+project_memory.json          # Project-specific entities (root)
 ├── Project.Frontend.*       # UI components, presenters, views
 ├── Project.Backend.*        # Services, models, data
 ├── Project.Integration.*    # Commands, handlers, interfaces
 └── Project.Architecture.*   # Patterns, workflows, decisions
 
-global_memory.json           # Cross-project patterns
-├── Global.Patterns.*        # Reusable approaches
-├── Global.Tools.*           # Development utilities
-└── Global.Workflows.*       # Process templates
+.github/global_memory.json   # Cross-project abstract patterns (config)
+├── Global.Patterns.*        # Reusable approaches (distilled from projects)
+├── Global.Tools.*           # Development utilities (universal)
+└── Global.Workflows.*       # Process templates (cross-project)
 
-codegraph.json              # Code structure entities
+codegraph.json              # Code structure entities (root)
 ├── Code.Module.*           # File-level modules
 ├── Code.Class.*            # Class definitions
 └── Code.Method.*           # Function/method signatures
 ```
 
-**Update Rules**: LEARN phase → extract 3+ entities → temp JSONL → append → verify line count → cleanup
+**Update Rules**: 
+- **LEARN phase**: Extract 3+ entities → temp JSONL → append project_memory → verify line count → cleanup
+- **update_memory workflow**: Distill project patterns → abstract → append global_memory → verify ratios → cleanup
+- **Distillation**: Project-specific→Universal | Implementation→Pattern | Concrete→Abstract | Context-dependent→Context-agnostic
 
 ### Codegraph Structure
 **NEW files**: Module + Class + Methods | **MODIFIED files**: Update Module entity | **Metadata**: `upd:YYYY-MM-DD,refs:0`  
@@ -98,6 +106,9 @@ codegraph.json              # Code structure entities
 ## Size Limits
 
 **Source**: <500 lines/file | **Observations**: 80-120 chars | **Codegraph descriptions**: 1-3 lines
+**Memory Limits**: <3000 lines (recommended) | <5000 lines (hard limit, triggers auto-optimizer)  
+**Codegraph Limits**: <100KB file size | <150 entities (recommended: <100)  
+**JSON Limits**: <10MB serialized size (pre-write size check required)
 
 ## Instruction File Limits ⚠️ MAINTAIN
 
