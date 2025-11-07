@@ -34,33 +34,69 @@ def parse_sys_file(file_content: str, sys_file_path: Optional[Path] = None) -> L
     """
     Parse a sys file and extract node configurations.
     
+    Supports two formats:
+    1. AB01_sys format: :e:hw: lines defining network topology (no IPs)
+    2. Individual token sys files (21.sys, fc01.sys): set XD_* config variables with IP/token
+    
     Args:
         file_content: The content of the sys file
         sys_file_path: Optional path to the sys file. If provided and the file is a 
-                      token-specific file (e.g., 181.sys), IP address will be extracted.
+                      token-specific file (e.g., 181.sys), IP address and token will be extracted.
     
     Returns:
         List of node dictionaries with name, ip, tokens, and types
     """
     nodes_data = {}
     extracted_ip = ""
+    extracted_token = ""
 
-    # Regex patterns
-    ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})\s+pxe:sys-csg2.*")
-    ap_main_m_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_main\s+pxe:sys-csg2.*")
-    ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_reserve\s+pxe:sys-csg2.*")
-    al_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AL\d{2})\s+pxe:sys-csg2.*")
-    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+((?:AP|AL)\d{2})(_main|_reserve|_t\d+|_m\d+|_r\d+)?\s+.*")
+    # Regex patterns (support both pxe:sys-csg2, pxe:sys-csg3, and standalone "-")
+    ap_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})\s+(?:pxe:sys-csg[23]|-)")
+    ap_main_m_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_main\s+(?:pxe:sys-csg[23].*|-)")
+    ap_reserve_r_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AP\d{2})_reserve\s+(?:pxe:sys-csg[23].*|-)")
+    al_main_node_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+(AL\d{2})\s+(?:pxe:sys-csg[23].*|-)")
+    token_entry_regex = re.compile(r"^:e:hw:([0-9a-fA-F]{2,4})\s+((?:AP|AL)\d{2})(_main|_reserve|_t\d+|_m\d+|_r\d+)?\s+(?:.*|-)")
     ip_address_regex = re.compile(r"set XD_IP_ADDR=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
+    hw_addr_regex = re.compile(r"set XD_HW_ADDR=([0-9a-fA-F]+)")
+    message_token_regex = re.compile(r"set XD_MESSAGE_TOKEN=([0-9a-f]{32})")
     
     lines = file_content.splitlines()
+    
+    # Detect file type: Check if this is an AB01_sys-style file (contains :e:hw:) or individual sys file
+    has_node_definitions = any(line.strip().startswith(':e:hw:') for line in lines)
 
-    # Extract IP address only if sys_file_path is provided and it's a token-specific file
-    # Token-specific files can be:
-    # 1. Pure decimal (e.g., 181, 41, 21) - max 5 chars
-    # 2. Bare hexadecimal (e.g., 1a1, 3a1, 1c1, 1e1) - max 5 chars
-    # 3. Prefixed hex (e.g., 0x1a1, x3a1) - max 7 chars (0x + 5)
-    if sys_file_path:
+    # Extract IP address, HW address, and message token from individual sys files
+    if sys_file_path and not has_node_definitions:
+        # This is an individual token sys file (e.g., 21.sys, fc01.sys)
+        file_stem = sys_file_path.stem
+        extracted_token = file_stem  # Default to filename
+        
+        # Extract values from set XD_* lines
+        for line in lines:
+            if ip_match := ip_address_regex.match(line):
+                extracted_ip = ip_match.group(1)
+            elif hw_match := hw_addr_regex.match(line):
+                hw_addr = hw_match.group(1)
+                # Only override if HW addr is not '0' (placeholder) and differs from filename
+                if hw_addr != '0' and hw_addr.lower() != file_stem.lower():
+                    extracted_token = hw_addr
+        
+        # Return token info as a minimal node structure
+        if extracted_ip or extracted_token:
+            return [{
+                "name": f"_token_{file_stem}",
+                "ip": extracted_ip,
+                "tokens": [extracted_token],
+                "types": [],
+                "_is_individual_sys": True  # Flag to indicate this is from individual sys file
+            }]
+    
+    # Extract IP address from AB01_sys-style files (legacy behavior for token-specific parsing)
+    if sys_file_path and has_node_definitions:
+        # Token-specific files can be:
+        # 1. Pure decimal (e.g., 181, 41, 21) - max 5 chars
+        # 2. Bare hexadecimal (e.g., 1a1, 3a1, 1c1, 1e1) - max 5 chars
+        # 3. Prefixed hex (e.g., 0x1a1, x3a1) - max 7 chars (0x + 5)
         file_stem = sys_file_path.stem
         is_token_file = False
         

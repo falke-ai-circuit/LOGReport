@@ -39,7 +39,9 @@ import selectors
 from time import monotonic as _time
 import warnings
 
-warnings._deprecated(__name__, remove=(3, 13))
+# NOTE: telnetlib was deprecated in Python 3.11 and removed in 3.13
+# This is a bundled copy for compatibility - deprecation warning disabled
+# warnings._deprecated(__name__, remove=(3, 13))  # Commented out for Python 3.13+ support
 
 __all__ = ["Telnet"]
 
