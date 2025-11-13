@@ -206,23 +206,27 @@ class BsToolTab(QWidget):
         override the detected path if needed.
         
         The detection handles:
+        - Nuitka bundled mode (onefile/onedir)
         - PyInstaller bundled mode (onefile/onedir)
         - Development mode (project root)
         """
         # Only auto-populate if field is currently empty
         current_path = self.bstool_path_edit.text().strip()
+        self.logger.info(f"_auto_detect_bstool_path called. Current field value: '{current_path}'")
+        
         if current_path:
             self.logger.debug(f"BsTool path already set: {current_path}")
             return
         
         # Detect path using centralized utility
+        self.logger.info("Attempting to detect BsTool.exe path...")
         detected_path = get_bstool_path()
         
         if detected_path:
-            self.logger.info(f"Auto-detected BsTool.exe at: {detected_path}")
+            self.logger.info(f"✅ Auto-detected BsTool.exe at: {detected_path}")
             self.bstool_path_edit.setText(detected_path)
             # Emit signal to notify path has been set
             self.bstool_path_changed.emit(detected_path)
         else:
-            self.logger.warning("Could not auto-detect BsTool.exe path")
+            self.logger.warning("❌ Could not auto-detect BsTool.exe path - field will remain empty")
             # Leave field empty - user will need to manually set it

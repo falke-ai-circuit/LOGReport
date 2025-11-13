@@ -310,9 +310,10 @@ class CommanderWindow(QMainWindow):
         if telnet_port:
             self.telnet_tab.port_edit.setText(telnet_port)
             
-        # Load saved BsTool path if it exists
+        # Load saved BsTool path if it exists and is valid
+        # Don't overwrite auto-detected path if saved path is empty or invalid
         bstool_path = self.settings.value("bstool_path", "")
-        if bstool_path:
+        if bstool_path and os.path.exists(bstool_path):
             self.bstool_tab.bstool_path_edit.setText(bstool_path)
     
     def init_ui(self):
@@ -344,8 +345,8 @@ class CommanderWindow(QMainWindow):
         self.setStatusBar(QStatusBar())
         self.status_service.show_message("Welcome to Commander LogCreator")
         
-        # Set BsTool path if provided
-        if self.bstool_path:
+        # Set BsTool path if provided and valid (don't overwrite auto-detected path with invalid path)
+        if self.bstool_path and os.path.exists(self.bstool_path):
             self.bstool_tab.bstool_path_edit.setText(self.bstool_path)
     
     # Signal definitions (to be connected by presenter)

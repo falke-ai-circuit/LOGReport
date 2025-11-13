@@ -120,7 +120,7 @@ class BsToolWorker(QRunnable):
             bstool_dir = os.path.dirname(self.bstool_path)
             self.logger.debug(f"BsToolWorker.run: Setting working directory to: {bstool_dir}")
             
-            # Start subprocess
+            # Start subprocess (suppress terminal window on Windows)
             # NOTE: stdin=subprocess.DEVNULL indicates non-interactive execution
             # BsTool should exit automatically after processing -errlog command
             process = subprocess.Popen(
@@ -132,7 +132,8 @@ class BsToolWorker(QRunnable):
                 text=True,
                 bufsize=1,
                 universal_newlines=True,
-                cwd=bstool_dir  # Set working directory to BsTool.exe location
+                cwd=bstool_dir,  # Set working directory to BsTool.exe location
+                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
             )
             
             self.logger.info(f"BsToolWorker.run: Subprocess started with PID: {process.pid}")

@@ -35,12 +35,13 @@ class TelnetTab(QWidget):
         connection_layout.addWidget(QLabel("IP:"))
         self.ip_edit = QLineEdit()
         self.ip_edit.setPlaceholderText("IP Address")
+        self.ip_edit.setText("localhost")  # Default to localhost
         connection_layout.addWidget(self.ip_edit)
         
         connection_layout.addWidget(QLabel("Port:"))
         self.port_edit = QLineEdit()
         self.port_edit.setPlaceholderText("Port")
-        self.port_edit.setText("23")
+        self.port_edit.setText("1234")  # Default to port 1234 for local telnet testing
         connection_layout.addWidget(self.port_edit)
         
         self.connect_btn = QPushButton("Connect")

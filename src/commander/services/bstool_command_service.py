@@ -254,7 +254,7 @@ class BsToolCommandService(QObject):
             bstool_dir = os.path.dirname(command[0]) if command else None
             self.logger.debug(f"Setting working directory to: {bstool_dir}")
             
-            # Start the subprocess
+            # Start the subprocess (suppress terminal window on Windows)
             with self.process_lock:
                 self.process = subprocess.Popen(
                     command,
@@ -264,7 +264,8 @@ class BsToolCommandService(QObject):
                     text=True,
                     bufsize=1,
                     universal_newlines=True,
-                    cwd=bstool_dir  # Set working directory to BsTool.exe location
+                    cwd=bstool_dir,  # Set working directory to BsTool.exe location
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
                 )
                 
             self.logger.info(f"bstool process started with PID: {self.process.pid}")
@@ -486,7 +487,8 @@ class BsToolCommandService(QObject):
                     text=True,
                     bufsize=1,
                     universal_newlines=True,
-                    cwd=bstool_dir  # Set working directory to BsTool.exe location
+                    cwd=bstool_dir,  # Set working directory to BsTool.exe location
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
                 )
                 
             self.logger.info(f"DEBUG_MARK: subprocess.Popen called with command: {command}, env: {env}. PID: {self.process.pid}")
