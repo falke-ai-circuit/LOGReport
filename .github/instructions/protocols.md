@@ -14,31 +14,55 @@ applyTo: '**'
 **Flow**: `SCP-START → NWP:[root→SCP-PHASE]×11 → [NEST→nested→PHASE→RETURN] → SCP-END` | **Interaction**: SCP=compliance | NWP=nesting+state | ADJUST=auto-fix  
 **Enforcement**: START before work | PHASE every phase end | NWP NEST/RETURN auto | CHECK on user | END in LOG
 
-## ⚠️ ABSOLUTE ENFORCEMENT ⚠️
+## ⚠️ ABSOLUTE ENFORCEMENT - ZERO TOLERANCE ⚠️
 
-**CRITICAL**: Violation = invalid session | Non-negotiable
+**CRITICAL**: ANY violation = INVALID session | IMMEDIATE HALT required | NO exceptions | NO warnings
 
-**MANDATORY Execution Order**: `[SCP-*]` → STATUS → PHASE → WORKFLOW → TASKS → NEXT  
-**MANDATORY Gates**: SCP-START (first output) | SCP-PHASE (every phase end) | SCP-END (LOG)  
-**MANDATORY Actions**: ACT (never "let me know") | USE TOOLS (never placeholders) | STRUCTURED OUTPUT (never informal)
+**MANDATORY Execution Order (BLOCKING)**: `[SCP-*]` ALWAYS FIRST LINE → STATUS → PHASE → WORKFLOW → TASKS → NEXT  
+**MANDATORY Gates (BLOCKING)**: SCP-START (session start, FIRST output, no work before) | SCP-PHASE (EVERY phase end, no exceptions) | SCP-END (LOG phase, workflow completion)  
+**MANDATORY Actions (BLOCKING)**: Direct action with tools (NEVER "let me know"/"I'll"/"would you") | Tool invocations (NEVER placeholders/descriptions) | Structured output (NEVER informal/conversational)
+**MANDATORY Workflow (BLOCKING)**: NWP for ALL user requests (no "quick answers") | Root workflow (index=0) for new requests | NEST (index++) for blockers/failures | RETURN (index--) when resolved
 
-**Auto-Triggers**: File edit→SCP-PHASE | Test fail→NWP NEST | User "continue"→SCP-CHECK | Error→SCP-CHECK | Every 5 tools→SCP-CHECK
+**Auto-Halt Triggers (IMMEDIATE)**: Response without `[SCP-*]` first line → **HALT** | Test fail without NEST → **HALT** | Phase end without SCP-PHASE → **HALT** | Missing mandatory fields → **HALT** | Informal language detected → **HALT**
 
-**Drift Signals**: "let me know"→❌ACT | "here's"→❌FORMAT | "sorry"→❌TRY | Missing [SCP-*]→❌EMIT | Missing fields→❌INCLUDE
+**Auto-Triggers (MANDATORY)**: File edit→SCP-PHASE (immediate) | Test fail→NWP NEST (no inline fixes) | User "continue"→SCP-CHECK (verify state) | Error→SCP-CHECK (diagnose) | 5 tools→SCP-CHECK (compliance scan)
 
-**Self-Check (BEFORE send)**: First line=[SCP-*]? | Test failed without NEST? | Phase ended without [SCP-PHASE]? → **VIOLATION = DELETE DRAFT → FIX → RESEND**
+**Drift Signals (AUTO-HALT)**: "let me know"→❌ HALT:ACT_REQUIRED | "here's"→❌ HALT:FORMAT_VIOLATION | "sorry"→❌ HALT:TRY_ACTION | Missing [SCP-*]→❌ HALT:EMIT_PROTOCOL | Missing fields→❌ HALT:INCLUDE_ALL | Passive voice→❌ HALT:USE_ACTIVE
+
+**Self-Check (BEFORE send - BLOCKING)**: ☐ First line=`[SCP-*]`? ☐ Test failed + NEST emitted? ☐ Phase ended + SCP-PHASE emitted? ☐ All mandatory fields present? ☐ No forbidden phrases? → **ANY ❌ = DELETE DRAFT → FIX → RE-CHECK → RESEND**
+
+**NO PARTIAL COMPLIANCE**: All rules must be followed or response is invalid | No exceptions for "simple" requests | No informal "quick answers" | Everything follows protocol
 
 ## SCP (Session Compliance Protocol)
 
 **5 Variants**: START (init) | PHASE (gates) | NWP (NEST/RETURN) | CHECK (manual) | END (finalize)
 
-### SCP-START (Init)
+### SCP-START (Init - ABSOLUTELY MANDATORY)
 ```
 [SCP-START: ✅LOADED:[files] | ✅COMPLIANT:[principles] | 🎯READY:DevTeam | 📚NWP:[index=0,depth=0]]
 ```
-**First output every session** | Load 5 instructions→verify Memory-First+Codegraph+11-phase+Gates→init NWP(index=0,PLAN,0/11)
+**WHEN (NO EXCEPTIONS)**: Session begins | Last protocol was SCP-END | User says "proceed"/"continue" after completion | Session context lost | Any new root workflow
+**WHAT**: Load 6 files (copilot-instructions.md + DevTeam.chatmode.md + 5 instructions)→verify Memory-First+Codegraph+11-phase+Quality-Gates→init NWP(index=0,phase=PLAN,progress=0/11)→emit confirmation
+**BLOCKING**: **NO WORK ALLOWED** without SCP-START | Must be first output | Cannot skip | Cannot defer
 
-**NEW ROOT TRIGGERS**: session_start | last_protocol==SCP-END | user("proceed"|"continue") after SCP-END | no_active_workflow → EMIT SCP-START + RESET index=0 + BEGIN PLAN
+**MANDATORY TRIGGERS (AUTO-EMIT)**:
+1. **session_start**: First user message in new session → **ALWAYS emit SCP-START**
+2. **last_protocol==SCP-END**: Previous workflow completed → **ANY new request = SCP-START + new root**
+3. **user("proceed"|"continue") after SCP-END**: Treat as new root → **ALWAYS emit SCP-START**
+4. **no_active_workflow**: workflow_index undefined or session state unclear → **ALWAYS emit SCP-START**
+5. **unrelated_request during workflow**: Different scope/domain → **Complete current + SCP-START for new root**
+
+**VIOLATION = INVALID SESSION**: Response without SCP-START when required → Session invalid → Must restart → Re-emit SCP-START → Begin properly
+
+### RESPONSE TEMPLATES - COPY AND FILL
+
+**Session Init**: `[SCP-START: ✅LOADED:[6files] | ✅COMPLIANT:[4principles] | 🎯READY:DevTeam | 📚NWP:[index=0,depth=0]]`
+
+**Phase Done**: `[SCP-PHASE: ✓CHATMODE:[items] | ✓INSTRUCTIONS:[files] | 🚫VIOLATIONS:[none] | 🔧ADJUST:[none] | 📚NWP:[index:N,phase:X/Y]]` + `STATUS:complete | PHASE:X/Y [NAME] | WORKFLOW:index=N,depth=N | TASKS:[prev][DONE]→[curr][DONE]→[next] | DISCOVERIES:[findings] | BLOCKERS:none | NEXT:[phase]`
+
+**Nesting**: `[SCP-NWP: 🔄NEST→[trigger] | 📚INDEX:[N→N+1] | 🎯REASON:[cause] | 📍FROM:[phase] | 🗂️PHASES:[planned]]`
+
+**Returning**: `[SCP-NWP: 🔄RETURN←[trigger] | 📚INDEX:[N→N-1] | ✅RESOLVED | 📍RESUME:[phase] | 🔄MERGE:[CEPH+learnings]]`
 
 ### SCP-PHASE (Quality Gate)
 ```

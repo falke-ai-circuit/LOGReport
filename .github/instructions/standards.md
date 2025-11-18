@@ -32,21 +32,58 @@ applyTo: '**'
 
 **Codegraph**: Triggers (NEW→Module+Class+Methods | MODIFIED→update Module) | Content (1-3 lines max, structure+deps+purpose, match tone) | Metadata (`upd:YYYY-MM-DD,refs:0` MANDATORY) | Process (read existing→extract/update→temp JSONL→append→verify→cleanup)
 
-## Communication Standards
+## Communication Standards (MANDATORY - BLOCKING)
 
 **Phases**: 📋PLAN | 🧠REMEMBER | 🔍ASSESS | 🔬ANALYZE | 🏗️ARCHITECT | 💻IMPLEMENT | 🐛DEBUG | 🧪TEST | 🎓LEARN | 📚DOCUMENT | 📝LOG
 
-**Status**:
+**Response Structure (ABSOLUTE - NO EXCEPTIONS)**:
 ```
-STATUS: [complete|partial|failed]
-PHASE: [NAME]
-TASKS: [phase_list with current→completed/pending/done]
-DISCOVERIES: [key_findings+insights+decisions]
-BLOCKERS: [none|specific_issues]
-NEXT: [next_phase|alternative]
+[SCP-PROTOCOL_TAG]  ← FIRST LINE, ALWAYS, NO TEXT BEFORE
+STATUS: [complete|partial|failed]  ← MANDATORY
+PHASE: [N/M NAME]  ← MANDATORY (e.g., "2/11 REMEMBER")
+WORKFLOW: index=[N] (root|nested), depth=[N]  ← MANDATORY (NWP state)
+TASKS: [phase_list with current→status]  ← MANDATORY
+DISCOVERIES: [key_findings|none]  ← MANDATORY (never blank)
+VIOLATIONS: [list|none]  ← MANDATORY (compliance check)
+BLOCKERS: [none|specific_issues]  ← MANDATORY
+NEXT: [next_phase|NEST→reason|RETURN←result]  ← MANDATORY (NWP action)
 ```
 
-**Optional**: STACK:[breadcrumb](depth:N) (index≥1) | CEPH:[context] (ASSESS+) | MEMORY:[entities] (REMEMBER) | LEARNINGS:[pattern:[X]|approach:[Y]] (specialist) | ARTIFACTS:[type:path:desc] (IMPLEMENT/TEST/LEARN/DOCUMENT) | METRICS:[measurement_with_Δ] (TEST, MANDATORY Δ) | DOCUMENT:[updates] (DOCUMENT) | COMMIT:[type(scope):message] (LOG/FINALIZE) | HANDOFFS:[future_patterns] (LOG) | ADJUST:[drift→correction] (SCP-PHASE self-regulation)
+**BLOCKING RULE**: Missing ANY mandatory field = INVALID response → DELETE draft → FIX → RESEND
+
+### ❌ VIOLATION EXAMPLES - NEVER DO THIS ❌
+
+**WRONG** (informal): "I'll help you with that. Let me analyze..." → **CORRECT**: `[SCP-PHASE: ✓CHATMODE:[analysis] | ...] STATUS:complete | PHASE:3/11 ANALYZE | ...`
+
+**WRONG** (missing protocol): "Looking at the file, I found issues..." → **CORRECT**: `[SCP-PHASE: ...] DISCOVERIES:3 issues (L45 syntax, L67 logic, L89 performance)`
+
+**WRONG** (passive): "Would you like me to fix this?" → **CORRECT**: `[SCP-PHASE: ...] NEXT:IMPLEMENT fixes for 3 issues [Proceed with tools]`
+
+**WRONG** (incomplete): `[SCP-PHASE: ✅complete] Fixed bug.` → **CORRECT**: `[SCP-PHASE: ✓CHATMODE:[...] | ✓INSTRUCTIONS:[...] | 🚫VIOLATIONS:[none] | 📚NWP:[...]] STATUS:complete | PHASE:6/11 IMPLEMENT | WORKFLOW:index=0,depth=0 | TASKS:DEBUG[DONE]→IMPLEMENT[DONE]→TEST | DISCOVERIES:Bug fixed src/utils.py L45 | BLOCKERS:none | NEXT:TEST`
+
+**Context-Specific Fields (Add when applicable):**
+- **STACK**: `[parent_phase→current_phase]` (depth:N) — Required when index≥1 (nested workflows)
+- **CEPH**: `[context_summary]` — Required in ASSESS, ANALYZE, ARCHITECT, IMPLEMENT, DEBUG, TEST
+- **MEMORY**: `[entities:[N+]]` — Required in REMEMBER (verify load) and LEARN (update count)
+- **VERIFIED_LOAD**: `[line_counts:YES summaries:YES hierarchies:YES]` — Required in REMEMBER and ASSESS
+- **LEARNINGS**: `[pattern:[X]|approach:[Y]]` — Required in ANALYZE, ARCHITECT, IMPLEMENT, DEBUG, TEST, LEARN
+- **ARTIFACTS**: `[type:path:description]` — Required in IMPLEMENT, TEST, LEARN, DOCUMENT
+- **METRICS**: `[measurement with Δ]` — Required in TEST (MUST include delta, e.g., "coverage=95%(+15%)")
+- **CODEGRAPH_QUERIES**: `[N/5]` or `[N/4]` — Required in IMPLEMENT (min 3/5) and DEBUG (min 2/4)
+- **USER_VERIFICATION**: `[awaiting:YES]` + **STOP** — Required in TEST before LEARN
+- **DOCUMENT**: `[files:[list] sections:[changes]]` — Required in DOCUMENT phase
+- **COMMIT**: `[type(scope):message]` — Required in LOG/FINALIZE
+- **HANDOFFS**: `[future_patterns]` — Required in LOG
+- **ADJUST**: `[violation→correction]` — Required in SCP-PHASE when violations detected
+
+**Field Format Rules**:
+- Use `[brackets]` for protocol tags
+- Use `field:value` format with colon separator
+- Use `|` pipe for multiple values in single field
+- Use `→` arrow for transitions/actions
+- Use `←` arrow for returns/results
+- Never leave fields blank — use "none" if no content
+
 
 ## Format Requirements ⚠️ MANDATORY
 

@@ -448,31 +448,27 @@ class NodeTreePresenter(QObject):
         normalized_path = os.path.normpath(log_path)
         file_item = self.file_item_map.get(normalized_path)
         if file_item:
-            try:
-                item_data = file_item.data(0, Qt.ItemDataRole.UserRole)
-                if item_data:
-                    node_name = item_data.get("node")
-                    token_id = item_data.get("token")
-                    token_type = item_data.get("token_type")
-                    ip_address = item_data.get("ip_address")
+            item_data = file_item.data(0, Qt.ItemDataRole.UserRole)
+            if item_data:
+                node_name = item_data.get("node")
+                token_id = item_data.get("token")
+                token_type = item_data.get("token_type")
+                ip_address = item_data.get("ip_address")
+                
+                # Create a minimal token object for highlighting
+                if node_name and token_id and token_type:
+                    # Create NodeToken-like object with necessary attributes
+                    class TokenInfo:
+                        def __init__(self, token_id, token_type, log_path):
+                            self.token_id = token_id
+                            self.token_type = token_type
+                            self.log_path = log_path
                     
-                    # Create a minimal token object for highlighting
-                    if node_name and token_id and token_type:
-                        # Create NodeToken-like object with necessary attributes
-                        class TokenInfo:
-                            def __init__(self, token_id, token_type, log_path):
-                                self.token_id = token_id
-                                self.token_type = token_type
-                                self.log_path = log_path
-                        
-                        token_info = TokenInfo(token_id, token_type, log_path)
-                        
-                        # Emit signal to trigger auto-expansion and highlighting
-                        self._highlight_current_file(node_name, token_info, log_path)
-                        logging.debug(f"handle_log_write_completed: Triggered auto-expansion for {log_path}")
-            except RuntimeError as e:
-                # Handle case where QTreeWidgetItem has been deleted (e.g., during tree rebuild)
-                logging.debug(f"handle_log_write_completed: Item for {log_path} has been deleted from tree: {e}")
+                    token_info = TokenInfo(token_id, token_type, log_path)
+                    
+                    # Emit signal to trigger auto-expansion and highlighting
+                    self._highlight_current_file(node_name, token_info, log_path)
+                    logging.debug(f"handle_log_write_completed: Triggered auto-expansion for {log_path}")
         else:
             logging.debug(f"handle_log_write_completed: File item not found in map for {normalized_path}")
     
@@ -497,84 +493,73 @@ class NodeTreePresenter(QObject):
             # Use lines_written_by_command for FBC coloring logic
             # For other types, we might still use total_line_count or a different metric
             # For now, apply this logic to FBC files as per user request
+            file_item_data = self.file_item_map.get(os.path.normpath(log_path))
+            token_type = file_item_data.data(0, Qt.ItemDataRole.UserRole).get("token_type") if file_item_data else None
+
             normalized_log_path = os.path.normpath(log_path)
             file_item = self.file_item_map.get(normalized_log_path)
-            
-            if not file_item:
-                logging.warning(f"_check_and_update_node_color: file_item not found for log_path: {normalized_log_path}")
-                return
-            
-            try:
-                file_item_data = file_item.data(0, Qt.ItemDataRole.UserRole)
-                token_type = file_item_data.get("token_type") if file_item_data else None
-            except RuntimeError as e:
-                # Handle case where QTreeWidgetItem has been deleted
-                logging.debug(f"_check_and_update_node_color: Item for {log_path} has been deleted: {e}")
-                return
-
-            # Determine icon color based on COMMAND EXECUTION STATUS
-            if command_success and log_success:
-                if token_type in ["FBC", "RPC"]: # Apply to both FBC and RPC
-                    if lines_written_by_command is None or lines_written_by_command == 0:
-                        icon_color = "red"
-                    elif lines_written_by_command < 10:
-                        icon_color = "yellow"
-                    else: # lines_written_by_command >= 10
-                        icon_color = "green"
-                else: # LOG and other file types - check actual file content
-                    # For LOG files, read actual file content to determine icon color
-                    # This ensures we get the correct count after BsTool finishes writing
-                    if os.path.exists(normalized_log_path):
-                        actual_line_count = self.log_writer.get_file_line_count(normalized_log_path)
-                        if actual_line_count == 0:
+            if file_item:
+                # Determine icon color based on COMMAND EXECUTION STATUS
+                if command_success and log_success:
+                    if token_type in ["FBC", "RPC"]: # Apply to both FBC and RPC
+                        if lines_written_by_command is None or lines_written_by_command == 0:
                             icon_color = "red"
-                        elif actual_line_count < 10:
+                        elif lines_written_by_command < 10:
                             icon_color = "yellow"
-                        else: # actual_line_count >= 10
+                        else: # lines_written_by_command >= 10
                             icon_color = "green"
-                    else:
-                        # File doesn't exist yet, use total_line_count as fallback
-                        if total_line_count is None or total_line_count == 0:
-                            icon_color = "red"
-                        elif total_line_count < 10:
-                            icon_color = "yellow"
+                    else: # LOG and other file types - check actual file content
+                        # For LOG files, read actual file content to determine icon color
+                        # This ensures we get the correct count after BsTool finishes writing
+                        if os.path.exists(normalized_log_path):
+                            actual_line_count = self.log_writer.get_file_line_count(normalized_log_path)
+                            if actual_line_count == 0:
+                                icon_color = "red"
+                            elif actual_line_count < 10:
+                                icon_color = "yellow"
+                            else: # actual_line_count >= 10
+                                icon_color = "green"
                         else:
-                            icon_color = "green"
-            else:
-                icon_color = "red"
-            
-            logging.debug(f"_check_and_update_node_color: Set ICON to {icon_color} for {normalized_log_path}")
-            
-            # Update rectangle icon color (command execution status)
-            self.view.update_node_icon(file_item, icon_color)
-            
-            # Store icon_color in item data for aggregation
-            try:
+                            # File doesn't exist yet, use total_line_count as fallback
+                            if total_line_count is None or total_line_count == 0:
+                                icon_color = "red"
+                            elif total_line_count < 10:
+                                icon_color = "yellow"
+                            else:
+                                icon_color = "green"
+                else:
+                    icon_color = "red"
+                
+                logging.debug(f"_check_and_update_node_color: Set ICON to {icon_color} for {normalized_log_path}")
+                
+                # Update rectangle icon color (command execution status)
+                self.view.update_node_icon(file_item, icon_color)
+                
+                # Store icon_color in item data for aggregation
                 file_item_data = file_item.data(0, Qt.ItemDataRole.UserRole)
                 if file_item_data:
                     file_item_data["icon_color"] = icon_color
                     file_item.setData(0, Qt.ItemDataRole.UserRole, file_item_data)
-            except RuntimeError as e:
-                # Handle case where QTreeWidgetItem has been deleted
-                logging.debug(f"_check_and_update_node_color: Item deleted while updating icon color: {e}")
-            
-            # Update TEXT color based on ACTUAL FILE CONTENT (independent from icon color)
-            # Check the file and count lines to determine text color
-            if os.path.exists(normalized_log_path):
-                content_line_count = self.log_writer.get_file_line_count(normalized_log_path)
                 
-                # Determine text color based on content
-                if content_line_count == 0:
-                    text_color = "red"  # No content
-                elif content_line_count < 10:
-                    text_color = "yellow"  # Minimal content
+                # Update TEXT color based on ACTUAL FILE CONTENT (independent from icon color)
+                # Check the file and count lines to determine text color
+                if os.path.exists(normalized_log_path):
+                    content_line_count = self.log_writer.get_file_line_count(normalized_log_path)
+                    
+                    # Determine text color based on content
+                    if content_line_count == 0:
+                        text_color = "red"  # No content
+                    elif content_line_count < 10:
+                        text_color = "yellow"  # Minimal content
+                    else:
+                        text_color = "green"  # Sufficient content
+                    
+                    self.view.update_node_color(file_item, text_color)
+                    logging.debug(f"_check_and_update_node_color: Set TEXT to {text_color} for {os.path.basename(normalized_log_path)} ({content_line_count} lines)")
                 else:
-                    text_color = "green"  # Sufficient content
-                
-                self.view.update_node_color(file_item, text_color)
-                logging.debug(f"_check_and_update_node_color: Set TEXT to {text_color} for {os.path.basename(normalized_log_path)} ({content_line_count} lines)")
+                    logging.debug(f"_check_and_update_node_color: File does not exist yet, skipping text color update")
             else:
-                logging.debug(f"_check_and_update_node_color: File does not exist yet, skipping text color update")
+                logging.warning(f"_check_and_update_node_color: file_item not found for log_path: {normalized_log_path}")
 
             # Reset status after update
             self.node_status[log_path] = {"command_success": None, "log_success": None, "total_line_count": None, "lines_written_by_command": None}
@@ -630,11 +615,7 @@ class NodeTreePresenter(QObject):
         # Check if the only child is a placeholder (e.g., "No files found")
         if child_count == 1:
             first_child = section_item.child(0)
-            try:
-                child_data = first_child.data(0, Qt.ItemDataRole.UserRole)
-            except RuntimeError:
-                # Item was deleted
-                return
+            child_data = first_child.data(0, Qt.ItemDataRole.UserRole)
             if not child_data or "log_path" not in child_data:
                 return
         
@@ -645,11 +626,7 @@ class NodeTreePresenter(QObject):
         colors = []
         for i in range(child_count):
             child = section_item.child(i)
-            try:
-                child_data = child.data(0, Qt.ItemDataRole.UserRole)
-            except RuntimeError:
-                # Child item was deleted, skip it
-                continue
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
             if child_data and "log_path" in child_data:
                 # Get icon_color from UserRole data (we'll need to store it there)
                 icon_color = child_data.get("icon_color")
@@ -682,14 +659,10 @@ class NodeTreePresenter(QObject):
         self.view.update_node_icon(section_item, aggregated_color)
         
         # Store icon color in section data for node aggregation
-        try:
-            section_data = section_item.data(0, Qt.ItemDataRole.UserRole)
-            if section_data:
-                section_data["icon_color"] = aggregated_color
-                section_item.setData(0, Qt.ItemDataRole.UserRole, section_data)
-        except RuntimeError:
-            # Section item was deleted
-            pass
+        section_data = section_item.data(0, Qt.ItemDataRole.UserRole)
+        if section_data:
+            section_data["icon_color"] = aggregated_color
+            section_item.setData(0, Qt.ItemDataRole.UserRole, section_data)
     
     def _aggregate_node_color(self, node_item):
         """
@@ -713,11 +686,7 @@ class NodeTreePresenter(QObject):
         colors = []
         for i in range(child_count):
             child = node_item.child(i)
-            try:
-                child_data = child.data(0, Qt.ItemDataRole.UserRole)
-            except RuntimeError:
-                # Child item was deleted, skip it
-                continue
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
             # Only aggregate from section items (FBC, RPC, LOG, LIS)
             if child_data and child_data.get("type") == "section":
                 icon_color = child_data.get("icon_color")
@@ -751,14 +720,10 @@ class NodeTreePresenter(QObject):
         self.view.update_node_icon(node_item, aggregated_color)
         
         # Store icon color in node data
-        try:
-            node_data = node_item.data(0, Qt.ItemDataRole.UserRole)
-            if node_data:
-                node_data["icon_color"] = aggregated_color
-                node_item.setData(0, Qt.ItemDataRole.UserRole, node_data)
-        except RuntimeError:
-            # Node item was deleted
-            pass
+        node_data = node_item.data(0, Qt.ItemDataRole.UserRole)
+        if node_data:
+            node_data["icon_color"] = aggregated_color
+            node_item.setData(0, Qt.ItemDataRole.UserRole, node_data)
         
         self.view.update_node_color(node_item, aggregated_color)
                 
@@ -1015,118 +980,6 @@ class NodeTreePresenter(QObject):
             3000
         )
     
-    def process_all_lis_subgroup_commands(self, item):
-        """
-        Process all LIS commands for a subgroup.
-        Executes dual BsTool commands (IRB + ORB) for each LIS file sequentially.
-
-        Args:
-            item: The tree item representing the LIS subgroup
-        """
-        if not item:
-            self._report_error("No item selected for LIS subgroup processing")
-            return
-        
-        # If item is a MockItem (from ContextMenuService), its data is directly accessible
-        if hasattr(item, 'data') and isinstance(item.data, dict):
-            item_data = item.data
-        else:
-            # Assume it's a QTreeWidgetItem and extract data
-            item_data = item.data(0, Qt.ItemDataRole.UserRole)
-        
-        if not item_data or item_data.get("type") != "section":
-            self._report_error("Selected item is not a subgroup section")
-            return
-
-        section_type = item_data.get("section_type")
-        node_name = item_data.get("node")
-
-        if not node_name or section_type != "LIS":
-            self._report_error("Could not determine node or LIS section type")
-            return
-        
-        logging.info(f"Processing LIS subgroup for node {node_name}...")
-        self.status_message_signal.emit(f"Executing BsTool for all LIS files in node {node_name}...", 0)
-        
-        # Get tokens from item_data or from node
-        tokens = item_data.get("tokens", [])
-        
-        # If no tokens in item_data, retrieve from node
-        if not tokens:
-            node = self.node_manager.get_node(node_name)
-            if not node:
-                self._report_error(f"Node {node_name} not found")
-                return
-                
-            # Find all LIS tokens in the node
-            all_tokens = []
-            for token_list in node.tokens.values():
-                if isinstance(token_list, list):
-                    for token in token_list:
-                        if isinstance(token, NodeToken):
-                            all_tokens.append(token)
-                else:
-                    if isinstance(token_list, NodeToken):
-                        all_tokens.append(token_list)
-            tokens = [t for t in all_tokens if t.token_type == "LIS"]
-        
-        if not tokens:
-            self.status_message_signal.emit(f"No LIS files found in node {node_name}", 3000)
-            return
-            
-        logging.info(f"Processing {len(tokens)} LIS files for node {node_name}...")
-        
-        # Switch to BsTool tab to show output
-        self.switch_to_bstool_tab_signal.emit()
-        
-        # Process all LIS tokens by queuing dual BsTool commands
-        queued_count = 0
-        for token in tokens:
-            if hasattr(token, 'log_path') and token.log_path:
-                try:
-                    # Parse LIS filename to extract parameters
-                    import re
-                    filename = os.path.basename(token.log_path)
-                    # Support both with and without .lis extension
-                    match = re.match(r'^([A-Z]+\d+)_[\d-]+_(exe\d+)_irb_orb(?:\.lis)?$', filename)
-                    
-                    if match:
-                        node_name_extracted = match.group(1)
-                        exe_id = match.group(2)
-                        communication_line = "AB01"
-                        
-                        # Construct dual commands
-                        irb_target = f"{node_name_extracted}_{exe_id}_irb"
-                        orb_target = f"{node_name_extracted}_{exe_id}_orb"
-                        irb_command = f"-cat :s:{communication_line}:{irb_target}"
-                        orb_command = f"-cat :s:{communication_line}:{orb_target}"
-                        
-                        logging.info(f"Queuing LIS commands for {filename}: IRB={irb_command}, ORB={orb_command}")
-                        
-                        # Queue both commands for this LIS file
-                        self.bstool_service.queue_bstool_command(
-                            log_file_path=token.log_path,
-                            bstool_command_args=irb_command,
-                            token=token
-                        )
-                        self.bstool_service.queue_bstool_command(
-                            log_file_path=token.log_path,
-                            bstool_command_args=orb_command,
-                            token=token
-                        )
-                        queued_count += 1
-                    else:
-                        logging.warning(f"Could not parse LIS filename: {filename}")
-                except Exception as e:
-                    logging.error(f"Error queuing LIS commands for {token.log_path}: {str(e)}")
-            else:
-                logging.warning(f"Token object {token} does not have a valid log_path")
-        
-        self.status_message_signal.emit(
-            f"Queued {queued_count * 2} BsTool commands for {queued_count} LIS files in node {node_name}", 
-            3000
-        )
-    
     def process_node_print_commands(self, node_name: str):
         """
         Execute only PRINT commands hierarchically for a node.
@@ -1203,7 +1056,7 @@ class NodeTreePresenter(QObject):
                     # NEW APPROACH: Queue BsTool command through CommandQueue (same as FBC/RPC)
                     # This ensures proper synchronization - BsTool will execute sequentially with other commands
                     logging.info(f"Phase 3: Queuing BsTool command for node {node_name} through CommandQueue")
-                    self.status_message_signal.emit(f"Phase 3/4: BsTool -errlog {errlog_node_name}...", 0)
+                    self.status_message_signal.emit(f"Phase 3/3: BsTool -errlog {errlog_node_name}...", 0)
                     self.bstool_service.queue_bstool_command(
                         log_file_path=log_file_path,
                         bstool_command_args=bstool_command_args,
@@ -1214,62 +1067,10 @@ class NodeTreePresenter(QObject):
             else:
                 logging.info(f"Phase 3: No LOG tokens found for node {node_name}, skipping BsTool execution")
             
-            # Phase 4: Execute BsTool for LIS files (dual commands: IRB + ORB)
-            lis_tokens = self._get_tokens_for_node(node, "LIS")
-            logging.debug(f"Phase 4 CHECK: Retrieved {len(lis_tokens) if lis_tokens else 0} LIS tokens for node {node_name}")
-            
-            if lis_tokens:
-                # Switch to BsTool tab to show output
-                self.switch_to_bstool_tab_signal.emit()
-                logging.debug("Phase 4: Emitted signal to switch to BsTool tab")
-                
-                # Process each LIS file with dual commands (IRB + ORB)
-                for idx, lis_token in enumerate(lis_tokens):
-                    log_file_path = lis_token.log_path if hasattr(lis_token, 'log_path') else None
-                    
-                    if not log_file_path:
-                        logging.warning(f"Phase 4: LIS token has no log_path attribute, skipping")
-                        continue
-                    
-                    # Extract node and exe from filename (supports with/without .lis extension)
-                    # Format: AL01_192-168-0-11_exe1_irb_orb or AL01_192-168-0-11_exe1_irb_orb.lis
-                    filename = os.path.basename(log_file_path)
-                    pattern = r'^([A-Z]+\d+)_[\d-]+_(exe\d+)_irb_orb(?:\.lis)?$'
-                    match = re.match(pattern, filename)
-                    
-                    if not match:
-                        logging.warning(f"Phase 4: LIS filename {filename} doesn't match expected pattern, skipping")
-                        continue
-                    
-                    node_prefix = match.group(1)  # e.g., AL01
-                    exe_id = match.group(2)  # e.g., exe1
-                    
-                    # Strip 'm' or 'r' suffix from node prefix
-                    node_prefix_clean = self._strip_node_suffix(node_prefix)
-                    
-                    # Build dual commands: IRB then ORB
-                    irb_cmd = f"-cat :s:AB01:{node_prefix_clean}_{exe_id}_irb"
-                    orb_cmd = f"-cat :s:AB01:{node_prefix_clean}_{exe_id}_orb"
-                    dual_commands = f"{irb_cmd}, {orb_cmd}"
-                    
-                    logging.info(f"Phase 4: Queuing dual BsTool commands for LIS file {idx+1}/{len(lis_tokens)}: {filename}")
-                    self.status_message_signal.emit(f"Phase 4/4: BsTool LIS {idx+1}/{len(lis_tokens)}: {node_prefix_clean}_{exe_id}...", 0)
-                    
-                    # Queue dual commands through BsToolCommandService
-                    self.bstool_service.queue_bstool_command(
-                        log_file_path=log_file_path,
-                        bstool_command_args=dual_commands,
-                        token=lis_token
-                    )
-            else:
-                logging.info(f"Phase 4: No LIS tokens found for node {node_name}, skipping LIS BsTool execution")
-            
             # Completion message
             total_commands = len(fbc_tokens) + len(rpc_tokens)
             if log_tokens:
                 total_commands += 1  # BsTool command counts as one command
-            if lis_tokens:
-                total_commands += len(lis_tokens)  # Each LIS file = 1 entry (dual commands)
             
             self.status_message_signal.emit(
                 f"Print command execution complete for {node_name}: {total_commands} commands processed", 
@@ -1811,191 +1612,6 @@ class NodeTreePresenter(QObject):
         except Exception as e:
             self._report_error("Error processing BsTool command", e)
     
-    def process_bstool_lis_command(self, lis_file_path: str):
-        """
-        Process BsTool command for a LIS file.
-        Queues two BsTool commands (-cat :s:AB01:node_exe_irb and -cat :s:AB01:node_exe_orb)
-        using the bstool service, which handles execution and output to file.
-        
-        Args:
-            lis_file_path: Path to the LIS file to process with BsTool
-        """
-        logging.info(f"=== Starting BsTool LIS command processing (via service) ===")
-        logging.info(f"LIS file path: {lis_file_path}")
-        
-        try:
-            # Extract node name and exe_id from LIS filename
-            # Pattern: AL01_192-168-0-11_exe1_irb_orb.lis
-            import os
-            import re
-            
-            filename = os.path.basename(lis_file_path)
-            logging.debug(f"Parsing LIS filename: {filename}")
-            
-            # Match pattern: {node}_{ip}_{exe_id}_irb_orb.lis
-            match = re.match(r'^([A-Z]+\d+)_[\d-]+_(exe\d+)_irb_orb\.lis$', filename)
-            
-            if not match:
-                error_msg = f"Could not parse LIS filename: {filename}"
-                logging.error(f"{error_msg} - Expected format: NODENAME_IP_exeN_irb_orb.lis")
-                self._report_error(error_msg, None)
-                return
-            
-            node_name = match.group(1)
-            exe_id = match.group(2)
-            communication_line = "AB01"  # Hardcoded as per user specification
-            
-            logging.info(f"Extracted: node_name={node_name}, exe_id={exe_id}, communication_line={communication_line}")
-            
-            # Construct two bstool commands
-            irb_target = f"{node_name}_{exe_id}_irb"
-            orb_target = f"{node_name}_{exe_id}_orb"
-            
-            irb_command = f"-cat :s:{communication_line}:{irb_target}"
-            orb_command = f"-cat :s:{communication_line}:{orb_target}"
-            
-            logging.info(f"Constructed IRB command: bstool {irb_command}")
-            logging.info(f"Constructed ORB command: bstool {orb_command}")
-            
-            # Create a token object for the LIS file if not available
-            # We need a token to pass to queue_bstool_command
-            token = NodeToken(
-                token_id=exe_id,
-                token_type="LIS",
-                port=23,
-                protocol="telnet",
-                name=node_name
-            )
-            token.log_path = lis_file_path
-            
-            # Queue both commands using the bstool service (like LOG files do)
-            # Execute IRB command first
-            self.bstool_service.queue_bstool_command(
-                log_file_path=lis_file_path,
-                bstool_command_args=irb_command,
-                token=token
-            )
-            # Execute ORB command second (will append to same file)
-            self.bstool_service.queue_bstool_command(
-                log_file_path=lis_file_path,
-                bstool_command_args=orb_command,
-                token=token
-            )
-            
-            self.status_message_signal.emit(f"Queued dual BsTool commands for {filename}", 3000)
-            logging.info(f"=== BsTool LIS command processing completed (commands queued) ===")
-            
-        except Exception as e:
-            logging.error(f"Exception in process_bstool_lis_command: {str(e)}", exc_info=True)
-            self._report_error("Error processing BsTool LIS command", e)
-    
-    def _execute_dual_bstool_commands(self, command1: str, command2: str, output_file: str):
-        """
-        Execute two bstool commands sequentially and append outputs to a file.
-        
-        Args:
-            command1: First bstool command arguments
-            command2: Second bstool command arguments  
-            output_file: File path to append outputs to
-        """
-        import subprocess
-        import os
-        
-        logging.info(f"=== Starting dual BsTool command execution ===")
-        logging.info(f"Output file: {output_file}")
-        
-        try:
-            # Get bstool path
-            bstool_path = self.bstool_service.get_bstool_path()
-            logging.debug(f"BsTool path: {bstool_path}")
-            
-            if not bstool_path or not os.path.exists(bstool_path):
-                error_msg = "Could not locate bstool.exe"
-                logging.error(error_msg)
-                self._report_error(error_msg, None)
-                return
-            
-            # Set up environment
-            env = os.environ.copy()
-            env["COMMUNICATION_LINE"] = "AB01"
-            logging.debug(f"Environment: COMMUNICATION_LINE=AB01")
-            
-            # Working directory
-            bstool_dir = os.path.dirname(bstool_path)
-            logging.debug(f"Working directory: {bstool_dir}")
-            
-            # Execute first command (IRB)
-            logging.info(f"Executing IRB command: {bstool_path} {command1}")
-            self.status_message_signal.emit("Executing IRB command...", 2000)
-            
-            result1 = subprocess.run(
-                [bstool_path] + command1.split(),
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=bstool_dir
-            )
-            
-            logging.info(f"IRB command completed: return_code={result1.returncode}, stdout_length={len(result1.stdout)}, stderr_length={len(result1.stderr)}")
-            if result1.stdout:
-                logging.debug(f"IRB stdout preview: {result1.stdout[:200]}...")
-            if result1.stderr:
-                logging.warning(f"IRB stderr: {result1.stderr}")
-            
-            # Execute second command (ORB)
-            logging.info(f"Executing ORB command: {bstool_path} {command2}")
-            self.status_message_signal.emit("Executing ORB command...", 2000)
-            
-            result2 = subprocess.run(
-                [bstool_path] + command2.split(),
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=bstool_dir
-            )
-            
-            logging.info(f"ORB command completed: return_code={result2.returncode}, stdout_length={len(result2.stdout)}, stderr_length={len(result2.stderr)}")
-            if result2.stdout:
-                logging.debug(f"ORB stdout preview: {result2.stdout[:200]}...")
-            if result2.stderr:
-                logging.warning(f"ORB stderr: {result2.stderr}")
-            
-            # Append both outputs to LIS file
-            output_content = ""
-            if result1.stdout:
-                output_content += f"\n=== IRB Output ===\n{result1.stdout}\n"
-            if result1.stderr:
-                output_content += f"IRB Errors: {result1.stderr}\n"
-            
-            if result2.stdout:
-                output_content += f"\n=== ORB Output ===\n{result2.stdout}\n"
-            if result2.stderr:
-                output_content += f"ORB Errors: {result2.stderr}\n"
-            
-            if output_content:
-                logging.info(f"Appending {len(output_content)} characters to {output_file}")
-                self.log_writer.append_to_file(output_file, output_content)
-                success_msg = f"BsTool output appended to {os.path.basename(output_file)}"
-                self.status_message_signal.emit(success_msg, 3000)
-                logging.info(f"Successfully appended dual BsTool output to {output_file}")
-            else:
-                warning_msg = "BsTool commands executed but produced no output"
-                logging.warning(warning_msg)
-                self.status_message_signal.emit(warning_msg, 3000)
-            
-            logging.info(f"=== Dual BsTool command execution completed ===")
-            
-        except subprocess.TimeoutExpired:
-            error_msg = "BsTool command timed out (30s limit exceeded)"
-            logging.error(error_msg)
-            self._report_error(error_msg, None)
-        except Exception as e:
-            error_msg = f"Error executing dual BsTool commands: {str(e)}"
-            logging.error(error_msg, exc_info=True)
-            self._report_error(error_msg, e)
-    
     def process_scan_token_action(self, node_name: str, token_id: str, file_path: str, file_type: str):
         """
         Process Scan FieldBus structure context menu action.
@@ -2056,22 +1672,8 @@ class NodeTreePresenter(QObject):
                     else:
                         logging.warning(f"Could not extract node ID for LOG file: {filename}")
                 elif token_type == "LIS":
-                    # For LIS files, generate dual BsTool commands (IRB and ORB)
-                    import re
-                    lis_filename = os.path.basename(item_data["log_path"])
-                    match = re.match(r'^([A-Z]+\d+)_[\d-]+_(exe\d+)_irb_orb\.lis$', lis_filename)
-                    if match:
-                        node_name_extracted = match.group(1)
-                        exe_id = match.group(2)
-                        communication_line = "AB01"
-                        # Create two commands separated by comma
-                        irb_cmd = f"-cat :s:{communication_line}:{node_name_extracted}_{exe_id}_irb"
-                        orb_cmd = f"-cat :s:{communication_line}:{node_name_extracted}_{exe_id}_orb"
-                        command = f"{irb_cmd}, {orb_cmd}"
-                        token_type = "BSTOOL"
-                        logging.info(f"Generated dual LIS commands: {command}")
-                    else:
-                        logging.warning(f"Could not parse LIS filename: {lis_filename}")
+                    # For LIS, no command is generated, only the log file is selected
+                    pass
                 else:
                     logging.warning(f"Unknown token type for command generation: {token_type}")
 

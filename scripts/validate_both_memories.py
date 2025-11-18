@@ -125,7 +125,7 @@ if __name__ == '__main__':
     base_path = Path('d:/_APP/LOGReport')
     
     # Analyze both memories
-    global_stats = analyze_memory(base_path / 'global_memory.json')
+    global_stats = analyze_memory(base_path / '.github' / 'global_memory.json')
     project_stats = analyze_memory(base_path / 'project_memory.json')
     
     # Print reports

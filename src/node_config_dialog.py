@@ -480,7 +480,7 @@ class NodeConfigDialog(QDialog):
                         examples.append(f"{name}_{ip}.log")
                     elif log_type == "LIS":
                         # Generate LIS filenames including IP address as specified
-                        examples.extend([f"{name}_{ip}_exe{i}_irb_orb.lis" for i in range(1, 7)])
+                        examples.extend([f"{name}_{ip}_exe{i}_5irb_5orb.lis" for i in range(1, 7)])
                 
                 self.example_label.setText("Example files:\n" + "\n".join(examples) if examples else "No examples")
             except Exception as e:
