@@ -19,7 +19,7 @@ def extract_ip_from_filename(filename: str) -> str:
         return ""
         
     # Pattern to match IP addresses in various log filename formats
-    # Examples: AP01m_192-168-0-11_162.fbc, AL01_192-168-0-52_exe1_5irb_5orb.lis
+    # Examples: AP01m_192-168-0-11_162.fbc, AL01_192-168-0-52_exe1_irb_orb.lis
     ip_patterns = [
         r'_(\d{1,3})-(\d{1,3})-(\d{1,3})-(\d{1,3})_',  # Dashed format: 192-168-0-11
         r'_(\d{1,3})_(\d{1,3})_(\d{1,3})_(\d{1,3})_',   # Underscore format: 192_168_0_11

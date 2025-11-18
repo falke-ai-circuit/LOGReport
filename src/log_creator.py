@@ -82,7 +82,7 @@ class LogCreator:
                 
                 # Create 6 files with the updated pattern including IP address
                 for i in range(1, 7):
-                    filename = f"{node_name}_{ip_formatted}_exe{i}_5irb_5orb.lis"
+                    filename = f"{node_name}_{ip_formatted}_exe{i}_irb_orb.lis"
                     file_path = lis_dir / filename
                     
                     if not file_path.exists():
