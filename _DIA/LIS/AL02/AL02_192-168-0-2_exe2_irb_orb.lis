@@ -1,0 +1,3 @@
+This is a log file for AL02_192-168-0-2_exe2_irb_orb.lis.
+Generated on 2025-11-18 15:53:22.[2025-11-18 15:57:53] C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\BsTool.exe -cat :s:AB01:AL02_exe2_irb, -cat :s:AB01:AL02_exe2_orb
+BsTool execution failed: no output captured

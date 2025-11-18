@@ -82,12 +82,12 @@ class ContextMenuService:
                 menu.addAction(print_action)
                 added_actions = True
 
-        # Handle section items (FBC/RPC/LOG subgroups)
+        # Handle section items (FBC/RPC/LOG/LIS subgroups)
         elif item_data and isinstance(item_data, dict) and 'section_type' in item_data:
             section_type = item_data.get("section_type")
             node_name = item_data.get("node")
 
-            if section_type in ["FBC", "RPC", "LOG"] and node_name:
+            if section_type in ["FBC", "RPC", "LOG", "LIS"] and node_name:
                 logging.debug(f"Context menu processing {section_type} subgroup for node {node_name}")
 
                 # Get all tokens of the specified type for this node
@@ -108,6 +108,17 @@ class ContextMenuService:
                             lambda: self._handle_bstool_node_action(node_name)
                         )
                     menu.addAction(bstool_action)
+                    added_actions = True
+                elif section_type == "LIS":
+                    # For LIS, create action for executing BsTool on all LIS files (dual commands)
+                    bstool_all_action = QAction(f"Run BsTool (IRB + ORB) for All LIS in {node_name}", menu)
+                    if self.presenter:
+                        bstool_all_action.triggered.connect(
+                            lambda: self.presenter.process_all_lis_subgroup_commands(
+                                self._get_current_item_from_data(item_data, tokens)
+                            )
+                        )
+                    menu.addAction(bstool_all_action)
                     added_actions = True
                 else:
                     # For FBC and RPC, create action for printing all tokens
@@ -217,20 +228,46 @@ class ContextMenuService:
                             )
                         menu.addAction(bstool_action)
                         added_actions = True
+                
+                elif token_type == "LIS":
+                    # For LIS tokens, add BsTool action for dual command execution (IRB + ORB)
+                    # Get the log file path for this token
+                    lis_file_path = item_data.get('log_path') or item_data.get('file_path')
+                    if lis_file_path:
+                        # Add BsTool action for .lis files
+                        bstool_lis_action = QAction("Run BsTool (IRB + ORB)", menu)
+                        if self.presenter:
+                            # Connect action to presenter method
+                            bstool_lis_action.triggered.connect(
+                                lambda: self._handle_bstool_lis_action(lis_file_path)
+                            )
+                        menu.addAction(bstool_lis_action)
+                        added_actions = True
 
         # Handle log files
         elif item_data and isinstance(item_data, dict) and ('log_path' in item_data or 'file_path' in item_data):
             log_file_path = item_data.get('log_path') or item_data.get('file_path')
-            if log_file_path and log_file_path.lower().endswith('.log'):
-                # Add BsTool action for .log files
-                bstool_action = QAction("Run BsTool on this file", menu)
-                if self.presenter:
-                    # Connect action to presenter method
-                    bstool_action.triggered.connect(
-                        lambda: self._handle_bstool_action(log_file_path)
-                    )
-                menu.addAction(bstool_action)
-                added_actions = True
+            if log_file_path:
+                if log_file_path.lower().endswith('.log'):
+                    # Add BsTool action for .log files
+                    bstool_action = QAction("Run BsTool on this file", menu)
+                    if self.presenter:
+                        # Connect action to presenter method
+                        bstool_action.triggered.connect(
+                            lambda: self._handle_bstool_action(log_file_path)
+                        )
+                    menu.addAction(bstool_action)
+                    added_actions = True
+                elif log_file_path.lower().endswith('.lis'):
+                    # Add BsTool action for .lis files (dual command: IRB + ORB)
+                    bstool_lis_action = QAction("Run BsTool (IRB + ORB)", menu)
+                    if self.presenter:
+                        # Connect action to presenter method
+                        bstool_lis_action.triggered.connect(
+                            lambda: self._handle_bstool_lis_action(log_file_path)
+                        )
+                    menu.addAction(bstool_lis_action)
+                    added_actions = True
 
         if added_actions:
             # Show menu at cursor position (only if position is provided)
@@ -406,6 +443,21 @@ class ContextMenuService:
         if self.presenter:
             # Use presenter method to process the BsTool command
             self.presenter.process_bstool_command(log_file_path)
+    
+    def _handle_bstool_lis_action(self, lis_file_path: str) -> None:
+        """
+        Handle BsTool context menu action for LIS files.
+        Executes dual bstool commands for irb and orb.
+
+        Args:
+            lis_file_path: Path to the LIS file to process with BsTool
+        """
+        logging.info(f"Context menu: BsTool LIS action triggered for {lis_file_path}")
+        if self.presenter:
+            # Use presenter method to process the BsTool LIS command
+            self.presenter.process_bstool_lis_command(lis_file_path)
+        else:
+            logging.error("Cannot execute BsTool LIS action: presenter is None")
     
     def _handle_scan_token_action(self, node_name: str, token_id: str, file_path: str, file_type: str) -> None:
         """
