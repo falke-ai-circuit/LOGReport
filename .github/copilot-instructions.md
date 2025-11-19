@@ -4,17 +4,26 @@
 
 ---
 
-## ⚠️ RESPONSE GENERATION PROTOCOL - READ BEFORE EVERY RESPONSE ⚠️
+## ⚠️ RESPONSE GENERATION PROTOCOL (MANDATORY PRE-SEND GATE)
 
-**STEP 1 (BLOCKING)**: Check session state → Last protocol=SCP-END OR first message→**EMIT SCP-START NOW** | Phase done→**EMIT SCP-PHASE NOW** | Test fail→**EMIT SCP-NWP NEST NOW**
+### Pre-Response Verification (BLOCKING - EXECUTE BEFORE EVERY RESPONSE)
+**Step 1 (BLOCKING)**: Check session state → Last protocol=SCP-END OR first message → **EMIT SCP-START NOW** | Phase done → **EMIT SCP-PHASE NOW** | Test fail → **EMIT SCP-NWP NEST NOW**
 
-**STEP 2 (BLOCKING)**: Generate protocol tag FIRST → Type `[SCP-START|PHASE|NWP` as FIRST characters | NO text before tag (not even "Sure"/"Okay")
+**Step 2 (BLOCKING)**: Generate protocol tag FIRST → Type `[SCP-START|PHASE|NWP]` as FIRST characters | NO text before tag (not even "Sure"/"Okay")
 
-**STEP 3 (BLOCKING)**: Add mandatory fields → STATUS:[complete|partial|failed] | PHASE:[N/M NAME] | WORKFLOW:index=[N],depth=[N] | TASKS:[phase→status] | DISCOVERIES:[findings] | VIOLATIONS:[list|none] | BLOCKERS:[list|none] | NEXT:[action]
+**Step 3 (BLOCKING)**: Add mandatory fields → STATUS:[complete|partial|failed] | PHASE:[N/M NAME] | WORKFLOW:index=[N],depth=[N] | TASKS:[phase→status] | DISCOVERIES:[findings] | VIOLATIONS:[list|none] | BLOCKERS:[list|none] | NEXT:[action]
 
-**STEP 4**: Verify forbidden phrases absent → ❌NO:"I'll"/"Would you"/"Let me"/"Here's"/"Sorry" | ✅YES:Direct actions+tool invocations+concrete results
+**Step 4 (BLOCKING)**: Verify forbidden phrases absent → ❌NO:"I'll"/"Would you"/"Let me"/"Here's"/"Sorry" | ✅YES:Direct actions+tool invocations+concrete results
 
-**STEP 5**: Submit response ONLY after Steps 1-4 complete
+**Step 5 (BLOCKING)**: Submit response ONLY after Steps 1-4 complete
+
+### Compliance Checklist
+☐ **CRITICAL**: First line=`[SCP-START|PHASE|NWP|CHECK|END]` | Test fail→`[SCP-NWP: NEST]` | Phase done→`[SCP-PHASE]`
+☐ **MANDATORY**: STATUS|PHASE|WORKFLOW|TASKS|NEXT|VIOLATIONS|DISCOVERIES present | ADJUST if violations exist
+☐ **FORBIDDEN**: "I'll"/"Would you"/"Let me"/"Here's" | Protocol not first line
+☐ **STRUCTURE**: Correct format ([tag], field:value, pipe| separators)
+
+**VIOLATION**: **HALT**→**DELETE DRAFT**→**FIX**→**RE-VERIFY**→**RESEND** | **NO PARTIAL COMPLIANCE**
 
 ---
 
