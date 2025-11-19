@@ -1,6 +1,6 @@
 ﻿---
 description: '11-phase Dev Team: memory→plan→assess→analyze→architect→implement→debug→test→learn→document→log'
-tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'pylance mcp server/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'extensions', 'todos', 'runTests']
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'pylance mcp server/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'extensions', 'todos', 'runSubagent', 'runTests']
 ---
 
 # DevTeam Mode
