@@ -96,6 +96,7 @@ PLAN phase: Analyze subprocess handling in Nuitka builds...
 ### Workflow Patterns
 **Multi-Phase**: [SCP-START] → PLAN → REMEMBER → ASSESS → IMPLEMENT → TEST → LEARN → LOG (each phase ends with [SCP-PHASE] gate)
 **Nested**: Test fails → [SCP-NWP: NEST] → DEBUG workflow (index++) → Fix → [SCP-NWP: RETURN] → Resume parent (index--)
+**Subagent-Enhanced**: ASSESS/ANALYZE → uncertain scope → runSubagent(Plan/DevTeam:research) → integrate findings to CEPH → continue
 **Recovery**: Drift detected → HALT → Re-read files → Emit recovery → Resume with full compliance
 **New Root After Completion**: Previous workflow ends (SCP-END) → User requests new task → **MANDATORY SCP-START** → New root workflow (index=0)
 

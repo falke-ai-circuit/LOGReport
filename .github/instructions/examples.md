@@ -69,6 +69,9 @@ applyTo: '**'
 **DEBUG (5)**: Test fail → NEST → REMEMBER→ASSESS→DEBUG→TEST→LEARN → RETURN  
 **ARCHITECT (8)**: Design flaw → NEST → REMEMBER→ASSESS→ANALYZE→ARCHITECT→IMPLEMENT→TEST→LEARN→DOC → RETURN  
 **Query (3)**: Question → NEST → ASSESS→answer→LEARN → RETURN  
+**Subagent-Research (2)**: Uncertain scope → ASSESS → runSubagent(Plan:"search for timeout patterns") → integrate findings → continue  
+**Subagent-Deep (3)**: User "Use Plan to analyze" → ANALYZE → runSubagent(Plan:"analyze architecture...") → DISCOVERIES:[agent:findings] → LEARN  
+**Subagent-Custom (3)**: LM auto-selects custom agent → ASSESS → runSubagent(CodeReviewer:"review PR changes") → DISCOVERIES:[agent:review_findings] → LEARN  
 **Multi-nested**: Root→DEBUG nested→ASSESS nested→back→back
 
 ## SCP-PHASE Patterns
@@ -98,6 +101,18 @@ applyTo: '**'
 `STATUS: complete | PHASE: 1/11 REMEMBER | WORKFLOW: index=0, depth=0`  
 `MEMORY: [global:47 project:55(repaired)] | VERIFIED_LOAD: [line_counts:YES summaries:YES hierarchies:YES]`  
 `DISCOVERIES: Corrupted JSON repaired via Python script | BLOCKERS: none | NEXT: ASSESS`
+
+**ANALYZE (subagent)**: `[SCP-PHASE: 🚫VIOLATIONS:[none] | 🔧ADJUST:[none] | 📚NWP:[index:0,phase:3/11]]`  
+`STATUS: complete | PHASE: 3/11 ANALYZE | WORKFLOW: index=0, depth=0`  
+`CEPH: [HYPOTHESES:H1:timeout_config→30s_too_short→increase_to_60s]`  
+`LEARNINGS: [pattern:subprocess_timeout | approach:configurable_limits]`  
+`DISCOVERIES: subagent:Plan:examined_47_files:found_bstool_command_service.py:L145:timeout=30s | BLOCKERS: none | NEXT: ARCHITECT`
+
+**ANALYZE (custom agent)**: `[SCP-PHASE: 🚫VIOLATIONS:[none] | 🔧ADJUST:[none] | 📚NWP:[index:0,phase:3/11]]`  
+`STATUS: complete | PHASE: 3/11 ANALYZE | WORKFLOW: index=0, depth=0`  
+`CEPH: [HYPOTHESES:H1:architecture_pattern→apply_layered_approach]`  
+`LEARNINGS: [pattern:custom_agent_integration | approach:dynamic_selection]`  
+`DISCOVERIES: subagent:ArchitectReviewer(custom):auto_selected:recommended_3_layer_separation | BLOCKERS: none | NEXT: ARCHITECT`
 
 **IMPLEMENT**: `[SCP-PHASE: 🚫VIOLATIONS:[none] | 🔧ADJUST:[none] | 📚NWP:[index:0,phase:5/11]]`  
 `STATUS: complete | PHASE: 5/11 IMPLEMENT | WORKFLOW: index=0, depth=0`  

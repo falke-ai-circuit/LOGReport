@@ -24,12 +24,12 @@ applyTo: '**'
 **Failures**: missing→create empty+VIOLATIONS:[memory_missing→created_empty] | corrupted→repair script+VIOLATIONS:[corrupted_LX-Y→repaired] | oversized(>5000)→auto-optimizer+VIOLATIONS:[oversized_N→condensed_M] | timeout→retry+chunk(500)+VIOLATIONS:[timeout→chunked] | parse→skip+VIOLATIONS:[parse_failed]
 
 ### 2: ASSESS ⚠️ CODEGRAPH
-**Do**: Check env → review docs → **load codegraph ENTIRE** → verify(modules/classes/methods/relations) → query → create CEPH  
+**Do**: Check env → review docs → **load codegraph ENTIRE** → verify(modules/classes/methods/relations) → query → create CEPH | **Subagent**: If scope uncertain or multi-iteration research needed → invoke Plan/DevTeam/custom agent(detailed prompt→output format→research intent) → integrate findings | **Custom agents**: Create `.agent.md` in `.github/agents/` for specialized personas (e.g., code reviewer, planner) → LM auto-selects based on description  
 **Out**: CEPH:[init] + CODEGRAPH:[loaded:YES summary:[modules:N classes:M methods:P relations:[counts]] | VERIFIED_LOAD:[complete:YES structure:YES]] + REFS:[modules/classes] + DOCS:[files]  
 **Failures**: missing→create empty+VIOLATIONS:[codegraph_missing→created_empty] | corrupted→repair+VIOLATIONS:[corrupted→repaired] | empty(entities:0)→valid+DISCOVERIES:[codegraph_empty:rebuild_needed] | query=0→valid+DISCOVERIES:[query_X_returned_0],continue | timeout(>10s)→retry+VIOLATIONS:[timeout→retry],HALT if persists | count mismatch→HALT,investigate
 
 ### 3: ANALYZE
-**Do**: Map arch → query codegraph(BELONGS_TO,IMPORTS,DOCUMENTED_IN) → analyze dataflow/patterns → identify causes/edges → evolve CEPH  
+**Do**: Map arch → query codegraph(BELONGS_TO,IMPORTS,DOCUMENTED_IN) → analyze dataflow/patterns → identify causes/edges → evolve CEPH | **Subagent**: For exploration/unknown patterns → invoke Plan/custom agent(search across files→return findings) → feed to CEPH | LM may auto-select custom agent if matching description  
 **Out**: CEPH:[updated] + LEARNINGS:[pattern:[X]|approach:[Y]] ⚠️
 
 ### 4: ARCHITECT
@@ -46,7 +46,7 @@ applyTo: '**'
 **Out**: CEPH:[updated] + LEARNINGS:[pattern:[X]|approach:[Y]] + ARTIFACTS:[type:path:desc] + CODE_PATTERNS:[methods:[list] structures:[N]] + CODEGRAPH_QUERIES:[N/5]
 
 ### 6: DEBUG ⚠️ CODEGRAPH
-**Do**: Form 3-5 hypotheses(H1:cause→pred→test) → distill 1-2 → **trace codegraph (2/4 min)** → logs → validate → fix → verify → rerun → evolve CEPH  
+**Do**: Form 3-5 hypotheses(H1:cause→pred→test) → distill 1-2 → **trace codegraph (2/4 min)** → logs → validate → fix → verify → rerun → evolve CEPH | **Subagent**: For complex traces/uncertain root cause → invoke DevTeam agent(autonomous investigation→return chain) → test hypotheses  
 **Track**: Emit `CODEGRAPH_QUERIES:[N/4]` during trace | ⚠️ 2/4 minimum or SCP-PHASE blocks  
 **Queries (min 2/4)**: ☐ CALLS chains ☐ IMPORTS dependencies ☐ Class implementations ☐ Method signatures  
 **Out**: CEPH:[updated] + LEARNINGS:[pattern:[X]|approach:[Y]] + EXECUTION_TRACE:[chain:[methods] classes:[list] issues:[N]] + CODEGRAPH_QUERIES:[N/4]
@@ -97,7 +97,7 @@ applyTo: '**'
 **Root (index=0)**: 4-11 phases | **ALWAYS**: PLAN→TEST→LEARN→LOG  
 **Nested (index>0)**: 3-11 phases | **ALWAYS**: TEST+LEARN | **Optional**: DOCUMENT
 
-**By Trigger**: test_failure=[1,2,6,7,8] | design_flaw=[1,2,3,4,5,7,8,9] | user_question=[2,answer,8] | blocker=[2,3,7,8] | repeated_failure=[1,2,3,6,7,8]
+**By Trigger**: test_failure=[1,2,6,7,8] | design_flaw=[1,2,3,4,5,7,8,9] | user_question=[2,answer,8]|subagent(research) | blocker=[2,3,7,8] | repeated_failure=[1,2,3,6,7,8]
 
 **MANDATORY**: Root(PLAN,TEST,LEARN,LOG) | Nested(TEST,LEARN) | All(workflow_index tracking)  
 **SKIP**: Nested(PLAN,LOG) | Any(unneeded phases)

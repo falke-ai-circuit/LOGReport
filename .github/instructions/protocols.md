@@ -103,7 +103,7 @@ END: [SCP-END: 📊SCORE:N% | ✅FOLLOWED:[counts] | 🚫VIOLATIONS:[list] | �
 **Canonical Order** (when multiple): 1.SCP-PHASE 2.SCP-NWP 3.SCP-CHECK
 **Coordination**: ADJUST vs VIOLATIONS (VIOLATIONS→ADJUST MUST list fixes or"none"+why) | Recovery during NEST (preserve stack) | Auto-finalize awareness (RETURN→skip LOG/DOC) | State sync (check timestamps before write)
 
-**On workflow NEST/RETURN** | Triggers: test_failure|design_flaw|user_request|blocker|repeated_failure|question | Decision: simple("What is X?","Where is Y?",<1min)→SCP-CHECK | complex("Why slow?","Debug X","Fix Y",>1min)→NEST
+**On workflow NEST/RETURN** | Triggers: test_failure|design_flaw|user_request|blocker|repeated_failure|question | Decision: simple("What is X?","Where is Y?",<1min)→SCP-CHECK | research(uncertain scope, multi-iteration, user specifies agent)→runSubagent(Plan/DevTeam/custom) | LM auto-selects custom agent based on description match | complex("Why slow?","Debug X","Fix Y",>1min)→NEST
 
 **Detection (scan BEFORE send)**: "test failed"|"tests failing"|"error occurred" WITHOUT [SCP-NWP: NEST] = **VIOLATION** | "cannot"|"blocked"|"redesign"|"refactor" without NEST = **VIOLATION** | edit_file/replace_string_in_file after test fail without NEST = **VIOLATION** → DELETE draft → emit [SCP-NWP: NEST→trigger] (NO inline fixes)
 
