@@ -14,7 +14,7 @@ from commander.ui.commander_ui_factory import CommanderUIFactory
 from commander.presenters.commander_presenter import CommanderPresenter
 from commander.services.status_service import StatusService
 from commander.node_manager import NodeManager
-from commander.services.log_writer import LogWriter
+from commander.log_writer import LogWriter
 
 
 class MainWindow(QMainWindow):

@@ -1,0 +1,14 @@
+# Nuitka build requirements
+# Install with: pip install -r requirements-nuitka.txt
+
+# Core Nuitka compiler
+nuitka>=1.8.0
+
+# Optional: Ordered-set for better performance
+ordered-set>=4.1.0
+
+# Optional: zstandard for better compression
+zstandard>=0.21.0
+
+# Note: Nuitka will auto-download MinGW64 C compiler on Windows if needed
+# No need to manually install C compiler

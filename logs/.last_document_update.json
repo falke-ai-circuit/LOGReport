@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "last_update": "2025-10-16T00:00:00Z",
+  "documents": {
+    "TODO.md": {
+      "last_updated": "2025-10-15T00:00:00Z",
+      "last_workflow": "workflow_hexadecimal_tokens_20251015",
+      "line_count": 167,
+      "checksum": ""
+    },
+    "CHANGELOG.md": {
+      "last_updated": "2025-10-15T00:00:00Z",
+      "last_workflow": "workflow_hexadecimal_tokens_20251015",
+      "line_count": 0,
+      "checksum": ""
+    },
+    "README.md": {
+      "last_updated": "2025-10-13T00:00:00Z",
+      "last_workflow": "workflow_bstool_bundling_20251013",
+      "line_count": 0,
+      "checksum": ""
+    },
+    "docs/technical/": {
+      "last_updated": "2025-10-15T00:00:00Z",
+      "last_workflow": "workflow_hexadecimal_tokens_20251015",
+      "files_count": 18
+    },
+    "docs/architecture/": {
+      "last_updated": "2025-10-13T00:00:00Z",
+      "last_workflow": "workflow_report_generation_improvements_20251013",
+      "files_count": 12
+    },
+    "docs/blueprints/": {
+      "last_updated": "2025-10-14T00:00:00Z",
+      "last_workflow": "workflow_scan_tab_phase1_20251014",
+      "files_count": 8
+    }
+  },
+  "workflow_history": [
+    {
+      "workflow_id": "workflow_hexadecimal_tokens_20251015",
+      "timestamp": "2025-10-15T00:00:00Z",
+      "documents_updated": ["TODO.md", "docs/technical/TECH_token_management.md"]
+    }
+  ]
+}

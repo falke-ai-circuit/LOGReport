@@ -13,8 +13,9 @@ from datetime import datetime
 from gui_workers import Worker
 
 class LogReportGUI(QMainWindow):
-    def __init__(self):
+    def __init__(self, bstool_path=None):
         super().__init__()
+        self.bstool_path = bstool_path
         # Configure logging
         import logging
         from pathlib import Path
@@ -76,7 +77,8 @@ class LogReportGUI(QMainWindow):
         dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
         dark_palette.setColor(QPalette.ButtonText, Qt.white)
         dark_palette.setColor(QPalette.BrightText, Qt.red)
-        dark_palette.setColor(QPalette.Highlight, QColor(142, 45, 197).lighter())
+        # Changed from purple QColor(142, 45, 197).lighter() to grey for consistent theme
+        dark_palette.setColor(QPalette.Highlight, QColor(93, 93, 93))
         dark_palette.setColor(QPalette.HighlightedText, Qt.black)
         QApplication.instance().setPalette(dark_palette)
 
@@ -151,7 +153,7 @@ class LogReportGUI(QMainWindow):
         self.process_btn = QPushButton("Generate Report")
         self.process_btn.clicked.connect(self._process_logs)
 
-        self.generate_btn = QPushButton("Generate")
+        self.generate_btn = QPushButton("Save Report")
         btn_layout.addWidget(self.select_btn)
         btn_layout.addWidget(self.process_btn)
         btn_layout.addWidget(self.generate_btn)
@@ -187,11 +189,11 @@ class LogReportGUI(QMainWindow):
     def open_node_manager(self):
         from node_config_dialog import NodeConfigDialog
         dialog = NodeConfigDialog(self)
-        dialog.exec()
+        dialog.exec_()
         
     def open_commander(self):
         from commander.ui.commander_window import CommanderWindow
-        self.commander = CommanderWindow()
+        self.commander = CommanderWindow(bstool_path=self.bstool_path)
         self.commander.show()
         
     def _style_controls(self):
@@ -377,4 +379,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = LogReportGUI()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())

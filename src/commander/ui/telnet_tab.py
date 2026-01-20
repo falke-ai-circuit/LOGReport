@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QLineEdit, QLabel
 )
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QFont
 
 from .theme import STYLESHEETS
 
@@ -34,12 +35,13 @@ class TelnetTab(QWidget):
         connection_layout.addWidget(QLabel("IP:"))
         self.ip_edit = QLineEdit()
         self.ip_edit.setPlaceholderText("IP Address")
+        self.ip_edit.setText("localhost")  # Default to localhost
         connection_layout.addWidget(self.ip_edit)
         
         connection_layout.addWidget(QLabel("Port:"))
         self.port_edit = QLineEdit()
         self.port_edit.setPlaceholderText("Port")
-        self.port_edit.setText("23")
+        self.port_edit.setText("1234")  # Default to port 1234 for local telnet testing
         connection_layout.addWidget(self.port_edit)
         
         self.connect_btn = QPushButton("Connect")
@@ -60,6 +62,13 @@ class TelnetTab(QWidget):
         # Telnet output
         self.output = QTextEdit()
         self.output.setReadOnly(True)
+        
+        # Set monospace font for proper ASCII table formatting
+        monospace_font = QFont("Courier New", 10)  # Use Courier New as primary font
+        monospace_font.setStyleHint(QFont.StyleHint.Monospace)
+        monospace_font.setFixedPitch(True)  # Ensure fixed-pitch rendering
+        self.output.setFont(monospace_font)
+        
         layout.addWidget(self.output)
 
         # Command input
@@ -96,8 +105,37 @@ class TelnetTab(QWidget):
         self.setStyleSheet(STYLESHEETS.get_telnet_tab_stylesheet())
 
     def append_output(self, text):
-        """Append text to the telnet output"""
-        self.output.append(text)
+        """
+        Append text to the telnet output with preserved formatting.
+        
+        Uses plain text insertion to preserve whitespace and monospace formatting
+        for ASCII tables and structured command output.
+        """
+        # Convert tabs to spaces (8 spaces per tab) for consistent alignment
+        text_with_spaces = text.replace('\t', ' ' * 8)
+        
+        # Check if user is at bottom BEFORE adding content
+        scrollbar = self.output.verticalScrollBar()
+        was_at_bottom = self.is_user_at_bottom()
+        
+        # Save current scroll position if user is NOT at bottom (reading earlier content)
+        saved_scroll_position = scrollbar.value() if not was_at_bottom else None
+        
+        # Move cursor to end and insert text
+        cursor = self.output.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.output.setTextCursor(cursor)
+        
+        # Insert as plain text to preserve all whitespace and formatting
+        self.output.insertPlainText(text_with_spaces + "\n")
+        
+        # Smart scroll behavior:
+        # - If user WAS at bottom: scroll to show new content (following live output)
+        # - If user scrolled up: restore exact position (don't interrupt reading)
+        if was_at_bottom:
+            scrollbar.setValue(scrollbar.maximum())
+        else:
+            scrollbar.setValue(saved_scroll_position)
         
     def get_command(self):
         """Get the current command text"""
@@ -111,6 +149,16 @@ class TelnetTab(QWidget):
         """Get IP and port for connection"""
         return self.ip_edit.text().strip(), self.port_edit.text().strip()
         
+    def is_user_at_bottom(self):
+        """
+        Check if user is at the bottom of the scroll area (following live output).
+        Returns True if scrolled to bottom, False if scrolled up reviewing earlier logs.
+        Uses 5px tolerance to handle autoscroll edge cases.
+        """
+        scrollbar = self.output.verticalScrollBar()
+        # User is "at bottom" if within 5 pixels of maximum (handles rendering timing)
+        return scrollbar.value() >= scrollbar.maximum() - 5
+    
     def update_connection_status(self, state):
         """Update UI based on connection status"""
         from ..widgets import ConnectionState

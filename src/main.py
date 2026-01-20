@@ -20,9 +20,18 @@ if __name__ == "__main__":
     # Default to GUI mode with no arguments or with --gui flag
     if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1] == "--gui"):
         app = QApplication(sys.argv)
-        window = LogReportGUI()
+        
+        # Use centralized BsTool path resolver for consistent behavior
+        from commander.utils.bstool_path_resolver import get_bstool_path
+        bstool_path = get_bstool_path()
+        
+        if not bstool_path:
+            print("WARNING: BsTool.exe not found. BsTool functionality will be disabled.")
+            print("Please ensure BsTool.exe is in the correct location.")
+
+        window = LogReportGUI(bstool_path=bstool_path)
         window.show()
-        sys.exit(app.exec())
+        sys.exit(app.exec_())
     elif len(sys.argv) == 3:
         cli_main(sys.argv[1], sys.argv[2])
     else:

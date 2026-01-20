@@ -1,8 +1,13 @@
 """
 Session Manager
-Handles Telnet, VNC, and FTP session connections
+Handles Telnet and FTP session connections
 """
-import telnetlib
+try:
+    import telnetlib
+except ModuleNotFoundError:
+    # Python 3.13+ fallback
+    from .telnet_compat import telnetlib
+    
 import socket
 import time
 import re
@@ -16,7 +21,6 @@ from .models import NodeToken
 
 class SessionType(Enum):
     TELNET = "TELNET"
-    VNC = "VNC"
     FTP = "FTP"
     DEBUGGER = "DEBUGGER"  # Manually established sessions
 
@@ -74,6 +78,15 @@ class TelnetSession(BaseSession):
             re.compile(r'^\d+[a-z]\%\s*$'),   # Prompt at very beginning of response
             re.compile(r'\r\n\d+[a-z]\%\s*$') # Prompt after carriage return and newline
         ]
+        # Debugger conflict prompt patterns
+        self.debugger_prompt_patterns = [
+            re.compile(r'someone else is connected.*want to connect', re.IGNORECASE),
+            re.compile(r'already connected.*do you want to connect', re.IGNORECASE),
+            re.compile(r'debugger session.*\?', re.IGNORECASE)
+        ]
+        # System mode pattern (%s for system, %a for appl)
+        self.system_mode_pattern = re.compile(r'\d+[a-z]\%[sa]\s*$')
+        self.current_mode = None  # Track current mode state
         
     def connect(self) -> bool:
         try:
@@ -118,20 +131,128 @@ class TelnetSession(BaseSession):
             return False
     
     def _disconnect_impl(self):
+        """Close telnet connection and ensure complete socket cleanup"""
         if self.connection:
             try:
-                # Properly close and terminate the telnet connection
-                self.connection.close()
-                # Additional cleanup to ensure complete disconnection
+                # Get socket before closing connection
+                sock = None
                 if hasattr(self.connection, 'get_socket'):
                     sock = self.connection.get_socket()
-                    if sock:
+                
+                # Close telnet connection first
+                try:
+                    self.connection.close()
+                except Exception as e:
+                    logging.debug(f"TelnetSession._disconnect_impl: Error closing telnet connection: {e}")
+                
+                # Ensure socket is completely closed
+                if sock:
+                    try:
+                        # Shutdown both directions
                         sock.shutdown(socket.SHUT_RDWR)
+                    except Exception as e:
+                        logging.debug(f"TelnetSession._disconnect_impl: Error shutting down socket: {e}")
+                    
+                    try:
+                        # Close socket
                         sock.close()
+                    except Exception as e:
+                        logging.debug(f"TelnetSession._disconnect_impl: Error closing socket: {e}")
+                
+                logging.debug("TelnetSession._disconnect_impl: Connection fully closed")
+                
             except Exception as e:
-                print(f"Error closing telnet connection: {str(e)}")
+                logging.error(f"TelnetSession._disconnect_impl: Error during disconnect: {e}")
             finally:
                 self.connection = None
+                self.is_connected = False
+    
+    def verify_system_mode(self) -> bool:
+        """
+        Verify that the telnet session is in system mode.
+        Performs debugger initialization sequence:
+        1. Send "yes" to handle connection prompts
+        2. Send CTRL+Z to clear terminal
+        3. Send "systemmode" command to guarantee system mode
+        
+        Returns:
+            bool: True if system mode verified or switched successfully, False on error
+        """
+        if not self.is_connected:
+            logging.error("TelnetSession.verify_system_mode: Not connected")
+            return False
+        
+        try:
+            logging.debug("TelnetSession.verify_system_mode: Starting debugger initialization sequence")
+            
+            # Step 1: Send "yes" to handle any connection prompts
+            logging.debug("TelnetSession.verify_system_mode: Sending 'yes' for connection prompt")
+            self.connection.write(b'yes\r\n')
+            time.sleep(1.0)  # Wait for "yes" response to fully arrive
+            yes_response = self.connection.read_very_eager().decode('ascii', 'ignore')
+            logging.debug(f"TelnetSession.verify_system_mode: Yes response: {yes_response}")
+            
+            # Step 2: Send CTRL+Z to clear terminal
+            logging.debug("TelnetSession.verify_system_mode: Sending CTRL+Z to clear terminal")
+            self.connection.write(b'\x1a')  # CTRL+Z is ASCII 26 (0x1a)
+            time.sleep(0.5)  # Wait for clear response
+            clear_response = self.connection.read_very_eager().decode('ascii', 'ignore')
+            logging.debug(f"TelnetSession.verify_system_mode: Clear response: {clear_response}")
+            
+            # Step 3: Send "systemmode" command to guarantee system mode
+            # No need to read response - systemmode command is guaranteed to work
+            logging.debug("TelnetSession.verify_system_mode: Sending 'systemmode' command")
+            self.connection.write(b'systemmode\r\n')
+            time.sleep(0.5)  # Brief wait for command to execute
+            
+            # Set current mode to system
+            self.current_mode = 'system'
+            logging.info("TelnetSession.verify_system_mode: System mode set successfully")
+            return True
+            
+        except Exception as e:
+            logging.error(f"TelnetSession.verify_system_mode: Error verifying mode - {str(e)}", exc_info=True)
+            return False
+    
+    def _handle_debugger_prompts(self, response: str) -> str:
+        """
+        Detect and handle debugger session conflict prompts.
+        If "someone else is connected, want to connect?" prompt is detected,
+        automatically respond with "yes".
+        
+        Args:
+            response: Raw response from telnet session
+            
+        Returns:
+            str: Processed response with prompt handling applied
+        """
+        if not response:
+            return response
+        
+        # Check for debugger conflict prompts
+        for pattern in self.debugger_prompt_patterns:
+            if pattern.search(response):
+                logging.info("TelnetSession._handle_debugger_prompts: Detected debugger conflict prompt")
+                logging.debug(f"TelnetSession._handle_debugger_prompts: Matched pattern: {pattern.pattern}")
+                try:
+                    # Send "yes" response to take over the debugger session
+                    logging.debug("TelnetSession._handle_debugger_prompts: Sending 'yes' response")
+                    self.connection.write(b'yes\r\n')
+                    time.sleep(0.5)
+                    
+                    # Read confirmation response
+                    confirmation = self.connection.read_very_eager().decode('ascii', 'ignore')
+                    logging.debug(f"TelnetSession._handle_debugger_prompts: Confirmation response: {confirmation}")
+                    
+                    # Return confirmation as new response
+                    return confirmation
+                    
+                except Exception as e:
+                    logging.error(f"TelnetSession._handle_debugger_prompts: Error responding to prompt - {str(e)}", exc_info=True)
+                    return response
+        
+        # No debugger prompt detected, return original response
+        return response
     
     def send_command(self, command: str, timeout: float = 5.0) -> str:
         """Standardized command sending matching TelnetClient implementation"""
@@ -149,8 +270,12 @@ class TelnetSession(BaseSession):
             time.sleep(0.1)
             self.connection.write(b'\x1A')  # Ctrl+Z
             time.sleep(0.1)
-            cleared = self.connection.read_very_eager()
+            cleared = self.connection.read_very_eager().decode('ascii', 'ignore')
             logging.debug(f"TelnetSession.send_command: Cleared {len(cleared)} bytes from buffer")
+            
+            # Handle any debugger prompts in cleared buffer
+            if cleared:
+                cleared = self._handle_debugger_prompts(cleared)
 
             # Send command with proper termination
             cmd_bytes = command.encode('ascii')
@@ -171,6 +296,9 @@ class TelnetSession(BaseSession):
             # Get and process response using same method as TelnetClient
             response = self._read_response(timeout)
             logging.debug(f"TelnetSession.send_command: Received {len(response)} chars of raw response")
+            
+            # Handle debugger prompts in response
+            response = self._handle_debugger_prompts(response)
             
             processed = self._process_response(response, command)
             logging.debug(f"TelnetSession.send_command: Processed response length: {len(processed)}")
@@ -239,158 +367,6 @@ class TelnetSession(BaseSession):
         clean = re.sub(r'\d+[a-z]\%\s*$', '', clean).strip()
         return clean
 
-class VNCSession(BaseSession):
-    """VNC Session implementation with connection management and recording"""
-    
-    def __init__(self, config: SessionConfig):
-        super().__init__(config)
-        self.max_retries = 3
-        self.retry_count = 0
-        self.client = None
-        self.recorder = None
-        self.is_recording = False
-        self.recording_path = None
-        
-    def connect(self) -> bool:
-        """Connect to VNC server with retry logic"""
-        logging.debug(f"VNCSession.connect: Connecting to {self.config.host}:{self.config.port}")
-        
-        # Reset retry count for new connection attempts
-        if self.retry_count == 0:
-            self.retry_count = 0
-            
-        try:
-            from vncdotool import api
-            
-            # Create VNC client
-            vnc_url = f"vnc://{self.config.host}:{self.config.port}"
-            self.client = api.connect(vnc_url, password=self.config.password)
-            
-            # Test connection
-            self.client.refreshScreen()
-            
-            self.is_connected = True
-            self.retry_count = 0  # Reset retry count on successful connection
-            self.connection_state_changed.emit(True)
-            logging.info(f"VNCSession: Connected to {self.config.host}:{self.config.port}")
-            return True
-            
-        except Exception as e:
-            logging.error(f"VNC connection failed: {str(e)}")
-            self.is_connected = False
-            self.connection_state_changed.emit(False)
-            
-            # Handle retry logic
-            if self.retry_count < self.max_retries:
-                self.retry_count += 1
-                logging.info(f"VNCSession: Retrying connection ({self.retry_count}/{self.max_retries})")
-                # Add a small delay before retrying
-                import time
-                time.sleep(1)
-                return self.connect()  # Recursive retry
-            else:
-                logging.error("VNCSession: Max retry attempts reached")
-                return False
-    
-    def _disconnect_impl(self):
-        """Implementation-specific disconnect logic"""
-        logging.debug("VNCSession: Disconnecting")
-        if self.client:
-            try:
-                self.client.disconnect()
-            except Exception as e:
-                logging.error(f"Error disconnecting VNC client: {str(e)}")
-            finally:
-                self.client = None
-        self.is_connected = False
-        self.connection_state_changed.emit(False)
-        
-        # Stop recording if active
-        if self.is_recording:
-            self.stop_recording()
-    
-    def send_command(self, command: str) -> str:
-        """Send command to VNC session as keyboard input"""
-        if not self.is_connected or not self.client:
-            return "Error: Not connected to VNC session"
-            
-        # Record keyboard event if recording is active
-        if self.is_recording and self.recorder:
-            self.recorder.record_keyboard_event(command)
-            
-        try:
-            # Send command as keyboard input
-            self.client.keyPress(command)
-            logging.debug(f"VNCSession: Sent keyboard sequence: {command}")
-            return f"VNC command '{command}' sent as keyboard sequence"
-        except Exception as e:
-            error_msg = f"Error sending VNC command: {str(e)}"
-            logging.error(error_msg)
-            return error_msg
-    
-    def start_recording(self, output_path: str, node_token: Optional[NodeToken] = None) -> bool:
-        """
-        Start recording the VNC session.
-        
-        Args:
-            output_path: Path where recording file will be saved
-            node_token: NodeToken associated with this recording
-            
-        Returns:
-            True if recording started successfully, False otherwise
-        """
-        try:
-            from .services.session_recorder import SessionRecorder
-            self.recorder = SessionRecorder(output_path, node_token)
-            success = self.recorder.start()
-            if success:
-                self.is_recording = True
-                self.recording_path = output_path
-                logging.info(f"Started recording VNC session to: {output_path}")
-            return success
-        except Exception as e:
-            logging.error(f"Error starting recording: {str(e)}")
-            return False
-    
-    def stop_recording(self) -> Optional[str]:
-        """
-        Stop recording the VNC session.
-        
-        Returns:
-            Path to the recorded file, or None if not recording
-        """
-        if not self.is_recording or not self.recorder:
-            return None
-            
-        try:
-            self.recorder.stop()
-            recording_path = self.recorder.finalize()
-            self.is_recording = False
-            self.recorder = None
-            logging.info(f"Stopped recording VNC session")
-            return recording_path
-        except Exception as e:
-            logging.error(f"Error stopping recording: {str(e)}")
-            return None
-    
-    def is_recording_active(self) -> bool:
-        """
-        Check if recording is currently active.
-        
-        Returns:
-            True if recording is active, False otherwise
-        """
-        return self.is_recording and self.recorder is not None
-    
-    def get_recording_path(self) -> Optional[str]:
-        """
-        Get the current recording path.
-        
-        Returns:
-            Path to the recording file, or None if not recording
-        """
-        return self.recording_path if self.is_recording else None
-
 class FTPSession(BaseSession):
     def connect(self):
         # Will be implemented in Phase 2
@@ -412,7 +388,6 @@ class SessionManager(QObject):
     
     session_types = {
         SessionType.TELNET: TelnetSession,
-        SessionType.VNC: VNCSession,
         SessionType.FTP: FTPSession,
         SessionType.DEBUGGER: TelnetSession  # Use TelnetSession for DEBUGGER sessions
     }
@@ -487,17 +462,47 @@ class SessionManager(QObject):
         """Retrieves an active session"""
         return self.active_sessions.get(session_key)
     
-    def close_session(self, session_key: str):
-        """Closes a specific session"""
-        if session := self.active_sessions.get(session_key):
+    def close_session(self, session_or_key):
+        """Closes a specific session by key or by session object"""
+        # Handle both session object and session key string
+        if isinstance(session_or_key, str):
+            # It's a session key
+            session_key = session_or_key
+            session = self.active_sessions.get(session_key)
+            if session:
+                # Remove from cache
+                cache_key = (session.config.host, session.config.port, session.config.session_type)
+                logging.debug(f"SessionManager.close_session: Removing session from cache: {cache_key}")
+                if cache_key in self.session_cache:
+                    del self.session_cache[cache_key]
+                    logging.debug(f"SessionManager.close_session: Cache entry deleted")
+                # Disconnect and remove from active sessions
+                session.disconnect()
+                del self.active_sessions[session_key]
+        else:
+            # It's a session object
+            session = session_or_key
+            # Remove from cache
+            cache_key = (session.config.host, session.config.port, session.config.session_type)
+            logging.debug(f"SessionManager.close_session: Removing session from cache (by object): {cache_key}")
+            if cache_key in self.session_cache:
+                del self.session_cache[cache_key]
+                logging.debug(f"SessionManager.close_session: Cache entry deleted (by object)")
+            # Find and remove from active sessions
+            for key, active_session in list(self.active_sessions.items()):
+                if active_session is session:
+                    logging.debug(f"SessionManager.close_session: Removing from active sessions: {key}")
+                    del self.active_sessions[key]
+                    break
+            # Disconnect the session
             session.disconnect()
-            del self.active_sessions[session_key]
     
     def close_all_sessions(self):
         """Closes all active sessions"""
         for session in list(self.active_sessions.values()):
             session.disconnect()
         self.active_sessions = {}
+        self.session_cache = {}  # Clear cache as well
         
     def get_all_sessions(self) -> dict:
         """Returns all active sessions"""

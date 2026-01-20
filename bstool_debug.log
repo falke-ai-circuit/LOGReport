@@ -1,0 +1,286 @@
+[2025-10-29 17:30:47.193] ================================================================================
+[2025-10-29 17:30:47.193] BsTool execution started
+[2025-10-29 17:30:47.194] Command: ['D:\\_APP\\LOGReport\\BsTool.exe']
+[2025-10-29 17:30:47.194] Log file path: C:\Users\GORJOV~1\AppData\Local\Temp\bstool_output_20251029_173047.log
+[2025-10-29 17:30:47.194] Frozen: False
+[2025-10-29 17:30:47.195] App dir: D:\_APP\LOGReport
+[2025-10-29 17:30:47.195] Executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 17:30:47.196] Python version: 3.11.3 (tags/v3.11.3:f3909b8, Apr  4 2023, 23:49:59) [MSC v.1934 64 bit (AMD64)]
+[2025-10-29 17:30:47.196] Platform: win32
+[2025-10-29 17:30:47.196] Status signal emitted
+[2025-10-29 17:30:47.198] Connection state signal emitted
+[2025-10-29 17:30:47.198] Stdout temp path: D:\_APP\LOGReport\bstool_stdout_1761755447198.tmp
+[2025-10-29 17:30:47.198] Stderr temp path: D:\_APP\LOGReport\bstool_stderr_1761755447198.tmp
+[2025-10-29 17:30:47.199] Temp files created successfully
+[2025-10-29 17:30:47.200] Creation flags: 16 (CREATE_NEW_CONSOLE=16)
+[2025-10-29 17:30:47.200] About to call subprocess.Popen...
+[2025-10-29 17:30:47.206] subprocess.Popen returned, PID: 32224
+[2025-10-29 17:30:47.208] Writing newline to stdin...
+[2025-10-29 17:30:47.209] Stdin closed successfully
+[2025-10-29 17:30:47.209] Waiting for process to complete (10 second timeout)...
+[2025-10-29 17:30:47.664] Process completed with return code: 1
+[2025-10-29 17:30:47.664] Reading temp files...
+[2025-10-29 17:30:47.665] Stdout length: 0 chars
+[2025-10-29 17:30:47.666] Stderr length: 5351 chars
+[2025-10-29 17:30:47.666] Stderr content: 
+BsTool 9.29
+
+COMMAND:	BsTool cmd [parameters]
+
+PURPOSE:
+	This program operates backup server (bu) in various ways.
+	Possible commands are: 
+	-tx         [BU server] source destination : transfers file to   bu
+	-txc        [BU server] source destination : -tx with data compression
+	-txg        group source destination       : -tx to group members
+	-rx         [BU server] source destination : receives  file from bu
+	-move        BU server  source destination : transfer dbfile to  bu
+	-cat        
+[2025-10-29 17:30:47.667] Temp files closed
+[2025-10-29 17:30:47.668] Stdout temp file deleted
+[2025-10-29 17:30:47.668] Stderr temp file deleted
+[2025-10-29 17:30:47.681] Final return code: 1
+[2025-10-29 17:30:47.682] ERROR - bstool process exited with code 1
+[2025-10-29 17:30:47.682] Entering finally block...
+[2025-10-29 17:30:47.683] Process reference cleared
+[2025-10-29 17:30:47.684] Connection state signal emitted
+[2025-10-29 17:30:47.684] Execution state released
+[2025-10-29 17:30:47.686] BsTool execution completed - end of _run_bstool_process
+[2025-10-29 17:30:47.686] ================================================================================
+
+[2025-10-29 18:54:51.748] ================================================================================
+[2025-10-29 18:54:51.749] BsTool execution started
+[2025-10-29 18:54:51.749] Command: ['D:\\_APP\\LOGReport\\BsTool.exe']
+[2025-10-29 18:54:51.750] Log file path: C:\Users\GORJOV~1\AppData\Local\Temp\bstool_output_20251029_185451.log
+[2025-10-29 18:54:51.750] Frozen: False
+[2025-10-29 18:54:51.751] App dir: D:\_APP\LOGReport
+[2025-10-29 18:54:51.751] Executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 18:54:51.751] Python version: 3.11.3 (tags/v3.11.3:f3909b8, Apr  4 2023, 23:49:59) [MSC v.1934 64 bit (AMD64)]
+[2025-10-29 18:54:51.752] Platform: win32
+[2025-10-29 18:54:51.752] Status signal emitted
+[2025-10-29 18:54:51.753] Connection state signal emitted
+[2025-10-29 18:54:51.753] Stdout temp path: D:\_APP\LOGReport\bstool_stdout_1761760491753.tmp
+[2025-10-29 18:54:51.754] Stderr temp path: D:\_APP\LOGReport\bstool_stderr_1761760491753.tmp
+[2025-10-29 18:54:51.755] Temp files created successfully
+[2025-10-29 18:54:51.826] Creation flags: 16 (CREATE_NEW_CONSOLE=16)
+[2025-10-29 18:54:51.827] About to call subprocess.Popen...
+[2025-10-29 18:54:51.845] subprocess.Popen returned, PID: 25320
+[2025-10-29 18:54:51.876] Writing newline to stdin...
+[2025-10-29 18:54:51.877] Stdin closed successfully
+[2025-10-29 18:54:51.890] Waiting for process to complete (10 second timeout)...
+[2025-10-29 18:54:54.754] Process completed with return code: 1
+[2025-10-29 18:54:54.764] Reading temp files...
+[2025-10-29 18:54:54.795] Stdout length: 0 chars
+[2025-10-29 18:54:54.806] Stderr length: 5351 chars
+[2025-10-29 18:54:54.833] Stderr content: 
+BsTool 9.29
+
+COMMAND:	BsTool cmd [parameters]
+
+PURPOSE:
+	This program operates backup server (bu) in various ways.
+	Possible commands are: 
+	-tx         [BU server] source destination : transfers file to   bu
+	-txc        [BU server] source destination : -tx with data compression
+	-txg        group source destination       : -tx to group members
+	-rx         [BU server] source destination : receives  file from bu
+	-move        BU server  source destination : transfer dbfile to  bu
+	-cat        
+[2025-10-29 18:54:54.842] Temp files closed
+[2025-10-29 18:54:54.843] Stdout temp file deleted
+[2025-10-29 18:54:54.844] Stderr temp file deleted
+[2025-10-29 18:54:55.193] Final return code: 1
+[2025-10-29 18:54:55.194] ERROR - bstool process exited with code 1
+[2025-10-29 18:54:55.218] Entering finally block...
+[2025-10-29 18:54:55.219] Process reference cleared
+[2025-10-29 18:54:55.220] Connection state signal emitted
+[2025-10-29 18:54:55.254] Execution state released
+[2025-10-29 18:54:55.255] BsTool execution completed - end of _run_bstool_process
+[2025-10-29 18:54:55.256] ================================================================================
+
+[2025-10-29 18:55:01.939] ================================================================================
+[2025-10-29 18:55:01.940] BsTool execution started
+[2025-10-29 18:55:01.941] Command: ['D:\\_APP\\LOGReport\\BsTool.exe']
+[2025-10-29 18:55:01.941] Log file path: C:\Users\GORJOV~1\AppData\Local\Temp\bstool_output_20251029_185501.log
+[2025-10-29 18:55:01.942] Frozen: False
+[2025-10-29 18:55:01.942] App dir: D:\_APP\LOGReport
+[2025-10-29 18:55:01.943] Executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 18:55:01.943] Python version: 3.11.3 (tags/v3.11.3:f3909b8, Apr  4 2023, 23:49:59) [MSC v.1934 64 bit (AMD64)]
+[2025-10-29 18:55:01.944] Platform: win32
+[2025-10-29 18:55:01.944] Status signal emitted
+[2025-10-29 18:55:01.945] Connection state signal emitted
+[2025-10-29 18:55:01.946] Stdout temp path: D:\_APP\LOGReport\bstool_stdout_1761760501945.tmp
+[2025-10-29 18:55:01.946] Stderr temp path: D:\_APP\LOGReport\bstool_stderr_1761760501945.tmp
+[2025-10-29 18:55:01.947] Temp files created successfully
+[2025-10-29 18:55:02.031] Creation flags: 16 (CREATE_NEW_CONSOLE=16)
+[2025-10-29 18:55:02.032] About to call subprocess.Popen...
+[2025-10-29 18:55:02.041] subprocess.Popen returned, PID: 10420
+[2025-10-29 18:55:02.073] Writing newline to stdin...
+[2025-10-29 18:55:02.074] Stdin closed successfully
+[2025-10-29 18:55:02.109] Waiting for process to complete (10 second timeout)...
+[2025-10-29 18:55:06.319] Process completed with return code: 1
+[2025-10-29 18:55:06.331] Reading temp files...
+[2025-10-29 18:55:06.333] Stdout length: 0 chars
+[2025-10-29 18:55:06.333] Stderr length: 5351 chars
+[2025-10-29 18:55:06.334] Stderr content: 
+BsTool 9.29
+
+COMMAND:	BsTool cmd [parameters]
+
+PURPOSE:
+	This program operates backup server (bu) in various ways.
+	Possible commands are: 
+	-tx         [BU server] source destination : transfers file to   bu
+	-txc        [BU server] source destination : -tx with data compression
+	-txg        group source destination       : -tx to group members
+	-rx         [BU server] source destination : receives  file from bu
+	-move        BU server  source destination : transfer dbfile to  bu
+	-cat        
+[2025-10-29 18:55:06.335] Temp files closed
+[2025-10-29 18:55:06.336] Stdout temp file deleted
+[2025-10-29 18:55:06.337] Stderr temp file deleted
+[2025-10-29 18:55:06.552] Final return code: 1
+[2025-10-29 18:55:06.553] ERROR - bstool process exited with code 1
+[2025-10-29 18:55:06.592] Entering finally block...
+[2025-10-29 18:55:06.593] Process reference cleared
+[2025-10-29 18:55:06.593] Connection state signal emitted
+[2025-10-29 18:55:06.634] Execution state released
+[2025-10-29 18:55:06.635] BsTool execution completed - end of _run_bstool_process
+[2025-10-29 18:55:06.636] ================================================================================
+
+[2025-10-29 18:55:26.960] ================================================================================
+[2025-10-29 18:55:26.961] BsTool execution started
+[2025-10-29 18:55:26.961] Command: ['D:\\_APP\\LOGReport']
+[2025-10-29 18:55:26.962] Log file path: C:\Users\GORJOV~1\AppData\Local\Temp\bstool_output_20251029_185526.log
+[2025-10-29 18:55:26.962] Frozen: False
+[2025-10-29 18:55:26.962] App dir: D:\_APP\LOGReport
+[2025-10-29 18:55:26.962] Executable: D:\_APP\LOGReport\.venv\Scripts\python.exe
+[2025-10-29 18:55:26.964] Python version: 3.11.3 (tags/v3.11.3:f3909b8, Apr  4 2023, 23:49:59) [MSC v.1934 64 bit (AMD64)]
+[2025-10-29 18:55:26.964] Platform: win32
+[2025-10-29 18:55:26.965] Status signal emitted
+[2025-10-29 18:55:26.965] Connection state signal emitted
+[2025-10-29 18:55:26.966] Stdout temp path: D:\_APP\LOGReport\bstool_stdout_1761760526966.tmp
+[2025-10-29 18:55:26.966] Stderr temp path: D:\_APP\LOGReport\bstool_stderr_1761760526966.tmp
+[2025-10-29 18:55:26.967] Temp files created successfully
+[2025-10-29 18:55:27.009] Creation flags: 16 (CREATE_NEW_CONSOLE=16)
+[2025-10-29 18:55:27.010] About to call subprocess.Popen...
+[2025-10-29 18:55:27.011] EXCEPTION: Error during bstool execution: [WinError 5] Access is denied
+[2025-10-29 18:55:27.012] Exception type: PermissionError
+[2025-10-29 18:55:27.015] Traceback: Traceback (most recent call last):
+  File "D:\_APP\LOGReport\src\commander\services\bstool_command_service.py", line 534, in _run_bstool_process
+    self.process = subprocess.Popen(
+                   ^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python311\Lib\subprocess.py", line 1024, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "C:\Program Files\Python311\Lib\subprocess.py", line 1509, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied
+
+[2025-10-29 18:55:27.034] Entering finally block...
+[2025-10-29 18:55:27.034] Process reference cleared
+[2025-10-29 18:55:27.035] Connection state signal emitted
+[2025-10-29 18:55:27.048] Execution state released
+[2025-10-29 18:55:27.049] BsTool execution completed - end of _run_bstool_process
+[2025-10-29 18:55:27.050] ================================================================================
+
+[2025-10-29 19:07:13.278] ================================================================================
+[2025-10-29 19:07:13.278] BsTool execution started
+[2025-10-29 19:07:13.278] Command: ['D:\\_APP\\LOGReport\\bstool.exe']
+[2025-10-29 19:07:13.278] Log file path: C:\Users\GORJOV~1\AppData\Local\Temp\bstool_output_20251029_190713.log
+[2025-10-29 19:07:13.279] Frozen: False
+[2025-10-29 19:07:13.279] App dir: D:\_APP\LOGReport
+[2025-10-29 19:07:13.279] Executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 19:07:13.279] Python version: 3.11.3 (tags/v3.11.3:f3909b8, Apr  4 2023, 23:49:59) [MSC v.1934 64 bit (AMD64)]
+[2025-10-29 19:07:13.280] Platform: win32
+[2025-10-29 19:07:13.280] Status signal emitted
+[2025-10-29 19:07:13.280] Connection state signal emitted
+[2025-10-29 19:07:13.280] Stdout temp path: D:\_APP\LOGReport\bstool_stdout_1761761233280.tmp
+[2025-10-29 19:07:13.280] Stderr temp path: D:\_APP\LOGReport\bstool_stderr_1761761233280.tmp
+[2025-10-29 19:07:13.282] Temp files created successfully
+[2025-10-29 19:07:13.283] Creation flags: 16 (CREATE_NEW_CONSOLE=16)
+[2025-10-29 19:07:13.283] About to call subprocess.Popen...
+[2025-10-29 19:07:13.293] subprocess.Popen returned, PID: 28164
+[2025-10-29 19:07:13.294] Writing newline to stdin...
+[2025-10-29 19:07:13.294] Stdin closed successfully
+[2025-10-29 19:07:13.294] Waiting for process to complete (10 second timeout)...
+[2025-10-29 19:07:13.803] Process completed with return code: 1
+[2025-10-29 19:07:13.803] Reading temp files...
+[2025-10-29 19:07:13.804] Stdout length: 0 chars
+[2025-10-29 19:07:13.804] Stderr length: 5351 chars
+[2025-10-29 19:07:13.804] Stderr content: 
+BsTool 9.29
+
+COMMAND:	BsTool cmd [parameters]
+
+PURPOSE:
+	This program operates backup server (bu) in various ways.
+	Possible commands are: 
+	-tx         [BU server] source destination : transfers file to   bu
+	-txc        [BU server] source destination : -tx with data compression
+	-txg        group source destination       : -tx to group members
+	-rx         [BU server] source destination : receives  file from bu
+	-move        BU server  source destination : transfer dbfile to  bu
+	-cat        
+[2025-10-29 19:07:13.805] Temp files closed
+[2025-10-29 19:07:13.805] Stdout temp file deleted
+[2025-10-29 19:07:13.806] Stderr temp file deleted
+[2025-10-29 19:07:13.835] Final return code: 1
+[2025-10-29 19:07:13.835] ERROR - bstool process exited with code 1
+[2025-10-29 19:07:13.836] Entering finally block...
+[2025-10-29 19:07:13.836] Process reference cleared
+[2025-10-29 19:07:13.837] Connection state signal emitted
+[2025-10-29 19:07:13.837] Execution state released
+[2025-10-29 19:07:13.837] BsTool execution completed - end of _run_bstool_process
+[2025-10-29 19:07:13.838] ================================================================================
+
+[2025-10-29 19:13:06.858] ================================================================================
+[2025-10-29 19:13:06.858] BsTool execution started
+[2025-10-29 19:13:06.858] Command: ['D:\\_APP\\LOGReport\\bstool.exe']
+[2025-10-29 19:13:06.859] Log file path: C:\Users\GORJOV~1\AppData\Local\Temp\bstool_output_20251029_191306.log
+[2025-10-29 19:13:06.859] Frozen: False
+[2025-10-29 19:13:06.859] App dir: D:\_APP\LOGReport
+[2025-10-29 19:13:06.860] Executable: C:\Users\GORJOV~1\AppData\Local\Temp\LOGREP~1\python.exe
+[2025-10-29 19:13:06.860] Python version: 3.11.3 (tags/v3.11.3:f3909b8, Apr  4 2023, 23:49:59) [MSC v.1934 64 bit (AMD64)]
+[2025-10-29 19:13:06.860] Platform: win32
+[2025-10-29 19:13:06.860] Status signal emitted
+[2025-10-29 19:13:06.861] Connection state signal emitted
+[2025-10-29 19:13:06.861] Stdout temp path: D:\_APP\LOGReport\bstool_stdout_1761761586861.tmp
+[2025-10-29 19:13:06.861] Stderr temp path: D:\_APP\LOGReport\bstool_stderr_1761761586861.tmp
+[2025-10-29 19:13:06.862] Temp files created successfully
+[2025-10-29 19:13:06.862] Creation flags: 16 (CREATE_NEW_CONSOLE=16)
+[2025-10-29 19:13:06.863] About to call subprocess.Popen...
+[2025-10-29 19:13:06.869] subprocess.Popen returned, PID: 30824
+[2025-10-29 19:13:06.870] Writing newline to stdin...
+[2025-10-29 19:13:06.870] Stdin closed successfully
+[2025-10-29 19:13:06.870] Waiting for process to complete (10 second timeout)...
+[2025-10-29 19:13:07.309] Process completed with return code: 1
+[2025-10-29 19:13:07.310] Reading temp files...
+[2025-10-29 19:13:07.310] Stdout length: 0 chars
+[2025-10-29 19:13:07.311] Stderr length: 5351 chars
+[2025-10-29 19:13:07.311] Stderr content: 
+BsTool 9.29
+
+COMMAND:	BsTool cmd [parameters]
+
+PURPOSE:
+	This program operates backup server (bu) in various ways.
+	Possible commands are: 
+	-tx         [BU server] source destination : transfers file to   bu
+	-txc        [BU server] source destination : -tx with data compression
+	-txg        group source destination       : -tx to group members
+	-rx         [BU server] source destination : receives  file from bu
+	-move        BU server  source destination : transfer dbfile to  bu
+	-cat        
+[2025-10-29 19:13:07.312] Temp files closed
+[2025-10-29 19:13:07.312] Stdout temp file deleted
+[2025-10-29 19:13:07.313] Stderr temp file deleted
+[2025-10-29 19:13:07.324] Final return code: 1
+[2025-10-29 19:13:07.324] ERROR - bstool process exited with code 1
+[2025-10-29 19:13:07.324] Entering finally block...
+[2025-10-29 19:13:07.325] Process reference cleared
+[2025-10-29 19:13:07.325] Connection state signal emitted
+[2025-10-29 19:13:07.325] Execution state released
+[2025-10-29 19:13:07.326] BsTool execution completed - end of _run_bstool_process
+[2025-10-29 19:13:07.326] ================================================================================
+

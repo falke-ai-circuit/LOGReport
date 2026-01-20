@@ -20,6 +20,11 @@ class RpcCommandService(QObject):
         self.node_manager = node_manager
         self.command_queue = command_queue
         self.logger = logging.getLogger(__name__)
+        self.telnet_service = None  # Will be set after TelnetService is created
+        
+    def set_telnet_service(self, telnet_service):
+        """Set reference to TelnetService for debugger connection management"""
+        self.telnet_service = telnet_service
         
     def generate_rpc_command(self, token_id: str, action: str = "print") -> str:
         """Generate RPC command text for a token ID"""
@@ -33,6 +38,9 @@ class RpcCommandService(QObject):
     def normalize_token(self, token_id: str) -> str:
         """Normalize token ID to 3-digit format"""
         token_str = str(token_id).strip()
+        # Strip any IP prefix by taking the last part after '_'
+        if '_' in token_str:
+            token_str = token_str.split('_')[-1]
         return token_str.zfill(3) if token_str.isdigit() else token_str
     
     
@@ -68,6 +76,18 @@ class RpcCommandService(QObject):
         """Queue RPC command for execution"""
         self.logger.info(f"RpcCommandService.queue_rpc_command: Starting command queue for node '{node_name}' token '{token_id}' action '{action}'")
         try:
+            # Ensure debugger connection is established before queueing command
+            if self.telnet_service and not telnet_client:
+                self.logger.debug("RpcCommandService.queue_rpc_command: Ensuring debugger connection...")
+                if not self.telnet_service._ensure_debugger_connection():
+                    error_msg = "Failed to establish debugger connection. Configure debugger IP in Telnet tab."
+                    self.logger.error(f"RpcCommandService.queue_rpc_command: {error_msg}")
+                    self.report_error.emit(error_msg)
+                    return
+                # Use the active telnet session as the client
+                telnet_client = self.telnet_service.telnet_session
+                self.logger.debug(f"RpcCommandService.queue_rpc_command: Using debugger session (connected: {telnet_client.is_connected if telnet_client else False})")
+            
             token = self.get_token(node_name, token_id)
             self.logger.debug(f"RpcCommandService.queue_rpc_command: Retrieved token - ID: {token.token_id}, Type: {token.token_type}, Node: {token.name}, IP: {token.ip_address}")
 

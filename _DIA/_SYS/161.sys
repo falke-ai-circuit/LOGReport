@@ -1,0 +1,139 @@
+set XD_HW_BUS=A                     // Global multicast, subsetwork id=A,B,C,...
+                                    //  0=traditional multicast
+set XD_HW_SWITCH=0                  // ACN SwitchGroup 0=undefined
+                                    // If node is in ACN cabinet, value is 
+                                    // the lowest HW address of the nodes
+                                    // connected to switch in that cabinet, 
+                                    // e.g. 161.
+set XD_MCLOCK=XD!                   // XD/XD!/MASTER!
+                                    // ! = high accuracy clock syncronization
+set XD_IP_ADDR=192.168.0.11         // Node's IP address, e.g. 192.168.0.11
+set XD_NETMASK=0.0.0.0              // Allow traffic from all networks
+set XD_DEBUG=1                      // Verbose diagnostics to console windows.
+set XD_IGNORE_SIGNALS=ON            // Disable Ctrl-C.
+
+
+//set XD_PCS_ROLE=main              // With redundant PCS this defines the 
+                                    // role of the PCS (main/reserve)
+//set XD_PROFIBUS_INTERFACE_1=AP00_m4 // Profibus interface #1
+//set XD_PROFIBUS_INTERFACE_2=AP00_m5 // Profibus interface #2
+
+                                    // Switchover speedup. Uncomment following two lines
+                                    // for wast PROFIBUS switchover.
+//set XD_FBC_PFB_SKIP_BASE=0	    // measurement skip time with SST interface
+                                    // default is 1000 ms. FBC 8.90.2 or newer
+//set XD_FBC_PFB_CONF_IO_WAIT=0	    // no extra slave wait at switchover in SST interface
+                                    // default is 4000 ms. 
+set XD_FILE_POSTMAP1=:s:<bu>:,/bu/ext3/sysfiles/
+
+
+// Downloadable files
+fsync libDNA.so.5                   // Common Valmet DNA libraries
+fsync libPV2.so.5                   // V-kernel emulation library
+
+//fsync cmif.so                       // for both DMM and TGD
+//fsync DNAdataIF.so                  // for DMM only
+
+CODEFILE=@dna_acn_codes             // Enable implicit code file configuration.
+                                    // Check code file versions in file @dna_acn_codes.
+                                    // The file is automatically downloaded from the BU.
+
+//##############################################################################
+// NCU2
+
+NCU2
+AUTOSTART=YES                       // Start NCU2 automatically
+TITLE=NCU2                          // Title of the program
+PROGRAM=<NCU2_CODE>                 // Check code version!
+
+//##############################################################################
+// AP01 PCS
+
+Slot 1
+set XD_PMM_LED_RUN=1                    // SBY/RUN leds indicate the state of 
+                                        // this slot if value = 1.
+set XD_PMM_DISABLE_BATTERY_SUPERV=1     // Enable battery alarm.
+//set XD_PCS_USE_SERIAL_RCOK=1          // Activate this line if serial RCOK cable S446884
+                                        // is used between the redundant nodes. 
+                                        // Enable Soft RCOK
+                                        // (hook -enableSoftRCOK) in the cpu file.
+
+//set XD_PCS_RCOK_TIMEOUT=80            // Switchover speedup. Uncomment these four
+//set XD_PCS_SWITCH_MODE=1              // lines to use switchover speedup.
+//set XD_PCS_SWITCH_WAIT=0              // 
+//set XD_PCS_TULU_PENDING=500
+//set XD_PCS_IO_SWITCHOVER_HYSTERESIS_3=0 // Switchover hysteresis for redundant PROFINET FBCs.
+                                          // Set one line for each PROFINET FBC.
+                                          // Number 3 is the FBC slot number.
+
+set XD_PCS_USES_FBC=2,3                 // Application server in this slot
+                                        // uses FBC whose slot is defined here.
+                                        // In case of redundant Valmet DNA PCS
+                                        // there can be only one application
+                                        // server per node that uses FBCs.
+                                        // Value 0 means that the application server 
+                                        // in this slot does not use any FBCs.
+
+//set XD_ASYNC_CTASK_TIMEOUT=60           // Timeout for a jamming module on asynchronous control task <seconds>.
+                                        // Blocking of a function module in case of control task 
+                                        // jam due to function module malfunction: A function
+                                        // module's MODSTAT:modrun is set to zero if internal
+                                        // control task logic sees that a control task has not
+                                        // been running for a certain period of time. 
+
+AUTOSTART=YES                           // Start program automatically
+TITLE=AP01                              // Title of the program EDIT!
+PROGRAM=<PCS_CODE>                      // Check code version!       
+PARAMETERS=-cpu :s:<bu>:AP01_cpu        // EDIT correct cpu-file name!
+DEPENDENCIES=2,3                        // Program is this slot depends on
+                                        // program in slot 2.
+                                        // Depending slot numbers separated with
+                                        // commas, e.g. DEPENDENCIES=2,3,4
+
+//##############################################################################
+// FBC2
+
+Slot 2
+set XD_ECE_IP_ADDR=172.16.172.66        // 1st FBC 172.16.172.66
+                                        // 2nd FBC 172.29.172.66
+                                        // 3rd FBC 172.29.173.66
+
+set XD_PMM_LED_FB=1                     // Control front panel FB<n> leds.
+                                        // 1 = use FB1 led to indicate field 
+                                        // bus traffic.
+                                        // 2 = use FB2 led to indicate field
+                                        // bus traffic.
+                                        // 1st FBC should use value 1
+                                        // 2nd FBC should use value 2
+                                        // for the 3rd FBC this definition
+                                        // should be set in comments
+TITLE=AP01_m2                           // EDIT correct title!
+AUTOSTART=YES
+PROGRAM=<CIO_FBC_CODE>                  // Check code version!
+PARAMETERS=-fixed_eth -pcr_bus 0x0000
+DEPENDENCIES=1                          // Program is this slot depends on
+                                        // program in slot 1.
+
+//##############################################################################
+// FBC3
+
+Slot 3
+set XD_ECE_IP_ADDR=172.29.172.66        // 1st FBC 172.16.172.66
+                                        // 2nd FBC 172.29.172.66
+                                        // 3rd FBC 172.29.173.66
+
+set XD_PMM_LED_FB=2                     // Control front panel FB<n> leds.
+                                        // 1 = use FB1 led to indicate field 
+                                        // bus traffic.
+                                        // 2 = use FB2 led to indicate field
+                                        // bus traffic.
+                                        // 1st FBC should use value 1
+                                        // 2nd FBC should use value 2
+                                        // for the 3rd FBC this definition
+                                        // should be set in comments
+TITLE=AP01_m3                           // EDIT correct title!
+AUTOSTART=YES
+PROGRAM=<CIO_FBC_CODE>                  // Check code version!
+PARAMETERS=-fixed_eth -pcr_bus 0x0000
+DEPENDENCIES=1                          // Program is this slot depends on
+                                        // program in slot 1.

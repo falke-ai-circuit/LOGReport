@@ -1,0 +1,6 @@
+{"type":"entity","name":"Code.Module.commander_services_bstool_worker","entityType":"Module","observations":["QRunnable worker for synchronous BsTool execution | 1 class, 1 func, uses PyQt5","Methods: run()","Deps: command_queue::CommandWorkerSignals","upd:2025-10-12,refs:0"]}
+{"type":"entity","name":"Code.Class.commander_services_bstool_worker.BsToolWorker","entityType":"Class","observations":["QRunnable worker for BsTool command execution in thread pool | extends QRunnable","upd:2025-10-12,refs:0"]}
+{"type":"relation","from":"Code.Module.commander_services_bstool_worker","to":"Code.Domain.Commander","relationType":"BELONGS_TO"}
+{"type":"relation","from":"Code.Class.commander_services_bstool_worker.BsToolWorker","to":"Code.Module.commander_services_bstool_worker","relationType":"BELONGS_TO"}
+{"type":"relation","from":"Code.Module.commander_services_bstool_worker","to":"Code.Module.commander_command_queue","relationType":"IMPORTS"}
+{"type":"relation","from":"Code.Module.commander_services_bstool_command_service","to":"Code.Module.commander_services_bstool_worker","relationType":"IMPORTS"}

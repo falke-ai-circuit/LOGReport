@@ -1,0 +1,87 @@
+BsTool 9.29
+COMMAND:	BsTool cmd [parameters]
+PURPOSE:
+This program operates backup server (bu) in various ways.
+Possible commands are:
+-tx         [BU server] source destination : transfers file to   bu
+-txc        [BU server] source destination : -tx with data compression
+-txg        group source destination       : -tx to group members
+-rx         [BU server] source destination : receives  file from bu
+-move        BU server  source destination : transfer dbfile to  bu
+-cat        file                           : displays  file from bu
+-ls         filemask                     : bu directory
+-rm         filemask                     : delete file(s)
+-mv         source destination           : rename file
+-crc        filemask(s)                  : file crc calculation
+-crcg       group file                   : file crc in multiple BUs
+-exec       'script, {}-parm' filemask(s): exec (like find -exec)
+-pexec      package filemask 'script'    : exec for modules in package
+-gexec      group namemask 'script'      : exec for members in server group
+-pextr      package module file          : extract module from package
+-piolst     package modulemask           : lists I/O-module addr from package
+-connlst    package modulemask#connmask  : lists module connections
+-cmiolst    package modulemask [param]   : lists CMIO addr from package
+-pmodinfo   package modulemask           : module info: interval, size, etc
+-pgen       package file module_files    : generate appl server package
+-cpio       [-i xd-root ] [-o xd-file(s)]: cpio dnafiles
+-cpio       -l                           : list cpio archive contents
+-cp         source destination           : copy dnafile
+-cpd        source destination           : copy dnafiles to directory
+-cpdir      source destination [-v]      : copy files recursively
+-typechk    typename [pro] [typefile]    : print type information
+-lgmbr      group                        : list group members
+-cmd        passwd server command        : sends command to applserver
+- normal  cmds: start, stop, reset
+-cnf        passwd server cmd [package]  : sends conf cmd to applserver
+- online  cmds: add, del, swap, updval,
+accept, reclaim, modules, changed,
+connect_err, activate
+-db         dbname command parameters    : BU server database tools
+following commands are valid
+- put     file               : put module into database
+- get     module file        : get module from database
+- del     module             : delete module from database
+- moddel  file               : delete module from database
+- list    modulemask         : list db modules
+- list    _DB_MODE_          : list db mode (16/32bit)
+- pack                       : pack db
+- chk                        : check db
+- pdiff  modulemask packages : compare modules with package
+- exec   modulemask 'script' : exec script for db modules
+- crc    modulemask          : CRC-check db modules
+- move    dnafile            : transfer filepackage to db
+- erase                      : erase/create db
+- append  dnafile            : append filepackage to db
+- lz      dnafile            : compress db to lz-file
+- unlz    dnafile            : append lz-file to db
+- extract dnafile            : transform db to filepackage
+- usrextr dnafile            :   only configured modules
+- sysextr dnafile            :   only system modules
+-err        level  device                : diagnostics control
+-rd         sector length                : read  disk sectors (#)
+-wr         passwd sector length         : write disk sectors (#)
+-f          passwd bu                    : format filesystem (#)
+-ff         passwd bu                    : format (full) filesystem (#)
+-ffc        passwd bu                    : format (full/compressed) (#)
+-F          passwd bu master/slave       : format disk (#)
+-errlog     server (lid/hw-addr) [cont]
+[mask <mask>]            : display RS log messages
+-log        count  (0 repetitively)      : display bu log messages
+-partition  passwd bu primary/secondary  : select active partition (#)
+-backup     passwd bu                    : backup  primary partition (#)
+-restore    passwd bu                    : restore primary partition (#)
+-mastercopy passwd bu 2 x master/slave   : make mastercopy (#)
+-mastercmp         bu                    : compare master and slave (#)
+-backupcmp         bu                    : compare with backup (#)
+-check             bu                    : check filesystem (#)
+NOTE:
+Commands which description contain '(#)' mark don't work
+with BU-NT.
+Use single quotes around file mask to prevent
+expansion of '*' or '**' in command line.
+Configuration responses can be read with -log. If
+communicator is active consult online-log.
+Bu name '-' refers to the default bu (connected to RS-line).
+Bu boot program on ROM supports only limited command set.
+Full set requires appropriate bu code file on drive.
+Some shells do not require 's (eg. MSDOS shell on WINNT)

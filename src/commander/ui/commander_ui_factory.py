@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
 
 from commander.ui.node_tree_view import NodeTreeView
 from commander.ui.session_view import SessionView
-from commander.ui.vnc_tab import VNCTab
+from commander.ui.bstool_tab import BsToolTab
 from .theme import STYLESHEETS
 
 class CommanderUIFactory:
@@ -19,18 +19,26 @@ class CommanderUIFactory:
     Factory for creating and managing UI components.
     """
     
-    def __init__(self):
+    def __init__(self, bstool_path=None, node_manager=None, telnet_service=None):
         """Initialize the UI factory."""
+        self.bstool_path = bstool_path
+        self.node_manager = node_manager
+        self.telnet_service = telnet_service
         self._create_components()
         
     def _create_components(self):
         """Create UI components."""
         # Create main views
         self.node_tree_view = NodeTreeView()
-        self.session_view = SessionView()
+        self.session_view = SessionView(
+            bstool_path=self.bstool_path,
+            node_manager=self.node_manager,
+            telnet_service=self.telnet_service,
+            get_connection_info_callback=None  # Will be set later by CommanderWindow
+        )
         
-        # Access VNC tab through session view
-        self.vnc_tab = self.session_view.vnc_tab
+        # Access tabs through session view
+        self.bstool_tab = self.session_view.bstool_tab
         
     def get_main_widget(self) -> QWidget:
         """
@@ -74,11 +82,11 @@ class CommanderUIFactory:
         """
         return self.session_view
         
-    def get_vnc_tab(self) -> VNCTab:
+    def get_bstool_tab(self) -> BsToolTab:
         """
-        Get the VNC tab.
+        Get the BsTool tab.
         
         Returns:
-            VNCTab instance
+            BsToolTab instance
         """
-        return self.vnc_tab
+        return self.bstool_tab

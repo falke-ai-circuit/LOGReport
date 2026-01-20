@@ -1,0 +1,27 @@
+This is a log file for AP07r_192-168-0-33_422.fbc.
+Generated on 2025-11-18 15:53:22.[2025-11-18 15:55:59] print from fbc io structure 4220000
+pint from fbc io structure 4220000
+
+        Getting FBC Utilization Rate from FBC agent 4220000
+
+Display Field Bus Configuration via agent 4220000
+---------------------------------------------------
+ PIC  5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20     sum
+    0 Not Exists
+    1 Not Exists
+    2 Not Exists
+    3 Not Exists
+    4 Not Exists
+    5 Not Exists
+    6 Not Exists
+    7 Not Exists
+    8 Not Exists
+    9 Not Exists
+   10 Not Exists
+   11 Not Exists
+   12 Not Exists
+   13 Not Exists
+   14 Not Exists
+   15 Not Exists
+ Total sum: 0 I/O-units, 0 Channels(0 input, 0 output)
+ 

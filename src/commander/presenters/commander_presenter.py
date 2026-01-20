@@ -5,6 +5,7 @@ This presenter coordinates the main application functionality, including
 clipboard integration.
 """
 
+import os
 from PyQt5.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QTabWidget, QTextEdit, 
     QVBoxLayout, QWidget, QPushButton, QFileDialog
@@ -15,6 +16,8 @@ from commander.ui.commander_ui_factory import CommanderUIFactory
 from commander.presenters.session_presenter import SessionPresenter
 from commander.presenters.node_tree_presenter import NodeTreePresenter
 from commander.services.clipboard_monitor import ClipboardMonitor
+from commander.ui.telnet_tab import TelnetTab
+from commander.ui.bstool_tab import BsToolTab
 from commander.services.status_service import StatusService
 from commander.log_writer import LogWriter
 from commander.node_manager import NodeManager
@@ -36,7 +39,7 @@ class CommanderPresenter(QObject):
     def __init__(self, ui_factory: CommanderUIFactory, node_manager: NodeManager,
                  log_writer: LogWriter, status_service: StatusService,
                  session_manager, command_queue, fbc_service, rpc_service,
-                 context_menu_service):
+                 context_menu_service, bstool_service):
         """
         Initialize the CommanderPresenter.
         
@@ -50,6 +53,7 @@ class CommanderPresenter(QObject):
             fbc_service: FbcCommandService instance
             rpc_service: RpcCommandService instance
             context_menu_service: ContextMenuService instance
+            bstool_service: BsToolCommandService instance
         """
         super().__init__()
         self.ui_factory = ui_factory
@@ -61,6 +65,7 @@ class CommanderPresenter(QObject):
         self.fbc_service = fbc_service
         self.rpc_service = rpc_service
         self.context_menu_service = context_menu_service
+        self.bstool_service = bstool_service
         self.utils = CommanderPresenterUtils(node_manager=self.node_manager, log_writer=self.log_writer)
         
         # Create presenters
@@ -72,7 +77,8 @@ class CommanderPresenter(QObject):
             command_queue=self.command_queue,
             fbc_service=self.fbc_service,
             rpc_service=self.rpc_service,
-            context_menu_service=self.context_menu_service
+            context_menu_service=self.context_menu_service,
+            bstool_service=self.bstool_service
         )
         self.session_presenter = SessionPresenter(
             view=self.ui_factory.session_view,
@@ -84,6 +90,11 @@ class CommanderPresenter(QObject):
         
         # Connect signals
         self._connect_signals()
+        
+        # Sync initial BsTool path from UI to service
+        # BsToolTab auto-detects on __init__, but signal may emit before connection
+        # so we explicitly sync the initial path here
+        self._sync_initial_bstool_path()
 
     def _connect_signals(self):
         """Connect signals between components."""
@@ -92,32 +103,39 @@ class CommanderPresenter(QObject):
             self.session_presenter._on_copy_to_log_clicked
         )
         
-        # Connect recording signals
-        self.ui_factory.session_view.record_clicked.connect(
-            self.session_presenter._on_record_clicked
+        # Connect BsTool tab signals
+        self.ui_factory.bstool_tab.execute_clicked.connect(
+            self.handle_bstool_execute
         )
-        self.ui_factory.session_view.stop_record_clicked.connect(
-            self.session_presenter._on_stop_record_clicked
-        )
-        self.ui_factory.session_view.play_clicked.connect(
-            self.session_presenter._on_play_clicked
-        )
-        self.ui_factory.session_view.pause_clicked.connect(
-            self.session_presenter._on_pause_clicked
-        )
-        self.ui_factory.session_view.speed_changed.connect(
-            self.session_presenter._on_speed_changed
+        self.ui_factory.bstool_tab.bstool_path_changed.connect(
+            self.handle_bstool_path_changed
         )
         
-        # Connect VNC tab signals
-        self.ui_factory.vnc_tab.copy_to_log_clicked.connect(
-            self.session_presenter._on_copy_to_log_clicked
-        )
+        # BsTool service connections are handled in CommanderWindow
+        # to avoid duplicate connections
+    
+    def _sync_initial_bstool_path(self):
+        """
+        Sync the initial auto-detected BsTool path from UI to service.
         
-        # Connect VNC text selection signal
-        self.ui_factory.vnc_tab.text_selected.connect(
-            self.session_presenter.handle_vnc_text_selection
-        )
+        BsToolTab auto-detects BsTool.exe path on initialization and populates
+        the path field. However, the bstool_path_changed signal may emit before
+        the presenter connects to it. This method explicitly syncs the initial
+        path after signal connections are established.
+        """
+        initial_path = self.ui_factory.bstool_tab.get_bstool_path()
+        if initial_path:
+            self.bstool_service.set_bstool_path(initial_path)
+    
+    def handle_bstool_path_changed(self, path: str):
+        """
+        Handle BsTool path changes from the UI.
+        Updates the centralized path in the BsToolCommandService.
+        
+        Args:
+            path: New BsTool.exe path from UI
+        """
+        self.bstool_service.set_bstool_path(path)
 
     def get_clipboard_monitor(self) -> ClipboardMonitor:
         """
@@ -127,15 +145,6 @@ class CommanderPresenter(QObject):
             ClipboardMonitor instance
         """
         return self.session_presenter.get_clipboard_monitor()
-
-    def handle_vnc_text_selection(self, content: str):
-        """
-        Handle text selection in VNC viewer (Ctrl+C equivalent).
-        
-        Args:
-            content: Selected text content
-        """
-        self.session_presenter.handle_vnc_text_selection(content)
     
     def clear_node_log(self, selected_items):
         """
@@ -148,9 +157,13 @@ class CommanderPresenter(QObject):
     
     def clear_terminal(self):
         """
-        Clear the telnet terminal output.
+        Clear the output of the currently active terminal tab.
         """
-        self.ui_factory.session_view.telnet_tab.output.clear()
+        active_tab = self.ui_factory.session_view.tab_widget.currentWidget()
+        if isinstance(active_tab, TelnetTab):
+            active_tab.output.clear()
+        elif isinstance(active_tab, BsToolTab):
+            active_tab.clear_output()
     
     def handle_queue_processed(self, success_count, total_count, status_service):
         """
@@ -175,7 +188,7 @@ class CommanderPresenter(QObject):
         # Get first valid log path from selection
         log_path = None
         for item in selected_items:
-            item_data = item.data(0, Qt.UserRole)
+            item_data = item.data(0, Qt.ItemDataRole.UserRole)
             if item_data and 'log_path' in item_data:
                 log_path = item_data['log_path']
                 break
@@ -196,3 +209,21 @@ class CommanderPresenter(QObject):
             self.status_message_signal.emit(f"Content saved to {os.path.basename(log_path)}", 3000)
         except Exception as e:
             self.status_message_signal.emit(f"Error saving content: {str(e)}", 5000)
+            
+    def handle_bstool_execute(self, command: str):
+        """
+        Handle BsTool command execution from the BsTool tab.
+        
+        The BsTool path is managed centrally by the BsToolCommandService,
+        which uses the path set from the UI via handle_bstool_path_changed().
+        
+        Args:
+            command: Command string to execute
+        """
+        try:
+            # Service will use centralized path (set from UI or auto-detected)
+            self.bstool_service.execute_command(command)
+            self.status_message_signal.emit(f"Executing BsTool command: {command}", 3000)
+        except Exception as e:
+            error_msg = f"Error executing BsTool command: {str(e)}"
+            self.status_message_signal.emit(error_msg, 5000)

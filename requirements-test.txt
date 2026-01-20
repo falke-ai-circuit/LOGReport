@@ -1,0 +1,18 @@
+# Test dependencies for LOGReport application
+# Compatible with Python 3.10+ (Windows 10/11)
+
+# Core application dependencies (from requirements.txt)
+PyQt6==6.4.2           # GUI framework
+reportlab==4.0.4       # PDF report generation
+python-docx==0.8.11    # DOCX report generation
+
+# Build process dependencies
+pyinstaller==6.5.0     # Compatible executable builder (works with Python 3.10)
+
+# Test framework dependencies
+pytest==7.4.3          # Testing framework
+pytest-qt==4.2.0       # Qt testing support
+
+# UI automation dependencies
+pyautogui==0.9.54      # Cross-platform GUI automation
+pywin32==306           # Windows-specific functionality

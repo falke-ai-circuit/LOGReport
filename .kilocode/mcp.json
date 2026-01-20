@@ -10,16 +10,16 @@
         "MEMORY_FILE_PATH": "${workspaceFolder}/project_memory.json"
       },
       "alwaysAllow": [
-        "delete_entities",
         "delete_relations",
         "delete_observations",
-        "open_nodes",
-        "read_graph",
-        "search_nodes",
         "update_entities",
+        "add_observations",
+        "open_nodes",
         "create_relations",
+        "delete_entities",
+        "read_graph",
         "create_entities",
-        "add_observations"
+        "search_nodes"
       ],
       "disabled": false
     },
@@ -32,7 +32,7 @@
       "env": {
         "CODEGPT_API_KEY": "sk-3f80b540-1a0c-4809-8335-eeea5f7d964a",
         "CODEGPT_ORG_ID": "08e85a15-51d0-48fc-93a1-3bcc345f7693",
-        "CODEGPT_GRAPH_ID": "08081ec0-4939-4bfd-a6cd-12bda9a362e3"
+        "CODEGPT_GRAPH_ID": "ade22a62-3262-42c5-8f01-9402676cc11f"
       },
       "alwaysAllow": [
         "find-direct-connections",

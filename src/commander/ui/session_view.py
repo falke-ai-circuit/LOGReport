@@ -1,14 +1,15 @@
 """
 Session View
 
-This view provides the session interface, including VNC tab and clipboard controls.
+The SessionView provides the session interface with Telnet and BsTool tabs.
 """
 
 from PyQt5.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import pyqtSignal
 
-from commander.ui.vnc_tab import VNCTab
 from commander.ui.telnet_tab import TelnetTab  # Add import for TelnetTab
+from commander.ui.bstool_tab import BsToolTab  # Import BsToolTab
+from commander.ui.scan_tab import ScanTab  # Import ScanTab
 from .theme import STYLESHEETS
 
 class SessionView(QWidget):
@@ -19,16 +20,13 @@ class SessionView(QWidget):
     # Signals
     copy_to_log_clicked = pyqtSignal()
     
-    # Recording signals
-    record_clicked = pyqtSignal()
-    stop_record_clicked = pyqtSignal()
-    play_clicked = pyqtSignal()
-    pause_clicked = pyqtSignal()
-    speed_changed = pyqtSignal(float)
-    
-    def __init__(self):
+    def __init__(self, bstool_path=None, node_manager=None, telnet_service=None, get_connection_info_callback=None):
         """Initialize the SessionView."""
         super().__init__()
+        self.bstool_path = bstool_path
+        self.node_manager = node_manager
+        self.telnet_service = telnet_service
+        self.get_connection_info_callback = get_connection_info_callback
         self._setup_ui()
         
     def _setup_ui(self):
@@ -41,10 +39,24 @@ class SessionView(QWidget):
         # Create Telnet tab (should be first tab)
         self.telnet_tab = TelnetTab()
         self.tab_widget.addTab(self.telnet_tab, "Telnet")
+
+        # Create BsTool tab
+        self.bstool_tab = BsToolTab()
+        if self.bstool_path:
+            self.bstool_tab.bstool_path_edit.setText(self.bstool_path)
+        self.tab_widget.addTab(self.bstool_tab, "BsTool")
         
-        # Create VNC tab
-        self.vnc_tab = VNCTab()
-        self.tab_widget.addTab(self.vnc_tab, "VNC")
+        # Create Scan tab (Phase 1 implementation)
+        if self.node_manager:
+            self.scan_tab = ScanTab(
+                node_manager=self.node_manager,
+                telnet_service=self.telnet_service,
+                parent=self,
+                get_connection_info_callback=self.get_connection_info_callback
+            )
+            self.tab_widget.addTab(self.scan_tab, "Scan")
+        else:
+            self.scan_tab = None
         
         # Add tab widget to layout
         layout.addWidget(self.tab_widget)
@@ -55,58 +67,27 @@ class SessionView(QWidget):
         self.setStyleSheet(STYLESHEETS.get_application_stylesheet())
         
         # Connect signals
-        self.vnc_tab.copy_to_log_clicked.connect(self.copy_to_log_clicked.emit)
         self.telnet_tab.copy_to_log_clicked.connect(self.copy_to_log_clicked.emit)
         
-        # Connect recording signals
-        self.vnc_tab.record_clicked.connect(self.record_clicked.emit)
-        self.vnc_tab.stop_record_clicked.connect(self.stop_record_clicked.emit)
-        self.vnc_tab.play_clicked.connect(self.play_clicked.emit)
-        self.vnc_tab.pause_clicked.connect(self.pause_clicked.emit)
-        self.vnc_tab.speed_changed.connect(self.speed_changed.emit)
-        
-    def set_vnc_content(self, content: str):
+        # Connect main tab change signal to pause/resume auto-refresh
+        self.tab_widget.currentChanged.connect(self._on_main_tab_changed)
+    
+    def _on_main_tab_changed(self, index):
         """
-        Set the VNC viewer content.
+        Handle main tab change - pause/resume auto-refresh on Scan tab.
         
-        Args:
-            content: Content to display in VNC viewer
+        When user switches to/from Scan tab, pause auto-refresh on inactive tabs
+        and resume on the active tab to avoid unnecessary background comparisons.
         """
-        self.vnc_tab.set_vnc_content(content)
+        if not self.scan_tab:
+            return
         
-    def get_selected_text(self) -> str:
-        """
-        Get the currently selected text in the VNC viewer.
+        # Get current tab name
+        current_tab = self.tab_widget.widget(index)
         
-        Returns:
-            Selected text
-        """
-        return self.vnc_tab.get_selected_text()
-        
-    def handle_vnc_text_selection(self, text: str):
-        """
-        Handle text selection in VNC viewer.
-        
-        Args:
-            text: Selected text
-        """
-        self.vnc_tab.handle_text_selection(text)
-        
-    def set_recording_state(self, is_recording: bool):
-        """
-        Set the recording state and update UI accordingly.
-        
-        Args:
-            is_recording: Whether recording is active
-        """
-        self.vnc_tab.set_recording_state(is_recording)
-        
-    def set_playback_state(self, is_playing: bool, is_paused: bool = False):
-        """
-        Set the playback state and update UI accordingly.
-        
-        Args:
-            is_playing: Whether playback is active
-            is_paused: Whether playback is paused
-        """
-        self.vnc_tab.set_playback_state(is_playing, is_paused)
+        if current_tab == self.scan_tab:
+            # Switched TO Scan tab - resume auto-refresh on active node
+            self.scan_tab.resume_active_auto_refresh()
+        else:
+            # Switched AWAY from Scan tab - pause all auto-refresh
+            self.scan_tab.pause_all_auto_refresh()

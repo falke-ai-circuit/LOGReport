@@ -2,15 +2,15 @@
 Commander Window - Main UI view for the Commander application
 """
 from PyQt5.QtWidgets import QMainWindow, QStatusBar, QFileDialog
-from PyQt5.QtCore import QSettings, pyqtSignal
+from PyQt5.QtCore import QSettings, pyqtSignal, Qt
 
 from ..services.context_menu_service import ContextMenuService
-from ..services.context_menu_filter import ContextMenuFilterService
 from ..services.fbc_command_service import FbcCommandService
 from ..services.rpc_command_service import RpcCommandService
 from ..services.commander_service import CommanderService
 from ..services.telnet_service import TelnetService
 from ..services.status_service import StatusService
+from ..services.bstool_command_service import BsToolCommandService
 from ..presenters.commander_presenter import CommanderPresenter
 from ..presenters.node_tree_presenter import NodeTreePresenter
 
@@ -36,8 +36,9 @@ class CommanderWindow(QMainWindow):
     # Signal for status messages
     status_message_signal = pyqtSignal(str, int)
     
-    def __init__(self):
+    def __init__(self, bstool_path=None):
         super().__init__()
+        self.bstool_path = bstool_path
         self.setWindowTitle("Commander LogCreator v1.0")
         self.setMinimumSize(1200, 800)
         
@@ -45,7 +46,11 @@ class CommanderWindow(QMainWindow):
         logging.basicConfig(
             level=logging.DEBUG,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            encoding='utf-8'
+            encoding='utf-8',
+            handlers=[
+                logging.StreamHandler(),
+                logging.FileHandler('debug.log')
+            ]
         )
         
         # Load application settings
@@ -58,24 +63,40 @@ class CommanderWindow(QMainWindow):
         self.log_writer = LogWriter(self.node_manager)
         self.current_token = None
         
-        # Initialize all components
-        # Initialize all components
+        # Initialize components
         print("[DEBUG] Starting component initialization")
         self._initialize_components()
         print("[DEBUG] Component initialization complete")
-        self._initialize_components()
     
     def _initialize_components(self):
         """Initialize all services and presenters"""
         # Initialize Status Service
         self.status_service = StatusService()
         
-        # Initialize context menu filter service
-        self.context_menu_filter = ContextMenuFilterService()
-        
         # Initialize FBC and RPC services
         self.fbc_service = FbcCommandService(self.node_manager, self.command_queue, self.log_writer, self)
         self.rpc_service = RpcCommandService(self.node_manager, self.command_queue, self)
+        
+        # Initialize Telnet Service (needed by UI factory)
+        self.telnet_service = TelnetService(self.session_manager)
+        
+        # Setup UI (requires telnet_service to exist)
+        self.init_ui()
+        
+        # Initialize BsTool service (pass command_queue for synchronization)
+        self.bstool_service = BsToolCommandService(self.log_writer, self.command_queue, self)
+        
+        # Connect BsToolTab signals to service
+        self.bstool_tab = self.session_view.bstool_tab
+        # NOTE: BsTool service connections are handled in CommanderPresenter to avoid duplicate connections
+        
+        # Connect BsTool service signals to UI components
+        self.bstool_service.status_message_signal.connect(self.status_service.status_updated)
+        self.bstool_service.report_error.connect(self.status_service.show_error)
+        self.bstool_service.connection_state_signal.connect(self.bstool_tab.update_status)
+        
+        # Connect BsTool service to tab
+        self.bstool_tab.connect_bstool_service(self.bstool_service)
         
         # Initialize services through commander service
         self.commander_service = CommanderService(
@@ -87,14 +108,12 @@ class CommanderWindow(QMainWindow):
             self.rpc_service
         )
         
-        # Initialize Telnet Service
-        self.telnet_service = TelnetService(self.session_manager)
+        # Connect FBC and RPC services to Telnet service for debugger connection management
+        self.fbc_service.set_telnet_service(self.telnet_service)
+        self.rpc_service.set_telnet_service(self.telnet_service)
         
         # Initialize context menu service
-        self.context_menu_service = ContextMenuService(self.node_manager, self.context_menu_filter)
-        
-        # Setup UI first
-        self.init_ui()
+        self.context_menu_service = ContextMenuService(self.node_manager)
         
         # Connect status service AFTER UI is created
         self.status_service.status_updated.connect(self.statusBar().showMessage)
@@ -109,7 +128,8 @@ class CommanderWindow(QMainWindow):
             self.command_queue,
             self.fbc_service,
             self.rpc_service,
-            self.context_menu_service
+            self.context_menu_service,
+            self.bstool_service
         )
         
         self.node_tree_presenter = NodeTreePresenter(
@@ -120,14 +140,17 @@ class CommanderWindow(QMainWindow):
             self.command_queue,
             self.fbc_service,
             self.rpc_service,
-            self.context_menu_service
+            self.context_menu_service,
+            self.bstool_service,
+            self.telnet_service,  # Pass telnet_service for auto-connect functionality
+            self.telnet_tab.get_connection_info  # Pass callback to get IP/port from telnet_tab
         )
+        
+        # Set window reference for scan tab routing
+        self.node_tree_presenter.window = self
         
         # Set presenter in context menu service
         self.context_menu_service.set_presenter(self.node_tree_presenter)
-        
-        # Connect VNC tab signals
-        self._connect_vnc_signals()
         
         # Connect all signals
         self._connect_signals()
@@ -150,25 +173,33 @@ class CommanderWindow(QMainWindow):
         self.commander_presenter.status_message_signal.connect(self.status_service.status_updated)
         self.commander_presenter.set_cmd_input_text_signal.connect(self.telnet_tab.command_input.setText)
         self.commander_presenter.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
-        self.commander_presenter.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.commander_presenter.switch_to_telnet_tab_signal.connect(lambda: self._smart_switch_to_tab(self.telnet_tab))
         self.commander_presenter.set_cmd_focus_signal.connect(self.telnet_tab.command_input.setFocus)
         
         # Connect node tree presenter signals
         self.node_tree_presenter.status_message_signal.connect(self.status_service.status_updated)
         self.node_tree_presenter.node_tree_updated_signal.connect(self.on_node_tree_updated)
         self.node_tree_presenter.log_file_selected_signal.connect(self.session_manager.ip_changed.emit)
+        self.node_tree_presenter.command_generated_signal.connect(self._handle_command_generated)
+        self.node_tree_presenter.switch_to_bstool_tab_signal.connect(lambda: self._smart_switch_to_tab(self.bstool_tab))
+        self.node_tree_presenter.switch_to_telnet_tab_signal.connect(lambda: self._smart_switch_to_tab(self.telnet_tab))
+        self.node_tree_presenter.command_output_display_signal.connect(self._handle_sequential_output)
         
         # Connect view signals to window methods
         self.command_finished.connect(self.on_telnet_command_finished)
         self.set_cmd_input_text_signal.connect(self.telnet_tab.command_input.setText)
         self.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
-        self.switch_to_telnet_tab_signal.connect(lambda: self.session_tabs.setCurrentWidget(self.telnet_tab))
+        self.switch_to_telnet_tab_signal.connect(lambda: self._smart_switch_to_tab(self.telnet_tab))
         self.status_message_signal.connect(self.status_service.status_updated)
         
         # Connect telnet service signals properly
         self.telnet_service.status_message_signal.connect(self.status_service.status_updated)
         self.telnet_service.command_finished_signal.connect(self.command_finished)
         self.telnet_service.update_connection_status_signal.connect(self.telnet_tab.update_connection_status)
+        
+        # Connect Scan tab status messages to main status bar (after session_view initialized)
+        if hasattr(self.session_view, 'scan_tab') and self.session_view.scan_tab:
+            self.session_view.scan_tab.status_message.connect(self.status_service.show_message)
         
         # Connect Telnet tab signals
         self.telnet_tab.execute_clicked.connect(self.execute_telnet_command)
@@ -177,16 +208,19 @@ class CommanderWindow(QMainWindow):
         self.telnet_tab.clear_terminal_clicked.connect(self.clear_terminal)
         self.telnet_tab.clear_log_clicked.connect(self.clear_node_log)
         
+        # Connect log writer signal to show file write notifications in Telnet tab
+        self.log_writer.log_write_completed.connect(self.on_log_write_notification)
+        
+        # Connect BsTool tab signals
+        self.bstool_tab.copy_to_log_clicked.connect(self.copy_to_log)
+        self.bstool_tab.clear_terminal_clicked.connect(self.clear_terminal)
+        self.bstool_tab.clear_log_clicked.connect(self.clear_node_log)
+        
         # Connect UI component signals
         self._connect_ui_signals()
         
-    def _connect_vnc_signals(self):
-        """Connect VNC tab signals to session manager"""
-        # Connect VNC tab connect signal to session manager
-        self.vnc_tab.connect_clicked.connect(self.toggle_vnc_connection)
-        
-        # TODO: Re-implement this when VNC tab has update_log_filename method
-        # self.session_manager.ip_changed.connect(self.vnc_tab.update_log_filename)
+        # Connect BsTool path change signal to save settings
+        self.bstool_tab.bstool_path_changed.connect(self._save_bstool_path)
     
     def _connect_ui_signals(self):
         """Connect UI component signals"""
@@ -196,6 +230,12 @@ class CommanderWindow(QMainWindow):
         self.node_tree_view.node_selected.connect(self.on_node_selected)
         self.node_tree_view.node_double_clicked.connect(self._on_node_double_clicked)
         self.node_tree_view.context_menu_requested.connect(self.show_context_menu)
+        self.node_tree_view.print_all_nodes_clicked.connect(self.node_tree_presenter.process_all_nodes_print_commands)
+        
+    def _save_bstool_path(self, path: str):
+        """Save the BsTool path to settings"""
+        self.settings.setValue("bstool_path", path)
+        self.settings.sync()
         
         # TODO: Re-implement when UI buttons are available
         # self.execute_btn.clicked.connect(self.execute_telnet_command)
@@ -203,6 +243,41 @@ class CommanderWindow(QMainWindow):
         # self.copy_to_log_btn.clicked.connect(self.copy_to_log)
         # self.clear_terminal_btn.clicked.connect(self.clear_terminal)
         # self.clear_node_log_btn.clicked.connect(self.clear_node_log)
+    
+    def _smart_switch_to_tab(self, target_tab, check_scroll=True):
+        """
+        Smart tab switching that respects user scroll position.
+        
+        Args:
+            target_tab: The tab widget to switch to (self.telnet_tab or self.bstool_tab)
+            check_scroll: If True, only switch if user is at bottom of current tab's output.
+                         If False, switch unconditionally (for user-initiated actions).
+        
+        Behavior:
+            - If check_scroll=False: Always switch (backward compatible)
+            - If check_scroll=True: Only switch if current tab's user is at bottom
+            - Prevents interrupting users who scrolled up to review earlier logs
+        """
+        if not check_scroll:
+            # Unconditional switch (user-initiated or forced)
+            self.session_tabs.setCurrentWidget(target_tab)
+            return
+        
+        # Get current tab and check if user is following live output
+        current_tab = self.session_tabs.currentWidget()
+        
+        # Only check scroll position for telnet and bstool tabs
+        if current_tab == self.telnet_tab:
+            if self.telnet_tab.is_user_at_bottom():
+                self.session_tabs.setCurrentWidget(target_tab)
+            # else: User is scrolled up, don't interrupt
+        elif current_tab == self.bstool_tab:
+            if self.bstool_tab.is_user_at_bottom():
+                self.session_tabs.setCurrentWidget(target_tab)
+            # else: User is scrolled up, don't interrupt
+        else:
+            # For other tabs (if any in the future), always switch
+            self.session_tabs.setCurrentWidget(target_tab)
     
     def _load_configurations(self):
         """Load all configurations"""
@@ -234,28 +309,45 @@ class CommanderWindow(QMainWindow):
             self.telnet_tab.ip_edit.setText(telnet_ip)
         if telnet_port:
             self.telnet_tab.port_edit.setText(telnet_port)
+            
+        # Load saved BsTool path if it exists and is valid
+        # Don't overwrite auto-detected path if saved path is empty or invalid
+        bstool_path = self.settings.value("bstool_path", "")
+        if bstool_path and os.path.exists(bstool_path):
+            self.bstool_tab.bstool_path_edit.setText(bstool_path)
     
     def init_ui(self):
         """Initialize the main UI components"""
         # Create main layout
         from commander.ui.commander_ui_factory import CommanderUIFactory
-        self.ui_factory = CommanderUIFactory()
+        self.ui_factory = CommanderUIFactory(
+            bstool_path=self.bstool_path,
+            node_manager=self.node_manager,
+            telnet_service=self.telnet_service
+        )
         main_widget = self.ui_factory.get_main_widget()
         self.setCentralWidget(main_widget)
         
         # Get references to UI components
         self.node_tree_view = self.ui_factory.node_tree_view
         self.session_view = self.ui_factory.session_view
-        self.vnc_tab = self.ui_factory.vnc_tab
         
-        # Access components from session_view
+        # Access components from session_view (must be done BEFORE setting callback)
         self.session_tabs = self.session_view.tab_widget
         self.telnet_tab = self.session_view.telnet_tab
-        self.vnc_tab = self.session_view.vnc_tab
+        self.bstool_tab = self.session_view.bstool_tab
+        
+        # Set connection info callback for Scan tab auto-connect (after telnet_tab is assigned)
+        if hasattr(self.session_view, 'scan_tab') and self.session_view.scan_tab:
+            self.session_view.scan_tab.get_connection_info_callback = self.telnet_tab.get_connection_info
         
         # Status Bar
         self.setStatusBar(QStatusBar())
         self.status_service.show_message("Welcome to Commander LogCreator")
+        
+        # Set BsTool path if provided and valid (don't overwrite auto-detected path with invalid path)
+        if self.bstool_path and os.path.exists(self.bstool_path):
+            self.bstool_tab.bstool_path_edit.setText(self.bstool_path)
     
     # Signal definitions (to be connected by presenter)
     set_cmd_input_text_signal = pyqtSignal(str)
@@ -288,6 +380,18 @@ class CommanderWindow(QMainWindow):
     def populate_node_tree(self):
         """Lazy-loading tree population - only loads top-level nodes initially"""
         self.node_tree_presenter.populate_node_tree()
+        
+        # Populate Scan tab with node subtabs (Phase 1)
+        print(f"[COMMANDER DEBUG] Checking scan_tab: hasattr(session_view)={hasattr(self, 'session_view')}")
+        if hasattr(self, 'session_view'):
+            print(f"[COMMANDER DEBUG] session_view.scan_tab = {self.session_view.scan_tab}")
+            if self.session_view.scan_tab:
+                print(f"[COMMANDER DEBUG] Calling scan_tab.populate_nodes()")
+                self.session_view.scan_tab.populate_nodes()
+            else:
+                print(f"[COMMANDER DEBUG] scan_tab is None!")
+        else:
+            print(f"[COMMANDER DEBUG] No session_view attribute!")
     
     def _on_node_double_clicked(self, item):
         """Wrapper method to handle node double-click events"""
@@ -302,53 +406,6 @@ class CommanderWindow(QMainWindow):
         ip, port = self.telnet_tab.get_connection_info()
         self.telnet_service.toggle_connection(connect, ip, port, self.settings)
     
-    def toggle_vnc_connection(self, connect: bool):
-        """Toggles connection/disconnection for VNC tab"""
-        if connect:
-            # Get IP and port from VNC tab
-            ip = self.vnc_tab.ip_edit.text()
-            port_text = self.vnc_tab.port_edit.text()
-            
-            try:
-                port = int(port_text) if port_text else 5900
-            except ValueError:
-                self.vnc_tab.add_log_message("Error: Invalid port number")
-                return
-            
-            # Create session config
-            from ..session_manager import SessionConfig, SessionType
-            config = SessionConfig(
-                host=ip,
-                port=port,
-                session_type=SessionType.VNC
-            )
-            
-            # Create VNC session
-            session = self.session_manager.create_session(config, auto_connect=True)
-            if session:
-                self.vnc_tab.add_log_message(f"Connected to VNC server at {ip}:{port}")
-                self.vnc_tab.update_connection_status("Connected", True)
-                
-                # Connect session state change signal to VNC tab
-                session.connection_state_changed.connect(
-                    lambda connected: self.vnc_tab.update_connection_status(
-                        "Connected" if connected else "Disconnected", connected
-                    )
-                )
-            else:
-                self.vnc_tab.add_log_message(f"Failed to connect to VNC server at {ip}:{port}")
-                self.vnc_tab.update_connection_status("Connection Failed", False)
-        else:
-            # Disconnect all VNC sessions
-            from ..session_manager import SessionType
-            for session_key, session in list(self.session_manager.active_sessions.items()):
-                if session.config.session_type == SessionType.VNC:
-                    session.disconnect()
-                    self.session_manager.close_session(session_key)
-            
-            self.vnc_tab.add_log_message("Disconnected from VNC server")
-            self.vnc_tab.update_connection_status("Disconnected", False)
-    
     def execute_telnet_command(self, automatic=False):
         """Executes command in Telnet session using background thread"""
         self.telnet_service.set_current_token(self.current_token)
@@ -356,8 +413,10 @@ class CommanderWindow(QMainWindow):
     
     def on_telnet_command_finished(self, response, automatic):
         """Handles the completion of a telnet command run in a background thread"""
-        # Append response to telnet output
-        self.telnet_tab.append_output(response)
+        # Only append raw response if there's no current_token
+        # (Commands with tokens will be displayed via on_log_write_notification with formatting)
+        if not self.current_token:
+            self.telnet_tab.append_output(response)
         
         # Clear command input if not automatic
         if not automatic:
@@ -369,6 +428,57 @@ class CommanderWindow(QMainWindow):
             self.status_service.status_updated, self.log_writer,
             self.telnet_tab.command_input, self.telnet_tab.execute_btn
         )
+    
+    def on_log_write_notification(self, log_path: str, success: bool, total_line_count: int, lines_written_by_command: int, content_written: str):
+        """
+        Handle log write completion and display the actual content in appropriate tab.
+        
+        Shows the actual content being written to .lis, .fbc, .rpc files.
+        SKIPS .log files since BsTool handles its own output via bstool_output_signal.
+        Routes output based on file extension:
+        - .fbc, .rpc, .lis → Telnet tab (with decorative headers)
+        - .log → SKIP (BsTool tab gets output directly from BsToolWorker)
+        
+        Args:
+            log_path: Path to the log file that was written
+            success: Whether the write operation succeeded
+            total_line_count: Total number of lines in the file after writing
+            lines_written_by_command: Number of lines written by this command
+            content_written: The actual content that was written to the file
+        """
+        # Extract filename and extension from path
+        filename = os.path.basename(log_path) if log_path != "N/A" else "unknown file"
+        file_ext = os.path.splitext(filename)[1].lower() if log_path != "N/A" else ""
+        
+        # SKIP decorative output for .log files - BsTool handles its own display
+        # This prevents duplicate/wrapped output in BsTool tab
+        if file_ext == ".log":
+            return
+        
+        # For FBC/RPC/LIS files, show decorative output in Telnet tab
+        target_tab = self.telnet_tab
+        
+        # Display the actual content with a header showing which file it's being written to
+        if success:
+            if lines_written_by_command > 0:
+                # Show header with file information
+                header = f"\n{'='*80}\n📝 Writing to: {filename} ({lines_written_by_command} new line(s) | Total: {total_line_count} lines)\n{'='*80}"
+                target_tab.append_output(header)
+                
+                # Show the actual content being written
+                target_tab.append_output(content_written)
+                
+                # Show footer
+                footer = f"{'='*80}\n✓ Content written to {filename}\n{'='*80}\n"
+                target_tab.append_output(footer)
+            else:
+                # No new content case
+                notification = f"\n📝 {filename}: No new content written (Total: {total_line_count} lines)\n"
+                target_tab.append_output(notification)
+        else:
+            # Error case
+            error_msg = f"\n❌ Failed to write to {filename}\n"
+            target_tab.append_output(error_msg)
     
     def copy_to_log(self):
         """Copies current session content to selected token or log file"""
@@ -399,6 +509,64 @@ class CommanderWindow(QMainWindow):
     def on_queue_processed(self, success_count, total_count):
         """Handle queue processing completion"""
         self.commander_presenter.handle_queue_processed(success_count, total_count, self.status_service)
+        
+    def _handle_command_generated(self, command: str, token_type: str):
+        """
+        Handle the command_generated_signal from NodeTreePresenter.
+        Updates the command input of the active tab (Telnet or BsTool) with the received command.
+        Uses check_scroll=False for user-initiated actions (always switch).
+        
+        FIX 2: If user is already on Scan tab and clicks .fbc/.rpc file, stay on Scan tab
+        and auto-select the file in the Scan tab instead of switching to Telnet.
+        """
+        if token_type in ["FBC", "RPC"]:
+            # Check if user is currently on Scan tab
+            if hasattr(self, 'session_view') and self.session_view.scan_tab:
+                current_tab = self.session_view.tab_widget.currentWidget()
+                scan_tab = self.session_view.scan_tab
+                
+                if current_tab == scan_tab:
+                    # User is on Scan tab - stay there and auto-select file
+                    # Extract file path from node tree selection
+                    selected_items = self.node_tree_view.selectedItems()
+                    if selected_items:
+                        item_data = selected_items[0].data(0, Qt.ItemDataRole.UserRole)
+                        if item_data and "log_path" in item_data:
+                            file_path = item_data["log_path"]
+                            # Auto-select file in Scan tab WITHOUT comparison
+                            scan_tab.select_file_only(file_path)
+                            logging.info(f"FIX 2: Stayed on Scan tab, auto-selected {file_path}")
+                            return  # Don't switch to Telnet tab
+            
+            # Default behavior: switch to Telnet tab
+            self.telnet_tab.command_input.setText(command)
+            self.telnet_tab.command_input.setFocus()
+            self._smart_switch_to_tab(self.telnet_tab, check_scroll=False)  # User action, force switch
+        elif token_type == "BSTOOL":
+            self.bstool_tab.command_input.setText(command)
+            self.bstool_tab.command_input.setFocus()
+            self._smart_switch_to_tab(self.bstool_tab, check_scroll=False)  # User action, force switch
+        logging.debug(f"Command '{command}' for type '{token_type}' set in UI.")
+    
+    def _handle_sequential_output(self, output_text: str, token_type: str):
+        """
+        Handle the command_output_display_signal from NodeTreePresenter during sequential execution.
+        Routes command output to the appropriate tab based on token type.
+        
+        This ensures sequential execution (Print All Nodes) displays output just like manual execution.
+        
+        Args:
+            output_text: The command output text to display
+            token_type: The type of token (FBC, RPC, LOG, LIS)
+        """
+        if token_type in ["FBC", "RPC"]:
+            # Display FBC and RPC output in Telnet tab
+            self.telnet_tab.append_output(output_text)
+            logging.debug(f"Sequential output displayed in Telnet tab for {token_type} token (length: {len(output_text)})")
+        elif token_type == "LOG":
+            # LOG output is handled by BsTool service via bstool_output_signal
+            # No action needed here as BsTool already displays output during sequential execution
+            pass
     
     def closeEvent(self, event):
         """Cleanup on window close"""
@@ -415,6 +583,12 @@ class CommanderWindow(QMainWindow):
             ip, port = self.telnet_tab.get_connection_info()
             self.settings.setValue("telnet_ip", ip)
             self.settings.setValue("telnet_port", port)
+            
+        # Save bstool path
+        if hasattr(self, 'bstool_tab'):
+            bstool_path = self.bstool_tab.get_bstool_path()
+            self.settings.setValue("bstool_path", bstool_path)
+            self.settings.sync()
 
         # Call parent closeEvent, handling both real instances and mocks
         try:
@@ -423,6 +597,75 @@ class CommanderWindow(QMainWindow):
             # This can happen in tests with mock objects
             # In a real application, this shouldn't occur
             event.accept() if hasattr(event, 'accept') else None
+    
+    def select_node_and_execute_scan(self, node_name: str, file_path: str, file_type: str):
+        """
+        Open Scan tab, select node subtab, select file, and execute comparison.
+        Auto-connects to telnet if not connected (2 retry method).
+        
+        Args:
+            node_name: Name of the node to select
+            file_path: Path to the .fbc or .rpc file to select
+            file_type: Type of file ("FBC" or "RPC")
+        """
+        import logging
+        from pathlib import Path
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"select_node_and_execute_scan called: node={node_name}, file={Path(file_path).name}, type={file_type}")
+        
+        try:
+            # Step 1: Auto-connect to telnet if not connected
+            is_connected = (hasattr(self.telnet_service, 'telnet_session') and 
+                          self.telnet_service.telnet_session and 
+                          self.telnet_service.telnet_session.is_connected)
+            
+            if not is_connected:
+                logger.info("Telnet not connected, attempting auto-connect...")
+                self.status_service.show_message("Connecting to telnet debugger...", 3000)
+                
+                # Get connection info from Telnet tab and populate debugger IP
+                ip_address, port = self.telnet_tab.get_connection_info()
+                if not ip_address:
+                    self.status_service.show_error("No telnet IP configured. Please set IP in Telnet tab.")
+                    return
+                
+                # Populate debugger IP in telnet_service for auto-connect
+                self.telnet_service.debugger_ip_address = ip_address
+                self.telnet_service.debugger_port = port
+                logger.info(f"Set debugger IP to {ip_address}:{port} for auto-connect")
+                
+                # Use existing auto-connect method with retry logic (2 attempts, 10s delay)
+                success = self.telnet_service._ensure_debugger_connection()
+                if not success:
+                    self.status_service.show_error("Failed to connect to telnet debugger after 2 retries. Please connect manually.")
+                    return
+                
+                logger.info("Auto-connect successful")
+                self.status_service.show_message("Connected to telnet debugger", 2000)
+            
+            # Step 2: Switch to Scan tab
+            if hasattr(self, 'session_view') and self.session_view.scan_tab:
+                scan_tab = self.session_view.scan_tab
+                
+                # Find Scan tab index and switch to it
+                for i in range(self.session_view.tab_widget.count()):
+                    if self.session_view.tab_widget.widget(i) == scan_tab:
+                        self.session_view.tab_widget.setCurrentIndex(i)
+                        logger.info(f"Switched to Scan tab (index {i})")
+                        break
+                
+                # Step 3: Delegate to scan_tab for file selection and comparison
+                scan_tab.select_file_and_compare(node_name, file_path)
+                
+                self.status_service.show_message(f"Scan initiated for {node_name}: {Path(file_path).name}", 3000)
+            else:
+                logger.error("Scan tab not available")
+                self.status_service.show_error("Scan tab not available. Please load node configuration first.")
+                
+        except Exception as e:
+            logger.error(f"Error in select_node_and_execute_scan: {e}", exc_info=True)
+            self.status_service.show_error(f"Failed to initiate scan: {str(e)}")
 
 
 def run():
@@ -436,7 +679,7 @@ def run():
     # Create main window instance
     window = CommanderWindow()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":

@@ -21,6 +21,12 @@ class FbcCommandService(QObject):
         self.command_queue = command_queue
         self.log_writer = log_writer
         self.logger = logging.getLogger(__name__)
+        self.telnet_service = None  # Will be set after TelnetService is created
+        
+    
+    def set_telnet_service(self, telnet_service):
+        """Set reference to TelnetService for debugger connection management"""
+        self.telnet_service = telnet_service
         
     
     def generate_fieldbus_command(self, token_id: str) -> str:
@@ -59,6 +65,18 @@ class FbcCommandService(QObject):
         """Queue FBC command for execution with optional telnet client"""
         self.logger.info(f"FbcCommandService.queue_fieldbus_command: Starting command queue for node '{node_name}' token '{token_id}'")
         try:
+            # Ensure debugger connection is established before queueing command
+            if self.telnet_service and not telnet_client:
+                self.logger.debug("FbcCommandService.queue_fieldbus_command: Ensuring debugger connection...")
+                if not self.telnet_service._ensure_debugger_connection():
+                    error_msg = "Failed to establish debugger connection. Configure debugger IP in Telnet tab."
+                    self.logger.error(f"FbcCommandService.queue_fieldbus_command: {error_msg}")
+                    self.report_error.emit(error_msg)
+                    return
+                # Use the active telnet session as the client
+                telnet_client = self.telnet_service.telnet_session
+                self.logger.debug(f"FbcCommandService.queue_fieldbus_command: Using debugger session (connected: {telnet_client.is_connected if telnet_client else False})")
+            
             token = self.get_token(node_name, token_id)
             self.logger.debug(f"FbcCommandService.queue_fieldbus_command: Retrieved token - ID: {token.token_id}, Type: {token.token_type}, Node: {token.name}, IP: {token.ip_address}")
             

@@ -9,18 +9,36 @@
       "command_category": "token"
     },
     {
-      "description": "Show FBC/RPC subgroup menus",
+      "description": "Show FBC/RPC/LOG subgroup menus",
       "section_type": [
         "FBC",
-        "RPC"
+        "RPC",
+        "LOG"
       ],
       "action": "show",
       "command_type": "all",
       "command_category": "subgroup"
+    },
+    {
+      "description": "Show 'Clear All Subgroup Files' command for FBC/RPC/LOG subgroups",
+      "section_type": [
+        "FBC",
+        "RPC",
+        "LOG"
+      ],
+      "action": "show",
+      "command_type": "clear_all_subgroup_files",
+      "command_category": "subgroup"
+    },
+    {
+      "description": "Show 'Execute All Print Commands' for all nodes",
+      "action": "show",
+      "command_type": "execute_all_hierarchical",
+      "command_category": "node"
     }
   ],
   "metadata": {
-    "version": "1.0",
-    "description": "Context menu filtering rules"
+    "version": "1.2",
+    "description": "Context menu filtering rules with LOG subgroup support"
   }
 }

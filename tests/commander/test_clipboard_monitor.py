@@ -43,7 +43,7 @@ class TestClipboardMonitor:
     def clipboard_monitor(self, mock_node_manager, mock_log_writer, mock_status_service):
         """Create a ClipboardMonitor instance with mocked dependencies"""
         # Mock QApplication.clipboard() to avoid Qt initialization issues
-        with patch('PyQt6.QtWidgets.QApplication.clipboard') as mock_clipboard_method:
+        with patch('PyQt5.QtWidgets.QApplication.clipboard') as mock_clipboard_method:
             mock_clipboard = MagicMock()
             mock_clipboard_method.return_value = mock_clipboard
             

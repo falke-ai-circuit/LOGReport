@@ -1,0 +1,203 @@
+{
+  "files_analyzed": 15,
+  "total_completions": 137,
+  "metadata": [
+    {
+      "file": "workflow_analysis_report_20251015_202208.md",
+      "date": 1760552528.8655396,
+      "phases": 0
+    },
+    {
+      "file": "workflow_memory_optimization_20251015_194105.md",
+      "date": 1760550901.9696343,
+      "phases": 8
+    },
+    {
+      "file": "workflow_scan_tab_phase3_4_20251015.md",
+      "date": 1760546724.1593497,
+      "phases": 11
+    },
+    {
+      "file": "workflow_scan_tab_phase1_20251014_182321.md",
+      "date": 1760546473.3645222,
+      "phases": 14
+    },
+    {
+      "file": "workflow_bstool_ui_fixes_20251014_140411.md",
+      "date": 1760443774.573138,
+      "phases": 12
+    },
+    {
+      "file": "workflow_telnet_column_alignment_20251013.md",
+      "date": 1760425809.249852,
+      "phases": 11
+    },
+    {
+      "file": "workflow_bstool_bundling_20251013.md",
+      "date": 1760389706.245061,
+      "phases": 10
+    },
+    {
+      "file": "workflow_ui_styling_improvements_20251013.md",
+      "date": 1760386308.1181855,
+      "phases": 11
+    },
+    {
+      "file": "workflow_report_generation_improvements_20251013_171929.md",
+      "date": 1760369084.8729122,
+      "phases": 11
+    },
+    {
+      "file": "workflow_vmp_integration_20251013_165430.md",
+      "date": 1760363856.78592,
+      "phases": 7
+    },
+    {
+      "file": "workflow_pause_resume_cancel_fix_20251013_113000.md",
+      "date": 1760357320.4264514,
+      "phases": 11
+    },
+    {
+      "file": "workflow_update_tests_20250113_154500.md",
+      "date": 1760341016.9022849,
+      "phases": 10
+    },
+    {
+      "file": "workflow_codegraph_update_20251012_220000.md",
+      "date": 1760300155.4614587,
+      "phases": 6
+    },
+    {
+      "file": "workflow_memory_optimization_20251012_215610.md",
+      "date": 1760300155.371407,
+      "phases": 4
+    },
+    {
+      "file": "workflow_smart_tab_switching_20251012_165430.md",
+      "date": 1760292593.2511854,
+      "phases": 11
+    }
+  ],
+  "compliance": {
+    "STATUS": {
+      "presence": 67.2,
+      "completeness": 0.0,
+      "count": "0/137"
+    },
+    "PHASE": {
+      "presence": 67.2,
+      "completeness": 8.0,
+      "count": "11/137"
+    },
+    "TASKS": {
+      "presence": 58.4,
+      "completeness": 58.4,
+      "count": "80/137"
+    },
+    "DISCOVERIES": {
+      "presence": 59.1,
+      "completeness": 59.1,
+      "count": "81/137"
+    },
+    "BLOCKERS": {
+      "presence": 59.1,
+      "completeness": 2.2,
+      "count": "3/137"
+    },
+    "NEXT": {
+      "presence": 63.5,
+      "completeness": 63.5,
+      "count": "87/137"
+    },
+    "MEMORY": {
+      "presence": 76.2,
+      "completeness": 76.2,
+      "count": "16/21"
+    },
+    "VERIFIED_LOAD": {
+      "presence": 15.0,
+      "completeness": 15.0,
+      "count": "3/20"
+    },
+    "CEPH": {
+      "presence": 70.5,
+      "completeness": 70.5,
+      "count": "43/61"
+    },
+    "CODEGRAPH": {
+      "presence": 70.0,
+      "completeness": 70.0,
+      "count": "7/10"
+    },
+    "CODEGRAPH_REFS": {
+      "presence": 38.1,
+      "completeness": 38.1,
+      "count": "8/21"
+    },
+    "DOCS_REVIEWED": {
+      "presence": 30.0,
+      "completeness": 30.0,
+      "count": "3/10"
+    },
+    "LEARNINGS": {
+      "presence": 75.3,
+      "completeness": 75.3,
+      "count": "55/73"
+    },
+    "IMPACT_ANALYSIS": {
+      "presence": 72.7,
+      "completeness": 72.7,
+      "count": "8/11"
+    },
+    "ARTIFACTS": {
+      "presence": 74.4,
+      "completeness": 74.4,
+      "count": "32/43"
+    },
+    "CODE_PATTERNS": {
+      "presence": 72.7,
+      "completeness": 72.7,
+      "count": "8/11"
+    },
+    "EXECUTION_TRACE": {
+      "presence": 50.0,
+      "completeness": 50.0,
+      "count": "4/8"
+    },
+    "METRICS": {
+      "presence": 80.0,
+      "completeness": 80.0,
+      "count": "8/10"
+    },
+    "TEST_SURFACE": {
+      "presence": 70.0,
+      "completeness": 70.0,
+      "count": "7/10"
+    },
+    "USER_VERIFICATION": {
+      "presence": 30.0,
+      "completeness": 30.0,
+      "count": "3/10"
+    },
+    "entities": {
+      "presence": 0.0,
+      "completeness": 0.0,
+      "count": "0/11"
+    },
+    "verified": {
+      "presence": 0.0,
+      "completeness": 0.0,
+      "count": "0/11"
+    },
+    "DOCUMENT": {
+      "presence": 81.8,
+      "completeness": 81.8,
+      "count": "9/11"
+    },
+    "HANDOFFS": {
+      "presence": 72.7,
+      "completeness": 72.7,
+      "count": "8/11"
+    }
+  }
+}

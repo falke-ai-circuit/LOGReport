@@ -7,9 +7,11 @@ from PyQt5.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QGroupBox, QRadioButton, QPushButton, QLineEdit,
     QLabel, QFormLayout, QMessageBox, QButtonGroup,
-    QFileDialog, QInputDialog, QCheckBox
+    QFileDialog, QInputDialog, QCheckBox, QListWidgetItem
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+from pathlib import Path
 
 class NodeConfigDialog(QDialog):
     def __init__(self, parent=None):
@@ -219,11 +221,57 @@ class NodeConfigDialog(QDialog):
             )
             
     def populate_node_list(self):
-        """Populate node list widget with node names"""
+        """Populate node list widget with node names and color code based on validation"""
         self.node_list.clear()
         for node in self.nodes_data:
             name = node.get('name', 'Unnamed node')
-            self.node_list.addItem(name)
+            item = QListWidgetItem(name)
+            
+            # Validate node and set color
+            is_complete = self.validate_node(node)
+            if is_complete:
+                item.setForeground(QColor("green"))
+            else:
+                item.setForeground(QColor("red"))
+            
+            self.node_list.addItem(item)
+    
+    def validate_node(self, node: dict) -> bool:
+        """
+        Validate if a node has all required information.
+        
+        A node is considered complete if it has:
+        - A non-empty name
+        - An IP address
+        - At least one token (if FBC or RPC types are selected)
+        - At least one type selected
+        
+        Args:
+            node: Dictionary containing node data
+            
+        Returns:
+            True if node is complete, False otherwise
+        """
+        # Check for name
+        if not node.get('name', '').strip():
+            return False
+        
+        # Check for IP address
+        if not node.get('ip', '').strip():
+            return False
+        
+        # Check for types
+        types = node.get('types', [])
+        if not types:
+            return False
+        
+        # Check for tokens if FBC or RPC types are selected
+        if any(t in ['FBC', 'RPC'] for t in types):
+            tokens = node.get('tokens', [])
+            if not tokens:
+                return False
+        
+        return True
             
     def on_node_selected(self):
         """Called when user selects a node from the list"""
@@ -272,9 +320,6 @@ class NodeConfigDialog(QDialog):
                 self.node_list.setCurrentRow(selected)
             else:
                 self.on_node_selected()  # This will clear fields
-        
-        self.init_ui()
-        self.populate_node_list()
         
     def init_ui(self):
         main_layout = QHBoxLayout()
@@ -356,6 +401,12 @@ class NodeConfigDialog(QDialog):
         self.create_files_btn.clicked.connect(self.create_files)
         btn_layout.addWidget(self.create_files_btn)
         
+        # Add Load Sys File button
+        self.load_sys_file_btn = QPushButton("Load Sys File")
+        self.load_sys_file_btn.setMinimumWidth(180)
+        self.load_sys_file_btn.clicked.connect(self.load_sys_file)
+        btn_layout.addWidget(self.load_sys_file_btn)
+
         right_layout.addLayout(btn_layout)
         
         # Close button
@@ -393,6 +444,15 @@ class NodeConfigDialog(QDialog):
                 "tokens": tokens,
                 "types": selected_types
             }
+            
+            # Update the color in the list based on validation
+            is_complete = self.validate_node(self.nodes_data[selected])
+            item = self.node_list.item(selected)
+            if item:
+                if is_complete:
+                    item.setForeground(QColor("green"))
+                else:
+                    item.setForeground(QColor("red"))
             
     def generate_examples(self):
         """Generate examples and optionally save current changes if node selected"""
@@ -531,4 +591,204 @@ Generated on $DATETIME."""
                 self,
                 "File Creation Failed",
                 f"Error creating files: {str(e)}"
+            )
+
+    def load_sys_file(self):
+        """Load and parse system files to populate node configuration"""
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select System Files (Main sys file and/or token-specific sys files)",
+            os.path.expanduser("~"),  # Start in home directory
+            "System Files (*.txt *.sys);;All Files (*)"
+        )
+        if not file_paths:
+            return
+
+        try:
+            from utils.file_utils import parse_sys_file, read_text_file, merge_node_data
+            
+            all_parsed_nodes = []
+            main_sys_files = []  # Files like AB01_sys
+            token_sys_files = []  # Files like 181.sys, 41.sys
+            
+            # Categorize files into main and token-specific sys files
+            for file_path in file_paths:
+                file_name = Path(file_path).stem  # Get filename without extension
+                # Token-specific files can be:
+                # 1. Pure decimal (e.g., 181, 41, 21) - max 5 chars
+                # 2. Bare hexadecimal (e.g., 1a1, 3a1, 1c1, 1e1) - max 5 chars
+                # 3. Prefixed hex (e.g., 0x1a1, x3a1) - max 7 chars (0x + 5)
+                # Main files are text names (e.g., AB01_sys)
+                is_token_file = False
+                
+                # Check if it's a pure decimal token (with length constraint)
+                if file_name.isdigit() and len(file_name) <= 5:
+                    is_token_file = True
+                # Check if it's a hexadecimal token (with or without 0x/x prefix)
+                elif file_name.lower().startswith(('0x', 'x')):
+                    # Remove prefix and check if remaining chars are hex
+                    hex_part = file_name[2:] if file_name.lower().startswith('0x') else file_name[1:]
+                    if all(c in '0123456789abcdefABCDEF' for c in hex_part) and len(hex_part) <= 5:
+                        is_token_file = True
+                # Check if it's a bare hexadecimal token (no 0x prefix but contains hex digits)
+                elif all(c in '0123456789abcdefABCDEF' for c in file_name) and len(file_name) <= 5:
+                    is_token_file = True
+                
+                if is_token_file:
+                    token_sys_files.append(file_path)
+                else:
+                    main_sys_files.append(file_path)
+            
+            # Parse main sys files first (these define nodes and their tokens)
+            for file_path in main_sys_files:
+                try:
+                    file_content_lines = read_text_file(Path(file_path))
+                    file_content = "\n".join(file_content_lines)
+                    
+                    # Parse without sys_file_path to avoid IP extraction in main files
+                    parsed_nodes = parse_sys_file(file_content, None)
+                    
+                    if parsed_nodes:
+                        all_parsed_nodes = merge_node_data(all_parsed_nodes, parsed_nodes)
+                except Exception as e:
+                    QMessageBox.warning(
+                        self,
+                        "Error Loading Main Sys File",
+                        f"Failed to load and parse '{Path(file_path).name}': {str(e)}"
+                    )
+            
+            # Parse token-specific sys files (these contain IP addresses)
+            # Create a mapping of token_id -> IP address
+            token_ip_map = {}
+            for file_path in token_sys_files:
+                try:
+                    file_name = Path(file_path).stem
+                    # Convert hex to decimal if needed
+                    if file_name.lower().startswith(('0x', 'x')):
+                        token_id = file_name
+                    else:
+                        token_id = file_name
+                    
+                    file_content_lines = read_text_file(Path(file_path))
+                    file_content = "\n".join(file_content_lines)
+                    
+                    # Parse with sys_file_path to extract IP
+                    parsed_nodes = parse_sys_file(file_content, Path(file_path))
+                    
+                    # Extract IP from parsed nodes (it will be in all nodes from this file)
+                    if parsed_nodes and parsed_nodes[0].get("ip"):
+                        token_ip_map[token_id] = parsed_nodes[0]["ip"]
+                        
+                except Exception as e:
+                    QMessageBox.warning(
+                        self,
+                        "Error Loading Token Sys File",
+                        f"Failed to load and parse '{Path(file_path).name}': {str(e)}"
+                    )
+            
+            # STANDALONE TOKENID.SYS MODE: If only token files were selected, match to existing nodes
+            if token_sys_files and not main_sys_files and self.nodes_data:
+                # Match tokens to existing nodes and update IPs
+                updated_count = 0
+                for token_id, ip_address in token_ip_map.items():
+                    # Search through existing nodes for this token
+                    for node in self.nodes_data:
+                        # Check if this token is in the node's token list or _main_token
+                        node_tokens = node.get('tokens', [])
+                        main_token = node.get('_main_token', '')
+                        
+                        if token_id in node_tokens or token_id == main_token:
+                            # Update the node's IP address
+                            node['ip'] = ip_address
+                            updated_count += 1
+                            break
+                
+                if updated_count > 0:
+                    self.populate_node_list()
+                    if self.node_list.currentRow() >= 0:
+                        self.on_node_selected()  # Refresh the current node display
+                    
+                    QMessageBox.information(
+                        self,
+                        "Token IPs Updated",
+                        f"Successfully updated IP addresses for {updated_count} node(s) from {len(token_sys_files)} token file(s)."
+                    )
+                else:
+                    QMessageBox.information(
+                        self,
+                        "No Matches Found",
+                        f"Loaded {len(token_sys_files)} token file(s), but no matching nodes found.\n"
+                        "Load a main sys file (e.g., AB01_sys) first to define nodes."
+                    )
+                return
+            
+            # Auto-discover token sys files if main sys files were loaded
+            if main_sys_files and not token_sys_files:
+                for main_file_path in main_sys_files:
+                    base_dir = Path(main_file_path).parent
+                    
+                    # Get all nodes from already parsed data
+                    for node in all_parsed_nodes:
+                        # Use _main_token for IP lookup (not in tokens list)
+                        main_token = node.get("_main_token")
+                        if main_token:
+                            # Try to find corresponding token sys file
+                            token_sys_file_path = base_dir / f"{main_token}.sys"
+                            
+                            if token_sys_file_path.exists() and main_token not in token_ip_map:
+                                try:
+                                    token_file_content_lines = read_text_file(token_sys_file_path)
+                                    token_file_content = "\n".join(token_file_content_lines)
+                                    
+                                    # Parse the token-specific sys file to extract IP
+                                    token_parsed_nodes = parse_sys_file(token_file_content, token_sys_file_path)
+                                    
+                                    # Extract IP and map it
+                                    if token_parsed_nodes and token_parsed_nodes[0].get("ip"):
+                                        token_ip_map[main_token] = token_parsed_nodes[0]["ip"]
+                                        
+                                except Exception as e:
+                                    # Silently skip auto-discovered files that fail
+                                    pass
+            
+            # Assign IPs to nodes based on their _main_token (not first token in tokens list)
+            for node in all_parsed_nodes:
+                main_token = node.get("_main_token")
+                if main_token and main_token in token_ip_map:
+                    node["ip"] = token_ip_map[main_token]
+                # Remove internal _main_token field before saving
+                if "_main_token" in node:
+                    del node["_main_token"]
+            
+            if not all_parsed_nodes:
+                QMessageBox.information(
+                    self,
+                    "No Nodes Found",
+                    "No valid nodes were found in the selected system files."
+                )
+                return
+
+            # OVERWRITE mode: Replace existing nodes_data instead of merging
+            # This gives a clean slate when loading new sys files
+            self.nodes_data = all_parsed_nodes
+            
+            self.populate_node_list()
+            if self.nodes_data:
+                self.node_list.setCurrentRow(0)
+
+            QMessageBox.information(
+                self,
+                "Sys Files Loaded",
+                f"Successfully loaded node configurations (overwrite mode).\n"
+                f"Main files: {len(main_sys_files)}\n"
+                f"Token files: {len(token_sys_files)}\n"
+                f"Auto-discovered: {len(token_ip_map) - len(token_sys_files)}\n"
+                f"Total nodes: {len(all_parsed_nodes)}"
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error Loading Sys Files",
+                f"Failed to load and parse system files: {str(e)}"
             )
