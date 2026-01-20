@@ -5,8 +5,8 @@ These interfaces define the contract between the View and Presenter layers.
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QTreeWidgetItem, QTabWidget
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QTreeWidgetItem, QTabWidget
 
 
 class ICommanderView(ABC):

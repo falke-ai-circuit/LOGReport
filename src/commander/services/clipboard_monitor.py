@@ -8,9 +8,9 @@ clipboard-to-logfile functionality, content validation, and rate limiting.
 import re
 import time
 from typing import Optional, Callable
-from PyQt6.QtCore import QObject, QTimer
-from PyQt6.QtGui import QClipboard
-from PyQt6.QtWidgets import QApplication
+from PyQt5.QtCore import QObject, QTimer
+from PyQt5.QtGui import QClipboard
+from PyQt5.QtWidgets import QApplication
 
 from commander.services.status_service import StatusService
 from commander.log_writer import LogWriter

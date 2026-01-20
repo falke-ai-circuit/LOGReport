@@ -21,7 +21,7 @@ def initialize_qapplication():
         return
     
     try:
-        from PyQt6 import QtWidgets
+        from PyQt5 import QtWidgets
         
         # Check if QApplication already exists
         if QtWidgets.QApplication.instance() is None:
@@ -37,8 +37,8 @@ configure_qt_environment()
 # For frozen builds, also initialize QApplication
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # Configure environment for frozen build
-    os.environ["QT_PLUGIN_PATH"] = os.path.join(sys._MEIPASS, "PyQt6", "Qt6", "plugins")
-    os.environ["QML2_IMPORT_PATH"] = os.path.join(sys._MEIPASS, "PyQt6", "Qt6", "qml")
+    os.environ["QT_PLUGIN_PATH"] = os.path.join(sys._MEIPASS, "PyQt5", "Qt5", "plugins")
+    os.environ["QML2_IMPORT_PATH"] = os.path.join(sys._MEIPASS, "PyQt5", "Qt5", "qml")
     
     # Initialize QApplication if needed
     try:

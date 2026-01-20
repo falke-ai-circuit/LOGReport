@@ -2,9 +2,9 @@
 Icon Generator
 Creates placeholder icons for Commander UI
 """
-from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt, QSize
 from .ui.theme import COLORS
 
 def create_node_icon(color: QColor) -> QIcon:
@@ -14,10 +14,10 @@ def create_node_icon(color: QColor) -> QIcon:
         QApplication([])  # Create minimal application if none exists
 
     pixmap = QPixmap(16, 16)
-    pixmap.fill(Qt.GlobalColor.transparent)
+    pixmap.fill(Qt.transparent)
     
     painter = QPainter(pixmap)
-    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setPen(Qt.NoPen)
     painter.setBrush(color)
     painter.drawEllipse(0, 0, 15, 15)
     painter.end()
@@ -31,10 +31,10 @@ def create_token_icon(color: QColor) -> QIcon:
         QApplication([])  # Create minimal application if none exists
 
     pixmap = QPixmap(12, 12)
-    pixmap.fill(Qt.GlobalColor.transparent)
+    pixmap.fill(Qt.transparent)
     
     painter = QPainter(pixmap)
-    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setPen(Qt.NoPen)
     painter.setBrush(color)
     painter.drawRect(0, 0, 11, 11)
     painter.end()

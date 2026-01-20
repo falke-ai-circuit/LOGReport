@@ -4,8 +4,8 @@ Session View
 This view provides the session interface, including VNC tab and clipboard controls.
 """
 
-from PyQt6.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
+from PyQt5.QtCore import pyqtSignal
 
 from commander.ui.vnc_tab import VNCTab
 from commander.ui.telnet_tab import TelnetTab  # Add import for TelnetTab

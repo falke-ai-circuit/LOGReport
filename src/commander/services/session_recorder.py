@@ -15,7 +15,7 @@ import re
 from typing import Optional, Dict, Any
 from datetime import datetime
 from pathlib import Path
-from PyQt6.QtCore import QObject, QTimer
+from PyQt5.QtCore import QObject, QTimer
 import re # Moved re import here to avoid conflict
 
 from commander.models import NodeToken

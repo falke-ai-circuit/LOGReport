@@ -2,11 +2,11 @@
 Telnet Tab - UI for Telnet sessions
 """
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, 
     QPushButton, QLineEdit, QLabel
 )
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 
 from .theme import STYLESHEETS
 

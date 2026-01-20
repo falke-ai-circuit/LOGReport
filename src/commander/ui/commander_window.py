@@ -1,8 +1,8 @@
 """
 Commander Window - Main UI view for the Commander application
 """
-from PyQt6.QtWidgets import QMainWindow, QStatusBar, QFileDialog
-from PyQt6.QtCore import QSettings, pyqtSignal
+from PyQt5.QtWidgets import QMainWindow, QStatusBar, QFileDialog
+from PyQt5.QtCore import QSettings, pyqtSignal
 
 from ..services.context_menu_service import ContextMenuService
 from ..services.context_menu_filter import ContextMenuFilterService
@@ -440,5 +440,5 @@ def run():
 
 
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
+    from PyQt5.QtWidgets import QApplication
     run()

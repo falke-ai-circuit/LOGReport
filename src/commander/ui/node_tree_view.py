@@ -2,9 +2,9 @@
 Node Tree View Component
 Stateless UI component for displaying nodes in a tree structure
 """
-from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QHBoxLayout, QPushButton
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QHBoxLayout, QPushButton
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 from .theme import STYLESHEETS
 
 class NodeTreeView(QWidget):
@@ -53,7 +53,7 @@ class NodeTreeView(QWidget):
         self.node_tree.itemClicked.connect(self._on_item_clicked)
         self.node_tree.itemDoubleClicked.connect(self._on_item_double_clicked)
         self.node_tree.itemExpanded.connect(self._on_item_expanded)
-        self.node_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.node_tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.node_tree.customContextMenuRequested.connect(self.context_menu_requested.emit)
         
     def _on_item_clicked(self, item, column):

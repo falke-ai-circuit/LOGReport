@@ -8,7 +8,7 @@ from ..session_manager import SessionManager
 from ..services.logging_service import LoggingService
 import logging
 import os
-from PyQt6.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject
 
 
 class CommanderService(QObject):

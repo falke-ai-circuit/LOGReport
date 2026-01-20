@@ -4,7 +4,7 @@ Node Tree Presenter - Handles presentation logic for the node tree within the co
 from abc import ABC, abstractmethod
 import logging
 from typing import Optional
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from ..models import NodeToken
 from ..node_manager import NodeManager

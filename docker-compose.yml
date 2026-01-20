@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  logreport:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: logreport-gui
+    ports:
+      # noVNC web access - access via browser at http://localhost:6080/vnc.html
+      - "6080:6080"
+      # VNC direct access (optional) - use VNC client at localhost:5901
+      - "5901:5901"
+    environment:
+      - DISPLAY=:1
+      # Resolution: Change to 1920x1080x24, 1600x900x24, 1440x900x24, etc.
+      - RESOLUTION=${RESOLUTION:-1920x1080x24}
+      - VNC_PORT=5901
+      - NOVNC_PORT=6080
+      # Qt platform settings for headless display
+      - QT_QPA_PLATFORM=xcb
+      - QT_LOGGING_RULES=qt.core.filesystemwatcher=false
+    volumes:
+      # Persist logs
+      - ./logs:/app/logs
+      - ./test_logs:/app/test_logs
+      # Configuration (optional - mount for live editing)
+      - ./config:/app/config:ro
+      - ./nodes.json:/app/nodes.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Optional: Create external network for integration with other services
+networks:
+  default:
+    name: logreport-network

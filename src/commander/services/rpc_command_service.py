@@ -1,7 +1,7 @@
 from ..models import NodeToken
 from ..node_manager import NodeManager
 from ..command_queue import CommandQueue
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 import os
 import logging
 

@@ -7,8 +7,8 @@ import logging
 import os
 import glob
 from typing import Optional
-from PyQt6.QtCore import QObject, pyqtSignal, Qt
-from PyQt6.QtWidgets import QTreeWidgetItem
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtWidgets import QTreeWidgetItem
 
 from ..models import NodeToken
 from ..node_manager import NodeManager
@@ -89,7 +89,7 @@ class NodeTreePresenter(QObject):
             if node_item:
                 # Add placeholder child that will trigger loading when expanded
                 placeholder = QTreeWidgetItem(["Click to load..."])
-                placeholder.setData(0, Qt.ItemDataRole.UserRole, {"node": node.name, "type": "placeholder"})
+                placeholder.setData(0, Qt.UserRole, {"node": node.name, "type": "placeholder"})
                 node_item.addChild(placeholder)
                 self.view.add_top_level_item(node_item)
                 logging.debug(f"Added node with placeholder: {node.name}")
@@ -100,7 +100,7 @@ class NodeTreePresenter(QObject):
         node_item.setIcon(0, get_node_online_icon() if node.status == "online"
                          else get_node_offline_icon())
         # Store node name in user data for later retrieval
-        node_item.setData(0, Qt.ItemDataRole.UserRole, {
+        node_item.setData(0, Qt.UserRole, {
             "type": "node",
             "node_name": node.name
         })
@@ -118,13 +118,13 @@ class NodeTreePresenter(QObject):
     def handle_item_expanded(self, item):
         """Handle lazy loading of node children when expanded"""
         logging.debug(f"Item expanded: {item.text(0)}")
-        data = item.data(0, Qt.ItemDataRole.UserRole)
+        data = item.data(0, Qt.UserRole)
         # Check if expanded item is a node with placeholder child
         if data and data.get("type") == "node":
             # Find placeholder child (if exists)
             for i in range(item.childCount()):
                 child = item.child(i)
-                child_data = child.data(0, Qt.ItemDataRole.UserRole)
+                child_data = child.data(0, Qt.UserRole)
                 if child_data and child_data.get("type") == "placeholder":
                     item.removeChild(child)
                     logging.debug(f"Removed placeholder for node: {item.text(0)}")
@@ -136,7 +136,7 @@ class NodeTreePresenter(QObject):
     def _load_node_children(self, node_item):
         """Load actual children for a node"""
         # Get node name from stored user data
-        data = node_item.data(0, Qt.ItemDataRole.UserRole)
+        data = node_item.data(0, Qt.UserRole)
         if not data or data.get("type") != "node":
             logging.debug("_load_node_children: Item is not a node")
             return
@@ -168,7 +168,7 @@ class NodeTreePresenter(QObject):
             section.setIcon(0, get_token_icon() if section_type in ("FBC", "RPC")
                            else get_token_icon())
             # Store node name in section item's user data for reliable access
-            section.setData(0, Qt.ItemDataRole.UserRole, {
+            section.setData(0, Qt.UserRole, {
                 "node": node.name,
                 "type": "section",
                 "section_type": section_type
@@ -281,7 +281,7 @@ class NodeTreePresenter(QObject):
         file_extension = os.path.splitext(file_path)[1][1:].upper()
         resolved_type = file_extension if file_extension in {'FBC','RPC','LOG','LIS'} else token_type
         
-        file_item.setData(0, Qt.ItemDataRole.UserRole, {
+        file_item.setData(0, Qt.UserRole, {
             "log_path": file_path,
             "token": token_id,
             "token_type": resolved_type,
@@ -325,12 +325,12 @@ class NodeTreePresenter(QObject):
             return
             
         # Get item data
-        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        item_data = item.data(0, Qt.UserRole)
         if not item_data:
             return
             
         # Create menu
-        from PyQt6.QtWidgets import QMenu
+        from PyQt5.QtWidgets import QMenu
         menu = QMenu()
         
         # Use context menu service to populate and show menu
@@ -540,7 +540,7 @@ class NodeTreePresenter(QObject):
         """
         # Check if the selected item is a log file
         if item:
-            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+            item_data = item.data(0, Qt.UserRole)
             if item_data and "log_path" in item_data:
                 # This is a log file item, emit the signal with the filename
                 filename = os.path.basename(item_data["log_path"])
@@ -554,7 +554,7 @@ class NodeTreePresenter(QObject):
             item: Tree item representing the log file
             column: Column index (unused)
         """
-        data = item.data(0, Qt.ItemDataRole.UserRole)
+        data = item.data(0, Qt.UserRole)
         if not data or "log_path" not in data:
             return
             

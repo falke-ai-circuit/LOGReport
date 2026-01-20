@@ -1,6 +1,6 @@
 from enum import Enum
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QPushButton
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QPushButton
+from PyQt5.QtCore import pyqtSignal
 from .ui.theme import COLORS, STYLESHEETS
 
 class ConnectionState(Enum):

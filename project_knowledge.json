@@ -1,0 +1,652 @@
+{"type": "hot_cache", "version": "4.0", "generated": "2026-01-20 12:24", "description": "Top 30 entities with refs for instant context recovery", "top_entities": ["test_sys_file_parser", "node_manager", "commander_test_token_detection_end_to_end", "services_context_menu_service", "services_logging_service", "simulate_session_json", "models", "log_creator", "session_manager", "agents", "gui_workers", "log_writer", "commander_window", "command_queue", "runtime_hook", "test_clipboard_monitor", "test_telnet_command_output", "services_rpc_command_service", "test_session_recorder", "services_fbc_command_service", "services_status_service", "simulation", "commander_presenter_utils", "node_tree_presenter", "instructions", "vnc_tab", "telnet_tab", "node_tree_view", "test_session_player", "commander_presenter"], "entity_refs": {"test_sys_file_parser": "tests/test_sys_file_parser.py", "node_manager": "src/commander/node_manager.py", "commander_test_token_detection_end_to_end": "tests/commander/test_token_detection_end_to_end.py", "services_context_menu_service": "src/commander/services/context_menu_service.py", "services_logging_service": "src/commander/services/logging_service.py", "simulate_session_json": ".github/scripts/simulate_session_json.py", "models": "src/commander/models.py", "log_creator": "src/log_creator.py", "session_manager": "src/commander/session_manager.py", "agents": ".github/scripts/agents.py", "gui_workers": "src/gui_workers.py", "log_writer": "src/commander/log_writer.py", "commander_window": "src/commander/ui/commander_window.py", "command_queue": "src/commander/command_queue.py", "runtime_hook": "src/runtime_hooks/runtime_hook.py", "test_clipboard_monitor": "tests/commander/test_clipboard_monitor.py", "test_telnet_command_output": "tests/commander/test_telnet_command_output.py", "services_rpc_command_service": "src/commander/services/rpc_command_service.py", "test_session_recorder": "tests/commander/test_session_recorder.py", "services_fbc_command_service": "src/commander/services/fbc_command_service.py", "services_status_service": "src/commander/services/status_service.py", "simulation": ".github/scripts/simulation.py", "commander_presenter_utils": "src/commander/presenters/commander_presenter_utils.py", "node_tree_presenter": "src/commander/presenters/node_tree_presenter.py", "instructions": ".github/scripts/instructions.py", "vnc_tab": "src/commander/ui/vnc_tab.py", "telnet_tab": "src/commander/ui/telnet_tab.py", "node_tree_view": "src/commander/ui/node_tree_view.py", "test_session_player": "tests/commander/test_session_player.py", "commander_presenter": "src/commander/presenters/commander_presenter.py"}, "common_answers": {}, "quick_facts": {"total_entities": 131, "backend_count": 0, "frontend_count": 0, "total_relationships": 517}}
+{"type": "domain_index", "description": "Per-domain entity indexes with cross-refs", "backend": [], "frontend": [], "backend_entities": {}, "frontend_entities": {}}
+{"type": "change_tracking", "description": "File hashes for staleness detection", "file_hashes": {}, "last_updated": "2026-01-20T12:24:21.196654"}
+{"type": "gotchas", "version": "4.0", "description": "Historical issues + solutions linked to entities", "issues": {"\"noVNC showing directory listing instead of vnc.ht": {"problem": "\"noVNC showing directory listing instead of vnc.html\"", "solution": "\"Use novnc_proxy script instead of websockify directly\"", "source": "2026-01-20_150000_pyqt5-docker-novnc", "applies_to": [], "entity_refs": {}}, "\"Container restart failing with X1-lock error\"": {"problem": "\"Container restart failing with X1-lock error\"", "solution": "\"Use docker compose down/up instead of restart\"", "source": "2026-01-20_150000_pyqt5-docker-novnc", "applies_to": [], "entity_refs": {}}, "\"PyQt6 not compatible with Windows\"": {"problem": "\"PyQt6 not compatible with Windows\"", "solution": "\"Converted all imports to PyQt5 (exec_() \u2192 exec(), enum changes)\"", "source": "2026-01-20_150000_pyqt5-docker-novnc", "applies_to": [], "entity_refs": {}}}}
+{"type": "interconnections", "version": "4.0", "description": "Entity chains for instant context recovery", "backend_chains": {"services_context_menu_service": {"type": "service", "path": "src/commander/services/context_menu_service.py", "uses_models": ["models"], "exports": ["get_node_tokens", "validate_node_structure", "parent", "MockItem", "QAction"]}, "services_rpc_command_service": {"type": "service", "path": "src/commander/services/rpc_command_service.py", "uses_models": ["models"], "exports": ["generate_rpc_command", "get_token", "queue_rpc_command", "RpcCommandService", "normalize_token"]}, "services_commander_service": {"type": "service", "path": "src/commander/services/commander_service.py", "uses_models": ["models"], "exports": ["CommanderService", "process_fieldbus_command", "log_telnet_command_finished", "process_rpc_command"]}, "services_fbc_command_service": {"type": "service", "path": "src/commander/services/fbc_command_service.py", "uses_models": ["models"], "exports": ["FbcCommandService", "get_token", "queue_fieldbus_command", "generate_fieldbus_command", "normalize_token"]}, "services_telnet_service": {"type": "service", "path": "src/commander/services/telnet_service.py", "uses_models": ["models"], "exports": ["toggle_connection", "execute_command", "disconnect", "connect", "set_current_token"]}, "services_session_recorder": {"type": "service", "path": "src/commander/services/session_recorder.py", "uses_models": ["models"], "exports": ["record_screen_event", "start", "stop", "record_keyboard_event", "record_clipboard_event"]}, "services_sequential_command_processor": {"type": "service", "path": "src/commander/services/sequential_command_processor.py", "uses_models": ["models"], "exports": ["process_all_fbc_subgroup_commands", "process_fbc_commands", "process_rpc_commands", "process_all_rpc_subgroup_commands", "cleanup_completed_commands"]}, "services_logging_service": {"type": "service", "path": "src/commander/services/logging_service.py", "uses_models": ["models"], "exports": ["log_command_result", "LoggingService", "handle_queued_command_result", "log_telnet_command_finished", "report_error"]}}, "frontend_chains": {}, "chain_count": 8}
+{"type": "session_patterns", "version": "4.0", "description": "Predictive entity loading based on session type", "patterns": {}, "pattern_count": 0}
+{"type": "entity", "name": "KNOWLEDGE_GRAPH", "entityType": "root", "weight": 1000, "observations": ["NOP Project Knowledge Graph v4.0", "Layers: HOT_CACHE \u2192 DOMAIN_INDEX \u2192 GOTCHAS", "Query order: hot_cache \u2192 gotchas \u2192 domain_index \u2192 file read", "Total entities: 131, Relations: TBD"]}
+{"type": "entity", "name": "HOT_CACHE", "entityType": "knowledge_layer", "weight": 900, "observations": ["Top 30 entities for instant context recovery", "Query FIRST before any file read", "Contains 30 cached entities"]}
+{"type": "entity", "name": "DOMAIN_INDEX", "entityType": "knowledge_layer", "weight": 800, "observations": ["Per-domain entity lookup for O(1) access", "Backend: 0 entities", "Frontend: 0 entities"]}
+{"type": "entity", "name": "GOTCHAS", "entityType": "knowledge_layer", "weight": 850, "observations": ["Historical issues + solutions from workflow logs", "Contains 3 documented gotchas", "Check FIRST when debugging errors"]}
+{"type": "entity", "name": "INTERCONNECTIONS", "entityType": "knowledge_layer", "weight": 700, "observations": ["Service \u2192 Model \u2192 Endpoint \u2192 Page chains", "Backend chains: 8"]}
+{"type": "entity", "name": "SESSION_PATTERNS", "entityType": "knowledge_layer", "weight": 600, "observations": ["Predictive entity loading based on session type", "Patterns: 0"]}
+{"type": "relation", "from": "KNOWLEDGE_GRAPH", "to": "HOT_CACHE", "relationType": "has_layer"}
+{"type": "relation", "from": "KNOWLEDGE_GRAPH", "to": "DOMAIN_INDEX", "relationType": "has_layer"}
+{"type": "relation", "from": "KNOWLEDGE_GRAPH", "to": "GOTCHAS", "relationType": "has_layer"}
+{"type": "relation", "from": "KNOWLEDGE_GRAPH", "to": "INTERCONNECTIONS", "relationType": "has_layer"}
+{"type": "relation", "from": "KNOWLEDGE_GRAPH", "to": "SESSION_PATTERNS", "relationType": "has_layer"}
+{"type": "relation", "from": "HOT_CACHE", "to": "test_sys_file_parser", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "node_manager", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "commander_test_token_detection_end_to_end", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "services_context_menu_service", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "services_logging_service", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "simulate_session_json", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "models", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "log_creator", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "session_manager", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "agents", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "gui_workers", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "log_writer", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "commander_window", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "command_queue", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "runtime_hook", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "test_clipboard_monitor", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "test_telnet_command_output", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "services_rpc_command_service", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "test_session_recorder", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "services_fbc_command_service", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "services_status_service", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "simulation", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "commander_presenter_utils", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "node_tree_presenter", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "instructions", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "vnc_tab", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "telnet_tab", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "node_tree_view", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "test_session_player", "relationType": "caches"}
+{"type": "relation", "from": "HOT_CACHE", "to": "commander_presenter", "relationType": "caches"}
+{"type": "entity", "name": "session_manager", "entityType": "module", "observations": ["Weight: 60.0 (access frequency)", "Session Manager\nHandles Telnet, VNC, and FTP session connections", "Located at: src/commander/session_manager.py", "Exports: start_recording, SessionConfig, SessionManager, close_session, get_all_sessions", "Lines of code: 508", "Classes: SessionType, SessionConfig, BaseSession", "Functions: connect, disconnect, send_command, get_current_state, connect", "Domain: shared, Layer: unknown"], "weight": 60.0}
+{"type": "entity", "name": "command_queue", "entityType": "module", "observations": ["Weight: 57.0 (access frequency)", "Located at: src/commander/command_queue.py", "Exports: QueuedCommand, manual_cleanup, start_processing, CommandWorker, CommandQueue", "Lines of code: 395", "Classes: QueuedCommand, CommandWorkerSignals, CommandWorker", "Functions: run, is_processing, add_command, start_processing, validate_token", "Domain: shared, Layer: unknown"], "weight": 57.0}
+{"type": "entity", "name": "commander_window", "entityType": "module", "observations": ["Weight: 56.0 (access frequency)", "Commander Window - Main UI view for the Commander application", "Located at: src/commander/ui/commander_window.py", "Exports: on_telnet_command_finished, on_node_tree_updated, closeEvent, populate_node_tree, toggle_vnc_connect", "Lines of code: 444", "Classes: CommanderWindow", "Functions: run, init_ui, load_configuration, set_log_root_folder, show_context_menu", "Domain: shared, Layer: unknown"], "weight": 56.0}
+{"type": "entity", "name": "services_context_menu_service", "entityType": "service", "observations": ["Weight: 54.0 (access frequency)", "Context Menu Service - Handles context menu operations and actions", "Located at: src/commander/services/context_menu_service.py", "Exports: get_node_tokens, validate_node_structure, parent, MockItem, QAction", "Lines of code: 323", "Classes: ContextMenuService, QAction, QMenu", "Functions: set_presenter, show_context_menu, get_node_tokens, validate_node_structure, parent", "Domain: shared, Layer: services"], "weight": 54.0}
+{"type": "entity", "name": "node_manager", "entityType": "module", "observations": ["Weight: 53.0 (access frequency)", "Node Manager\nLoads and manages node configuration for Commander UI", "Located at: src/commander/node_manager.py", "Exports: get_all_nodes, update_status, set_config_path, get_token, NodeManager", "Lines of code: 780", "Classes: NodeManager", "Functions: set_config_path, set_log_root, load_configuration, scan_log_files, get_node", "Domain: shared, Layer: unknown"], "weight": 53.0}
+{"type": "entity", "name": "simulate_session_json", "entityType": "module", "observations": ["Weight: 52.5 (access frequency)", "session.json Proposal Simulation v2.0\n\n100k session simulation comparing AKIS workflow WITH and WITHOUT session.json.\nNo", "Located at: .github/scripts/simulate_session_json.py", "Exports: aggregate_results, pick_weighted, simulate_session_without_session_json, simulate_session_with_sessi", "Lines of code: 819", "Classes: SessionResult, SimulationResults", "Functions: pick_weighted, simulate_session_without_session_json, simulate_session_with_session_json, simulate_session_with_plan_json, aggregate_results", "Domain: shared, Layer: unknown"], "weight": 52.5}
+{"type": "entity", "name": "test_sys_file_parser", "entityType": "module", "observations": ["Weight: 51.0 (access frequency)", "Tests for the SYS file parser", "Located at: tests/test_sys_file_parser.py", "Exports: test_parse_entry_with_pxe_csg3, test_parse_fbc_card_entry, test_parse_entry_with_pxe_csg2, test_pars", "Lines of code: 220", "Classes: TestSysFileParser, TestSysFileParserModule", "Functions: setup_method, test_parse_entry_with_pxe_csg2, test_parse_entry_with_pxe_csg3, test_parse_entry_with_pxe_lite, test_parse_entry_with_dash_config", "Domain: shared, Layer: unknown"], "weight": 51.0}
+{"type": "entity", "name": "commander_presenter_utils", "entityType": "module", "observations": ["Weight: 49.5 (access frequency)", "Commander Presenter Utilities - Helper functions for the Commander presenter", "Located at: src/commander/presenters/commander_presenter_utils.py", "Exports: copy_to_log, handle_queue_processed, open_log_file, clear_node_log, CommanderPresenterUtils", "Lines of code: 174", "Classes: CommanderPresenterUtils", "Functions: copy_to_log, clear_node_log, open_log_file, handle_queue_processed", "Domain: shared, Layer: unknown"], "weight": 49.5}
+{"type": "entity", "name": "services_rpc_command_service", "entityType": "service", "observations": ["Weight: 49.5 (access frequency)", "Located at: src/commander/services/rpc_command_service.py", "Exports: generate_rpc_command, get_token, queue_rpc_command, RpcCommandService, normalize_token", "Lines of code: 93", "Classes: RpcCommandService", "Functions: generate_rpc_command, normalize_token, get_token, queue_rpc_command", "Domain: shared, Layer: services"], "weight": 49.5}
+{"type": "entity", "name": "log_writer", "entityType": "module", "observations": ["Weight: 49.0 (access frequency)", "Log Writer Service\n\nThis service handles writing to log files and application logs.", "Located at: src/commander/log_writer.py", "Exports: append_to_file, clear_log, write_clipboard_content, write_to_log, write_to_app_log", "Lines of code: 194", "Classes: LogWriter", "Functions: write_to_log, write_to_app_log, write_clipboard_content, clear_log, append_to_file", "Domain: shared, Layer: unknown"], "weight": 49.0}
+{"type": "entity", "name": "services_logging_service", "entityType": "service", "observations": ["Weight: 49.0 (access frequency)", "Logging Service - Handles all logging operations for the Commander application", "Located at: src/commander/services/logging_service.py", "Exports: log_command_result, LoggingService, handle_queued_command_result, log_telnet_command_finished, repor", "Lines of code: 163", "Classes: LoggingService", "Functions: report_error, handle_fbc_error, handle_queued_command_result, log_command_result, log_telnet_command_finished", "Domain: shared, Layer: services"], "weight": 49.0}
+{"type": "entity", "name": "commander_presenter", "entityType": "module", "observations": ["Weight: 48.5 (access frequency)", "Commander Presenter\n\nThis presenter coordinates the main application functionality, including\nclipboard integration.", "Located at: src/commander/presenters/commander_presenter.py", "Exports: clear_terminal, get_clipboard_monitor, handle_vnc_text_selection, CommanderPresenter, copy_to_log", "Lines of code: 198", "Classes: CommanderPresenter", "Functions: get_clipboard_monitor, handle_vnc_text_selection, clear_node_log, clear_terminal, handle_queue_processed", "Domain: shared, Layer: unknown"], "weight": 48.5}
+{"type": "entity", "name": "commander_test_token_detection_end_to_end", "entityType": "module", "observations": ["Weight: 48.0 (access frequency)", "Located at: tests/commander/test_token_detection_end_to_end.py", "Exports: TestTokenDetectionEndToEnd, node_manager, test_same_token_id_different_types, test_ap01m_fbc_and_rpc", "Lines of code: 113", "Classes: TestTokenDetectionEndToEnd", "Functions: node_manager, test_ap01m_fbc_and_rpc_tokens_detection, test_same_token_id_different_types", "Domain: shared, Layer: unknown"], "weight": 48.0}
+{"type": "entity", "name": "node_tree_presenter", "entityType": "module", "observations": ["Weight: 48.0 (access frequency)", "Node Tree Presenter - Handles presentation logic for the node tree within the commander window", "Located at: src/commander/presenters/node_tree_presenter.py", "Exports: process_all_fbc_subgroup_commands, process_fieldbus_command, populate_node_tree, NodeTreePresenter, ", "Lines of code: 575", "Classes: NodeTreePresenter", "Functions: populate_node_tree, handle_item_expanded, set_log_root_folder, load_configuration, show_context_menu", "Domain: shared, Layer: unknown"], "weight": 48.0}
+{"type": "entity", "name": "services_fbc_command_service", "entityType": "service", "observations": ["Weight: 47.5 (access frequency)", "Located at: src/commander/services/fbc_command_service.py", "Exports: FbcCommandService, get_token, queue_fieldbus_command, generate_fieldbus_command, normalize_token", "Lines of code: 83", "Classes: FbcCommandService", "Functions: generate_fieldbus_command, normalize_token, get_token, queue_fieldbus_command", "Domain: shared, Layer: services"], "weight": 47.5}
+{"type": "entity", "name": "log_creator", "entityType": "module", "observations": ["Weight: 46.5 (access frequency)", "Located at: src/log_creator.py", "Exports: LogCreator, create_all_nodes, create_file_structure", "Lines of code: 114", "Classes: LogCreator", "Functions: create_file_structure, create_all_nodes", "Domain: shared, Layer: unknown"], "weight": 46.5}
+{"type": "entity", "name": "test_session_player", "entityType": "module", "observations": ["Weight: 44.0 (access frequency)", "Located at: tests/commander/test_session_player.py", "Exports: test_pause_not_playing, test_handle_clipboard_event, test_load_recording_invalid_format, test_play_a", "Lines of code: 315", "Classes: TestSessionPlayer", "Functions: mock_session_view, temp_recording_file, session_player, test_initialization, test_load_recording_success", "Domain: shared, Layer: unknown"], "weight": 44.0}
+{"type": "entity", "name": "test_clipboard_monitor", "entityType": "module", "observations": ["Weight: 44.0 (access frequency)", "Located at: tests/commander/test_clipboard_monitor.py", "Exports: test_manual_copy_to_log_invalid_content, test_check_rate_limit_within_limit, test_on_clipboard_chang", "Lines of code: 324", "Classes: TestClipboardMonitor", "Functions: mock_node_manager, mock_log_writer, mock_status_service, clipboard_monitor, test_initialization", "Domain: shared, Layer: unknown"], "weight": 44.0}
+{"type": "entity", "name": "runtime_hook", "entityType": "module", "observations": ["Weight: 44.0 (access frequency)", "Located at: src/runtime_hooks/runtime_hook.py", "Exports: configure_qt_environment, initialize_qapplication", "Lines of code: 49", "Functions: configure_qt_environment, initialize_qapplication", "Domain: shared, Layer: unknown"], "weight": 44.0}
+{"type": "entity", "name": "models", "entityType": "model", "observations": ["Weight: 43.5 (access frequency)", "Located at: src/commander/models.py", "Exports: Node, add_token, NodeToken", "Lines of code: 44", "Classes: NodeToken, Node", "Functions: add_token", "Domain: shared, Layer: models"], "weight": 43.5}
+{"type": "entity", "name": "services_status_service", "entityType": "service", "observations": ["Weight: 43.5 (access frequency)", "Status Service\n\nThis service handles status messages and notifications to the user.", "Located at: src/commander/services/status_service.py", "Exports: StatusService, show_message, show_info, show_warning, show_error", "Lines of code: 63", "Classes: StatusService", "Functions: show_message, show_error, show_warning, show_info", "Domain: shared, Layer: services"], "weight": 43.5}
+{"type": "entity", "name": "gui_workers", "entityType": "module", "observations": ["Weight: 43.0 (access frequency)", "Located at: src/gui_workers.py", "Exports: Worker, run", "Lines of code: 20", "Classes: Worker", "Functions: run", "Domain: shared, Layer: unknown"], "weight": 43.0}
+{"type": "entity", "name": "instructions", "entityType": "module", "observations": ["Weight: 43.0 (access frequency)", "AKIS Instructions Management Script v3.0\n\nUnified script for instruction analysis, suggestion, and updates.\nTrained on 1", "Located at: .github/scripts/instructions.py", "Exports: SimulatedSession, load_instructions_from_files, extract_patterns_from_logs, get_instruction_patterns", "Lines of code: 1205", "Classes: InstructionPattern, SimulatedSession", "Functions: parse_workflow_log_yaml, get_latest_workflow_log, parse_instruction_yaml_frontmatter, load_instructions_from_files, get_instruction_patterns", "Domain: shared, Layer: unknown"], "weight": 43.0}
+{"type": "entity", "name": "test_session_recorder", "entityType": "module", "observations": ["Weight: 42.0 (access frequency)", "Located at: tests/commander/test_session_recorder.py", "Exports: test_start_recording_file_error, TestSessionRecorder, test_record_keyboard_event_sensitive_key, test", "Lines of code: 417", "Classes: TestSessionRecorder", "Functions: mock_node_token, temp_output_file, session_recorder, test_initialization, test_start_recording_success", "Domain: shared, Layer: unknown"], "weight": 42.0}
+{"type": "entity", "name": "test_telnet_command_output", "entityType": "module", "observations": ["Weight: 40.0 (access frequency)", "Integration tests for Telnet command output truncation fix.\n\nThese tests verify that:\n1. Commands executed from context ", "Located at: tests/commander/test_telnet_command_output.py", "Exports: mock_get_or_create_session, context_menu_service, telnet_tab, mock_command_finished, test_rpc_comman", "Lines of code: 622", "Classes: MockTelnetSession, TestTelnetCommandOutput", "Functions: connect, disconnect, send_command, node_manager, mock_session_manager", "Domain: shared, Layer: unknown"], "weight": 40.0}
+{"type": "entity", "name": "telnet_tab", "entityType": "module", "observations": ["Weight: 40.0 (access frequency)", "Telnet Tab - UI for Telnet sessions", "Located at: src/commander/ui/telnet_tab.py", "Exports: get_command, clear_command, update_connection_status, get_connection_info, append_output", "Lines of code: 139", "Classes: TelnetTab", "Functions: append_output, get_command, clear_command, get_connection_info, update_connection_status", "Domain: shared, Layer: unknown"], "weight": 40.0}
+{"type": "entity", "name": "vnc_tab", "entityType": "module", "observations": ["Weight: 38.5 (access frequency)", "VNC Tab Widget\n\nThis widget provides the VNC viewer interface with clipboard integration.", "Located at: src/commander/ui/vnc_tab.py", "Exports: set_playback_state, VNCTab, get_port, get_host, handle_text_selection", "Lines of code: 272", "Classes: VNCTab", "Functions: set_connection_status, get_host, get_port, set_vnc_content, get_selected_text", "Domain: shared, Layer: unknown"], "weight": 38.5}
+{"type": "entity", "name": "agents", "entityType": "module", "observations": ["Weight: 35.0 (access frequency)", "AKIS Agents Management Script v1.0\n\nUnified script for custom agent analysis, generation, and optimization.\nTrained on 1", "Located at: .github/scripts/agents.py", "Exports: update_akis_with_subagent_links, AKISFullAuditResult, audit_docs_system, analyze_codebase, simulate_", "Lines of code: 3784", "Classes: AgentConfig, SessionMetrics, OptimizationResult", "Functions: parse_workflow_log_yaml, get_latest_workflow_log, parse_agent_yaml_frontmatter, load_agents_from_files, get_agent_types", "Domain: shared, Layer: unknown"], "weight": 35.0}
+{"type": "entity", "name": "simulation", "entityType": "module", "observations": ["Weight: 35.0 (access frequency)", "AKIS 100k Session Simulation Engine v1.0\n\nComprehensive simulation engine that:\n1. Extracts patterns from industry/commu", "Located at: .github/scripts/simulation.py", "Exports: generate_delegation_recommendation, generate_comparison_report, analyze_akis_framework, run_agent_si", "Lines of code: 3722", "Classes: SessionMetrics, SimulationConfig, AKISConfiguration", "Functions: extract_patterns_from_workflow_logs, extract_industry_patterns, merge_patterns, simulate_session, run_simulation", "Domain: shared, Layer: unknown"], "weight": 35.0}
+{"type": "entity", "name": "node_tree_view", "entityType": "module", "observations": ["Weight: 34.0 (access frequency)", "Node Tree View Component\nStateless UI component for displaying nodes in a tree structure", "Located at: src/commander/ui/node_tree_view.py", "Exports: setHeaderLabels, setCurrentItem, currentItem, setColumnWidth, viewport", "Lines of code: 127", "Classes: NodeTreeView", "Functions: setHeaderLabels, setColumnWidth, setFont, setContextMenuPolicy, addTopLevelItem", "Domain: shared, Layer: unknown"], "weight": 34.0}
+{"type": "entity", "name": "services_telnet_service", "entityType": "service", "observations": ["Weight: 26.0 (access frequency)", "Telnet Service - Handles Telnet connection management and command execution", "Located at: src/commander/services/telnet_service.py", "Exports: toggle_connection, execute_command, disconnect, connect, set_current_token", "Lines of code: 234", "Classes: TelnetService", "Functions: set_current_token, toggle_connection, connect, disconnect, execute_command", "Domain: shared, Layer: services"], "weight": 26.0}
+{"type": "entity", "name": "test_token_utils", "entityType": "module", "observations": ["Weight: 25.5 (access frequency)", "Located at: tests/commander/test_token_utils.py", "Exports: test_normalize_token_preserves_case, test_case_insensitive_token_matching, test_validate_token_case_", "Lines of code: 100", "Functions: test_normalize_token_preserves_case, test_normalize_token_strips_whitespace, test_normalize_token_removes_special_chars, test_is_fbc_token_case_insensitive, test_is_rpc_token_case_insensitive", "Domain: shared, Layer: unknown"], "weight": 25.5}
+{"type": "entity", "name": "token_utils", "entityType": "module", "observations": ["Weight: 23.0 (access frequency)", "Token Utilities - Provides optimized token handling and normalization functions", "Located at: src/commander/utils/token_utils.py", "Exports: is_allowed, validate_token_node, is_fbc_token, validate_token, is_token_processing_allowed", "Lines of code: 285", "Classes: TokenValidator, TokenRateLimiter", "Functions: normalize_token, validate_token, is_fbc_token, is_rpc_token, validate_token_node", "Domain: shared, Layer: unknown"], "weight": 23.0}
+{"type": "entity", "name": "services_context_menu_filter", "entityType": "service", "observations": ["Weight: 22.5 (access frequency)", "Service for managing context menu filtering rules.", "Located at: src/commander/services/context_menu_filter.py", "Exports: ContextMenuFilterService, should_show_command, is_visible", "Lines of code: 211", "Classes: ContextMenuFilterService", "Functions: should_show_command, is_visible", "Domain: shared, Layer: services"], "weight": 22.5}
+{"type": "entity", "name": "session_presenter", "entityType": "module", "observations": ["Weight: 21.5 (access frequency)", "Session Presenter\n\nThis presenter handles the session view logic, including VNC tab integration\nand clipboard functional", "Located at: src/commander/presenters/session_presenter.py", "Exports: SessionPresenter, get_clipboard_monitor, handle_vnc_text_selection, get_active_terminal_content, set", "Lines of code: 297", "Classes: SessionPresenter", "Functions: handle_vnc_text_selection, get_clipboard_monitor, set_active_vnc_session, get_active_terminal_content", "Domain: shared, Layer: unknown"], "weight": 21.5}
+{"type": "entity", "name": "services_session_recorder", "entityType": "service", "observations": ["Weight: 21.5 (access frequency)", "Session Recorder Service\n\nThis service handles the recording of VNC sessions, capturing events and storing them\nin the .", "Located at: src/commander/services/session_recorder.py", "Exports: record_screen_event, start, stop, record_keyboard_event, record_clipboard_event", "Lines of code: 492", "Classes: SessionRecorder", "Functions: start, stop, record_mouse_event, record_keyboard_event, record_clipboard_event", "Domain: shared, Layer: services"], "weight": 21.5}
+{"type": "entity", "name": "session_view", "entityType": "module", "observations": ["Weight: 21.0 (access frequency)", "Session View\n\nThis view provides the session interface, including VNC tab and clipboard controls.", "Located at: src/commander/ui/session_view.py", "Exports: SessionView, set_playback_state, set_vnc_content, handle_vnc_text_selection, set_recording_state", "Lines of code: 112", "Classes: SessionView", "Functions: set_vnc_content, get_selected_text, handle_vnc_text_selection, set_recording_state, set_playback_state", "Domain: shared, Layer: unknown"], "weight": 21.0}
+{"type": "entity", "name": "test_command_execution", "entityType": "module", "observations": ["Weight: 20.0 (access frequency)", "Located at: tests/commander/test_command_execution.py", "Exports: rpc_service, command_queue, test_same_token_id_different_types_command_execution, test_sequential_co", "Lines of code: 294", "Classes: TestCommandExecution", "Functions: node_manager, mock_session_manager, command_queue, mock_log_writer, fbc_service", "Domain: shared, Layer: unknown"], "weight": 20.0}
+{"type": "entity", "name": "test_telnet_connect_integration", "entityType": "module", "observations": ["Weight: 20.0 (access frequency)", "Located at: tests/commander/test_telnet_connect_integration.py", "Exports: TestTelnetConnectIntegration, TestTelnetConnectRegression, test_telnet_tab_connect_signal_emission, ", "Lines of code: 185", "Classes: TestTelnetConnectIntegration, TestTelnetConnectRegression", "Functions: app, mock_commander_window, test_connect_button_click_triggers_toggle_connection, test_disconnect_button_click_triggers_toggle_connection, test_telnet_tab_connect_signal_emission", "Domain: shared, Layer: unknown"], "weight": 20.0}
+{"type": "entity", "name": "test_commander_window", "entityType": "module", "observations": ["Weight: 20.0 (access frequency)", "Located at: tests/commander/test_commander_window.py", "Exports: test_clear_node_log_with_token_item, test_load_configurations_handles_missing_files, test_closeEvent", "Lines of code: 357", "Classes: TestCommanderWindowClearNodeLog, TestCommanderWindowSettingsPersistence", "Functions: app, test_clear_node_log_button_exists_and_connected, test_clear_node_log_calls_presenter_method, test_clear_node_log_integration_with_presenter_utils, test_clear_node_log_with_token_item", "Domain: shared, Layer: unknown"], "weight": 20.0}
+{"type": "entity", "name": "gui", "entityType": "module", "observations": ["Weight: 19.5 (access frequency)", "Located at: src/gui.py", "Exports: open_commander, init_ui, LogReportGUI, init_menu_bar, open_node_manager", "Lines of code: 380", "Classes: LogReportGUI", "Functions: init_menu_bar, init_ui, open_node_manager, open_commander", "Domain: shared, Layer: unknown"], "weight": 19.5}
+{"type": "entity", "name": "theme", "entityType": "module", "observations": ["Weight: 19.5 (access frequency)", "Theme Module - Centralized color palette and styling for the Commander UI", "Located at: src/commander/ui/theme.py", "Exports: get_telnet_tab_stylesheet, ColorPalette, get_application_stylesheet, StyleSheetManager, get_vnc_tab_", "Lines of code: 207", "Classes: ColorPalette, StyleSheetManager", "Functions: get_application_stylesheet, get_vnc_tab_stylesheet, get_telnet_tab_stylesheet", "Domain: shared, Layer: unknown"], "weight": 19.5}
+{"type": "entity", "name": "services_sequential_command_processor", "entityType": "service", "observations": ["Weight: 19.5 (access frequency)", "Sequential Command Processor - Handles memory-optimized, mode-adaptive iterative processing\nof FBC/RPC tokens with prope", "Located at: src/commander/services/sequential_command_processor.py", "Exports: process_all_fbc_subgroup_commands, process_fbc_commands, process_rpc_commands, process_all_rpc_subgr", "Lines of code: 878", "Classes: SequentialCommandProcessor", "Functions: process_tokens_sequentially, process_rpc_commands, process_fbc_commands, process_all_fbc_subgroup_commands, process_all_rpc_subgroup_commands", "Domain: shared, Layer: services"], "weight": 19.5}
+{"type": "entity", "name": "services_session_player", "entityType": "service", "observations": ["Weight: 19.0 (access frequency)", "Session Player Service\n\nThis service handles the replay of VNC session recordings stored in .vncr format.", "Located at: src/commander/services/session_player.py", "Exports: get_duration, set_playback_state, handle_text_selection, get_position, stop", "Lines of code: 405", "Classes: ViewProtocol, SessionPlayer", "Functions: set_vnc_content, get_selected_text, handle_text_selection, set_recording_state, set_playback_state", "Domain: shared, Layer: services"], "weight": 19.0}
+{"type": "entity", "name": "generator", "entityType": "module", "observations": ["Weight: 18.5 (access frequency)", "Located at: src/generator.py", "Exports: generate_docx, ReportGenerator, generate_pdf", "Lines of code: 128", "Classes: ReportGenerator", "Functions: generate_pdf, generate_docx", "Domain: shared, Layer: unknown"], "weight": 18.5}
+{"type": "entity", "name": "commander_ui_factory", "entityType": "module", "observations": ["Weight: 18.5 (access frequency)", "Commander UI Factory\n\nThis factory creates and manages the main UI components.", "Located at: src/commander/ui/commander_ui_factory.py", "Exports: CommanderUIFactory, get_vnc_tab, get_session_view, get_main_widget, get_node_tree_view", "Lines of code: 84", "Classes: CommanderUIFactory", "Functions: get_main_widget, get_node_tree_view, get_session_view, get_vnc_tab", "Domain: shared, Layer: unknown"], "weight": 18.5}
+{"type": "entity", "name": "knowledge", "entityType": "module", "observations": ["Weight: 18.0 (access frequency)", "AKIS Knowledge Management Script v3.0\n\nUnified script for knowledge analysis, generation, and updates.\nTrained on 100k s", "Located at: .github/scripts/knowledge.py", "Exports: CodeAnalyzer, build_interconnections, SimulatedQuery, simulate_sessions, run_suggest", "Lines of code: 2049", "Classes: CodeEntity, CodeAnalyzer, SimulatedQuery", "Functions: write_knowledge_jsonl, build_interconnections, build_session_patterns, load_current_knowledge, get_session_files", "Domain: shared, Layer: unknown"], "weight": 18.0}
+{"type": "entity", "name": "test_button_actions", "entityType": "module", "observations": ["Weight: 18.0 (access frequency)", "Located at: tests/commander/test_button_actions.py", "Exports: test_clear_terminal_button, TestButtonActions, mock_services, commander_presenter, app", "Lines of code: 74", "Classes: TestButtonActions", "Functions: app, mock_ui_factory, mock_services, commander_presenter, test_clear_terminal_button", "Domain: shared, Layer: unknown"], "weight": 18.0}
+{"type": "entity", "name": "widgets", "entityType": "module", "observations": ["Weight: 18.0 (access frequency)", "Located at: src/commander/widgets.py", "Exports: ConnectionBar, get_address, ConnectionState, update_status", "Lines of code: 80", "Classes: ConnectionState, ConnectionBar", "Functions: get_address, update_status", "Domain: shared, Layer: unknown"], "weight": 18.0}
+{"type": "entity", "name": "audit", "entityType": "module", "observations": ["Weight: 17.0 (access frequency)", "AKIS Audit Script - 100k Session Simulation Engine\n\nAudits AKIS framework components against these metrics:\n- Token Usag", "Located at: .github/scripts/audit.py", "Exports: SessionMetrics, analyze_knowledge, analyze_skill, analyze_instruction, OptimizationEngine", "Lines of code: 1051", "Classes: SessionMetrics, AuditResult, SimulationResult", "Functions: run_audit, get_patterns, analyze_agent, analyze_instruction, analyze_skill", "Domain: shared, Layer: unknown"], "weight": 17.0}
+{"type": "entity", "name": "test_clear_log", "entityType": "module", "observations": ["Weight: 17.0 (access frequency)", "Located at: tests/commander/test_clear_log.py", "Exports: mock_node_manager, test_clear_node_log_with_token_item, commander_presenter_utils, test_clear_node_l", "Lines of code: 273", "Classes: TestLogWriterClearLog, TestIntegrationClearNodeLog", "Functions: mock_node_manager, log_writer, test_clear_log_with_valid_token_and_log_path, test_clear_log_with_valid_token_no_log_path, test_clear_log_with_valid_token_none_log_path", "Domain: shared, Layer: unknown"], "weight": 17.0}
+{"type": "entity", "name": "commander_test_rpc_log_path", "entityType": "module", "observations": ["Weight: 17.0 (access frequency)", "Located at: tests/commander/test_rpc_log_path.py", "Exports: mock_node_manager, TestRpcLogPath, test_rpc_command_output_written_to_log_file, temp_log_dir", "Lines of code: 106", "Classes: TestRpcLogPath", "Functions: temp_log_dir, mock_node_manager, test_rpc_command_output_written_to_log_file", "Domain: shared, Layer: unknown"], "weight": 17.0}
+{"type": "entity", "name": "services_commander_service", "entityType": "service", "observations": ["Weight: 17.0 (access frequency)", "Located at: src/commander/services/commander_service.py", "Exports: CommanderService, process_fieldbus_command, log_telnet_command_finished, process_rpc_command", "Lines of code: 120", "Classes: CommanderService", "Functions: process_fieldbus_command, process_rpc_command, log_telnet_command_finished", "Domain: shared, Layer: services"], "weight": 17.0}
+{"type": "entity", "name": "test_fbc_token_detection", "entityType": "module", "observations": ["Weight: 16.5 (access frequency)", "Test file for validating FBC token detection for node AP01m", "Located at: tests/commander/test_fbc_token_detection.py", "Exports: test_print_all_fbc_tokens_command, test_ap01m_fbc_tokens_detection, TestFbcTokenDetection, fbc_servi", "Lines of code: 124", "Classes: TestFbcTokenDetection", "Functions: node_manager, fbc_service, test_ap01m_fbc_tokens_detection, test_print_all_fbc_tokens_command", "Domain: shared, Layer: unknown"], "weight": 16.5}
+{"type": "entity", "name": "test_context_menu_tokens", "entityType": "module", "observations": ["Weight: 16.5 (access frequency)", "Located at: tests/commander/test_context_menu_tokens.py", "Exports: mock_node_manager, context_menu_service, test_fbc_subsection_context_menu_contains_only_print_all_ac", "Lines of code: 89", "Functions: qapp, mock_node_manager, mock_context_menu_filter, context_menu_service, test_fbc_subsection_context_menu_contains_only_print_all_action", "Domain: shared, Layer: unknown"], "weight": 16.5}
+{"type": "entity", "name": "test_fbc_subsection_context_menu", "entityType": "module", "observations": ["Weight: 16.5 (access frequency)", "Located at: tests/commander/test_fbc_subsection_context_menu.py", "Exports: MockMenu, exec, actions, addAction, test_fbc_subsection_context_menu_contains_only_print_all_action", "Lines of code: 98", "Classes: MockMenu, MockAction", "Functions: test_fbc_subsection_context_menu_contains_only_print_all_action, addAction, actions, exec, text", "Domain: shared, Layer: unknown"], "weight": 16.5}
+{"type": "entity", "name": "node_config_dialog", "entityType": "module", "observations": ["Weight: 16.0 (access frequency)", "Located at: src/node_config_dialog.py", "Exports: save_config_as_default, apply_current_changes, init_ui, on_node_selected, save_config", "Lines of code: 534", "Classes: NodeConfigDialog", "Functions: save_config, load_configuration, populate_node_list, on_node_selected, add_node", "Domain: shared, Layer: unknown"], "weight": 16.0}
+{"type": "entity", "name": "stress_test", "entityType": "module", "observations": ["Weight: 16.0 (access frequency)", "AKIS Stress Test & Edge Testing Framework v1.0\n\nComprehensive stress testing for agents.py, knowledge.py, skills.py, and", "Located at: .github/scripts/stress_test.py", "Exports: run_validation, validate_all, validate_agent_suggestions, validate_skill_suggestions, run_all_tests", "Lines of code: 1281", "Classes: EdgeTestResult, SessionScenario, SimulationMetrics", "Functions: run_edge_tests, run_simulation, run_pattern_analysis, run_validation, run_industry_analysis", "Domain: shared, Layer: unknown"], "weight": 16.0}
+{"type": "entity", "name": "investigate", "entityType": "module", "observations": ["Weight: 16.0 (access frequency)", "AKIS Script Investigation Framework v1.0\n\nComprehensive investigation of all AKIS scripts to verify they work as intende", "Located at: .github/scripts/investigate.py", "Exports: predict_future_skills, run_pattern_extraction, PatternExtraction, extract_patterns_from_logs, simula", "Lines of code: 1227", "Classes: ScriptVerificationResult, PatternExtraction, EdgeCaseResult", "Functions: verify_script, run_verification, read_workflow_logs, extract_date, extract_patterns_from_logs", "Domain: shared, Layer: unknown"], "weight": 16.0}
+{"type": "entity", "name": "services_clipboard_monitor", "entityType": "service", "observations": ["Weight: 16.0 (access frequency)", "Clipboard Monitor Service\n\nThis service monitors the system clipboard for changes and handles automatic\nclipboard-to-log", "Located at: src/commander/services/clipboard_monitor.py", "Exports: ClipboardMonitor, handle_vnc_text_selection, manual_copy_to_log, set_manual_copy_callback", "Lines of code: 194", "Classes: ClipboardMonitor", "Functions: set_manual_copy_callback, manual_copy_to_log, handle_vnc_text_selection", "Domain: shared, Layer: services"], "weight": 16.0}
+{"type": "entity", "name": "commander_constants", "entityType": "module", "observations": ["Weight: 15.5 (access frequency)", "Constants Module - Shared constants for the Commander application", "Located at: src/commander/constants.py", "Exports: ErrorSeverity", "Lines of code: 43", "Classes: ErrorSeverity", "Domain: shared, Layer: unknown"], "weight": 15.5}
+{"type": "entity", "name": "skills", "entityType": "module", "observations": ["Weight: 15.0 (access frequency)", "AKIS Skills Management Script v3.0\n\nUnified script for skill analysis, suggestion, and updates.\nTrained on 100k simulate", "Located at: .github/scripts/skills.py", "Exports: detect_new_skill_candidates, simulate_sessions, run_ingest_all, get_git_diff, run_suggest", "Lines of code: 1389", "Classes: SkillSuggestion", "Functions: parse_workflow_log_yaml, get_latest_workflow_log, parse_skill_yaml_frontmatter, load_skills_from_files, get_skill_triggers", "Domain: shared, Layer: unknown"], "weight": 15.0}
+{"type": "entity", "name": "docs", "entityType": "module", "observations": ["Weight: 15.0 (access frequency)", "AKIS Documentation Management Script v3.0\n\nUnified script for documentation analysis, generation, and updates.\nTrained o", "Located at: .github/scripts/docs.py", "Exports: calculate_coverage, simulate_sessions, run_ingest_all, parse_workflow_logs, run_suggest", "Lines of code: 1182", "Classes: UpdatePattern, DocumentableEntity, GroundTruthExtractor", "Functions: parse_yaml_frontmatter, parse_workflow_logs, get_latest_log_data, aggregate_log_data, get_session_files", "Domain: shared, Layer: unknown"], "weight": 15.0}
+{"type": "entity", "name": "regression_test_select_root_button", "entityType": "module", "observations": ["Weight: 14.5 (access frequency)", "Located at: tests/commander/regression_test_select_root_button.py", "Exports: test_set_log_root_folder_opens_directory_dialog, TestSelectRootButtonRegression, test_set_log_root_f", "Lines of code: 136", "Classes: TestSelectRootButtonRegression", "Functions: test_set_log_root_button_exists_and_connected, test_set_log_root_button_signal_emission, test_set_log_root_folder_opens_directory_dialog, test_set_log_root_folder_with_selected_directory, test_set_log_root_folder_without_selected_directory", "Domain: shared, Layer: unknown"], "weight": 14.5}
+{"type": "entity", "name": "test_button_styling", "entityType": "module", "observations": ["Weight: 14.5 (access frequency)", "Located at: tests/commander/test_button_styling.py", "Exports: get_button_background_color, commander_window, test_telnet_connect_button_initial_style, vnc_tab, te", "Lines of code: 80", "Classes: TestButtonStyling", "Functions: app, commander_window, vnc_tab, get_button_background_color, test_telnet_connect_button_initial_style", "Domain: shared, Layer: unknown"], "weight": 14.5}
+{"type": "entity", "name": "akis_comprehensive_analysis", "entityType": "module", "observations": ["Weight: 14.0 (access frequency)", "AKIS Comprehensive Analysis Script v1.0\n\nUnified script that:\n1. Executes skills.py, agents.py, instructions.py, knowled", "Located at: .github/scripts/akis_comprehensive_analysis.py", "Exports: ComponentAnalysisResult, analyze_instructions_from_logs, analyze_knowledge_from_logs, run_comprehens", "Lines of code: 1099", "Classes: WorkflowLogData, ComponentAnalysisResult, MixedSessionMetrics", "Functions: parse_workflow_log_yaml, parse_all_workflow_logs, analyze_skills_from_logs, analyze_agents_from_logs, analyze_instructions_from_logs", "Domain: shared, Layer: unknown"], "weight": 14.0}
+{"type": "entity", "name": "test_telnet_copy_to_log_integration", "entityType": "module", "observations": ["Weight: 14.0 (access frequency)", "Integration tests for the \"copy to log\" function in telnet connections.\n\nThese tests validate the copy to log functional", "Located at: tests/commander/test_telnet_copy_to_log_integration.py", "Exports: test_copy_to_log_fbc_file_type_telnet, test_copy_to_log_rpc_file_type_telnet, test_copy_to_log_excep", "Lines of code: 467", "Classes: MockNodeTreeItem, TestTelnetCopyToLogIntegration, TestTelnetCopyToLogRealComponents", "Functions: text, setup_method, test_copy_to_log_fbc_file_type_telnet, test_copy_to_log_rpc_file_type_telnet, test_copy_to_log_log_file_type_telnet", "Domain: shared, Layer: unknown"], "weight": 14.0}
+{"type": "entity", "name": "test_telnet_connect", "entityType": "module", "observations": ["Weight: 13.5 (access frequency)", "Located at: tests/commander/test_telnet_connect.py", "Exports: TestTelnetConnectUnit, mock_session_manager, telnet_service, test_toggle_connection_connect_saves_se", "Lines of code: 156", "Classes: TestTelnetConnectUnit", "Functions: mock_session_manager, telnet_service, test_connect_success_emits_correct_signals, test_connect_failure_emits_error_signals, test_connect_timeout_emits_timeout_signals", "Domain: shared, Layer: unknown"], "weight": 13.5}
+{"type": "entity", "name": "node_tree_presenter_logic", "entityType": "module", "observations": ["Weight: 13.5 (access frequency)", "Node Tree Presenter - Handles presentation logic for the node tree within the commander window", "Located at: src/commander/presenters/node_tree_presenter_logic.py", "Exports: NodeTreePresenter", "Lines of code: 62", "Classes: NodeTreePresenter", "Domain: shared, Layer: unknown"], "weight": 13.5}
+{"type": "entity", "name": "akis_full_audit", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "AKIS v7.1 Full Framework Audit & 100k Session Simulation\n\nComprehensive analysis with industry/community patterns:\n- Tok", "Located at: .github/scripts/akis_full_audit.py", "Exports: SessionMetrics, ComplianceChecker, calc_improvement, print_report, generate_report", "Lines of code: 1036", "Classes: ComplianceIssue, SessionMetrics, SimulationResults", "Functions: generate_report, print_report, main, check_all, simulate", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "simulate_metadata_enhancement", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "manage_todo_list Metadata Enhancement Simulation v1.0\n\n100k session simulation comparing:\n1. BASELINE - No metadata (cur", "Located at: .github/scripts/simulate_metadata_enhancement.py", "Exports: SessionMetrics, simulate_session_hybrid, aggregate_results, ScenarioResults, TaskMetadata", "Lines of code: 718", "Classes: TaskMetadata, DelegationResult, SessionMetrics", "Functions: pick_weighted, generate_uuid, generate_tasks, calculate_metadata_tokens, calculate_session_json_tokens", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "simulate_todo_naming", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "TODO Naming Convention Simulation v1.0\n\n100k session simulation comparing:\n1. SIMPLE - Basic TODO naming (current): \"\u25cb T", "Located at: .github/scripts/simulate_todo_naming.py", "Exports: SessionMetrics, aggregate_results, ScenarioResults, simulate_session_simple, print_report", "Lines of code: 545", "Classes: TodoItem, SessionMetrics, ScenarioResults", "Functions: generate_simple_todo, generate_structured_todo, pick_weighted, generate_uuid_short, simulate_session_simple", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "test_log_writer", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "Located at: tests/commander/test_log_writer.py", "Exports: mock_node_manager, test_write_to_log_with_explicit_node_name, test_write_to_log_creates_directories,", "Lines of code: 307", "Classes: TestLogWriterWriteToLog", "Functions: mock_node_manager, log_writer, test_write_to_log_with_active_node, test_write_to_log_with_explicit_node_name, test_write_to_log_with_empty_content", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "test_telnet_connection", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "Located at: tests/commander/test_telnet_connection.py", "Exports: TestTelnetConnection, mock_session_manager, telnet_service, test_disconnect_failure, test_connect_fa", "Lines of code: 105", "Classes: TestTelnetConnection", "Functions: mock_session_manager, mock_telnet_client, telnet_service, test_connect_success, test_connect_failure", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "test_log_writer_additional", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "Located at: tests/commander/test_log_writer_additional.py", "Exports: mock_node_manager, test_write_to_log_with_timestamp_format, test_write_to_log_with_very_long_content", "Lines of code: 395", "Classes: TestLogWriterWriteToLogAdditional", "Functions: mock_node_manager, log_writer, test_write_to_log_with_unicode_content, test_write_to_log_with_special_characters, test_write_to_log_with_multiline_content", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "main_window", "entityType": "module", "observations": ["Weight: 13.0 (access frequency)", "Main Window\n\nThis is the main application window that hosts all UI components.", "Located at: src/commander/main_window.py", "Exports: MainWindow, closeEvent", "Lines of code: 86", "Classes: MainWindow", "Functions: closeEvent", "Domain: shared, Layer: unknown"], "weight": 13.0}
+{"type": "entity", "name": "services_threading_service", "entityType": "service", "observations": ["Weight: 13.0 (access frequency)", "Threading Service - Handles thread management and execution for background operations", "Located at: src/commander/services/threading_service.py", "Exports: create_lock, ThreadingService, start_thread, create_thread", "Lines of code: 63", "Classes: ThreadingService", "Functions: create_thread, start_thread, create_lock", "Domain: shared, Layer: services"], "weight": 13.0}
+{"type": "entity", "name": "session_cleanup", "entityType": "module", "observations": ["Weight: 12.5 (access frequency)", "AKIS Session Cleanup\n\nCleans up temporary files and artifacts at end of session.\nRuns during END phase to maintain works", "Located at: .github/scripts/session_cleanup.py", "Exports: cleanup_temp_files, cleanup_cache_dirs, cleanup_backups, find_files, run_git_cleanup", "Lines of code: 302", "Functions: is_protected, find_files, get_file_age_days, cleanup_backups, cleanup_cache_dirs", "Domain: shared, Layer: unknown"], "weight": 12.5}
+{"type": "entity", "name": "regression_test_telnet_tab_visibility", "entityType": "module", "observations": ["Weight: 12.5 (access frequency)", "Located at: tests/commander/regression_test_telnet_tab_visibility.py", "Exports: test_telnet_tab_class_structure, test_session_view_module_imports, test_commander_window_module_impo", "Lines of code: 79", "Classes: TestTelnetTabVisibilityRegression", "Functions: test_telnet_tab_module_imports, test_vnc_tab_module_imports, test_session_view_module_imports, test_commander_window_module_imports, test_telnet_tab_class_structure", "Domain: shared, Layer: unknown"], "weight": 12.5}
+{"type": "entity", "name": "workflow_log_parser", "entityType": "module", "observations": ["Weight: 12.0 (access frequency)", "Workflow Log Parser v2.0\n\nParses structured YAML front matter from workflow logs.\nFalls back to legacy keyword matching ", "Located at: .github/scripts/workflow_log_parser.py", "Exports: SkillTrigger, CommandExecution, FileChange, load_all, extract_gotchas", "Lines of code: 576", "Classes: FileChange, ErrorInfo, RootCause", "Functions: load_all, parse_file, get_aggregate_stats, suggest_skills, suggest_agents", "Domain: shared, Layer: unknown"], "weight": 12.0}
+{"type": "entity", "name": "akis_compliance_simulation", "entityType": "module", "observations": ["Weight: 12.0 (access frequency)", "AKIS-Dev Compliance Simulation v1.0\n\nMeasures AKIS framework against akis-dev skill requirements:\n- Token consumption\n- ", "Located at: .github/scripts/akis_compliance_simulation.py", "Exports: SessionMetrics, simulate_compliant_session, aggregate_results, simulate_baseline_session, print_repo", "Lines of code: 630", "Classes: SessionMetrics, SimulationResults", "Functions: pick_weighted, simulate_baseline_session, simulate_compliant_session, aggregate_results, run_simulation", "Domain: shared, Layer: unknown"], "weight": 12.0}
+{"type": "entity", "name": "test_copy_to_log_functionality", "entityType": "module", "observations": ["Weight: 12.0 (access frequency)", "Test for the modified _on_copy_to_log_clicked method in session_presenter.py\nTests the functionality to set active node ", "Located at: tests/commander/test_copy_to_log_functionality.py", "Exports: test_copy_to_log_no_tokens, test_copy_to_log_no_node_selected, test_copy_to_log_exception_handling, ", "Lines of code: 146", "Classes: MockNodeTreeItem, TestCopyToLogFunctionality", "Functions: text, setup_method, test_copy_to_log_with_selected_node, test_copy_to_log_no_node_selected, test_copy_to_log_no_tokens", "Domain: shared, Layer: unknown"], "weight": 12.0}
+{"type": "entity", "name": "sys_file_parser", "entityType": "module", "observations": ["Weight: 12.0 (access frequency)", "SYS File Parser - Parses _sys configuration files to extract node tokens\n\nThe _sys file format contains hardware address", "Located at: src/commander/utils/sys_file_parser.py", "Exports: parse_sys_file, SysFileInfo, get_entry_by_lid, get_tokens_from_sys_file, get_entries_by_type", "Lines of code: 293", "Classes: SysEntry, SysFileInfo, SysFileParser", "Functions: parse_sys_file, get_tokens_from_sys_file, token_count, get_entries_by_type, get_entry_by_lid", "Domain: shared, Layer: unknown"], "weight": 12.0}
+{"type": "entity", "name": "processor", "entityType": "module", "observations": ["Weight: 11.5 (access frequency)", "Located at: src/processor.py", "Exports: get_folder_hierarchy, set_line_options, process_directory, process_file, LogProcessor", "Lines of code: 105", "Classes: LogProcessor", "Functions: set_line_options, get_folder_hierarchy, process_directory, process_file", "Domain: shared, Layer: unknown"], "weight": 11.5}
+{"type": "entity", "name": "reporter", "entityType": "service", "observations": ["Weight: 11.5 (access frequency)", "Error Reporter - Structured error reporting for the Commander application", "Located at: src/commander/services/error_reporting/reporter.py", "Exports: ErrorReporterImpl, report_error, report_simple_error", "Lines of code: 77", "Classes: ErrorReporterImpl", "Functions: report_error, report_simple_error", "Domain: shared, Layer: services"], "weight": 11.5}
+{"type": "entity", "name": "telnet_client", "entityType": "module", "observations": ["Weight: 11.0 (access frequency)", "Located at: src/commander/telnet_client.py", "Exports: connect, send_command, disconnect, TelnetClient", "Lines of code: 201", "Classes: TelnetClient", "Functions: connect, disconnect, send_command", "Domain: shared, Layer: unknown"], "weight": 11.0}
+{"type": "entity", "name": "services_error_handler", "entityType": "service", "observations": ["Weight: 11.0 (access frequency)", "Error Handler Service - Handles error reporting and logging", "Located at: src/commander/services/error_handler.py", "Exports: ErrorHandler, handle_circuit_breaker_triggered, handle_telnet_error, handle_validation_error, handle", "Lines of code: 168", "Classes: ErrorHandler", "Functions: report_error, handle_connection_error, handle_circuit_breaker_triggered, handle_telnet_error, validate_telnet_client_reuse", "Domain: shared, Layer: services"], "weight": 11.0}
+{"type": "entity", "name": "circuit_breaker", "entityType": "module", "observations": ["Weight: 11.0 (access frequency)", "Circuit Breaker Pattern Implementation", "Located at: src/commander/utils/circuit_breaker.py", "Exports: call, get_failure_count, CircuitBreaker, CircuitState, get_state", "Lines of code: 115", "Classes: CircuitState, CircuitBreaker", "Functions: call, get_state, get_failure_count, reset", "Domain: shared, Layer: unknown"], "weight": 11.0}
+{"type": "entity", "name": "regression_test_load_nodes_explorer", "entityType": "module", "observations": ["Weight: 10.5 (access frequency)", "Located at: tests/commander/regression_test_load_nodes_explorer.py", "Exports: test_load_nodes_button_signal_connection, test_load_configuration_with_selected_file, test_load_conf", "Lines of code: 78", "Classes: TestLoadNodesExplorerRegression", "Functions: test_load_configuration_opens_file_dialog, test_load_configuration_with_selected_file, test_load_configuration_without_selected_file, test_load_nodes_button_signal_connection", "Domain: shared, Layer: unknown"], "weight": 10.5}
+{"type": "entity", "name": "icons", "entityType": "module", "observations": ["Weight: 10.5 (access frequency)", "Icon Generator\nCreates placeholder icons for Commander UI", "Located at: src/commander/icons.py", "Exports: create_node_icon, get_token_icon, create_token_icon, get_node_online_icon, get_node_offline_icon", "Lines of code: 64", "Functions: create_node_icon, create_token_icon, get_node_online_icon, get_node_offline_icon, get_token_icon", "Domain: shared, Layer: unknown"], "weight": 10.5}
+{"type": "entity", "name": "contracts", "entityType": "module", "observations": ["Weight: 10.0 (access frequency)", "Interface contracts for the Commander component following MVP pattern.\nThese interfaces define the contract between the ", "Located at: src/commander/contracts.py", "Exports: process_fieldbus_command, ICommanderPresenter, clear_terminal, populate_node_tree, on_node_selected", "Lines of code: 161", "Classes: ICommanderView, ICommanderPresenter", "Functions: show_context_menu, populate_node_tree, clear_terminal, clear_node_log, copy_to_log", "Domain: shared, Layer: unknown"], "weight": 10.0}
+{"type": "entity", "name": "interface", "entityType": "service", "observations": ["Weight: 10.0 (access frequency)", "Error Reporting Interface - Abstract base classes and data structures for error handling", "Located at: src/commander/services/error_reporting/interface.py", "Exports: report_error, ErrorReporter, StructuredError, report_simple_error", "Lines of code: 47", "Classes: StructuredError, ErrorReporter", "Functions: report_error, report_simple_error", "Domain: shared, Layer: services"], "weight": 10.0}
+{"type": "entity", "name": "test_context_menu_fix", "entityType": "module", "observations": ["Weight: 9.5 (access frequency)", "Test script to verify the context menu fix", "Located at: test_context_menu_fix.py", "Exports: test_get_node_tokens", "Lines of code: 95", "Functions: test_get_node_tokens", "Domain: shared, Layer: unknown"], "weight": 9.5}
+{"type": "entity", "name": "tests_test_token_detection_end_to_end", "entityType": "module", "observations": ["Weight: 9.5 (access frequency)", "Located at: tests/test_token_detection_end_to_end.py", "Exports: test_all_token_scenarios, test_token_extraction, create_node_manager", "Lines of code: 102", "Functions: create_node_manager, test_token_extraction, test_all_token_scenarios", "Domain: shared, Layer: unknown"], "weight": 9.5}
+{"type": "entity", "name": "session_tracker", "entityType": "module", "observations": ["Weight: 9.0 (access frequency)", "AKIS Session Tracker\n\nTracks session numbers and determines when maintenance workflows should run.\nUsed in the LEARN/COM", "Located at: .github/scripts/session_tracker.py", "Exports: load_tracker, save_tracker, mark_maintenance_done, main, increment_session", "Lines of code: 164", "Functions: load_tracker, save_tracker, increment_session, get_current_session, check_maintenance", "Domain: shared, Layer: unknown"], "weight": 9.0}
+{"type": "entity", "name": "file_utils", "entityType": "module", "observations": ["Weight: 9.0 (access frequency)", "Located at: src/utils/file_utils.py", "Exports: read_text_file, filter_lines", "Lines of code: 30", "Functions: filter_lines, read_text_file", "Domain: shared, Layer: unknown"], "weight": 9.0}
+{"type": "entity", "name": "telnet_commands", "entityType": "module", "observations": ["Weight: 9.0 (access frequency)", "Telnet Command Resolver\nConverts user-friendly commands to executable Telnet commands", "Located at: src/commander/commands/telnet_commands.py", "Exports: get_previous, get_next, get_by_index, CommandHistory, CommandResolver", "Lines of code: 114", "Classes: CommandResolver, CommandHistory", "Functions: resolve, resolve_ps, resolve_fis, resolve_rc, resolve_context_token", "Domain: shared, Layer: unknown"], "weight": 9.0}
+{"type": "entity", "name": "services_error_reporter", "entityType": "service", "observations": ["Weight: 9.0 (access frequency)", "Error Reporter - Structured error reporting for the Commander application", "Located at: src/commander/services/error_reporter.py", "Exports: CompositeErrorReporter, StructuredError, FileErrorReporter, ErrorReporter, ConsoleErrorReporter", "Lines of code: 84", "Classes: StructuredError, ErrorReporter, ConsoleErrorReporter", "Functions: report, report, report, report", "Domain: shared, Layer: services"], "weight": 9.0}
+{"type": "entity", "name": "retry_utils", "entityType": "module", "observations": ["Weight: 9.0 (access frequency)", "Retry utilities with exponential backoff and circuit breaker patterns.", "Located at: src/commander/utils/retry_utils.py", "Exports: call, CircuitBreaker, CircuitState, wrapper, decorator", "Lines of code: 132", "Classes: CircuitState, CircuitBreaker", "Functions: retry_with_backoff, call, decorator, wrapper", "Domain: shared, Layer: unknown"], "weight": 9.0}
+{"type": "entity", "name": "test_rpc_log_path", "entityType": "module", "observations": ["Weight: 8.5 (access frequency)", "Located at: test_rpc_log_path.py", "Exports: test_rpc_log_path", "Lines of code: 53", "Functions: test_rpc_log_path", "Domain: shared, Layer: unknown"], "weight": 8.5}
+{"type": "entity", "name": "debug_token_detection_test", "entityType": "module", "observations": ["Weight: 8.0 (access frequency)", "Debug script to verify token detection for AP01m node", "Located at: debug_token_detection_test.py", "Exports: debug_token_detection, Node, add_token, NodeToken", "Lines of code: 151", "Classes: NodeToken, Node", "Functions: debug_token_detection, add_token", "Domain: shared, Layer: unknown"], "weight": 8.0}
+{"type": "entity", "name": "test_token_detection_simple", "entityType": "module", "observations": ["Weight: 7.5 (access frequency)", "Simple test script to verify token detection for AP01m node", "Located at: test_token_detection_simple.py", "Exports: get_node, scan_log_files, SimpleNodeManager, load_configuration, test_token_detection", "Lines of code: 169", "Classes: SimpleNodeManager", "Functions: test_token_detection, load_configuration, scan_log_files, get_node", "Domain: shared, Layer: unknown"], "weight": 7.5}
+{"type": "entity", "name": "main", "entityType": "module", "observations": ["Weight: 7.5 (access frequency)", "Located at: src/main.py", "Exports: cli_main", "Lines of code: 32", "Functions: cli_main", "Domain: shared, Layer: unknown"], "weight": 7.5}
+{"type": "entity", "name": "test_rpc_token_detection", "entityType": "module", "observations": ["Weight: 7.5 (access frequency)", "Located at: tests/commander/test_rpc_token_detection.py", "Exports: test_ap01m_rpc_tokens_detection, node_manager, TestRpcTokenDetection", "Lines of code: 51", "Classes: TestRpcTokenDetection", "Functions: node_manager, test_ap01m_rpc_tokens_detection", "Domain: shared, Layer: unknown"], "weight": 7.5}
+{"type": "entity", "name": "test_log_filename_parser", "entityType": "module", "observations": ["Weight: 7.0 (access frequency)", "Located at: tests/commander/test_log_filename_parser.py", "Exports: test_extract_ip_from_filename_edge_cases, test_is_valid_ip_valid_addresses, test_extract_ip_from_fil", "Lines of code: 91", "Functions: test_extract_ip_from_filename_dashed_format, test_extract_ip_from_filename_underscore_format, test_extract_ip_from_filename_dot_format, test_extract_ip_from_filename_edge_cases, test_is_valid_ip_valid_addresses", "Domain: shared, Layer: unknown"], "weight": 7.0}
+{"type": "entity", "name": "commander_commander___init__", "entityType": "module", "observations": ["Weight: 7.0 (access frequency)", "Located at: tests/commander/__init__.py", "Domain: shared, Layer: unknown"], "weight": 7.0}
+{"type": "entity", "name": "qt_init", "entityType": "module", "observations": ["Weight: 7.0 (access frequency)", "Centralized Qt initialization and configuration", "Located at: src/commander/qt_init.py", "Exports: initialize_qt, have_gui", "Lines of code: 36", "Functions: initialize_qt, have_gui", "Domain: shared, Layer: unknown"], "weight": 7.0}
+{"type": "entity", "name": "commander_commander___init__", "entityType": "module", "observations": ["Weight: 7.0 (access frequency)", "Commander Module for Log Management", "Located at: src/commander/__init__.py", "Lines of code: 19", "Domain: shared, Layer: unknown"], "weight": 7.0}
+{"type": "entity", "name": "test_node_manager_simple", "entityType": "module", "observations": ["Weight: 6.5 (access frequency)", "Simple test script to verify node_manager functionality", "Located at: test_node_manager_simple.py", "Exports: test_node_manager", "Lines of code: 97", "Functions: test_node_manager", "Domain: shared, Layer: unknown"], "weight": 6.5}
+{"type": "entity", "name": "test_token_detection", "entityType": "module", "observations": ["Weight: 5.5 (access frequency)", "Test script to verify token detection for AP01m node using the actual NodeManager", "Located at: test_token_detection.py", "Exports: test_token_detection", "Lines of code: 102", "Functions: test_token_detection", "Domain: shared, Layer: unknown"], "weight": 5.5}
+{"type": "entity", "name": "test_multiple_tokens", "entityType": "module", "observations": ["Weight: 5.5 (access frequency)", "Test script to verify multiple tokens per node functionality", "Located at: test_multiple_tokens.py", "Exports: test_multiple_tokens", "Lines of code: 86", "Functions: test_multiple_tokens", "Domain: shared, Layer: unknown"], "weight": 5.5}
+{"type": "entity", "name": "validate_nodes", "entityType": "module", "observations": ["Weight: 5.5 (access frequency)", "Located at: validate_nodes.py", "Exports: validate_nodes_config", "Lines of code: 105", "Functions: validate_nodes_config", "Domain: shared, Layer: unknown"], "weight": 5.5}
+{"type": "entity", "name": "test_rpc_normalization", "entityType": "module", "observations": ["Weight: 5.5 (access frequency)", "Located at: test_rpc_normalization.py", "Exports: test_rpc_normalization", "Lines of code: 95", "Functions: test_rpc_normalization", "Domain: shared, Layer: unknown"], "weight": 5.5}
+{"type": "entity", "name": "test_token_detection_standalone", "entityType": "module", "observations": ["Weight: 5.0 (access frequency)", "Standalone test script to verify the Node class can handle multiple tokens with the same ID but different types", "Located at: test_token_detection_standalone.py", "Exports: Node, add_token, NodeToken, test_node_token_handling", "Lines of code: 134", "Classes: NodeToken, Node", "Functions: test_node_token_handling, add_token", "Domain: shared, Layer: unknown"], "weight": 5.0}
+{"type": "entity", "name": "log_filename_parser", "entityType": "module", "observations": ["Weight: 5.0 (access frequency)", "Log Filename Parser - Utility for extracting IP addresses from log filenames", "Located at: src/commander/utils/log_filename_parser.py", "Exports: is_valid_ip, extract_ip_from_filename", "Lines of code: 65", "Functions: extract_ip_from_filename, is_valid_ip", "Domain: shared, Layer: unknown"], "weight": 5.0}
+{"type": "entity", "name": "services___init__", "entityType": "service", "observations": ["Weight: 3.0 (access frequency)", "Services Module for Commander Application", "Located at: src/commander/services/__init__.py", "Lines of code: 11", "Domain: shared, Layer: services"], "weight": 3.0}
+{"type": "entity", "name": "deduplicate_changelog_v2", "entityType": "module", "observations": ["Weight: 2.5 (access frequency)", "Located at: deduplicate_changelog_v2.py", "Exports: deduplicate_changelog", "Lines of code: 90", "Functions: deduplicate_changelog", "Domain: shared, Layer: unknown"], "weight": 2.5}
+{"type": "entity", "name": "deduplicate_changelog", "entityType": "module", "observations": ["Weight: 2.5 (access frequency)", "Located at: deduplicate_changelog.py", "Exports: deduplicate_changelog", "Lines of code: 48", "Functions: deduplicate_changelog", "Domain: shared, Layer: unknown"], "weight": 2.5}
+{"type": "entity", "name": "observable_model", "entityType": "module", "observations": ["Weight: 2.5 (access frequency)", "Located at: src/commander/observable_model.py", "Exports: ObservableModel", "Lines of code: 8", "Classes: ObservableModel", "Domain: shared, Layer: unknown"], "weight": 2.5}
+{"type": "entity", "name": "utils_constants", "entityType": "module", "observations": ["Weight: 2.5 (access frequency)", "Constants Module - Shared constants across the Commander application", "Located at: src/commander/utils/constants.py", "Exports: ErrorSeverity", "Lines of code: 27", "Classes: ErrorSeverity", "Domain: shared, Layer: unknown"], "weight": 2.5}
+{"type": "entity", "name": "error_detection", "entityType": "module", "observations": ["Weight: 2.5 (access frequency)", "Located at: src/commander/utils/error_detection.py", "Exports: is_error_response", "Lines of code: 75", "Functions: is_error_response", "Domain: shared, Layer: unknown"], "weight": 2.5}
+{"type": "entity", "name": "test_node_config_transformation", "entityType": "module", "observations": ["Weight: 2.0 (access frequency)", "Located at: test_node_config_transformation.py", "Exports: transform_to_old_format, transform_to_new_format", "Lines of code: 122", "Functions: transform_to_new_format, transform_to_old_format", "Domain: shared, Layer: unknown"], "weight": 2.0}
+{"type": "entity", "name": "presenters___init__", "entityType": "module", "observations": ["Weight: 2.0 (access frequency)", "Presenter package for the Commander application.", "Located at: src/commander/presenters/__init__.py", "Lines of code: 6", "Domain: shared, Layer: unknown"], "weight": 2.0}
+{"type": "entity", "name": "telnet_filters", "entityType": "module", "observations": ["Weight: 1.5 (access frequency)", "Located at: src/commander/utils/telnet_filters.py", "Exports: filter_telnet_output", "Lines of code: 46", "Functions: filter_telnet_output", "Domain: shared, Layer: unknown"], "weight": 1.5}
+{"type": "entity", "name": "setup", "entityType": "module", "observations": ["Weight: 1.0 (access frequency)", "Located at: setup.py", "Lines of code: 8", "Domain: shared, Layer: unknown"], "weight": 1.0}
+{"type": "entity", "name": "count_imports", "entityType": "module", "observations": ["Weight: 1.0 (access frequency)", "Located at: count_imports.py", "Lines of code: 11", "Domain: shared, Layer: unknown"], "weight": 1.0}
+{"type": "entity", "name": "count_lines", "entityType": "module", "observations": ["Located at: count_lines.py", "Lines of code: 17", "Domain: shared, Layer: unknown"], "weight": 0.0}
+{"type": "entity", "name": "tests___init__", "entityType": "module", "observations": ["Located at: tests/__init__.py", "Lines of code: 1", "Domain: shared, Layer: unknown"], "weight": 0.0}
+{"type": "entity", "name": "services_queue_management_service", "entityType": "service", "observations": ["Queue Management Service\nThis service manages the command queue and provides progress tracking and completion signals.\nI", "Located at: src/commander/services/queue_management_service.py", "Lines of code: 36", "Domain: shared, Layer: services"], "weight": 0.0}
+{"type": "entity", "name": "utils___init__", "entityType": "module", "observations": ["Located at: src/commander/utils/__init__.py", "Lines of code: 1", "Domain: shared, Layer: unknown"], "weight": 0.0}
+{"type": "entity", "name": "error_reporting___init__", "entityType": "service", "observations": ["Error Reporting Package - Consolidated error handling for the Commander application", "Located at: src/commander/services/error_reporting/__init__.py", "Lines of code: 3", "Domain: shared, Layer: services"], "weight": 0.0}
+{"type": "relation", "from": "test_context_menu_fix", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection_simple", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_multiple_tokens", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_multiple_tokens", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "validate_nodes", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_normalization", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "tests_test_token_detection_end_to_end", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "tests_test_token_detection_end_to_end", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_sys_file_parser", "to": "sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection_simple", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_multiple_tokens", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "validate_nodes", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "debug_token_detection_test", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection_standalone", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_normalization", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "test_sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "node_config_dialog", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "node_config_dialog", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "test_session_player", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_load_nodes_explorer", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "test_button_styling", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "gui_workers", "relationType": "imports"}
+{"type": "relation", "from": "processor", "to": "file_utils", "relationType": "imports"}
+{"type": "relation", "from": "main", "to": "processor", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "processor", "relationType": "imports"}
+{"type": "relation", "from": "main", "to": "generator", "relationType": "imports"}
+{"type": "relation", "from": "main", "to": "processor", "relationType": "imports"}
+{"type": "relation", "from": "main", "to": "gui", "relationType": "imports"}
+{"type": "relation", "from": "main", "to": "generator", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "generator", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "node_config_dialog", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "generator", "relationType": "imports"}
+{"type": "relation", "from": "main", "to": "gui", "relationType": "imports"}
+{"type": "relation", "from": "deduplicate_changelog_v2", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "debug_token_detection_test", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "deduplicate_changelog", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "node_config_dialog", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "akis_full_audit", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "instructions", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "skills", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "audit", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "workflow_log_parser", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "knowledge", "to": "log_creator", "relationType": "imports"}
+{"type": "relation", "from": "test_session_player", "to": "instructions", "relationType": "imports"}
+{"type": "relation", "from": "test_session_recorder", "to": "instructions", "relationType": "imports"}
+{"type": "relation", "from": "services_session_player", "to": "instructions", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "instructions", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection_simple", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "validate_nodes", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "debug_token_detection_test", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "test_node_config_transformation", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "node_config_dialog", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "log_creator", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "session_cleanup", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "akis_full_audit", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "instructions", "to": "simulate_session_json", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_token_detection_end_to_end", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_token_detection_end_to_end", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection_simple", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_multiple_tokens", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "validate_nodes", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_normalization", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "tests_test_token_detection_end_to_end", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_sys_file_parser", "to": "commander_test_token_detection_end_to_end", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_token_detection_end_to_end", "to": "test_fbc_token_detection", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_copy_to_log_integration", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_copy_to_log_integration", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_copy_to_log_integration", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_token_detection", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_token_detection", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_token_utils", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_normalization", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_sys_file_parser", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "processor", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "generator", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "node_manager", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_context_menu_service", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "test_token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_session_player", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "test_session_recorder", "to": "test_session_player", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "test_session_player", "relationType": "imports"}
+{"type": "relation", "from": "test_clear_log", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_clear_log", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_clear_log", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_clear_log", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "node_tree_view", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "test_copy_to_log_functionality", "to": "session_presenter", "relationType": "imports"}
+{"type": "relation", "from": "test_log_writer", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_tokens", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_tokens", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_load_nodes_explorer", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "test_clipboard_monitor", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_clipboard_monitor", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "test_clipboard_monitor", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "test_clipboard_monitor", "relationType": "imports"}
+{"type": "relation", "from": "test_button_styling", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "test_button_styling", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "test_session_recorder", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "session_manager", "to": "test_session_recorder", "relationType": "imports"}
+{"type": "relation", "from": "test_log_filename_parser", "to": "log_filename_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "telnet_client", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connection", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connection", "to": "telnet_client", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_log_writer_additional", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_subsection_context_menu", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_subsection_context_menu", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "services_error_reporter", "to": "commander_constants", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "commander_constants", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "commander_constants", "relationType": "imports"}
+{"type": "relation", "from": "circuit_breaker", "to": "commander_constants", "relationType": "imports"}
+{"type": "relation", "from": "token_utils", "to": "commander_constants", "relationType": "imports"}
+{"type": "relation", "from": "reporter", "to": "commander_constants", "relationType": "imports"}
+{"type": "relation", "from": "log_writer", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_copy_to_log_integration", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_clear_log", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_log_writer", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_clipboard_monitor", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection_simple", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_multiple_tokens", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "tests_test_token_detection_end_to_end", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_token_detection_end_to_end", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_copy_to_log_integration", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_token_detection", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "icons", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "icons", "relationType": "imports"}
+{"type": "relation", "from": "session_manager", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "command_queue", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "widgets", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "telnet_tab", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "command_queue", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "command_queue", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "services_rpc_command_service", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "node_manager", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "node_manager", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_token_detection", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_node_manager_simple", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_multiple_tokens", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "validate_nodes", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "tests_test_token_detection_end_to_end", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_token_detection_end_to_end", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_copy_to_log_integration", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "qt_init", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "telnet_client", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connection", "to": "telnet_client", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "log_creator", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "session_manager", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "command_queue", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "telnet_client", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "services_session_player", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "services_clipboard_monitor", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "retry_utils", "to": "runtime_hook", "relationType": "imports"}
+{"type": "relation", "from": "processor", "to": "file_utils", "relationType": "imports"}
+{"type": "relation", "from": "generator", "to": "file_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_token_utils", "to": "file_utils", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter_utils", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter_utils", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter_utils", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_clear_log", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_copy_to_log_functionality", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "test_copy_to_log_functionality", "to": "session_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "session_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "session_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "commander_presenter_utils", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "presenters___init__", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "presenters___init__", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "presenters___init__", "to": "commander_presenter", "relationType": "imports"}
+{"type": "relation", "from": "presenters___init__", "to": "node_tree_presenter", "relationType": "imports"}
+{"type": "relation", "from": "telnet_tab", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "telnet_tab", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_view", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "node_tree_view", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "commander_ui_factory", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_load_nodes_explorer", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "test_button_styling", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "commander_commander___init__", "to": "commander_window", "relationType": "imports"}
+{"type": "relation", "from": "icons", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "widgets", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "telnet_tab", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_view", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "session_view", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "vnc_tab", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_view", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_select_root_button", "to": "node_tree_view", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "node_tree_view", "relationType": "imports"}
+{"type": "relation", "from": "session_view", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_view", "to": "telnet_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_view", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "test_session_player", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "session_view", "relationType": "imports"}
+{"type": "relation", "from": "vnc_tab", "to": "theme", "relationType": "imports"}
+{"type": "relation", "from": "regression_test_telnet_tab_visibility", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "test_button_styling", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "commander_ui_factory", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "session_view", "to": "vnc_tab", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "telnet_commands", "relationType": "imports"}
+{"type": "relation", "from": "services_context_menu_service", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_context_menu_service", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "services_context_menu_service", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_session_player", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_tokens", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_clipboard_monitor", "to": "services_context_menu_service", "relationType": "imports"}
+{"type": "relation", "from": "test_session_player", "to": "services_session_player", "relationType": "imports"}
+{"type": "relation", "from": "services_rpc_command_service", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "services_rpc_command_service", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_rpc_command_service", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services___init__", "to": "services_rpc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "services_commander_service", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_tokens", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_subsection_context_menu", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "services_context_menu_service", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "services___init__", "to": "services_context_menu_filter", "relationType": "imports"}
+{"type": "relation", "from": "services_clipboard_monitor", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "services_clipboard_monitor", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_clipboard_monitor", "to": "services_clipboard_monitor", "relationType": "imports"}
+{"type": "relation", "from": "services_fbc_command_service", "to": "command_queue", "relationType": "imports"}
+{"type": "relation", "from": "services_fbc_command_service", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_fbc_command_service", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_fbc_token_detection", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "test_command_execution", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "node_tree_presenter_logic", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services_commander_service", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "services___init__", "to": "services_fbc_command_service", "relationType": "imports"}
+{"type": "relation", "from": "command_queue", "to": "services_threading_service", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "services_threading_service", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "services_threading_service", "relationType": "imports"}
+{"type": "relation", "from": "circuit_breaker", "to": "services_threading_service", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "telnet_commands", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_telnet_service", "to": "widgets", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect", "to": "services_telnet_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connect_integration", "to": "services_telnet_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_command_output", "to": "services_telnet_service", "relationType": "imports"}
+{"type": "relation", "from": "test_telnet_connection", "to": "services_telnet_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "services_telnet_service", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_session_recorder", "to": "services_session_recorder", "relationType": "imports"}
+{"type": "relation", "from": "test_button_actions", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "test_clipboard_monitor", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "test_commander_window", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "main_window", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter_utils", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "session_presenter", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_window", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "services_clipboard_monitor", "to": "services_status_service", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "circuit_breaker", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "session_manager", "relationType": "imports"}
+{"type": "relation", "from": "services_logging_service", "to": "log_writer", "relationType": "imports"}
+{"type": "relation", "from": "services_logging_service", "to": "models", "relationType": "imports"}
+{"type": "relation", "from": "services_logging_service", "to": "node_manager", "relationType": "imports"}
+{"type": "relation", "from": "test_context_menu_fix", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_log_path", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "gui", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_test_rpc_log_path", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "log_writer", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "session_manager", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "command_queue", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "node_manager", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "telnet_client", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "commander_presenter_utils", "to": "services_logging_service", "relationType": "imports"}
+{"type": "relation", "from": "services_error_handler", "to": "interface", "relationType": "imports"}
+{"type": "relation", "from": "test_log_filename_parser", "to": "log_filename_parser", "relationType": "imports"}
+{"type": "relation", "from": "test_sys_file_parser", "to": "sys_file_parser", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "circuit_breaker", "relationType": "imports"}
+{"type": "relation", "from": "test_rpc_normalization", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "test_token_utils", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "node_manager", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_context_menu_service", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_session_recorder", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "services_sequential_command_processor", "to": "token_utils", "relationType": "imports"}
+{"type": "relation", "from": "reporter", "to": "interface", "relationType": "imports"}
+{"type": "relation", "from": "services_error_handler", "to": "reporter", "relationType": "imports"}
+{"type": "relation", "from": "services_error_handler", "to": "interface", "relationType": "imports"}
+{"type": "relation", "from": "reporter", "to": "interface", "relationType": "imports"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "count_lines", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "setup", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "count_imports", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "tests___init__", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "session_tracker", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "simulate_metadata_enhancement", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "simulate_todo_naming", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "akis_compliance_simulation", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "akis_comprehensive_analysis", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "stress_test", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "docs", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "investigate", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "contracts", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "observable_model", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "services_queue_management_service", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "utils_constants", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "error_detection", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "telnet_filters", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "utils___init__", "relationType": "contains_orphan"}
+{"type": "relation", "from": "INTERCONNECTIONS", "to": "error_reporting___init__", "relationType": "contains_orphan"}

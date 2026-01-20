@@ -5,8 +5,8 @@ This presenter handles the session view logic, including VNC tab integration
 and clipboard functionality.
 """
 
-from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtWidgets import QWidget
+from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtWidgets import QWidget
 
 # from commander.presenters.commander_presenter import CommanderPresenter
 from commander.ui.session_view import SessionView
@@ -88,7 +88,7 @@ class SessionPresenter(QObject):
     def _on_copy_to_log_clicked(self):
         """Handle copy to log button click."""
         # Get clipboard content
-        from PyQt6.QtWidgets import QApplication
+        from PyQt5.QtWidgets import QApplication
         clipboard = QApplication.clipboard()
         content = clipboard.text()
         

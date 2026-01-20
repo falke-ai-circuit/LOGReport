@@ -5,11 +5,11 @@ This presenter coordinates the main application functionality, including
 clipboard integration.
 """
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QTabWidget, QTextEdit, 
     QVBoxLayout, QWidget, QPushButton, QFileDialog
 )
-from PyQt6.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 
 from commander.ui.commander_ui_factory import CommanderUIFactory
 from commander.presenters.session_presenter import SessionPresenter
@@ -175,7 +175,7 @@ class CommanderPresenter(QObject):
         # Get first valid log path from selection
         log_path = None
         for item in selected_items:
-            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+            item_data = item.data(0, Qt.UserRole)
             if item_data and 'log_path' in item_data:
                 log_path = item_data['log_path']
                 break

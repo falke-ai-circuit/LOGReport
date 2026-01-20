@@ -5,7 +5,7 @@ import logging
 import traceback
 import time
 from typing import Optional
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from .interface import ErrorReporter, StructuredError
 from ...constants import STATUS_MSG_SHORT, STATUS_MSG_MEDIUM, STATUS_MSG_LONG
 
@@ -17,7 +17,7 @@ class ErrorReporterImpl(QObject, ErrorReporter):
     error_reported = pyqtSignal(str, int)  # message, duration
     
     def __init__(self):
-        """Initialize the error reporter.")
+        """Initialize the error reporter."""
         super().__init__()
         logging.debug("ErrorReporterImpl initialized")
     

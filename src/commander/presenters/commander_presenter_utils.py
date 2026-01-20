@@ -4,8 +4,8 @@ Commander Presenter Utilities - Helper functions for the Commander presenter
 import os
 import logging
 from typing import List
-from PyQt6.QtWidgets import QTreeWidgetItem, QTabWidget, QTextEdit
-from PyQt6.QtCore import Qt
+from PyQt5.QtWidgets import QTreeWidgetItem, QTabWidget, QTextEdit
+from PyQt5.QtCore import Qt
 
 from ..models import NodeToken
 from ..node_manager import NodeManager
@@ -33,7 +33,7 @@ class CommanderPresenterUtils:
             status_message_signal.emit("No item selected! Select a token or log file on the left.", 3000)
             return
         item = selected_items[0]
-        data = item.data(0, Qt.ItemDataRole.UserRole)
+        data = item.data(0, Qt.UserRole)
         if not data:
             status_message_signal.emit("Selected item has no data", 3000)
             return
@@ -108,7 +108,7 @@ class CommanderPresenterUtils:
             status_message_signal.emit("No item selected! Select a token or log file on the left.", 3000)
             return
         item = selected_items[0]
-        data = item.data(0, Qt.ItemDataRole.UserRole)
+        data = item.data(0, Qt.UserRole)
         if not data:
             status_message_signal.emit("Selected item has no data", 3000)
             return
@@ -143,7 +143,7 @@ class CommanderPresenterUtils:
         Returns:
             bool: True if file was opened successfully, False otherwise
         """
-        if data := item.data(0, Qt.ItemDataRole.UserRole):
+        if data := item.data(0, Qt.UserRole):
             # All log items stored their path in "log_path"
             if "log_path" in data:
                 log_path = data["log_path"]

@@ -4,7 +4,7 @@ Commander UI Factory
 This factory creates and manages the main UI components.
 """
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QSplitter, QTreeWidget, QTreeWidgetItem, QTabWidget, QTextEdit, 
     QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QLabel
 )

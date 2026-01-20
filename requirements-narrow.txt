@@ -2,7 +2,7 @@
 # Compatible with Python 3.10+ (Windows 10/11)
 
 # Core application functionality
-PyQt6==6.4.2           # GUI framework
+PyQt5==5.15.11         # GUI framework (PyQt5 for Windows compatibility)
 reportlab==4.0.4       # PDF report generation
 python-docx==0.8.11    # DOCX report generation
 

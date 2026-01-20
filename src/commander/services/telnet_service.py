@@ -11,7 +11,7 @@ from ..models import NodeToken
 from ..widgets import ConnectionState
 from ..commands.telnet_commands import CommandResolver
 from ..services.threading_service import ThreadingService
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 
 
 class TelnetService(QObject):

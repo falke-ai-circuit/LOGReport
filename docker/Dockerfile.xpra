@@ -1,0 +1,35 @@
+FROM python:3.12-slim
+
+# Install Xpra and Qt5 dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xpra \
+    python3-pyqt5 \
+    libgl1-mesa-glx \
+    libegl1 \
+    libxkbcommon0 \
+    libdbus-1-3 \
+    dbus \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies  
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY src/ ./src/
+COPY config/ ./config/
+COPY nodes.json ./
+
+# Create directories
+RUN mkdir -p test_logs logs
+
+# Copy start script
+COPY docker/start-xpra.sh /start.sh
+RUN chmod +x /start.sh
+
+EXPOSE 8080
+
+CMD ["/start.sh"]

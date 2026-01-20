@@ -11,7 +11,7 @@ import os
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from .models import NodeToken
 
 class SessionType(Enum):

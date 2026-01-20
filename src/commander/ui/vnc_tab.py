@@ -4,11 +4,11 @@ VNC Tab Widget
 This widget provides the VNC viewer interface with clipboard integration.
 """
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QTextEdit,
     QPushButton, QLabel, QLineEdit, QComboBox, QToolBar, QSizePolicy
 )
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 
 from .theme import STYLESHEETS, COLORS
 
@@ -41,8 +41,8 @@ class VNCTab(QWidget):
         
         # Create toolbar for recording controls
         self.toolbar = QToolBar()
-        from PyQt6.QtCore import Qt
-        self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        from PyQt5.QtCore import Qt
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         layout.addWidget(self.toolbar)
         
         # Recording controls
