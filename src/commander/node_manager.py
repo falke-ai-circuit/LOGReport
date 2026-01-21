@@ -625,7 +625,7 @@ class NodeManager:
         return 2
     
     def _scan_for_dynamic_ips(self, log_root: str):
-        """
+        r"""
         Scans log directory for IPs using regex pattern and updates token objects
         Pattern: r"(\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3})"
         """

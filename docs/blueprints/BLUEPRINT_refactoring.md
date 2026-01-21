@@ -1,4 +1,17 @@
-# LOGReport Refactoring Proposal
+---
+title: "LOGReport Codebase Refactoring"
+type: blueprint
+category: architecture
+version: "1.1"
+last_updated: 2026-01-21
+status: "In Progress"
+priority: "High"
+estimated_effort: "400 hours"
+phases_completed: ["Phase 1"]
+phases_remaining: ["Phase 2", "Phase 3"]
+---
+
+# LOGReport Refactoring Blueprint
 
 ## Executive Summary
 
