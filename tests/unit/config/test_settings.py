@@ -4,12 +4,7 @@ Unit tests for the Settings configuration module.
 Tests configuration loading, environment variable support, and validation.
 """
 
-import sys
 import os
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
-
 import json
 import tempfile
 from pathlib import Path

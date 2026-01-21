@@ -4,12 +4,6 @@ Unit tests for the NodeValidator and related validators.
 Tests node validation, token validation, and configuration validation.
 """
 
-import sys
-import os
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
-
 import pytest
 from commander.models import Node, NodeToken
 from commander.validators import (

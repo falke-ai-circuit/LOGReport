@@ -4,12 +4,6 @@ Unit tests for the custom exception hierarchy.
 Tests exception creation, inheritance, context handling, and error information.
 """
 
-import sys
-import os
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
-
 import pytest
 from commander.exceptions import (
     LOGReportError,
