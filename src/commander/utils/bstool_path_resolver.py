@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_bstool_path() -> str:
-    """
+    r"""
     Get the path to bstool.exe, handling both development and bundled environments.
     
     Uses hybrid approach for maximum compatibility:
