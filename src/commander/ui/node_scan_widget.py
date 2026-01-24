@@ -103,8 +103,10 @@ class NodeScanWidget(QWidget):
         
         # FIX 1: Auto-load most recent file on widget initialization
         # Use QTimer to defer loading until after UI is fully initialized
+        # Use staggered delay to prevent all widgets loading simultaneously
         if self.token_files:
-            QTimer.singleShot(100, self._load_most_recent_file)
+            delay = max(100, self.load_delay_ms)  # Use provided delay or minimum 100ms
+            QTimer.singleShot(delay, self._load_most_recent_file)
     
     def _setup_ui(self):
         """Create file selector, table view, compare button, auto-refresh controls"""
@@ -563,8 +565,20 @@ class NodeScanWidget(QWidget):
     
     def _on_compare_clicked(self):
         """Handle Compare Live button click"""
-        if not self.current_data or not self.comparison_service:
-            self.status_message.emit("Cannot compare: no data or comparison service", 3000)
+        self.logger.info(f"[{self.node_name}] Compare Live button clicked")
+        
+        # Check if we have data
+        if not self.current_data:
+            error_msg = "Cannot compare: no file data loaded"
+            self.logger.warning(f"[{self.node_name}] {error_msg}")
+            self.status_message.emit(error_msg, 3000)
+            return
+        
+        # Check if we have comparison service
+        if not self.comparison_service:
+            error_msg = "Cannot compare: no telnet service available"
+            self.logger.warning(f"[{self.node_name}] {error_msg}")
+            self.status_message.emit(error_msg, 5000)
             return
         
         # Auto-connect to telnet if not connected
@@ -640,9 +654,11 @@ class NodeScanWidget(QWidget):
         # Try to extract from command
         if self.current_data.command:
             # FBC: "print from fbc io structure 0010000" -> "001"
+            # FBC: "print from fbc io structure 1a20000" -> "1a2" (hex tokens)
             # RPC: "print from fbc rupi counters 0010000" -> "001"
             import re
-            match = re.search(r'(\d{3})\d{4}$', self.current_data.command)
+            # Support both numeric (162) and hexadecimal (1a2) token IDs
+            match = re.search(r'([0-9a-f]{3})\d{4}$', self.current_data.command, re.IGNORECASE)
             if match:
                 return match.group(1)
         
