@@ -29,7 +29,7 @@ description: 'Quality checks and common gotchas. Verification steps and error pr
 ## Checklist
 □ No syntax errors | □ No duplicates | □ Imports resolve | □ Tests pass
 
-## ⚠️ Common Gotchas (from 141 workflow logs - top 30 kept)
+## ⚠️ Common Gotchas (from 142 workflow logs - top 32 kept)
 
 | Category | Pattern | Solution |
 |----------|---------|----------|
@@ -63,3 +63,5 @@ description: 'Quality checks and common gotchas. Verification steps and error pr
 | Remote | guacd security layer mismatch | Use security_layer=rdp, pass security='rdp' in args |
 | Build | Frontend changes not visible | Clear browser cache with Ctrl+Shift+R |
 | Protocol | VNC asks for username | Use conditional rendering `tab.protocol !== 'vnc'` |
+| PyQt5 | QTimer delay ignored | Use `max(100, delay_param)` not hardcoded 100ms |
+| Regex | Token extraction fails on hex | Use `[0-9a-f]{3}` not `\d{3}` for hex tokens |
