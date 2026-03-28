@@ -34,7 +34,16 @@ func (m *Manager) Load() error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, &m.nodes)
+	if err := json.Unmarshal(data, &m.nodes); err != nil {
+		return err
+	}
+	// Default empty status to "offline"
+	for i := range m.nodes {
+		if m.nodes[i].Status == "" {
+			m.nodes[i].Status = "offline"
+		}
+	}
+	return nil
 }
 
 func (m *Manager) Save() error {
