@@ -23,5 +23,11 @@ func NewRouter(nm *nodes.Manager) *chi.Mux {
 		r.Delete("/{name}", nh.Delete)
 	})
 
+	r.Route("/api/logs", func(r chi.Router) {
+		r.Post("/scan", handlers.ScanLogs)
+		r.Post("/generate", handlers.GenerateReport)
+	})
+	r.Get("/api/reports/{id}/download", handlers.DownloadReport)
+
 	return r
 }
