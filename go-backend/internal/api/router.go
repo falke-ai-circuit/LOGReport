@@ -13,11 +13,10 @@ func NewRouter(nm *nodes.Manager) *chi.Mux {
 	r.Use(middleware.Recoverer)
 
 	nh := handlers.NewNodesHandler(nm)
+	nsh := handlers.NewNodeScanHandler(nm)
 
-	// Health
 	r.Get("/api/health", handlers.Health)
 
-	// Nodes CRUD
 	r.Route("/api/nodes", func(r chi.Router) {
 		r.Get("/", nh.GetAll)
 		r.Post("/", nh.Create)
@@ -26,7 +25,6 @@ func NewRouter(nm *nodes.Manager) *chi.Mux {
 		r.Delete("/{name}", nh.Delete)
 	})
 
-	// Log processing + PDF generation
 	r.Route("/api/logs", func(r chi.Router) {
 		r.Post("/scan", handlers.ScanLogs)
 		r.Post("/generate", handlers.GenerateReport)
@@ -34,7 +32,6 @@ func NewRouter(nm *nodes.Manager) *chi.Mux {
 	r.Get("/api/reports/{id}/download", handlers.DownloadReport)
 	r.Get("/api/scans/{scanID}/parsed", handlers.ScanParsed)
 
-	// Telnet sessions
 	r.Route("/api/telnet", func(r chi.Router) {
 		r.Get("/", handlers.TelnetSessions)
 		r.Post("/connect", handlers.TelnetConnect)
@@ -42,6 +39,16 @@ func NewRouter(nm *nodes.Manager) *chi.Mux {
 		r.Post("/{id}/command", handlers.TelnetCommand)
 		r.Delete("/{id}", handlers.TelnetDisconnect)
 	})
+
+	r.Route("/api/bstool", func(r chi.Router) {
+		r.Get("/status", handlers.BstoolStatus)
+		r.Post("/run", handlers.BstoolRun)
+	})
+
+	r.Post("/api/node-scan", nsh.Scan)
+
+	r.Get("/api/sessions", handlers.GetSessions)
+	r.Delete("/api/sessions", handlers.ClearSessions)
 
 	return r
 }

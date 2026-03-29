@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { LogProcessorTab } from './LogProcessorTab'
+import { CommanderTab } from './CommanderTab'
 import { TelnetTab } from './TelnetTab'
 import { ScanTab } from './ScanTab'
+import { BstoolTab } from './BstoolTab'
+import { SessionsTab } from './SessionsTab'
 
 const TABS = [
   { id: 'log-processor', label: 'Log Processor' },
@@ -12,21 +15,23 @@ const TABS = [
   { id: 'sessions', label: 'Sessions' },
 ]
 
-const PHASE_MAP: Record<string, string> = {
-  'log-processor': 'P2',
-  'commander': 'P3',
-  'telnet': 'P3',
-  'scan': 'P4',
-  'bstool': 'P5',
-  'sessions': 'P7',
-}
-
 export function TabContainer() {
   const [active, setActive] = useState('log-processor')
 
+  const renderTab = () => {
+    switch (active) {
+      case 'log-processor': return <LogProcessorTab />
+      case 'commander':    return <CommanderTab />
+      case 'telnet':       return <TelnetTab />
+      case 'scan':         return <ScanTab />
+      case 'bstool':       return <BstoolTab />
+      case 'sessions':     return <SessionsTab />
+      default:             return null
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Tab bar */}
       <div style={{
         display: 'flex',
         background: '#0f0f0f',
@@ -53,25 +58,8 @@ export function TabContainer() {
         ))}
       </div>
 
-      {/* Tab content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {active === 'log-processor' ? (
-          <LogProcessorTab />
-        ) : active === 'telnet' ? (
-          <TelnetTab />
-        ) : active === 'scan' ? (
-          <ScanTab />
-        ) : (
-          <div style={{ padding: 20, textAlign: 'center', marginTop: 80, color: '#888' }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🔧</div>
-            <div style={{ fontSize: 18, color: '#5D3E8E', fontWeight: 600, marginBottom: 8 }}>
-              {TABS.find(t => t.id === active)?.label}
-            </div>
-            <div style={{ fontSize: 13, color: '#555' }}>
-              Coming in Phase {PHASE_MAP[active]} — implementation in progress
-            </div>
-          </div>
-        )}
+        {renderTab()}
       </div>
     </div>
   )
