@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LogProcessorTab } from './LogProcessorTab'
 
 const TABS = [
   { id: 'log-processor', label: 'Log Processor' },
@@ -51,16 +52,20 @@ export function TabContainer() {
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: 1, padding: 20, overflow: 'auto', color: '#888' }}>
-        <div style={{ textAlign: 'center', marginTop: 80 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔧</div>
-          <div style={{ fontSize: 18, color: '#5D3E8E', fontWeight: 600, marginBottom: 8 }}>
-            {TABS.find(t => t.id === active)?.label}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        {active === 'log-processor' ? (
+          <LogProcessorTab />
+        ) : (
+          <div style={{ padding: 20, textAlign: 'center', marginTop: 80, color: '#888' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🔧</div>
+            <div style={{ fontSize: 18, color: '#5D3E8E', fontWeight: 600, marginBottom: 8 }}>
+              {TABS.find(t => t.id === active)?.label}
+            </div>
+            <div style={{ fontSize: 13, color: '#555' }}>
+              Coming in Phase {PHASE_MAP[active]} — implementation in progress
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: '#555' }}>
-            Coming in Phase {PHASE_MAP[active]} — implementation in progress
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )
