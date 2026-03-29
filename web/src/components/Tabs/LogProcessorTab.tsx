@@ -51,7 +51,7 @@ export function LogProcessorTab() {
             cursor: scanning || !rootPath ? 'default' : 'pointer'
           }}
         >
-          {scanning ? 'Scanning...' : 'Scan'}
+          {scanning ? 'Scanning...' : 'Scan Folder'}
         </button>
         {scanResult && (
           <button onClick={clear} style={{
