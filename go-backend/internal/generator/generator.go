@@ -30,8 +30,10 @@ func GeneratePDF(result *processor.ScanResult, outputPath string, opts ReportOpt
 
 	title := opts.Title
 	if title == "" {
-		title = fmt.Sprintf("LOGReport — %s", filepath.Base(result.RootPath))
+		title = fmt.Sprintf("LOGReport - %s", filepath.Base(result.RootPath))
 	}
+	// Sanitize title for gofpdf Latin-1 encoding
+	title = sanitize(title)
 
 	// Cover page
 	pdf.AddPage()
