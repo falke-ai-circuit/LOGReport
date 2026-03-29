@@ -32,6 +32,7 @@ func NewRouter(nm *nodes.Manager) *chi.Mux {
 		r.Post("/generate", handlers.GenerateReport)
 	})
 	r.Get("/api/reports/{id}/download", handlers.DownloadReport)
+	r.Get("/api/scans/{scanID}/parsed", handlers.ScanParsed)
 
 	// Telnet sessions
 	r.Route("/api/telnet", func(r chi.Router) {

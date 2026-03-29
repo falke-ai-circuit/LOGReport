@@ -120,6 +120,17 @@ func GenerateReport(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetScanResult returns the cached scan result for use by other handlers
+func GetScanResult(scanID string) (*processor.ScanResult, bool) {
+	scansMu.RLock()
+	defer scansMu.RUnlock()
+	entry, ok := scans[scanID]
+	if !ok {
+		return nil, false
+	}
+	return entry.result, true
+}
+
 func DownloadReport(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
