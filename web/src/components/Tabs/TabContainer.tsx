@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { LogProcessorTab } from './LogProcessorTab'
+import { TelnetTab } from './TelnetTab'
 
 const TABS = [
   { id: 'log-processor', label: 'Log Processor' },
@@ -55,6 +56,8 @@ export function TabContainer() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         {active === 'log-processor' ? (
           <LogProcessorTab />
+        ) : active === 'telnet' ? (
+          <TelnetTab />
         ) : (
           <div style={{ padding: 20, textAlign: 'center', marginTop: 80, color: '#888' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🔧</div>
