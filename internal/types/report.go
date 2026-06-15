@@ -27,6 +27,20 @@ type ReportConfig struct {
 	Author      string       `json:"author"`
 }
 
+// Report represents a generated report record stored in the database.
+type Report struct {
+	ID          string        `json:"id"`
+	NodeAddress string        `json:"node_address"`
+	Format      ReportFormat  `json:"format"`
+	Template    string        `json:"template,omitempty"`
+	Title       string        `json:"title,omitempty"`
+	Author      string        `json:"author,omitempty"`
+	Status      ReportStatus  `json:"status"`
+	FilePath    string        `json:"file_path,omitempty"`
+	CreatedAt   string        `json:"created_at"`
+	CompletedAt string        `json:"completed_at,omitempty"`
+}
+
 // Template represents a report template definition.
 type Template struct {
 	Name    string `json:"name"`
