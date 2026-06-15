@@ -1,0 +1,7 @@
+[2024-01-15 10:30:00]
+print from fbc io structure 1620000
+
+ XYZ    5    6    7    8  sum
+-------------------------------
+  0   AI8  BI8  BO8  BI8   4
+  1   AI8  BI8  BO8  BI8   4
