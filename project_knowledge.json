@@ -1,0 +1,18 @@
+{
+  "project": "LOGReport",
+  "version": "v0.1.0",
+  "last_updated": "2026-06-15T00:00:00Z",
+  "hot_cache": [],
+  "architecture": {},
+  "gotchas": [],
+  "recent_changes": [
+    {
+      "version": "v0.1.0",
+      "date": "2026-06-15",
+      "summary": "Repo init — Go scaffold, Makefile, CI, docs, agent briefs",
+      "files": [
+        "ALL files — initial commit"
+      ]
+    }
+  ]
+}

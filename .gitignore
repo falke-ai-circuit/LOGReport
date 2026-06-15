@@ -1,0 +1,10 @@
+build/
+web/dist/
+cmd/logreport/logreport
+logreport
+*.exe
+*.test
+*.out
+.venv/
+__pycache__/
+*.pyc
