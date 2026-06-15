@@ -1,0 +1,29 @@
+// Mixed format: both :e:hw: entries and slot configuration
+
+:e:hw:161 AP01		pxe:sys-csg2	// AP01 PCS
+:e:hw:162 AP01_m2	-               // FBC2
+:e:hw:163 AP01_m3       -               // FBC3
+
+:e:hw:501 AL01		pxe:sys-csg2	// AL01 Node
+:e:hw:502 AL01_t1	-               // LIS Token 1
+
+set XD_HW_BUS=A
+set XD_IP_ADDR=192.168.0.11
+
+// NCU2
+NCU2
+AUTOSTART=YES
+TITLE=NCU2
+PROGRAM=<NCU2_CODE>
+
+// AP01 PCS
+Slot 1
+AUTOSTART=YES
+TITLE=AP01
+PROGRAM=<PCS_CODE>
+
+// FBC2
+Slot 2
+TITLE=AP01_m2
+AUTOSTART=YES
+PROGRAM=<CIO_FBC_CODE>
