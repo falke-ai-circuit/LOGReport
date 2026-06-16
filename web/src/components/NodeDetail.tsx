@@ -8,7 +8,8 @@ import {
   AlertTriangle,
   ArrowLeft,
 } from 'lucide-react';
-import { FBCTable, RPCTable } from './IOTable';
+import FBCView from './FBCView';
+import RPCView from './RPCView';
 import type {
   NodeDetailResponse,
   ScanResponse,
@@ -405,7 +406,7 @@ export default function NodeDetail() {
               </button>
             </div>
           )}
-          {!fbcLoading && !fbcError && <FBCTable modules={fbcModules} />}
+          {!fbcLoading && !fbcError && <FBCView modules={fbcModules} />}
         </>
       )}
 
@@ -434,7 +435,7 @@ export default function NodeDetail() {
               </button>
             </div>
           )}
-          {!rpcLoading && !rpcError && <RPCTable modules={rpcModules} />}
+          {!rpcLoading && !rpcError && <RPCView modules={rpcModules} />}
         </>
       )}
     </div>
