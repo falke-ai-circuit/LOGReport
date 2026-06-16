@@ -50,7 +50,7 @@ func filterStatusMessages(raw string) string {
 // Empty lines are removed.
 func splitMessages(filtered string) []string {
 	if filtered == "" {
-		return nil
+		return []string{}
 	}
 	lines := strings.Split(filtered, "\n")
 	var msgs []string
