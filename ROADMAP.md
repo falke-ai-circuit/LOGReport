@@ -22,6 +22,10 @@
 | **15** | Unit Tests | Coder | internal/*_test.go across all packages, >80% coverage | ✅ Complete |
 | **16** | Integration Tests | Coder | test/ — full pipeline: telnet→parse→store→report→api→gui | ✅ Complete |
 | **17** | Docs + Release | Coder | README, CONTRIBUTING, CHANGELOG, git tag v1.0.0 | ✅ Complete |
+| **18** | BsTool Wrapper | Coder | internal/bstool/ — Go wrapper for BsTool.exe, 96.3% coverage | ✅ Complete |
+| **19** | BsTool API | Coder | POST /api/v1/bstool/errlog endpoint + config flags | ✅ Complete |
+| **20** | BsTool Integration | Coder | Integration tests, platform-adaptive executor | ✅ Complete |
+| **R** | R-LIVE Review | Reviewer | Live binary review: start binary, curl all endpoints, test GUI, auto-re-loop | ✅ Complete |
 | **V** | Valmet E2E | Valmet | Real DNA node testing, LightRAG cross-ref, fieldbus validation | ⏳ Pending |
 | **F** | Final Review | Reviewer | Full test suite, regression probes, all gates | ⏳ Pending |
 

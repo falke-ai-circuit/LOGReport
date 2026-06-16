@@ -1,7 +1,7 @@
 {
   "project": "LOGReport",
-  "version": "v1.0.0",
-  "last_updated": "2026-06-16T00:00:00Z",
+  "version": "v1.1.1",
+  "last_updated": "2026-06-16T15:45:00Z",
   "hot_cache": [
     {
       "key": "binary_name",
@@ -40,12 +40,12 @@
     },
     {
       "key": "endpoint_count",
-      "value": "11",
-      "note": "health + 10 API endpoints"
+      "value": "12",
+      "note": "health + 11 API endpoints (including bstool/errlog)"
     },
     {
       "key": "test_coverage",
-      "value": "82%",
+      "value": "82% (bstool: 96.3%)",
       "note": "Unit test coverage across internal/ packages"
     },
     {
@@ -66,12 +66,22 @@
     {
       "key": "branch",
       "value": "dev-cycle-logreport-20260615",
-      "note": "Active development branch for v1.0.0 cycle"
+      "note": "Active development branch for v1.1.1 cycle"
     },
     {
       "key": "tag",
-      "value": "v1.0.0",
-      "note": "Release tag for initial Go refactor"
+      "value": "v1.1.0-c01",
+      "note": "Release tag for BsTool wrapper"
+    },
+    {
+      "key": "bstool_platform",
+      "value": "Windows-only (Linux returns 501 UNSUPPORTED_PLATFORM)",
+      "note": "BsTool.exe is proprietary Windows binary; Go wrapper has platform-adaptive executor"
+    },
+    {
+      "key": "r_live_phase",
+      "value": "mandatory",
+      "note": "R-LIVE: reviewer must start binary and test both API and GUI surfaces with real HTTP requests"
     }
   ],
   "architecture": {
@@ -115,11 +125,17 @@
       "depends_on": ["internal/types", "internal/store"],
       "key_files": ["generator.go", "docx.go", "json.go"]
     },
+    "internal/bstool": {
+      "purpose": "Go wrapper for proprietary Windows BsTool.exe utility",
+      "depends_on": [],
+      "key_files": ["client.go", "executor.go", "executor_linux.go", "executor_windows.go", "filter.go", "encoding.go", "errors.go"],
+      "note": "Platform-adaptive: Windows runs real BsTool.exe, Linux returns 501 UNSUPPORTED_PLATFORM. 96.3% test coverage."
+    },
     "internal/api": {
       "purpose": "HTTP handlers, middleware, and server startup",
-      "depends_on": ["internal/types", "internal/store", "internal/telnet", "internal/parser", "internal/report", "internal/server", "embed.go"],
+      "depends_on": ["internal/types", "internal/store", "internal/telnet", "internal/parser", "internal/report", "internal/bstool", "internal/server", "embed.go"],
       "key_files": ["handlers.go", "server.go", "middleware.go"],
-      "endpoints": ["GET /health", "POST /api/v1/connect", "GET /api/v1/nodes", "GET /api/v1/nodes/{addr}", "POST /api/v1/nodes/{addr}/scan", "GET /api/v1/nodes/{addr}/fbc", "GET /api/v1/nodes/{addr}/rpc", "POST /api/v1/parse/sysfile", "POST /api/v1/reports/generate", "GET /api/v1/reports", "GET /api/v1/reports/{id}"]
+      "endpoints": ["GET /health", "POST /api/v1/connect", "GET /api/v1/nodes", "GET /api/v1/nodes/{addr}", "POST /api/v1/nodes/{addr}/scan", "GET /api/v1/nodes/{addr}/fbc", "GET /api/v1/nodes/{addr}/rpc", "POST /api/v1/parse/sysfile", "POST /api/v1/reports/generate", "GET /api/v1/reports", "GET /api/v1/reports/{id}", "POST /api/v1/bstool/errlog"]
     },
     "internal/server": {
       "purpose": "Server config, health checks, graceful shutdown",
@@ -188,9 +204,53 @@
       "rule": "SysFile entries don't have IP addresses",
       "detail": "Parsed .sys file entries have LID (logical ID) but no IP address. When storing as nodes, the LID is used as a placeholder address. Real IPs must be resolved separately.",
       "affected": ["internal/parser/sysfile.go", "internal/api/handlers.go"]
+    },
+    {
+      "id": "AXON-009",
+      "rule": "npm run build must precede go build for embedded web UI",
+      "detail": "The //go:embed directive in embed.go embeds web/dist/* at compile time. If web/dist/ is empty (only .gitkeep), the binary starts but GUI routes return 404. Always run 'make build' (which does npm run build then go build). The startup guard warns if embed is empty.",
+      "affected": ["embed.go", "cmd/logreport/main.go", "Makefile"]
+    },
+    {
+      "id": "AXON-010",
+      "rule": "R-LIVE phase is mandatory in dev-cycle loop",
+      "detail": "After every build, the reviewer MUST start the binary and test both API and GUI surfaces with real HTTP requests. Auto-re-loop on FAIL with exact failure evidence. This caught the StatusBar bug (wrong URL + field names) and the template-default-not-found bug.",
+      "affected": ["dev-cycle-loop-blueprint.md", "reviewer/SOUL.md"]
+    },
+    {
+      "id": "AXON-011",
+      "rule": "Template 'default' is a soft default — not an error if missing",
+      "detail": "When no template is specified in report generation, the API defaults to 'default'. If no 'default' template is seeded in the store, the generator falls through with nil (uses built-in title). Custom templates still fail hard if not found.",
+      "affected": ["internal/report/generator.go", "internal/api/handlers.go"]
+    },
+    {
+      "id": "AXON-012",
+      "rule": "BsTool.exe is Windows-only; Linux executor returns 501",
+      "detail": "The BsTool wrapper has a platform-adaptive executor. On Windows, it runs the real BsTool.exe subprocess. On Linux, it returns HTTP 501 UNSUPPORTED_PLATFORM with a remediation hint. Tests use a mock executor on both platforms.",
+      "affected": ["internal/bstool/executor_linux.go", "internal/bstool/executor_windows.go"]
     }
   ],
   "recent_changes": [
+    {
+      "version": "v1.1.1",
+      "date": "2026-06-16",
+      "summary": "Template 'default' not found fix — non-fatal fallthrough in report generator. Found via R-LIVE phase.",
+      "files": ["internal/report/generator.go"]
+    },
+    {
+      "version": "v1.1.0",
+      "date": "2026-06-16",
+      "summary": "BsTool wrapper (3 commits, 96.3% coverage) + R-LIVE review phase (StatusBar fix, .gitkeep sentinel, startup guard) + Creative Integration Testing doctrine",
+      "files": [
+        "internal/bstool/ — new package",
+        "internal/api/handlers.go — bstool/errlog endpoint",
+        "web/src/components/StatusBar.tsx — fix URL + field names",
+        "web/dist/.gitkeep — sentinel",
+        "cmd/logreport/main.go — startup guard",
+        "reviewer/SOUL.md — Creative Integration Testing",
+        "dev-cycle-loop-blueprint.md — R-LIVE phase"
+      ]
+    },
     {
       "version": "v1.0.0",
       "date": "2026-06-16",

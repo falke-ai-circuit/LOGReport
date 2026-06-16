@@ -2,6 +2,37 @@
 
 All notable changes to LOGReport will be documented in this file.
 
+## [v1.1.1] — 2026-06-16
+
+### Fixed
+
+- **Template "default" not found** — Report generation failed when no template was specified because the API defaults to `"default"` but no template was seeded in the store. Fixed in `internal/report/generator.go`: when template is `"default"` and not found, fall through with `nil` (use built-in title "LOGReport — {node}"). Custom templates still fail hard if not found. Found via R-LIVE phase.
+
+## [v1.1.0] — 2026-06-16
+
+### Added
+
+- **BsTool Wrapper** — Go wrapper for the proprietary Windows `BsTool.exe` utility. Manages subprocess lifecycle with 10 improvements over the Python original: configurable timeout, structured error types, output encoding detection, line filtering, dry-run mode, graceful shutdown, platform-adaptive executor (Windows real, Linux stub with 501 UNSUPPORTED_PLATFORM), and 96.3% test coverage.
+- **POST /api/v1/bstool/errlog** — New API endpoint for BsTool error log extraction (12th endpoint).
+- **R-LIVE Review Phase** — Mandatory live binary review in dev-cycle loop: reviewer starts binary, curls every endpoint, tests GUI surfaces with real HTTP requests. Auto-re-loop on FAIL with exact failure evidence. Found and fixed StatusBar bug (wrong URL `/api/v1/health` → `/health`, wrong field names `db`/`nodes` → `db_status`/`node_count`).
+- **Creative Integration Testing** — Reviewer doctrine expanded: for any deliverable talking to an external system, reviewer builds a misbehaving mock and tests with real I/O. Mock DNA telnet server built and used to validate Go telnet client (10/12 live tests PASS, 3 edge cases discovered).
+- **`.gitkeep` sentinel** — `web/dist/.gitkeep` committed to prevent empty `//go:embed`; `main.go` startup guard warns if embed contains only `.gitkeep`.
+
+### Commits (8 additional, 24 total)
+
+| # | Commit | Description |
+|---|--------|-------------|
+| 17 | `feat(bstool)` | BsTool wrapper: client, executor, filter, encoding, errors |
+| 18 | `fix(bstool)` | Nil-slice fix for splitMessages |
+| 19 | `feat(api)` | POST /api/v1/bstool/errlog endpoint + config flags |
+| 20 | `test(bstool)` | Integration tests, 96.3% coverage |
+| 21 | `fix(web)` | StatusBar: wrong URL + field names (found via R-LIVE) |
+| 22 | `fix(embed)` | `.gitkeep` sentinel + startup guard against empty embed |
+| 23 | `fix(report)` | Template "default" not found — non-fatal fallthrough |
+| 24 | `docs` | CHANGELOG, ROADMAP, project_knowledge.json, BLUEPRINT updated |
+
+---
+
 ## [v1.0.0] — 2026-06-16
 
 ### Initial Go Refactor Release

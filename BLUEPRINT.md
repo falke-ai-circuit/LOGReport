@@ -1,8 +1,9 @@
 # LOGReport Refactor — Operational Blueprint
 ## Go Single-Binary + Embedded Web UI + REST API
 
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Ratified:** 2026-06-15
+**Last Updated:** 2026-06-16
 **Source:** GR15 directive + dev-cycle loop type + single-binary embedded webserver pattern
 **Orchestrator:** FalkeOrchBot
 **Lane ID:** dev-cycle-logreport-20260615
@@ -14,21 +15,23 @@
 
 ## 0. SCOPE DECISION (ratified 2026-06-15)
 
-**Verdict:** Partial rewrite — report-generation pipeline only. Commander/BsTool excluded.
+**Verdict:** Partial rewrite — report-generation pipeline + BsTool Go wrapper. Commander GUI excluded.
 
 | In Scope (Go + React) | Out of Scope (Python retained) |
 |------------------------|-------------------------------|
 | Telnet client | Commander window (PyQt5) |
-| FBC/RPC parser | BsTool.exe integration |
-| SysFile parser | LOG file processing |
-| SQLite store | Error log extraction |
-| Report generator (DOCX/JSON) | VNC recording/playback |
-| REST API (11 endpoints) | Session recorder/player |
+| FBC/RPC parser | LOG file processing |
+| SysFile parser | VNC recording/playback |
+| SQLite store | Session recorder/player |
+| Report generator (DOCX/JSON) | |
+| REST API (12 endpoints) | |
 | Web UI (AXON theme) | |
 | Health + config | |
 | Embed integration | |
+| BsTool Go wrapper (v1.1.0) | |
+| R-LIVE review phase | |
 
-**Rationale:** BsTool.exe is a proprietary Windows executable with no source code. Cannot be rewritten in Go. The Commander workflow depends on it. The report-generation pipeline has zero dependency on BsTool.exe and is fully feasible in Go.
+**Rationale:** BsTool.exe is a proprietary Windows executable with no source code. Cannot be rewritten in Go. A Go wrapper was built (v1.1.0) that manages the subprocess lifecycle with 10 improvements over the Python original. The Commander workflow depends on BsTool.exe and remains in Python. The report-generation pipeline has zero dependency on BsTool.exe and is fully feasible in Go.
 
 ---
 
@@ -605,14 +608,17 @@ ORIGINAL PROMPT SATISFIED: [YES/NO — with evidence]
 ## 10. CLOSURE CRITERIA
 
 ```
-ALL 16 commits pushed to github.com/falke-ai-circuit/LOGReport
-ALL per-commit reviewer test suites PASS
-ALL functionality transferred from Python original (no gaps)
-ALL regression probes PASS (Go output matches Python output)
-VALMET E2E verdict PASS (or PASS with NOT AVAILABLE for fieldbus)
-INTEGRATION test suite PASS
-Git tag v1.0.0
-GitHub release with binary artifacts
-Evolution entry in orchestrator evolution.jsonl
-CLOSURE_REQUEST sent to FalkeCondBot
+ALL 24 commits pushed to github.com/falke-ai-circuit/LOGReport ✅
+ALL per-commit reviewer test suites PASS ✅
+ALL functionality transferred from Python original (no gaps) ✅
+ALL regression probes PASS (Go output matches Python output) ✅
+R-LIVE review phase PASS (2 bugs found + fixed) ✅
+BsTool Go wrapper (v1.1.0, 96.3% coverage) ✅
+VALMET E2E verdict PASS (or PASS with NOT AVAILABLE for fieldbus) ⏳
+INTEGRATION test suite PASS ✅
+Git tag v1.0.0 ✅
+Git tag v1.1.0-c01 ✅
+GitHub release with binary artifacts ⏳
+Evolution entry in orchestrator evolution.jsonl ⏳
+CLOSURE_REQUEST sent to FalkeCondBot ⏳
 ```
