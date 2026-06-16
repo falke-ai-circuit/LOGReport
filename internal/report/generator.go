@@ -37,12 +37,18 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 		return nil, fmt.Errorf("report: load io points for %s: %w", cfg.NodeAddress, err)
 	}
 
-	// Load template if specified
+	// Load template if specified. "default" is a soft default — if not
+	// found in the store, fall through with nil (use built-in title).
 	var tmpl *types.Template
 	if cfg.Template != "" {
 		tmpl, err = s.GetTemplate(cfg.Template)
 		if err != nil {
-			return nil, fmt.Errorf("report: load template %s: %w", cfg.Template, err)
+			if cfg.Template == "default" {
+				// No default template seeded — use built-in title, not an error.
+				tmpl = nil
+			} else {
+				return nil, fmt.Errorf("report: load template %s: %w", cfg.Template, err)
+			}
 		}
 	}
 
