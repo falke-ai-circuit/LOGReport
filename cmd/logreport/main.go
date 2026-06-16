@@ -1,21 +1,40 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"log"
 	"os"
+
+	"github.com/falke-ai-circuit/LOGReport/internal/api"
+	"github.com/falke-ai-circuit/LOGReport/internal/server"
+	"github.com/falke-ai-circuit/LOGReport/internal/store"
 )
 
 func main() {
-	port := flag.Int("port", 8080, "HTTP server port")
-	flag.Parse()
+	// Parse command-line flags
+	cfg := server.ParseFlags()
 
-	fmt.Printf("LOGReport v0.1.0 — Valmet DNA report generation tool\n")
-	fmt.Printf("Starting server on port %d...\n", *port)
-	fmt.Printf("Web UI: http://localhost:%d\n", *port)
-	fmt.Printf("API:    http://localhost:%d/api/v1/*\n", *port)
-	fmt.Printf("Health: http://localhost:%d/health\n", *port)
+	// Open the SQLite store
+	st, err := store.Open(cfg.DBPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open database: %v\n", err)
+		os.Exit(1)
+	}
+	defer st.Close()
 
-	// TODO: Start actual HTTP server with embedded web UI and REST API
-	os.Exit(0)
+	// Create the API server
+	srv := api.NewServer(st, cfg)
+
+	// Log startup message
+	log.Printf("LOGReport server starting on :%d", cfg.Port)
+	log.Printf("Database: %s", cfg.DBPath)
+	log.Printf("Web UI: http://localhost:%d", cfg.Port)
+	log.Printf("API:    http://localhost:%d/api/v1/*", cfg.Port)
+	log.Printf("Health: http://localhost:%d/health", cfg.Port)
+
+	// Start the HTTP server (blocks until shutdown)
+	if err := srv.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+		os.Exit(1)
+	}
 }
