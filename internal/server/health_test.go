@@ -38,8 +38,8 @@ func TestGetHealthConnected(t *testing.T) {
 	if h.Status != "ok" {
 		t.Errorf("Status: got %q, want ok", h.Status)
 	}
-	if h.Version != "0.1.0" {
-		t.Errorf("Version: got %q, want 0.1.0", h.Version)
+	if h.Version != "1.0.0" {
+		t.Errorf("Version: got %q, want 1.0.0", h.Version)
 	}
 	if h.DBStatus != "connected" {
 		t.Errorf("DBStatus: got %q, want connected", h.DBStatus)

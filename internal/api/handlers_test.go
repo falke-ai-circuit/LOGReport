@@ -95,8 +95,8 @@ func TestHealthHandler(t *testing.T) {
 	if result["status"] != "ok" {
 		t.Errorf("expected status 'ok', got %v", result["status"])
 	}
-	if result["version"] != "0.1.0" {
-		t.Errorf("expected version '0.1.0', got %v", result["version"])
+	if result["version"] != "1.0.0" {
+		t.Errorf("expected version '1.0.0', got %v", result["version"])
 	}
 	if result["db_status"] != "connected" {
 		t.Errorf("expected db_status 'connected', got %v", result["db_status"])

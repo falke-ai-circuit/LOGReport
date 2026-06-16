@@ -19,7 +19,7 @@ type Health struct {
 func GetHealth(db *sql.DB, startTime time.Time) Health {
 	h := Health{
 		Status:  "ok",
-		Version: "0.1.0",
+		Version: "1.0.0",
 		Uptime:  formatUptime(time.Since(startTime)),
 	}
 

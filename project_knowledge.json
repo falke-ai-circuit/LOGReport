@@ -1,11 +1,204 @@
 {
   "project": "LOGReport",
-  "version": "v0.1.0",
-  "last_updated": "2026-06-15T00:00:00Z",
-  "hot_cache": [],
-  "architecture": {},
-  "gotchas": [],
+  "version": "v1.0.0",
+  "last_updated": "2026-06-16T00:00:00Z",
+  "hot_cache": [
+    {
+      "key": "binary_name",
+      "value": "logreport",
+      "note": "Single binary produced by make build at repo root"
+    },
+    {
+      "key": "module_path",
+      "value": "github.com/falke-ai-circuit/LOGReport",
+      "note": "Go module path"
+    },
+    {
+      "key": "go_version",
+      "value": "1.22",
+      "note": "Uses Go 1.22+ routing patterns (METHOD /path/{var})"
+    },
+    {
+      "key": "default_port",
+      "value": "8080",
+      "note": "Default HTTP port, configurable via --port flag"
+    },
+    {
+      "key": "db_path",
+      "value": "logreport.db",
+      "note": "Default SQLite database path, configurable via --db-path"
+    },
+    {
+      "key": "embed_path",
+      "value": "web/dist/*",
+      "note": "//go:embed directive in embed.go at repo root; must be in root package to reach web/dist/"
+    },
+    {
+      "key": "api_prefix",
+      "value": "/api/v1/",
+      "note": "All REST endpoints under this prefix"
+    },
+    {
+      "key": "endpoint_count",
+      "value": "11",
+      "note": "health + 10 API endpoints"
+    },
+    {
+      "key": "test_coverage",
+      "value": "82%",
+      "note": "Unit test coverage across internal/ packages"
+    },
+    {
+      "key": "dependencies",
+      "value": ["github.com/mattn/go-sqlite3 v1.14.45"],
+      "note": "Single external dependency: CGo SQLite driver"
+    },
+    {
+      "key": "build_command",
+      "value": "make build",
+      "note": "Runs npm ci && npm run build in web/, then go build -o logreport ./cmd/logreport/"
+    },
+    {
+      "key": "license",
+      "value": "MIT",
+      "note": "LICENSE file at repo root"
+    },
+    {
+      "key": "branch",
+      "value": "dev-cycle-logreport-20260615",
+      "note": "Active development branch for v1.0.0 cycle"
+    },
+    {
+      "key": "tag",
+      "value": "v1.0.0",
+      "note": "Release tag for initial Go refactor"
+    }
+  ],
+  "architecture": {
+    "cmd/logreport": {
+      "purpose": "Main entry point",
+      "depends_on": ["internal/api", "internal/server", "internal/store", "embed.go"],
+      "key_files": ["main.go"]
+    },
+    "embed.go": {
+      "purpose": "Embeds web/dist/ into binary via //go:embed",
+      "depends_on": ["web/dist/"],
+      "key_files": ["embed.go"],
+      "note": "Must be in root package (package assets) to reach web/dist/"
+    },
+    "internal/types": {
+      "purpose": "Core type definitions shared across all packages",
+      "depends_on": [],
+      "key_files": ["node.go", "iopoint.go", "fbc.go", "rpc.go", "report.go", "sysfile.go"],
+      "types": ["Node", "IOPoint", "FBCModule", "FBCChannel", "RPCModule", "RPCCounter", "Report", "ReportConfig", "ReportFormat", "ReportStatus", "SysFile", "SysFileEntry", "NodeType", "NodeStatus", "ModuleType", "ChannelType"]
+    },
+    "internal/telnet": {
+      "purpose": "Native Go telnet client for Valmet DNA nodes",
+      "depends_on": ["internal/types"],
+      "key_files": ["client.go", "commands.go", "filter.go"],
+      "commands": ["MOD_LIST", "IO_LIST", "SYS_INFO", "FBC_PRINT", "RPC_PRINT"]
+    },
+    "internal/parser": {
+      "purpose": "Parsers for FBC, RPC, and SysFile output",
+      "depends_on": ["internal/types"],
+      "key_files": ["fbc.go", "rpc.go", "sysfile.go"],
+      "testdata": ["fbc_sample_*.txt", "rpc_sample_*.txt", "sysfile_*.txt", "*.sys"]
+    },
+    "internal/store": {
+      "purpose": "SQLite persistence layer",
+      "depends_on": ["internal/types", "github.com/mattn/go-sqlite3"],
+      "key_files": ["db.go", "nodes.go", "iopoints.go", "reports.go", "templates.go", "helpers.go"],
+      "tables": ["nodes", "io_points", "reports", "templates"]
+    },
+    "internal/report": {
+      "purpose": "DOCX and JSON report generation",
+      "depends_on": ["internal/types", "internal/store"],
+      "key_files": ["generator.go", "docx.go", "json.go"]
+    },
+    "internal/api": {
+      "purpose": "HTTP handlers, middleware, and server startup",
+      "depends_on": ["internal/types", "internal/store", "internal/telnet", "internal/parser", "internal/report", "internal/server", "embed.go"],
+      "key_files": ["handlers.go", "server.go", "middleware.go"],
+      "endpoints": ["GET /health", "POST /api/v1/connect", "GET /api/v1/nodes", "GET /api/v1/nodes/{addr}", "POST /api/v1/nodes/{addr}/scan", "GET /api/v1/nodes/{addr}/fbc", "GET /api/v1/nodes/{addr}/rpc", "POST /api/v1/parse/sysfile", "POST /api/v1/reports/generate", "GET /api/v1/reports", "GET /api/v1/reports/{id}"]
+    },
+    "internal/server": {
+      "purpose": "Server config, health checks, graceful shutdown",
+      "depends_on": [],
+      "key_files": ["config.go", "health.go", "shutdown.go"],
+      "flags": ["--port", "--db-path", "--log-level", "--cors-origin"]
+    },
+    "web": {
+      "purpose": "React/TypeScript frontend",
+      "depends_on": [],
+      "key_files": ["src/App.tsx", "src/main.tsx", "src/components/*.tsx", "src/hooks/*.ts", "vite.config.ts", "package.json"],
+      "stack": ["Vite", "React 18", "TypeScript", "Tailwind CSS"],
+      "theme": "AXON dark theme"
+    },
+    "test": {
+      "purpose": "Integration and E2E tests",
+      "depends_on": ["all internal packages"],
+      "key_files": ["integration/pipeline_test.go", "e2e/valmet_test.go"]
+    }
+  },
+  "gotchas": [
+    {
+      "id": "AXON-001",
+      "rule": "Never return nil slices in JSON responses",
+      "detail": "Always initialize slices as empty (make([]T, 0)) before JSON marshaling. nil slices serialize as null; empty slices serialize as [].",
+      "affected": ["internal/api/handlers.go"]
+    },
+    {
+      "id": "AXON-002",
+      "rule": "//go:embed must be in root package",
+      "detail": "The //go:embed directive can only reach files in or below its own package directory. To embed web/dist/*, the directive must live in a .go file at the repo root (embed.go, package assets).",
+      "affected": ["embed.go"]
+    },
+    {
+      "id": "AXON-003",
+      "rule": "Go 1.22+ routing patterns require METHOD prefix",
+      "detail": "Route patterns like 'GET /api/v1/nodes/{addr}' include the HTTP method. Without the method prefix, the pattern matches all methods.",
+      "affected": ["internal/api/server.go"]
+    },
+    {
+      "id": "AXON-004",
+      "rule": "CGo SQLite requires gcc for cross-compilation",
+      "detail": "github.com/mattn/go-sqlite3 uses CGo. Cross-compiling (e.g., GOOS=linux GOARCH=arm64) requires a C cross-compiler. For pure-Go builds, consider a CGo-free SQLite driver.",
+      "affected": ["internal/store/db.go", "go.mod"]
+    },
+    {
+      "id": "AXON-005",
+      "rule": "Test flags must be filtered from os.Args",
+      "detail": "When running tests, go test injects flags like -test.v, -test.run, etc. into os.Args. The config parser must filter these out to avoid flag parsing errors.",
+      "affected": ["internal/server/config.go"]
+    },
+    {
+      "id": "AXON-006",
+      "rule": "SPA fallback: serve index.html for unknown paths",
+      "detail": "The embedded web UI is a Single Page Application. Any path that doesn't match a static file or API route must serve index.html for client-side routing to work.",
+      "affected": ["internal/api/server.go"]
+    },
+    {
+      "id": "AXON-007",
+      "rule": "Telnet prompt detection is DNA-specific",
+      "detail": "Valmet DNA nodes use '>' as the command prompt. The telnet client reads until this prompt character appears. Different DNA versions may use different prompts.",
+      "affected": ["internal/telnet/client.go"]
+    },
+    {
+      "id": "AXON-008",
+      "rule": "SysFile entries don't have IP addresses",
+      "detail": "Parsed .sys file entries have LID (logical ID) but no IP address. When storing as nodes, the LID is used as a placeholder address. Real IPs must be resolved separately.",
+      "affected": ["internal/parser/sysfile.go", "internal/api/handlers.go"]
+    }
+  ],
   "recent_changes": [
+    {
+      "version": "v1.0.0",
+      "date": "2026-06-16",
+      "summary": "v1.0.0 release — complete Go refactor with 16 commits, embedded web UI, REST API, >80% test coverage",
+      "files": [
+        "ALL files — 16-commit dev cycle complete"
+      ]
+    },
     {
       "version": "v0.1.0",
       "date": "2026-06-15",
