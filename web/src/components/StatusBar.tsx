@@ -5,8 +5,8 @@ interface HealthStatus {
   status: string;
   version: string;
   uptime: string;
-  db: string;
-  nodes: number;
+  db_status: string;
+  node_count: number;
 }
 
 export default function StatusBar() {
@@ -19,7 +19,7 @@ export default function StatusBar() {
 
     async function check() {
       try {
-        const res = await fetch('/api/v1/health');
+        const res = await fetch('/health');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted) {
@@ -78,7 +78,7 @@ export default function StatusBar() {
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Database size={12} />
-              {health.db}
+              {health.db_status}
             </span>
           </>
         )}
@@ -86,7 +86,7 @@ export default function StatusBar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {health && (
           <span>
-            Nodes: {health.nodes}
+            Nodes: {health.node_count}
           </span>
         )}
         <span style={{ color: 'var(--accent)' }}>LOGReport</span>
