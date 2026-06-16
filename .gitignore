@@ -1,5 +1,6 @@
 build/
 web/dist/
+web/node_modules/
 cmd/logreport/logreport
 logreport
 *.exe
