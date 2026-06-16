@@ -1103,6 +1103,135 @@ func TestGetNodeDetail(t *testing.T) {
 		fbcMods, rpcMods, ioSummary["total_io_points"])
 }
 
+// ─── Test: BsTool ErrLog Pipeline ──────────────────────────────────
+
+// TestBsToolErrLogPipeline tests the full bstool errlog pipeline:
+// start server → POST /api/v1/bstool/errlog → verify response.
+// On Linux: expect 501 UNSUPPORTED_PLATFORM.
+func TestBsToolErrLogPipeline(t *testing.T) {
+	is := startIntegrationServer(t)
+
+	t.Run("valid server name returns 501 on Linux", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"server_name": "AP01m",
+		}
+		reqJSON, _ := json.Marshal(reqBody)
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader(reqJSON),
+			map[string]string{"Content-Type": "application/json"})
+
+		// On Linux, bstool returns ErrUnsupportedPlatform → 501
+		if resp.StatusCode != http.StatusNotImplemented {
+			t.Errorf("expected 501 UNSUPPORTED_PLATFORM on Linux, got %d: %s", resp.StatusCode, string(body))
+		}
+
+		errResp := parseJSON(body)
+		if errResp["error"] != "UNSUPPORTED_PLATFORM" {
+			t.Errorf("expected error UNSUPPORTED_PLATFORM, got %v", errResp["error"])
+		}
+		msg, ok := errResp["message"].(string)
+		if !ok || msg == "" {
+			t.Error("expected non-empty message in UNSUPPORTED_PLATFORM response")
+		}
+		t.Logf("BsTool errlog response: error=%s, message=%s", errResp["error"], msg)
+	})
+
+	t.Run("valid server name with timeout and mask", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"server_name": "BP01r",
+			"timeout":     30,
+			"mask":        "ERR",
+		}
+		reqJSON, _ := json.Marshal(reqBody)
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader(reqJSON),
+			map[string]string{"Content-Type": "application/json"})
+
+		// On Linux: still 501 (not a validation error)
+		if resp.StatusCode != http.StatusNotImplemented {
+			t.Errorf("expected 501 on Linux, got %d: %s", resp.StatusCode, string(body))
+		}
+	})
+
+	t.Run("empty server name returns 400", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"timeout": 15,
+		}
+		reqJSON, _ := json.Marshal(reqBody)
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader(reqJSON),
+			map[string]string{"Content-Type": "application/json"})
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400 for empty server_name, got %d: %s", resp.StatusCode, string(body))
+		}
+
+		errResp := parseJSON(body)
+		if errResp["error"] != "INVALID_REQUEST" {
+			t.Errorf("expected INVALID_REQUEST, got %v", errResp["error"])
+		}
+	})
+
+	t.Run("invalid server name (suffix only) returns 400", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"server_name": "m",
+		}
+		reqJSON, _ := json.Marshal(reqBody)
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader(reqJSON),
+			map[string]string{"Content-Type": "application/json"})
+
+		// "m" strips to "" → ErrInvalidServer → INVALID_REQUEST → 400
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400 for suffix-only server name, got %d: %s", resp.StatusCode, string(body))
+		}
+	})
+
+	t.Run("invalid timeout returns 400", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"server_name": "AP01",
+			"timeout":     999,
+		}
+		reqJSON, _ := json.Marshal(reqBody)
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader(reqJSON),
+			map[string]string{"Content-Type": "application/json"})
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400 for invalid timeout, got %d: %s", resp.StatusCode, string(body))
+		}
+
+		errResp := parseJSON(body)
+		if errResp["error"] != "INVALID_TIMEOUT" {
+			t.Errorf("expected INVALID_TIMEOUT, got %v", errResp["error"])
+		}
+	})
+
+	t.Run("invalid JSON returns 400", func(t *testing.T) {
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader([]byte("{not valid json")),
+			map[string]string{"Content-Type": "application/json"})
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400 for invalid JSON, got %d: %s", resp.StatusCode, string(body))
+		}
+	})
+
+	t.Run("wrong Content-Type returns 415", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"server_name": "AP01m",
+		}
+		reqJSON, _ := json.Marshal(reqBody)
+		resp, body := is.doRequest("POST", "/api/v1/bstool/errlog",
+			bytes.NewReader(reqJSON),
+			map[string]string{"Content-Type": "text/plain"})
+
+		if resp.StatusCode != http.StatusUnsupportedMediaType {
+			t.Errorf("expected 415 for wrong Content-Type, got %d: %s", resp.StatusCode, string(body))
+		}
+	})
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────
 
 // parseAddr splits "host:port" into host string and port int.

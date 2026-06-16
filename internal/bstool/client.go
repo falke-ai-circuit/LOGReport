@@ -14,10 +14,11 @@ import (
 // Client manages BsTool.exe subprocess execution.
 // Safe for concurrent use — all fields are set at construction and never mutated.
 type Client struct {
-	bstoolPath        string
-	communicationLine string
-	defaultTimeout    time.Duration
-	exec              executor
+	bstoolPath         string
+	communicationLine  string
+	defaultTimeout     time.Duration
+	exec               executor
+	skipPlatformCheck  bool // test-only: bypass runtime.GOOS check
 }
 
 // Option is a functional option for configuring a Client.
@@ -133,7 +134,7 @@ func (c *Client) ErrLog(ctx context.Context, serverName string, opts ...ErrLogOp
 	}
 
 	// Platform check
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" && !c.skipPlatformCheck {
 		return nil, &ErrUnsupportedPlatform{}
 	}
 
