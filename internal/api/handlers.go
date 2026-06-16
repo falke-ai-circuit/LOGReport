@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
 	"github.com/falke-ai-circuit/LOGReport/internal/report"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
@@ -154,19 +155,21 @@ func reportToAPI(r *types.Report) apiReport {
 
 // Server holds the dependencies needed by all API handlers.
 type Server struct {
-	store     *store.Store
-	startTime time.Time
-	config    *server.Config
-	embedFS   embed.FS
+	store        *store.Store
+	startTime    time.Time
+	config       *server.Config
+	embedFS      embed.FS
+	bstoolClient *bstool.Client
 }
 
-// NewServer creates a new API Server with the given store, config, and embedded filesystem.
-func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS) *Server {
+// NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
+func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClient *bstool.Client) *Server {
 	return &Server{
-		store:     s,
-		startTime: time.Now(),
-		config:    cfg,
-		embedFS:   embedFS,
+		store:        s,
+		startTime:    time.Now(),
+		config:       cfg,
+		embedFS:      embedFS,
+		bstoolClient: bstoolClient,
 	}
 }
 
@@ -947,6 +950,94 @@ func (s *Server) getReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Fallback: return report metadata as JSON
 	writeJSON(w, http.StatusOK, reportToAPI(rpt))
+}
+
+// ─── Handler 12: POST /api/v1/bstool/errlog ─────────────────────
+
+// bstoolErrLogRequest is the JSON request body for the bstool errlog endpoint.
+type bstoolErrLogRequest struct {
+	ServerName string `json:"server_name"`
+	Timeout    int    `json:"timeout"`
+	Mask       string `json:"mask"`
+}
+
+func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
+	// 1. Decode JSON body
+	var req bstoolErrLogRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid JSON body")
+		return
+	}
+
+	// 2. Validate server_name
+	if req.ServerName == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", `"server_name" is required`)
+		return
+	}
+
+	// 3. Validate timeout range
+	if req.Timeout != 0 && (req.Timeout < 5 || req.Timeout > 120) {
+		writeError(w, http.StatusBadRequest, "INVALID_TIMEOUT", `"timeout" must be between 5 and 120 seconds`)
+		return
+	}
+
+	// 4. Build ErrLog options
+	var opts []bstool.ErrLogOption
+	if req.Timeout > 0 {
+		opts = append(opts, bstool.WithRequestTimeout(time.Duration(req.Timeout)*time.Second))
+	}
+	if req.Mask != "" {
+		opts = append(opts, bstool.WithMask(req.Mask))
+	}
+
+	// 5. Execute
+	result, err := s.bstoolClient.ErrLog(r.Context(), req.ServerName, opts...)
+	if err != nil {
+		mapBstoolErrorToHTTP(w, err)
+		return
+	}
+
+	// 6. Respond
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"server_name": result.ServerName,
+		"messages":    result.Messages,
+		"count":       len(result.Messages),
+		"duration_ms": result.Duration.Milliseconds(),
+		"exit_code":   result.ExitCode,
+		"timed_out":   result.TimedOut,
+	})
+}
+
+// mapBstoolErrorToHTTP maps bstool sentinel errors to HTTP status codes and error codes.
+func mapBstoolErrorToHTTP(w http.ResponseWriter, err error) {
+	type coder interface {
+		Code() string
+	}
+
+	code := "INTERNAL_ERROR"
+	status := http.StatusInternalServerError
+
+	if ce, ok := err.(coder); ok {
+		switch ce.Code() {
+		case "BSTOOL_NOT_FOUND":
+			status = http.StatusServiceUnavailable // 503
+			code = "BSTOOL_NOT_FOUND"
+		case "UNSUPPORTED_PLATFORM":
+			status = http.StatusNotImplemented // 501
+			code = "UNSUPPORTED_PLATFORM"
+		case "BSTOOL_TIMEOUT":
+			status = http.StatusGatewayTimeout // 504
+			code = "BSTOOL_TIMEOUT"
+		case "BSTOOL_EXECUTION_FAILED":
+			status = http.StatusBadGateway // 502
+			code = "BSTOOL_EXECUTION_FAILED"
+		case "INVALID_REQUEST":
+			status = http.StatusBadRequest // 400
+			code = "INVALID_REQUEST"
+		}
+	}
+
+	writeError(w, status, code, err.Error())
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────

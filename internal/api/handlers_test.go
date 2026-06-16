@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
@@ -37,7 +38,7 @@ func setupTest(t *testing.T) (*Server, *store.Store, func()) {
 		CORSOrigin: "*",
 	}
 
-	srv := NewServer(st, cfg, embed.FS{})
+	srv := NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 	cleanup := func() {
 		st.Close()
 	}
@@ -756,7 +757,7 @@ func TestHealthHandlerDegraded(t *testing.T) {
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}
-	srv := NewServer(st, cfg, embed.FS{})
+	srv := NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 
 	// Close DB to trigger degraded status
 	st.Close()
@@ -774,4 +775,89 @@ func TestHealthHandlerDegraded(t *testing.T) {
 	if result["db_status"] == "connected" {
 		t.Error("expected db_status not 'connected' after DB close")
 	}
+}
+
+// ─── Test: POST /api/v1/bstool/errlog ────────────────────────────
+
+func TestBsToolErrLogHandler(t *testing.T) {
+	srv, _, cleanup := setupTest(t)
+	defer cleanup()
+
+	mux := srv.NewTestMux()
+
+	t.Run("valid server name returns 501 on Linux (UNSUPPORTED_PLATFORM)", func(t *testing.T) {
+		body := jsonBody(map[string]interface{}{
+			"server_name": "AP01m",
+		})
+		rec := doRequest(mux, "POST", "/api/v1/bstool/errlog", body, map[string]string{
+			"Content-Type": "application/json",
+		})
+		// On Linux, bstool returns ErrUnsupportedPlatform → 501
+		if rec.Code != http.StatusNotImplemented {
+			t.Errorf("expected 501 UNSUPPORTED_PLATFORM on Linux, got %d: %s", rec.Code, rec.Body.String())
+		}
+		result := parseJSONResponse(rec)
+		if result["error"] != "UNSUPPORTED_PLATFORM" {
+			t.Errorf("expected error UNSUPPORTED_PLATFORM, got %v", result["error"])
+		}
+	})
+
+	t.Run("empty server name returns 400", func(t *testing.T) {
+		body := jsonBody(map[string]interface{}{
+			"timeout": 15,
+		})
+		rec := doRequest(mux, "POST", "/api/v1/bstool/errlog", body, map[string]string{
+			"Content-Type": "application/json",
+		})
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+		}
+		result := parseJSONResponse(rec)
+		if result["error"] != "INVALID_REQUEST" {
+			t.Errorf("expected error INVALID_REQUEST, got %v", result["error"])
+		}
+	})
+
+	t.Run("invalid JSON returns 400", func(t *testing.T) {
+		body := strings.NewReader("{invalid json")
+		rec := doRequest(mux, "POST", "/api/v1/bstool/errlog", body, map[string]string{
+			"Content-Type": "application/json",
+		})
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+		}
+		result := parseJSONResponse(rec)
+		if result["error"] != "INVALID_REQUEST" {
+			t.Errorf("expected error INVALID_REQUEST, got %v", result["error"])
+		}
+	})
+
+	t.Run("wrong content-type returns 415", func(t *testing.T) {
+		body := jsonBody(map[string]interface{}{
+			"server_name": "AP01m",
+		})
+		rec := doRequest(mux, "POST", "/api/v1/bstool/errlog", body, map[string]string{
+			"Content-Type": "text/plain",
+		})
+		if rec.Code != http.StatusUnsupportedMediaType {
+			t.Errorf("expected 415, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("invalid timeout range returns 400", func(t *testing.T) {
+		body := jsonBody(map[string]interface{}{
+			"server_name": "AP01m",
+			"timeout":     999,
+		})
+		rec := doRequest(mux, "POST", "/api/v1/bstool/errlog", body, map[string]string{
+			"Content-Type": "application/json",
+		})
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+		}
+		result := parseJSONResponse(rec)
+		if result["error"] != "INVALID_TIMEOUT" {
+			t.Errorf("expected error INVALID_TIMEOUT, got %v", result["error"])
+		}
+	})
 }

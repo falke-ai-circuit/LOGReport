@@ -8,8 +8,8 @@ import "context"
 // It returns ErrUnsupportedPlatform with a clear remediation message.
 type linuxExecutor struct{}
 
-func (e *linuxExecutor) execute(ctx context.Context, exePath string, args []string, env []string) ([]byte, int, error) {
-	return nil, -1, &ErrUnsupportedPlatform{}
+func (e *linuxExecutor) execute(ctx context.Context, exePath string, args []string, env []string) ([]byte, []byte, int, error) {
+	return nil, nil, -1, &ErrUnsupportedPlatform{}
 }
 
 // platformExecutor returns the linuxExecutor on non-Windows platforms.

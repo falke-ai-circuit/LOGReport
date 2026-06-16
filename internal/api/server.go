@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
 )
@@ -146,6 +147,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// 11. Get report
 	mux.HandleFunc("GET /api/v1/reports/{id}", s.getReportHandler)
+
+	// 12. BsTool errlog
+	mux.HandleFunc("POST /api/v1/bstool/errlog", s.handleBsToolErrLog)
 }
 
 // NewTestServer creates a Server suitable for testing with an in-memory SQLite DB.
@@ -163,7 +167,7 @@ func NewTestServer() (*Server, *store.Store, error) {
 		CORSOrigin: "*",
 	}
 
-	srv := NewServer(st, cfg, embed.FS{})
+	srv := NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 	return srv, st, nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
@@ -460,7 +461,7 @@ func TestNewServer(t *testing.T) {
 		CORSOrigin: "*",
 	}
 
-	srv := NewServer(st, cfg, embed.FS{})
+	srv := NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 
 	if srv.Store() != st {
 		t.Error("Store() should return the store passed to NewServer")

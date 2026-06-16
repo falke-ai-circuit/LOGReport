@@ -10,14 +10,18 @@ import (
 
 // Config holds server configuration parsed from command-line flags.
 type Config struct {
-	Port       int
-	DBPath     string
-	LogLevel   string
-	CORSOrigin string
+	Port          int
+	DBPath        string
+	LogLevel      string
+	CORSOrigin    string
+	BsToolPath    string
+	BsToolRemote  string
+	BsToolTimeout int
 }
 
 // ParseFlags parses command-line flags and returns a Config.
-// Supported flags: --port, --db-path, --log-level, --cors-origin.
+// Supported flags: --port, --db-path, --log-level, --cors-origin,
+// --bstool-path, --bstool-remote, --bstool-timeout.
 func ParseFlags() *Config {
 	cfg := &Config{}
 
@@ -27,6 +31,9 @@ func ParseFlags() *Config {
 		flag.StringVar(&cfg.DBPath, "db-path", "logreport.db", "SQLite database path")
 		flag.StringVar(&cfg.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
 		flag.StringVar(&cfg.CORSOrigin, "cors-origin", "", "CORS allowed origin (empty = no CORS)")
+		flag.StringVar(&cfg.BsToolPath, "bstool-path", "", "Path to BsTool.exe (auto-detect if empty)")
+		flag.StringVar(&cfg.BsToolRemote, "bstool-remote", "", "hermes-remote agent for remote BsTool execution")
+		flag.IntVar(&cfg.BsToolTimeout, "bstool-timeout", 15, "Default BsTool timeout in seconds")
 	}
 
 	// Parse os.Args[1:] but don't fail on unknown flags in test environments
@@ -36,6 +43,9 @@ func ParseFlags() *Config {
 	fs.StringVar(&cfg.DBPath, "db-path", "logreport.db", "SQLite database path")
 	fs.StringVar(&cfg.LogLevel, "log-level", "info", "Log level")
 	fs.StringVar(&cfg.CORSOrigin, "cors-origin", "", "CORS allowed origin")
+	fs.StringVar(&cfg.BsToolPath, "bstool-path", "", "Path to BsTool.exe")
+	fs.StringVar(&cfg.BsToolRemote, "bstool-remote", "", "hermes-remote agent for remote BsTool execution")
+	fs.IntVar(&cfg.BsToolTimeout, "bstool-timeout", 15, "Default BsTool timeout in seconds")
 
 	// Filter out test flags
 	var args []string

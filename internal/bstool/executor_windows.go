@@ -13,7 +13,7 @@ import (
 // windowsExecutor runs BsTool.exe via exec.CommandContext on Windows.
 type windowsExecutor struct{}
 
-func (e *windowsExecutor) execute(ctx context.Context, exePath string, args []string, env []string) ([]byte, int, error) {
+func (e *windowsExecutor) execute(ctx context.Context, exePath string, args []string, env []string) ([]byte, []byte, int, error) {
 	cmd := exec.CommandContext(ctx, exePath, args...)
 
 	// stdin: connected to os.DevNull
@@ -47,14 +47,14 @@ func (e *windowsExecutor) execute(ctx context.Context, exePath string, args []st
 
 	// If context was cancelled, return the context error
 	if ctx.Err() != nil {
-		return stdout.Bytes(), exitCode, ctx.Err()
+		return stdout.Bytes(), stderr.Bytes(), exitCode, ctx.Err()
 	}
 
 	if err != nil {
-		return stdout.Bytes(), exitCode, &executionStderr{exitCode: exitCode, stderr: stderr.String()}
+		return stdout.Bytes(), stderr.Bytes(), exitCode, &executionStderr{exitCode: exitCode, stderr: stderr.String()}
 	}
 
-	return stdout.Bytes(), exitCode, nil
+	return stdout.Bytes(), stderr.Bytes(), exitCode, nil
 }
 
 // executionStderr wraps stderr output from a failed execution.

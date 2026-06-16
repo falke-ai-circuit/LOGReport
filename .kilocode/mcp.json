@@ -1,0 +1,61 @@
+{
+  "mcpServers": {
+    "project_memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "${workspaceFolder}/project_memory.json"
+      },
+      "alwaysAllow": [
+        "delete_relations",
+        "delete_observations",
+        "update_entities",
+        "add_observations",
+        "open_nodes",
+        "create_relations",
+        "delete_entities",
+        "read_graph",
+        "create_entities",
+        "search_nodes"
+      ],
+      "disabled": false
+    },
+    "mcp-code-graph": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-code-graph@latest"
+      ],
+      "env": {
+        "CODEGPT_API_KEY": "sk-3f80b540-1a0c-4809-8335-eeea5f7d964a",
+        "CODEGPT_ORG_ID": "08e85a15-51d0-48fc-93a1-3bcc345f7693",
+        "CODEGPT_GRAPH_ID": "ade22a62-3262-42c5-8f01-9402676cc11f"
+      },
+      "alwaysAllow": [
+        "find-direct-connections",
+        "docs-semantic-search",
+        "get-usage-dependency-links",
+        "get-code",
+        "get_usage_dependency_links",
+        "find_direct_connections",
+        "nodes-semantic-search",
+        "get-code</toolname>\n<arguments>\n{\n  \"name\": \"ContextMenuService\",\n  \"path\": \"src/commander/services/context_menu_service.py\"\n}\n</arguments>\n</use_mcp_tool>",
+        "list_code_definition_names",
+        "folder-tree-structure"
+      ],
+      "disabled": false
+    },
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "disabled": false,
+      "alwaysAllow": [
+        "ask_question",
+        "read_wiki_structure",
+        "read_wiki_contents"
+      ]
+    }
+  }
+}

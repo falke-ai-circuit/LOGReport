@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	assets "github.com/falke-ai-circuit/LOGReport"
 	"github.com/falke-ai-circuit/LOGReport/internal/api"
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
 )
@@ -23,8 +25,18 @@ func main() {
 	}
 	defer st.Close()
 
+	// Create the BsTool client
+	var bstoolOpts []bstool.Option
+	if cfg.BsToolPath != "" {
+		bstoolOpts = append(bstoolOpts, bstool.WithPath(cfg.BsToolPath))
+	}
+	if cfg.BsToolTimeout > 0 {
+		bstoolOpts = append(bstoolOpts, bstool.WithTimeout(time.Duration(cfg.BsToolTimeout)*time.Second))
+	}
+	bstoolClient := bstool.NewClient(bstoolOpts...)
+
 	// Create the API server with embedded web UI
-	srv := api.NewServer(st, cfg, assets.FS)
+	srv := api.NewServer(st, cfg, assets.FS, bstoolClient)
 
 	// Log startup message
 	log.Printf("LOGReport server starting on :%d", cfg.Port)

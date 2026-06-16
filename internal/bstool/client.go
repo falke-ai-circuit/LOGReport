@@ -40,7 +40,7 @@ func WithCommunicationLine(line string) Option {
 }
 
 // WithTimeout sets the default timeout for ErrLog calls.
-// Default: 10s.
+// Default: 15s.
 func WithTimeout(d time.Duration) Option {
 	return func(c *Client) {
 		c.defaultTimeout = d
@@ -48,11 +48,11 @@ func WithTimeout(d time.Duration) Option {
 }
 
 // NewClient creates a new Client with the given options.
-// Defaults: timeout=10s, communicationLine="AB01", path="" (auto-detect).
+// Defaults: timeout=15s, communicationLine="AB01", path="" (auto-detect).
 func NewClient(opts ...Option) *Client {
 	c := &Client{
 		communicationLine: "AB01",
-		defaultTimeout:    10 * time.Second,
+		defaultTimeout:    15 * time.Second,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -68,8 +68,10 @@ type ErrLogResult struct {
 	ServerName string        // Original server name (with suffix stripped for BsTool)
 	Messages   []string      // Filtered RS log messages (status messages removed)
 	RawOutput  string        // Complete unfiltered stdout (for debugging)
+	Stderr     string        // Complete stderr output from BsTool.exe
 	Duration   time.Duration // Wall-clock execution duration
 	ExitCode   int           // Process exit code (-1 if killed by timeout)
+	TimedOut   bool          // True if the context deadline was exceeded
 }
 
 // ─── ErrLog ──────────────────────────────────────────────────────────────────
@@ -83,6 +85,28 @@ func stripNodeSuffix(name string) string {
 	return nodeSuffixRE.ReplaceAllString(name, "")
 }
 
+// ErrLogOption is a per-call option for ErrLog.
+type ErrLogOption func(*errLogConfig)
+
+type errLogConfig struct {
+	requestTimeout time.Duration
+	mask           string
+}
+
+// WithRequestTimeout sets a per-request timeout that overrides the client default.
+func WithRequestTimeout(d time.Duration) ErrLogOption {
+	return func(c *errLogConfig) {
+		c.requestTimeout = d
+	}
+}
+
+// WithMask sets a BsTool message filter mask.
+func WithMask(mask string) ErrLogOption {
+	return func(c *errLogConfig) {
+		c.mask = mask
+	}
+}
+
 // ErrLog executes `BsTool.exe -errlog <serverName>` and returns structured results.
 //
 // The serverName is automatically stripped of m/r suffix:
@@ -91,9 +115,15 @@ func stripNodeSuffix(name string) string {
 //
 // On Windows: executes BsTool.exe as a subprocess with context-based timeout.
 // On Linux: returns ErrUnsupportedPlatform with remediation hint.
-func (c *Client) ErrLog(ctx context.Context, serverName string) (*ErrLogResult, error) {
+func (c *Client) ErrLog(ctx context.Context, serverName string, opts ...ErrLogOption) (*ErrLogResult, error) {
 	if serverName == "" {
 		return nil, &ErrInvalidServer{}
+	}
+
+	// Apply per-call options
+	cfg := &errLogConfig{}
+	for _, opt := range opts {
+		opt(cfg)
 	}
 
 	// Strip m/r suffix
@@ -115,25 +145,53 @@ func (c *Client) ErrLog(ctx context.Context, serverName string) (*ErrLogResult, 
 
 	// Build args
 	args := []string{"-errlog", stripped}
+	if cfg.mask != "" {
+		args = append(args, "mask", cfg.mask)
+	}
 
 	// Build env
 	env := []string{fmt.Sprintf("COMMUNICATION_LINE=%s", c.communicationLine)}
 
-	// Apply timeout from context or default
+	// Apply timeout: per-request > context deadline > client default
+	timeout := c.defaultTimeout
+	if cfg.requestTimeout > 0 {
+		timeout = cfg.requestTimeout
+	}
+
 	execCtx := ctx
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
-		execCtx, cancel = context.WithTimeout(ctx, c.defaultTimeout)
+		execCtx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 
 	start := time.Now()
-	stdout, exitCode, err := c.exec.execute(execCtx, exePath, args, env)
+	stdout, stderrBytes, exitCode, err := c.exec.execute(execCtx, exePath, args, env)
 	duration := time.Since(start)
+
+	timedOut := execCtx.Err() == context.DeadlineExceeded
 
 	if err != nil {
 		// Check for timeout
-		if execCtx.Err() == context.DeadlineExceeded {
+		if timedOut {
+			// If we have partial output, return it as success with timed_out=true
+			if len(stdout) > 0 {
+				rawOutput, decErr := decodeWindows1252(stdout)
+				if decErr != nil {
+					rawOutput = string(stdout)
+				}
+				filtered := filterStatusMessages(rawOutput)
+				messages := splitMessages(filtered)
+				return &ErrLogResult{
+					ServerName: stripped,
+					Messages:   messages,
+					RawOutput:  rawOutput,
+					Stderr:     string(stderrBytes),
+					Duration:   duration,
+					ExitCode:   exitCode,
+					TimedOut:   true,
+				}, nil
+			}
 			return nil, &ErrTimeout{Timeout: c.defaultTimeout.String()}
 		}
 		// Check for not found
@@ -158,7 +216,9 @@ func (c *Client) ErrLog(ctx context.Context, serverName string) (*ErrLogResult, 
 		ServerName: stripped,
 		Messages:   messages,
 		RawOutput:  rawOutput,
+		Stderr:     string(stderrBytes),
 		Duration:   duration,
 		ExitCode:   exitCode,
+		TimedOut:   timedOut,
 	}, nil
 }

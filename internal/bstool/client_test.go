@@ -15,8 +15,8 @@ func TestNewClient_Defaults(t *testing.T) {
 	if c.communicationLine != "AB01" {
 		t.Errorf("expected communicationLine=AB01, got %q", c.communicationLine)
 	}
-	if c.defaultTimeout != 10*time.Second {
-		t.Errorf("expected defaultTimeout=10s, got %v", c.defaultTimeout)
+	if c.defaultTimeout != 15*time.Second {
+		t.Errorf("expected defaultTimeout=15s, got %v", c.defaultTimeout)
 	}
 	if c.bstoolPath != "" {
 		t.Errorf("expected bstoolPath=\"\", got %q", c.bstoolPath)

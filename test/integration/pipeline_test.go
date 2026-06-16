@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/api"
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
@@ -188,7 +189,7 @@ func startIntegrationServerFile(t *testing.T) *integrationServer {
 		CORSOrigin: "*",
 	}
 
-	srv := api.NewServer(st, cfg, embed.FS{})
+	srv := api.NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 
 	mux := http.NewServeMux()
 	srv.RegisterRoutesForTest(mux)
@@ -262,7 +263,7 @@ func startIntegrationServer(t *testing.T) *integrationServer {
 		CORSOrigin: "*",
 	}
 
-	srv := api.NewServer(st, cfg, embed.FS{})
+	srv := api.NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 
 	// Create mux with all routes
 	mux := http.NewServeMux()
@@ -961,7 +962,7 @@ func TestGracefulShutdown(t *testing.T) {
 		CORSOrigin: "*",
 	}
 
-	srv := api.NewServer(st, cfg, embed.FS{})
+	srv := api.NewServer(st, cfg, embed.FS{}, bstool.NewClient())
 
 	mux := http.NewServeMux()
 	srv.RegisterRoutesForTest(mux)
