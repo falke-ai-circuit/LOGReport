@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	assets "github.com/falke-ai-circuit/LOGReport"
 	"github.com/falke-ai-circuit/LOGReport/internal/api"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
@@ -22,8 +23,8 @@ func main() {
 	}
 	defer st.Close()
 
-	// Create the API server
-	srv := api.NewServer(st, cfg)
+	// Create the API server with embedded web UI
+	srv := api.NewServer(st, cfg, assets.FS)
 
 	// Log startup message
 	log.Printf("LOGReport server starting on :%d", cfg.Port)

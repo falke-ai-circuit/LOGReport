@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -36,7 +37,7 @@ func setupTest(t *testing.T) (*Server, *store.Store, func()) {
 		CORSOrigin: "*",
 	}
 
-	srv := NewServer(st, cfg)
+	srv := NewServer(st, cfg, embed.FS{})
 	cleanup := func() {
 		st.Close()
 	}
@@ -755,7 +756,7 @@ func TestHealthHandlerDegraded(t *testing.T) {
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}
-	srv := NewServer(st, cfg)
+	srv := NewServer(st, cfg, embed.FS{})
 
 	// Close DB to trigger degraded status
 	st.Close()

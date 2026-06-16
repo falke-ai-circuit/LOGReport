@@ -2,9 +2,12 @@ package api
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
@@ -18,6 +21,10 @@ func (s *Server) Start() error {
 
 	// Register all 11 routes using Go 1.22+ method patterns
 	s.registerRoutes(mux)
+
+	// Register static file server for embedded web/dist/
+	// API routes take priority (registered first), then static fallback
+	s.registerStaticFiles(mux)
 
 	// Apply middleware stack (outermost first)
 	var handler http.Handler = mux
@@ -50,6 +57,59 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	// The actual shutdown is handled by GracefulShutdown goroutine.
 	// This method is provided for programmatic shutdown in tests.
 	return nil
+}
+
+// registerStaticFiles serves the embedded web/dist/ directory.
+// API routes are registered first and take priority.
+// SPA fallback: any non-API, non-static-file path serves index.html.
+func (s *Server) registerStaticFiles(mux *http.ServeMux) {
+	// Strip the "web/dist" prefix from embedded filesystem
+	distFS, err := fs.Sub(s.embedFS, "web/dist")
+	if err != nil {
+		log.Printf("WARNING: embedded web/dist not available: %v", err)
+		return
+	}
+
+	// Read index.html once for SPA fallback
+	indexHTML, err := fs.ReadFile(distFS, "index.html")
+	if err != nil {
+		log.Printf("WARNING: embedded index.html not found: %v", err)
+		return
+	}
+
+	fileServer := http.FileServer(http.FS(distFS))
+
+	// Serve static files at / — but only for paths that don't match API routes.
+	// Since API routes are registered first on the mux, they take priority.
+	// For SPA fallback: if the path doesn't match a static file, serve index.html.
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Don't intercept API or health paths
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/health" {
+			// These should have been caught by registered routes; 404 if not
+			http.NotFound(w, r)
+			return
+		}
+
+		// Try to serve the exact file
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+
+		f, err := distFS.Open(path)
+		if err == nil {
+			f.Close()
+			// File exists, serve it via file server
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// SPA fallback: serve index.html content directly
+		// (avoid http.FileServer redirect for directory-like paths)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(indexHTML)
+	})
 }
 
 // registerRoutes sets up all 11 API endpoints on the given mux.
@@ -103,7 +163,7 @@ func NewTestServer() (*Server, *store.Store, error) {
 		CORSOrigin: "*",
 	}
 
-	srv := NewServer(st, cfg)
+	srv := NewServer(st, cfg, embed.FS{})
 	return srv, st, nil
 }
 

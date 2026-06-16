@@ -4,6 +4,7 @@
 package api
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -156,14 +157,16 @@ type Server struct {
 	store     *store.Store
 	startTime time.Time
 	config    *server.Config
+	embedFS   embed.FS
 }
 
-// NewServer creates a new API Server with the given store and config.
-func NewServer(s *store.Store, cfg *server.Config) *Server {
+// NewServer creates a new API Server with the given store, config, and embedded filesystem.
+func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS) *Server {
 	return &Server{
 		store:     s,
 		startTime: time.Now(),
 		config:    cfg,
+		embedFS:   embedFS,
 	}
 }
 

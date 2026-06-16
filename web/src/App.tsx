@@ -6,6 +6,7 @@ import NodeBrowser from './components/NodeBrowser';
 import NodeDetail from './components/NodeDetail';
 import ReportList from './components/ReportList';
 import ReportDetail from './components/ReportDetail';
+import SysFileUpload from './components/SysFileUpload';
 
 function Dashboard() {
   return (
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/nodes/:addr" element={<NodeDetail />} />
               <Route path="/reports" element={<ReportList />} />
               <Route path="/reports/:id" element={<ReportDetail />} />
+              <Route path="/sysfile" element={<SysFileUpload />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

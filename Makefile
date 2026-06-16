@@ -17,11 +17,11 @@ web-build:
 
 # Build Go binary with embedded web/dist/
 go-build:
-	$(GOBUILD) -o ./cmd/logreport/logreport ./cmd/logreport/
+	$(GOBUILD) -o logreport ./cmd/logreport/
 
 # Run with embedded web UI
 run: build
-	./cmd/logreport/logreport --port $(PORT)
+	./logreport --port $(PORT)
 
 # Development mode: separate frontend dev server + Go API
 dev:
@@ -45,6 +45,6 @@ release: build
 
 # Clean
 clean:
-	rm -f ./cmd/logreport/logreport
+	rm -f ./logreport
 	rm -rf web/dist/
 	rm -rf build/
