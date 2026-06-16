@@ -176,3 +176,23 @@ func (s *Server) NewTestMux() http.Handler {
 	handler = contentTypeMiddleware(handler)
 	return handler
 }
+
+// RegisterRoutesForTest is an exported wrapper around registerRoutes for integration tests.
+func (s *Server) RegisterRoutesForTest(mux *http.ServeMux) {
+	s.registerRoutes(mux)
+}
+
+// LoggingMiddlewareForTest is an exported wrapper around loggingMiddleware for integration tests.
+func LoggingMiddlewareForTest(next http.Handler) http.Handler {
+	return loggingMiddleware(next)
+}
+
+// CORSMiddlewareForTest is an exported wrapper around corsMiddleware for integration tests.
+func CORSMiddlewareForTest(origin string) func(http.Handler) http.Handler {
+	return corsMiddleware(origin)
+}
+
+// ContentTypeMiddlewareForTest is an exported wrapper around contentTypeMiddleware for integration tests.
+func ContentTypeMiddlewareForTest(next http.Handler) http.Handler {
+	return contentTypeMiddleware(next)
+}
