@@ -181,8 +181,11 @@ func TestFilterStatusMessages_FullOutput(t *testing.T) {
 
 func TestSplitMessages_Empty(t *testing.T) {
 	msgs := splitMessages("")
-	if msgs != nil {
-		t.Errorf("expected nil for empty input, got %v", msgs)
+	if len(msgs) != 0 {
+		t.Errorf("expected empty slice for empty input, got %v", msgs)
+	}
+	if msgs == nil {
+		t.Errorf("expected non-nil empty slice (AXON safety), got nil")
 	}
 }
 
