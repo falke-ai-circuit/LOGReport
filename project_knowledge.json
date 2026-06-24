@@ -1,7 +1,7 @@
 {
   "project": "LOGReport",
   "version": "v1.1.1",
-  "last_updated": "2026-06-16T15:45:00Z",
+  "last_updated": "2026-06-24T21:45:00Z",
   "hot_cache": [
     {
       "key": "binary_name",
@@ -15,8 +15,8 @@
     },
     {
       "key": "go_version",
-      "value": "1.22",
-      "note": "Uses Go 1.22+ routing patterns (METHOD /path/{var})"
+      "value": "1.25.0",
+      "note": "Uses Go 1.22+ routing patterns (METHOD /path/{var}). go.mod requires 1.25.0"
     },
     {
       "key": "default_port",
@@ -45,8 +45,8 @@
     },
     {
       "key": "test_coverage",
-      "value": "82% (bstool: 96.3%)",
-      "note": "Unit test coverage across internal/ packages"
+      "value": "api 81.2% | server 96.8% | store 86.8% | bstool 96.3% | parser 93.1% | report 93.7% | telnet 94.5% | types 100% | frontend 146 tests",
+      "note": "Backend coverage across internal/ packages + frontend vitest suite (13 files, 146 tests). Updated 2026-06-24 with comprehensive test refactor."
     },
     {
       "key": "dependencies",
@@ -151,9 +151,25 @@
       "theme": "AXON dark theme"
     },
     "test": {
-      "purpose": "Integration and E2E tests",
+      "purpose": "Integration, E2E, and mock-based tests",
       "depends_on": ["all internal packages"],
-      "key_files": ["integration/pipeline_test.go", "e2e/valmet_test.go"]
+      "key_files": [
+        "integration/pipeline_test.go",
+        "integration/bstool_integration_test.go",
+        "e2e/valmet_test.go",
+        "e2e/mock_e2e_test.go"
+      ],
+      "mock_services": [
+        "Mock DNA TCP server (FBC/RPC protocol with prompt detection)",
+        "Mock BsTool executor (platform-adaptive, error mapping)",
+        "In-memory SQLite (:memory:)"
+      ],
+      "frontend_tests": {
+        "framework": "vitest + @testing-library/react + jsdom",
+        "files": "web/src/components/__tests__/*.test.tsx (13 files)",
+        "test_count": "146 tests",
+        "components_tested": ["App", "ErrorBoundary", "StatusBar", "NodeBrowser", "NodeDetail", "ReportList", "ReportDetail", "ReportConfig", "SysFileUpload", "IOTable", "FBCView", "RPCView", "Layout"]
+      }
     }
   },
   "gotchas": [
@@ -231,6 +247,25 @@
     }
   ],
   "recent_changes": [
+    {
+      "version": "v1.1.2-test",
+      "date": "2026-06-24",
+      "summary": "Comprehensive test suite refactor — 28 files, 7830 insertions. API coverage 68.2%→81.2%, server 82.3%→96.8%. Added frontend vitest suite (13 files, 146 tests). Mock external services: DNA telnet nodes (mock TCP server), BsTool.exe (mock executor), SQLite (in-memory). New files: handlers_gapfill_test.go, handlers_bstool_mock_test.go, shutdown_test.go, config_test.go, edge_cases_test.go, injection_test.go, bstool_integration_test.go, mock_e2e_test.go, web/vitest.config.ts, web/src/test/setup.ts, 13 frontend test files.",
+      "files": [
+        "internal/api/handlers_gapfill_test.go",
+        "internal/api/handlers_bstool_mock_test.go",
+        "internal/api/handlers_extended_test.go",
+        "internal/server/shutdown_test.go",
+        "internal/server/config_test.go",
+        "internal/store/edge_cases_test.go",
+        "internal/report/injection_test.go",
+        "test/integration/bstool_integration_test.go",
+        "test/e2e/mock_e2e_test.go",
+        "web/vitest.config.ts",
+        "web/src/test/setup.ts",
+        "web/src/components/__tests__/*.test.tsx"
+      ]
+    },
     {
       "version": "v1.1.1",
       "date": "2026-06-16",
