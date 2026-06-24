@@ -1,6 +1,1 @@
-# This file ensures //go:embed web/dist/* always has at least one file.
-# Without it, if npm run build hasn't been executed, the embed compiles
-# empty and the GUI surface returns 404 for every route.
-# 
-# The real build populates web/dist/ with index.html + assets/.
-# This sentinel prevents the silent 404 failure mode.
+

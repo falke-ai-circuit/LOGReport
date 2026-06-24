@@ -1,5 +1,6 @@
 build/
-web/dist/
+web/dist/*
+!web/dist/.gitkeep
 web/node_modules/
 cmd/logreport/logreport
 logreport
@@ -9,3 +10,5 @@ logreport
 .venv/
 __pycache__/
 *.pyc
+logreport.db-shm
+logreport.db-wal
