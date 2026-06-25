@@ -252,7 +252,7 @@ func TestGenerateReportInvalidFormat(t *testing.T) {
 
 	cfg := types.ReportConfig{
 		NodeAddress: "192.168.1.1",
-		Format:      types.ReportFormat("pdf"),
+		Format:      types.ReportFormat("xml"),
 	}
 
 	_, err := GenerateReport(cfg, s)

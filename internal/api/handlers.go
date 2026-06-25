@@ -185,6 +185,11 @@ func (s *Server) logRoot() string {
 	return s.logRootDir
 }
 
+// SetLogRoot sets the log root directory.
+func (s *Server) SetLogRoot(dir string) {
+	s.logRootDir = dir
+}
+
 // Store returns the underlying store (used by server.go for health).
 func (s *Server) Store() *store.Store {
 	return s.store
@@ -752,6 +757,7 @@ type generateReportRequest struct {
 	NodeAddresses []string          `json:"node_addresses"`
 	Format        string           `json:"format"`
 	Template      string           `json:"template"`
+	LogRoot       string           `json:"log_root"`
 	Options       *reportOptions   `json:"options"`
 }
 
@@ -786,10 +792,65 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate format
 	format := types.ReportFormat(strings.ToLower(req.Format))
-	if format != types.FormatDOCX && format != types.FormatJSON {
+	if format != types.FormatDOCX && format != types.FormatJSON && format != types.FormatPDF {
 		writeErrorDetails(w, http.StatusBadRequest, "validation_error",
-			fmt.Sprintf("unsupported format: '%s'. Supported formats: docx, json", req.Format),
+			fmt.Sprintf("unsupported format: '%s'. Supported formats: docx, json, pdf", req.Format),
 			map[string]string{"requested_format": req.Format})
+		return
+	}
+
+	// PDF with log_root: skip scan data check, generate from log files
+	if format == types.FormatPDF && req.LogRoot != "" {
+		// Use "*" as default node address for log-root reports
+		addresses := req.NodeAddresses
+		if len(addresses) == 0 {
+			addresses = []string{"*"}
+		}
+
+		template := req.Template
+		if template == "" {
+			template = "default"
+		}
+
+		var generatedReports []*types.Report
+		for _, addr := range addresses {
+			cfg := types.ReportConfig{
+				NodeAddress: addr,
+				Format:      format,
+				Template:    template,
+				LogRoot:     req.LogRoot,
+			}
+			rpt, err := report.GenerateReport(cfg, s.store)
+			if err != nil {
+				log.Printf("api: failed to generate PDF report for %s: %v", addr, err)
+				failedRpt := &types.Report{
+					ID:          fmt.Sprintf("rpt-%s", time.Now().Format("20060102-150405")),
+					NodeAddress: addr,
+					Format:      format,
+					Template:    template,
+					Status:      types.StatusFailed,
+					CreatedAt:   time.Now().UTC().Format(time.RFC3339),
+				}
+				s.store.SaveReport(failedRpt)
+				generatedReports = append(generatedReports, failedRpt)
+				continue
+			}
+			generatedReports = append(generatedReports, rpt)
+		}
+
+		if len(generatedReports) == 1 {
+			writeJSON(w, http.StatusOK, reportToAPI(generatedReports[0]))
+		} else {
+			apiReports := make([]apiReport, 0, len(generatedReports))
+			for _, rpt := range generatedReports {
+				apiReports = append(apiReports, reportToAPI(rpt))
+			}
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"reports":    apiReports,
+				"total":      len(apiReports),
+				"node_count": len(addresses),
+			})
+		}
 		return
 	}
 
@@ -950,6 +1011,8 @@ func (s *Server) getReportHandler(w http.ResponseWriter, r *http.Request) {
 				contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 			case types.FormatJSON:
 				contentType = "application/json"
+			case types.FormatPDF:
+				contentType = "application/pdf"
 			}
 
 			w.Header().Set("Content-Type", contentType)

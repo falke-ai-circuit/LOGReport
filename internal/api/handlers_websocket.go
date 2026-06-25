@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/telnet"
@@ -187,13 +188,27 @@ func (s *Server) streamTelnetOutput(conn *websocket.Conn, sess *telnet.Session, 
 	}
 }
 
-// writeTelnetWS writes a WebSocket message safely (handles concurrent writes
-// with a mutex).
+// writeTelnetWS writes a WebSocket message safely.
+// Uses a per-connection mutex to prevent concurrent write races between
+// the output streaming goroutine and the main read loop.
+type wsConn struct {
+	mu sync.Mutex
+}
+
+// wsMuMap protects WebSocket connections from concurrent writes.
+// Each goroutine that writes to the same WebSocket must acquire the lock.
+// We use a package-level mutex per Server instance instead, since
+// typically only one WebSocket connection is active at a time per handler.
+var wsWriteMu sync.Mutex
+
+// writeTelnetWS writes a WebSocket message with mutex protection.
 func (s *Server) writeTelnetWS(conn *websocket.Conn, resp telnetWSResponse) {
 	data, err := json.Marshal(resp)
 	if err != nil {
 		return
 	}
+	wsWriteMu.Lock()
+	defer wsWriteMu.Unlock()
 	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 		log.Printf("ws: telnet write error: %v", err)
 	}
@@ -298,12 +313,14 @@ func (s *Server) bstoolWSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// writeBsToolWS writes a BsTool WebSocket message safely.
+// writeBsToolWS writes a BsTool WebSocket message safely with mutex protection.
 func (s *Server) writeBsToolWS(conn *websocket.Conn, resp bstoolWSResponse) {
 	data, err := json.Marshal(resp)
 	if err != nil {
 		return
 	}
+	wsWriteMu.Lock()
+	defer wsWriteMu.Unlock()
 	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 		log.Printf("ws: bstool write error: %v", err)
 	}

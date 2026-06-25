@@ -341,7 +341,7 @@ func TestGenerateReportHandler(t *testing.T) {
 	t.Run("unsupported format", func(t *testing.T) {
 		body := jsonBody(map[string]interface{}{
 			"node_addresses": []string{"10.0.0.1"},
-			"format":         "pdf",
+			"format":         "xml",
 		})
 		rec := doRequest(mux, "POST", "/api/v1/reports/generate", body, map[string]string{
 			"Content-Type": "application/json",

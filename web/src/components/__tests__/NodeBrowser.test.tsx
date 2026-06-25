@@ -231,7 +231,6 @@ describe('NodeBrowser', () => {
     expect(screen.getByText('Connect Node')).toBeInTheDocument();
 
     // Click the X button (btn-ghost inside modal)
-    const closeButton = screen.getByRole('button', { name: '' });
     // Find the X button — it's the ghost button with X icon
     const xButtons = screen.getAllByRole('button');
     // The X button is the one with no text content except the svg

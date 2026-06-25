@@ -12,3 +12,4 @@ __pycache__/
 *.pyc
 logreport.db-shm
 logreport.db-wal
+logreport-bin

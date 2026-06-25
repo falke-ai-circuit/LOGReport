@@ -190,10 +190,11 @@ func TestParseRPC_MalformedHeader(t *testing.T) {
 	}
 }
 
-// TestParseRPC_MissingCounterColumns validates error when header has no column numbers.
+// TestParseRPC_MissingCounterColumns validates error when header has no content after PIC.
 func TestParseRPC_MissingCounterColumns(t *testing.T) {
+	// Header with just "PIC" and no column names — should fail
 	output := `[2024-01-15 10:30:00]
- PIC  sum
+PIC
 -------------------------------
   0    12   1
 `

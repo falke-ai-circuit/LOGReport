@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
 import type {
   TreeNodeData,
   ScanCompareRequest,
@@ -10,6 +10,7 @@ import type {
 export interface ScanTabProps {
   selectedNode?: TreeNodeData | null;
   treeNodes?: TreeNodeData[];
+  logRoot?: string;
 }
 
 const CELL_COLORS: Record<string, string> = {
@@ -19,28 +20,41 @@ const CELL_COLORS: Record<string, string> = {
   live_only: '#f59e0b',
 };
 
-const REFRESH_INTERVALS = [
-  { label: 'Off', value: 0 },
-  { label: '5s', value: 5 },
-  { label: '10s', value: 10 },
-  { label: '30s', value: 30 },
-  { label: '60s', value: 60 },
-  { label: '300s', value: 300 },
+const FILE_TYPES = [
+  { label: 'FBC', value: 'fbc' },
+  { label: 'RPC', value: 'rpc' },
+  { label: 'LOG', value: 'log' },
+  { label: 'LIS', value: 'lis' },
 ];
 
-export default function ScanTab({ treeNodes }: ScanTabProps) {
+interface LogFileEntry {
+  file_name: string;
+  file_path: string;
+  extension: string;
+  size: number;
+  modified_at: string;
+  node_name: string;
+}
+
+export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProps) {
   const [configs, setConfigs] = useState<TreeNodeData[]>([]);
   const [activeNodeName, setActiveNodeName] = useState<string>('');
   const [fileData, setFileData] = useState('');
+  const [fileData2, setFileData2] = useState('');
+  const [selectedFile1, setSelectedFile1] = useState<string>('');
+  const [selectedFile2, setSelectedFile2] = useState<string>('');
+  const [fileType, setFileType] = useState<string>('fbc');
+  const [fileList, setFileList] = useState<LogFileEntry[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [comparison, setComparison] = useState<ScanCompareResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refreshInterval, setRefreshInterval] = useState(0);
-  const [countdown, setCountdown] = useState(0);
+  const [parsedTable, setParsedTable] = useState<{ key: string; value: string }[] | null>(null);
+  const [parsedTable2, setParsedTable2] = useState<{ key: string; value: string }[] | null>(null);
   const [selectedCell, setSelectedCell] = useState<ComparisonCell | null>(null);
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Use prop logRoot or localStorage
+  const logRoot = propLogRoot || localStorage.getItem('logRoot') || '';
 
   // Use provided treeNodes or extract from selectedNode
   const nodeConfigs = configs.length > 0 ? configs : treeNodes || [];
@@ -72,6 +86,111 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
   useEffect(() => {
     fetchConfigs();
   }, [fetchConfigs]);
+
+  // Fetch file list when logRoot or fileType changes
+  const fetchFiles = useCallback(async () => {
+    if (!logRoot) {
+      setFileList([]);
+      return;
+    }
+    setFilesLoading(true);
+    try {
+      const res = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRoot)}&type=${fileType}`);
+      if (!res.ok) {
+        setFileList([]);
+        return;
+      }
+      const data = await res.json();
+      setFileList(data.files || []);
+    } catch {
+      setFileList([]);
+    } finally {
+      setFilesLoading(false);
+    }
+  }, [logRoot, fileType]);
+
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]);
+
+  // Fetch and parse a file when selected
+  async function handleFileSelect(file: string, slot: 1 | 2) {
+    if (!file) {
+      if (slot === 1) {
+        setSelectedFile1('');
+        setFileData('');
+        setParsedTable(null);
+      } else {
+        setSelectedFile2('');
+        setFileData2('');
+        setParsedTable2(null);
+      }
+      return;
+    }
+
+    try {
+      // Fetch file content from the log root
+      const res = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRoot)}&type=${fileType}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const entry = (data.files || []).find((f: LogFileEntry) => f.file_name === file);
+      if (!entry) return;
+
+      // Read the file content via the API
+      const contentRes = await fetch(`/api/v1/logs/list?path=${encodeURIComponent(logRoot)}`);
+      // We need the raw file content - let's fetch it directly
+      // Since there's no direct file content endpoint, we parse from the file path
+      const response = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRoot)}&type=${fileType}`);
+      const fileListData = await response.json();
+      const fileEntry = (fileListData.files || []).find((f: LogFileEntry) => f.file_name === file);
+
+      if (fileEntry) {
+        // Fetch file content — use a fetch to get the raw content
+        // The API doesn't have a direct "read file" endpoint for log root files,
+        // but we can use the log list to get path and then read via the node log endpoint
+        // For now, let's use a simple approach: fetch via a dedicated content fetch
+        const content = await fetchFileContent(fileEntry.file_path);
+        if (slot === 1) {
+          setSelectedFile1(file);
+          setFileData(content);
+          setParsedTable(parseKeyValue(content));
+        } else {
+          setSelectedFile2(file);
+          setFileData2(content);
+          setParsedTable2(parseKeyValue(content));
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load file');
+    }
+  }
+
+  // Fetch file content by reading from the server
+  async function fetchFileContent(filePath: string): Promise<string> {
+    // Use the log content endpoint to read raw file content
+    const res = await fetch(`/api/v1/logs/content?path=${encodeURIComponent(filePath)}`);
+    if (!res.ok) return '';
+    const data = await res.json();
+    return data.content || '';
+  }
+
+  // Parse key=value content into a table structure
+  function parseKeyValue(content: string): { key: string; value: string }[] {
+    const rows: { key: string; value: string }[] = [];
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#') || trimmed === 'END') continue;
+      const idx = trimmed.indexOf('=');
+      if (idx > 0) {
+        rows.push({
+          key: trimmed.substring(0, idx).trim(),
+          value: trimmed.substring(idx + 1).trim(),
+        });
+      }
+    }
+    return rows;
+  }
 
   // ─── Compare ─────────────────────────────────────────────────
 
@@ -129,29 +248,57 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
     [activeNodeName, nodeConfigs, fileData],
   );
 
-  // ─── Auto-refresh ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-
-    if (refreshInterval > 0) {
-      setCountdown(refreshInterval);
-      intervalRef.current = setInterval(() => {
-        runCompare();
-        setCountdown(refreshInterval);
-      }, refreshInterval * 1000);
-
-      countdownRef.current = setInterval(() => {
-        setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
+  // Compare two loaded files cell-by-cell
+  const runFileCompare = useCallback(() => {
+    if (!parsedTable || !parsedTable2) {
+      setError('Load two files to compare');
+      return;
     }
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, [refreshInterval, runCompare]);
+    // Build comparison from key-value pairs
+    const map1 = new Map(parsedTable.map((r) => [r.key, r.value]));
+    const map2 = new Map(parsedTable2.map((r) => [r.key, r.value]));
+    const allKeys = new Set([...map1.keys(), ...map2.keys()]);
+
+    const cells: ComparisonCell[] = [];
+    let matching = 0, mismatched = 0, fileOnly = 0, liveOnly = 0;
+    let row = 0;
+
+    for (const key of allKeys) {
+      const v1 = map1.get(key) || '';
+      const v2 = map2.get(key) || '';
+      const cell: ComparisonCell = { row, col: 0, file_value: v1, live_value: v2, status: '' };
+
+      if (v1 && v2) {
+        if (v1 === v2) {
+          cell.status = 'match';
+          matching++;
+        } else {
+          cell.status = 'mismatch';
+          mismatched++;
+        }
+      } else if (v1 && !v2) {
+        cell.status = 'file_only';
+        fileOnly++;
+      } else if (!v1 && v2) {
+        cell.status = 'live_only';
+        liveOnly++;
+      }
+      cells.push(cell);
+      row++;
+    }
+
+    setComparison({
+      comparison: {
+        total_cells: matching + mismatched + fileOnly + liveOnly,
+        matching,
+        mismatched,
+        file_only: fileOnly,
+        live_only: liveOnly,
+        cells,
+      },
+    });
+  }, [parsedTable, parsedTable2]);
 
   // ─── Build table from comparison cells ───────────────────────
 
@@ -218,48 +365,26 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>File Data:</label>
-          <textarea
-            placeholder="Paste FBC file data here..."
-            value={fileData}
-            onChange={(e) => setFileData(e.target.value)}
-            style={{
-              width: '300px',
-              height: '40px',
-              padding: '4px 8px',
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              color: 'var(--text-primary)',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              outline: 'none',
-              resize: 'vertical',
-            }}
-          />
+        {/* Log root indicator */}
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+          Log Root: <span style={{ color: logRoot ? 'var(--accent)' : 'var(--error)', fontFamily: 'var(--font-mono)' }}>
+            {logRoot || 'not set'}
+          </span>
         </div>
 
-        <button
-          className="btn btn-primary"
-          style={{ fontSize: '12px', padding: '4px 12px' }}
-          onClick={() => runCompare()}
-          disabled={comparing || !activeNodeName}
-        >
-          {comparing ? (
-            <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
-          ) : (
-            <RefreshCw size={12} />
-          )}
-          Compare with Live
-        </button>
-
-        {/* Auto-refresh dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Auto-refresh:</label>
+        {/* File type selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Type:</label>
           <select
-            value={refreshInterval}
-            onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            value={fileType}
+            onChange={(e) => {
+              setFileType(e.target.value);
+              setSelectedFile1('');
+              setSelectedFile2('');
+              setParsedTable(null);
+              setParsedTable2(null);
+              setComparison(null);
+            }}
             style={{
               padding: '4px 8px',
               backgroundColor: 'var(--bg-secondary)',
@@ -270,18 +395,86 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
               outline: 'none',
             }}
           >
-            {REFRESH_INTERVALS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
+            {FILE_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
-          {refreshInterval > 0 && (
-            <span style={{ fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
-              {countdown}s
-            </span>
-          )}
         </div>
+
+        {/* File 1 dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>File 1:</label>
+          <select
+            value={selectedFile1}
+            onChange={(e) => handleFileSelect(e.target.value, 1)}
+            disabled={filesLoading || !logRoot}
+            style={{
+              padding: '4px 8px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              fontSize: '11px',
+              outline: 'none',
+              minWidth: '180px',
+            }}
+          >
+            <option value="">Select file...</option>
+            {fileList.map((f) => (
+              <option key={f.file_name} value={f.file_name}>{f.file_name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* File 2 dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>File 2:</label>
+          <select
+            value={selectedFile2}
+            onChange={(e) => handleFileSelect(e.target.value, 2)}
+            disabled={filesLoading || !logRoot}
+            style={{
+              padding: '4px 8px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              fontSize: '11px',
+              outline: 'none',
+              minWidth: '180px',
+            }}
+          >
+            <option value="">Select file...</option>
+            {fileList.map((f) => (
+              <option key={f.file_name} value={f.file_name}>{f.file_name}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          className="btn btn-primary"
+          style={{ fontSize: '12px', padding: '4px 12px' }}
+          onClick={() => runCompare()}
+          disabled={comparing || !activeNodeName || !fileData}
+          title="Compare File 1 with live node data"
+        >
+          {comparing ? (
+            <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+          ) : (
+            <RefreshCw size={12} />
+          )}
+          Compare with Live
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          style={{ fontSize: '12px', padding: '4px 12px' }}
+          onClick={runFileCompare}
+          disabled={!parsedTable || !parsedTable2}
+          title="Compare File 1 and File 2 side by side"
+        >
+          Compare Files
+        </button>
       </div>
 
       {/* Error */}
@@ -301,6 +494,28 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
         >
           <AlertTriangle size={14} />
           {error}
+        </div>
+      )}
+
+      {/* Parsed file tables */}
+      {(parsedTable || parsedTable2) && (
+        <div style={{ display: 'flex', gap: '12px', padding: '0 12px 8px', flexWrap: 'wrap' }}>
+          {parsedTable && (
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <FileText size={12} /> {selectedFile1}
+              </h4>
+              <ParsedTable data={parsedTable} />
+            </div>
+          )}
+          {parsedTable2 && (
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <FileText size={12} /> {selectedFile2}
+              </h4>
+              <ParsedTable data={parsedTable2} />
+            </div>
+          )}
         </div>
       )}
 
@@ -433,7 +648,7 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
       )}
 
       {/* Empty state */}
-      {!comparison && !comparing && !error && (
+      {!comparison && !comparing && !error && !parsedTable && (
         <div
           style={{
             padding: '48px',
@@ -442,10 +657,40 @@ export default function ScanTab({ treeNodes }: ScanTabProps) {
             fontSize: '13px',
           }}
         >
-          Paste FBC file data and click "Compare with Live" to see the comparison table.
+          {logRoot ? (
+            <>Select a file from the dropdown to view and compare FBC data.</>
+          ) : (
+            <>Set Log Root in the Commander toolbar to enable file-based scanning.</>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+// ─── ParsedTable helper ───────────────────────────────────────────
+
+function ParsedTable({ data }: { data: { key: string; value: string }[] }) {
+  if (data.length === 0) {
+    return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No key-value entries found.</div>;
+  }
+  return (
+    <table style={{ borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+      <thead>
+        <tr>
+          <th style={{ padding: '3px 8px', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>Key</th>
+          <th style={{ padding: '3px 8px', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((row, i) => (
+          <tr key={i}>
+            <td style={{ padding: '3px 8px', color: 'var(--accent)', borderBottom: '1px solid var(--border)' }}>{row.key}</td>
+            <td style={{ padding: '3px 8px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>{row.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

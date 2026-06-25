@@ -49,7 +49,8 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID string) string {
 
 // WriteOutput appends command output to a node's log file.
 // File path: {logRoot}/{nodeName}/{tokenType}_{tokenID}.log
-// A timestamp header is prepended to each write.
+// A decorative header with ═══ bars, command metadata, and ─── separators
+// is prepended to each write (matching Python log_writer.py style).
 func (lw *LogWriter) WriteOutput(nodeName, tokenType, tokenID, output string) error {
 	if nodeName == "" {
 		return fmt.Errorf("logwriter: nodeName is required")
@@ -67,8 +68,8 @@ func (lw *LogWriter) WriteOutput(nodeName, tokenType, tokenID, output string) er
 	}
 	defer f.Close()
 
-	// Write timestamp header + output
-	header := fmt.Sprintf("--- %s ---\n", time.Now().UTC().Format(time.RFC3339))
+	// Write decorative header
+	header := buildDecorativeHeader(nodeName, tokenType, tokenID)
 	if _, err := f.WriteString(header); err != nil {
 		return fmt.Errorf("logwriter: write header: %w", err)
 	}
@@ -79,7 +80,27 @@ func (lw *LogWriter) WriteOutput(nodeName, tokenType, tokenID, output string) er
 		f.WriteString("\n")
 	}
 
+	// Write footer separator
+	footer := buildSeparator()
+	if _, err := f.WriteString(footer); err != nil {
+		return fmt.Errorf("logwriter: write footer: %w", err)
+	}
+
 	return nil
+}
+
+// buildDecorativeHeader creates a decorative header block with ═══ bars,
+// command metadata, and ─── separators (matching Python log_writer.py style).
+func buildDecorativeHeader(nodeName, tokenType, tokenID string) string {
+	now := time.Now().UTC().Format("2006-01-02 15:04:05 UTC")
+	bar := strings.Repeat("═", 60)
+	return fmt.Sprintf("\n%s\n  NODE: %s  |  TYPE: %s  |  TOKEN: %s  |  TIME: %s\n%s\n",
+		bar, nodeName, strings.ToUpper(tokenType), tokenID, now, bar)
+}
+
+// buildSeparator creates a ─── separator line used after output.
+func buildSeparator() string {
+	return strings.Repeat("─", 60) + "\n"
 }
 
 // ReadLog reads the content of a node's log file.

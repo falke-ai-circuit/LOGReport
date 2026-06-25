@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen } from '@testing-library/react';
 import FBCView from '../FBCView';
 import { FBCTable, RPCTable } from '../IOTable';
 import type { ApiFBCModule, ApiRPCModule } from '../../types/api';

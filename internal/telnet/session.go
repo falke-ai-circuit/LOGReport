@@ -52,6 +52,14 @@ func generateSessionID() string {
 // The session ID is generated and returned via the Session.
 // A background goroutine reads from the telnet connection and pushes
 // filtered output to the Session.Output channel.
+//
+// After establishing the TCP connection, verifySystemMode() is called
+// to initialize the DNA debugger into system mode. This matches the
+// Python telnet_service.py behavior:
+//   1. Send "yes\r\n" (handle "someone else is connected" conflict prompt)
+//   2. Send Ctrl+Z (\x1a) to clear terminal
+//   3. Send "systemmode\r\n" to switch to system mode
+// This is required for FBC/RPC print commands to work on real DNA nodes.
 func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time.Duration) (*Session, error) {
 	if sessionID == "" {
 		sessionID = generateSessionID()
@@ -72,6 +80,11 @@ func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time
 		Done:      make(chan struct{}),
 	}
 
+	// Initialize system mode on the DNA debugger.
+	// This is a no-op on mock servers (they just echo back) but is
+	// critical for real DNA nodes which start in application mode.
+	sm.verifySystemMode(sess)
+
 	// Background reader: reads from telnet conn, filters, pushes to Output
 	go sess.readLoop()
 
@@ -80,6 +93,80 @@ func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time
 	sm.mu.Unlock()
 
 	return sess, nil
+}
+
+// verifySystemMode initializes the DNA debugger into system mode.
+// This sequence mirrors the Python telnet_service.py verify_system_mode():
+//   1. Send "yes\r\n" — handles the "someone else is connected, disconnect?" prompt
+//   2. Send Ctrl+Z (\x1a) — clears the terminal of any leftover content
+//   3. Send "systemmode\r\n" — switches from application mode to system mode
+//
+// On real DNA nodes, FBC/RPC print commands only work in system mode.
+// On mock/test servers, these writes are harmless (server just echoes or ignores).
+// Any errors during initialization are non-fatal — the session remains usable.
+// The output from these commands is pushed to the Output channel so the
+// frontend can display the initialization sequence.
+func (sm *SessionManager) verifySystemMode(sess *Session) {
+	conn := sess.Client.conn
+	if conn == nil {
+		return
+	}
+
+	// Step 1: Send "yes" to handle potential conflict prompt
+	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	conn.Write([]byte("yes\r\n"))
+	time.Sleep(300 * time.Millisecond)
+
+	// Drain any response
+	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	drainBuf := make([]byte, 4096)
+	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
+		filtered := FilterOutput(string(drainBuf[:n]))
+		if filtered != "" {
+			select {
+			case sess.Output <- filtered:
+			default:
+			}
+		}
+	}
+
+	// Step 2: Send Ctrl+Z to clear terminal
+	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	conn.Write([]byte{0x1a}) // Ctrl+Z
+	time.Sleep(200 * time.Millisecond)
+
+	// Drain
+	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
+		filtered := FilterOutput(string(drainBuf[:n]))
+		if filtered != "" {
+			select {
+			case sess.Output <- filtered:
+			default:
+			}
+		}
+	}
+
+	// Step 3: Send "systemmode" to switch to system mode
+	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	conn.Write([]byte("systemmode\r\n"))
+	time.Sleep(300 * time.Millisecond)
+
+	// Drain and push any response to output
+	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
+		filtered := FilterOutput(string(drainBuf[:n]))
+		if filtered != "" {
+			select {
+			case sess.Output <- filtered:
+			default:
+			}
+		}
+	}
+
+	// Reset deadlines
+	conn.SetReadDeadline(time.Time{})
+	conn.SetWriteDeadline(time.Time{})
 }
 
 // readLoop continuously reads from the telnet connection and pushes
@@ -254,6 +341,7 @@ func (sm *SessionManager) CloseAll() {
 
 // mockServer is a simple TCP server that echoes received data back
 // with a DNA-style prompt. Used by session_test.go.
+// Supports multiple sequential connections (needed for CloseAll test).
 type mockServer struct {
 	ln     net.Listener
 	output chan string // received commands
@@ -266,17 +354,23 @@ func newMockServer() (*mockServer, error) {
 	}
 	ms := &mockServer{
 		ln:     ln,
-		output: make(chan string, 16),
+		output: make(chan string, 32),
 	}
 	go ms.serve()
 	return ms, nil
 }
 
 func (ms *mockServer) serve() {
-	conn, err := ms.ln.Accept()
-	if err != nil {
-		return
+	for {
+		conn, err := ms.ln.Accept()
+		if err != nil {
+			return
+		}
+		go ms.handleConn(conn)
 	}
+}
+
+func (ms *mockServer) handleConn(conn net.Conn) {
 	defer conn.Close()
 	// Send initial prompt
 	conn.Write([]byte("1a% "))

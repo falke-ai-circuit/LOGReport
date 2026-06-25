@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
@@ -21,8 +23,13 @@ const DefaultOutputDir = "/tmp/logreport-reports"
 // the file path and completed status.
 func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, error) {
 	// Validate format
-	if cfg.Format != types.FormatDOCX && cfg.Format != types.FormatJSON {
+	if cfg.Format != types.FormatDOCX && cfg.Format != types.FormatJSON && cfg.Format != types.FormatPDF {
 		return nil, fmt.Errorf("report: unsupported format %q", cfg.Format)
+	}
+
+	// PDF with log_root: generate from log files (no SQLite data needed)
+	if cfg.Format == types.FormatPDF && cfg.LogRoot != "" {
+		return generatePDFFromLogs(cfg, s)
 	}
 
 	// Load node from store
@@ -67,6 +74,10 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 		filePath, err = generateDOCX(node, ioPoints, tmpl, reportID)
 	case types.FormatJSON:
 		filePath, err = generateJSON(node, ioPoints, reportID)
+	case types.FormatPDF:
+		// PDF without log_root: generate from SQLite data
+		scanEntries := ioPointsToScanEntries(node, ioPoints)
+		filePath, err = generatePDF(reportID, "", scanEntries)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("report: generate %s: %w", cfg.Format, err)
@@ -94,6 +105,86 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 	return report, nil
 }
 
+// generatePDFFromLogs scans the log_root directory for log files and generates
+// a PDF report from their contents.
+func generatePDFFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, error) {
+	// Ensure output directory exists
+	if err := os.MkdirAll(DefaultOutputDir, 0755); err != nil {
+		return nil, fmt.Errorf("report: create output dir: %w", err)
+	}
+
+	// Scan log files from log_root
+	allFiles, err := logfile.ScanFiles(cfg.LogRoot)
+	if err != nil {
+		return nil, fmt.Errorf("report: scan log root %s: %w", cfg.LogRoot, err)
+	}
+
+	// If node_address specified, filter files by node name
+	if cfg.NodeAddress != "" && cfg.NodeAddress != "*" {
+		filtered := make([]logfile.FileEntry, 0)
+		for _, f := range allFiles {
+			if f.NodeName == cfg.NodeAddress {
+				filtered = append(filtered, f)
+			}
+		}
+		allFiles = filtered
+	}
+
+	// Parse each file
+	scanEntries := make([]ScanEntry, 0, len(allFiles))
+	for _, fe := range allFiles {
+		parsed, err := logfile.ParseFile(fe.FilePath)
+		if err != nil {
+			continue
+		}
+		scanEntries = append(scanEntries, ScanEntry{
+			FileName:      fe.FileName,
+			FileType:      strings.TrimPrefix(fe.Extension, "."),
+			NodeName:      fe.NodeName,
+			Size:          fe.Size,
+			Parsed:        parsed,
+			KeyValueCount: len(parsed.KeyValues),
+		})
+	}
+
+	now := time.Now().UTC()
+	reportID := newReportID()
+
+	filePath, err := generatePDF(reportID, cfg.LogRoot, scanEntries)
+	if err != nil {
+		return nil, fmt.Errorf("report: generate pdf: %w", err)
+	}
+
+	// Build report record — use log_root or first node name as node address
+	nodeAddr := cfg.NodeAddress
+	if nodeAddr == "" || nodeAddr == "*" {
+		if len(scanEntries) > 0 {
+			nodeAddr = scanEntries[0].NodeName
+		} else {
+			nodeAddr = "all"
+		}
+	}
+
+	report := &types.Report{
+		ID:          reportID,
+		NodeAddress: nodeAddr,
+		Format:      types.FormatPDF,
+		Template:    cfg.Template,
+		Title:       cfg.Title,
+		Author:      cfg.Author,
+		Status:      types.StatusCompleted,
+		FilePath:    filePath,
+		CreatedAt:   now.Format(time.RFC3339),
+		CompletedAt: now.Format(time.RFC3339),
+	}
+
+	if err := s.SaveReport(report); err != nil {
+		return nil, fmt.Errorf("report: save report: %w", err)
+	}
+
+	return report, nil
+}
+
 // outputPath builds the full output file path for a report.
 func outputPath(reportID string, ext string) string {
 	return filepath.Join(DefaultOutputDir, reportID+ext)
@@ -104,4 +195,48 @@ func newReportID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+// ioPointsToScanEntries converts SQLite IO points to ScanEntry format for
+// PDF generation (fallback when no log_root is specified).
+func ioPointsToScanEntries(node *types.Node, ioPoints []types.IOPoint) []ScanEntry {
+	entries := make([]ScanEntry, 0)
+
+	// Group by module type
+	fbcKVs := make([]logfile.KeyValue, 0)
+	rpcKVs := make([]logfile.KeyValue, 0)
+	for _, p := range ioPoints {
+		if p.ModuleType == types.ModuleFBC {
+			fbcKVs = append(fbcKVs, logfile.KeyValue{
+				Key:   fmt.Sprintf("FBC.%d.%d", p.ModulePosition, p.ChannelPosition),
+				Value: string(p.ChannelType),
+			})
+		} else if p.ModuleType == types.ModuleRPC {
+			rpcKVs = append(rpcKVs, logfile.KeyValue{
+				Key:   fmt.Sprintf("RPC.%d.%s", p.ModulePosition, p.CounterName),
+				Value: fmt.Sprintf("%d", p.CounterValue),
+			})
+		}
+	}
+
+	if len(fbcKVs) > 0 {
+		entries = append(entries, ScanEntry{
+			FileName:      fmt.Sprintf("%s.fbc", node.Name),
+			FileType:      "fbc",
+			NodeName:      node.Name,
+			Parsed:        &logfile.FileData{KeyValues: fbcKVs, Header: fmt.Sprintf("#FBC %s (from SQLite)", node.Name)},
+			KeyValueCount: len(fbcKVs),
+		})
+	}
+	if len(rpcKVs) > 0 {
+		entries = append(entries, ScanEntry{
+			FileName:      fmt.Sprintf("%s.rpc", node.Name),
+			FileType:      "rpc",
+			NodeName:      node.Name,
+			Parsed:        &logfile.FileData{KeyValues: rpcKVs, Header: fmt.Sprintf("#RPC %s (from SQLite)", node.Name)},
+			KeyValueCount: len(rpcKVs),
+		})
+	}
+
+	return entries
 }

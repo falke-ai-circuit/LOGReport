@@ -98,11 +98,11 @@ func TestSessionSendCommand(t *testing.T) {
 	}
 
 	// Verify the mock server received the command.
-	// The SendCommand first sends Ctrl+X (\x18) and Ctrl+Z (\x1A) for buffer
-	// clearing, so we may receive multiple messages. Collect until we see
-	// the actual command.
+	// The Connect() call sends verifySystemMode messages (yes, Ctrl+Z, systemmode)
+	// and SendCommand sends buffer-clearing (Ctrl+X, Ctrl+Z) before the actual command.
+	// That's 6 messages total. Collect until we see the actual command.
 	found := false
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 15; i++ {
 		select {
 		case received := <-ms.output:
 			if strings.Contains(received, cmd) {
@@ -110,7 +110,7 @@ func TestSessionSendCommand(t *testing.T) {
 			}
 		case <-time.After(2 * time.Second):
 			if i == 0 {
-				t.Fatal("timeout waiting for mock server to receive command")
+				t.Fatal("timeout waiting for mock server to receive any data")
 			}
 		}
 	}

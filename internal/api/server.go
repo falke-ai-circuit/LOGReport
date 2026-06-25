@@ -183,6 +183,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/logs/{nodeName}/{fileName}", s.handleReadLog)
 	mux.HandleFunc("POST /api/v1/logs/{nodeName}", s.handleWriteLog)
 
+	// Log root directory scanning
+	mux.HandleFunc("GET /api/v1/logs/list", s.handleListLogRoot)
+	mux.HandleFunc("GET /api/v1/logs/files", s.handleListLogFiles)
+	mux.HandleFunc("GET /api/v1/logs/content", s.handleLogContent)
+	mux.HandleFunc("POST /api/v1/logs/setroot", s.handleSetLogRoot)
+
 	// Scan comparison
 	mux.HandleFunc("POST /api/v1/scan/compare", s.handleScanCompare)
 }

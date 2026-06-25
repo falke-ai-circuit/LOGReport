@@ -6,6 +6,7 @@ type ReportFormat string
 const (
 	FormatDOCX ReportFormat = "docx"
 	FormatJSON ReportFormat = "json"
+	FormatPDF  ReportFormat = "pdf"
 )
 
 // ReportStatus tracks the lifecycle of a report generation job.
@@ -25,6 +26,7 @@ type ReportConfig struct {
 	Template    string       `json:"template"`
 	Title       string       `json:"title"`
 	Author      string       `json:"author"`
+	LogRoot     string       `json:"log_root"` // root directory for log files (optional)
 }
 
 // Report represents a generated report record stored in the database.

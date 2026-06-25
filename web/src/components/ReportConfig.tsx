@@ -15,10 +15,11 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
 
   // Form state
   const [nodeAddress, setNodeAddress] = useState('');
-  const [format, setFormat] = useState<'docx' | 'json'>('docx');
+  const [format, setFormat] = useState<'docx' | 'json' | 'pdf'>('docx');
   const [template, setTemplate] = useState('');
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
+  const [logRoot, setLogRoot] = useState('');
 
   // Submission state
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +85,7 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
         format,
       };
       if (template) body.template = template;
+      if (logRoot) body.log_root = logRoot;
       if (title || author) {
         body.options = {};
         if (title) (body.options as Record<string, unknown>).title = title;
@@ -191,7 +193,7 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
           <div>
             <label style={labelStyle}>Format *</label>
             <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-              {(['docx', 'json'] as const).map((fmt) => (
+              {(['docx', 'json', 'pdf'] as const).map((fmt) => (
                 <label
                   key={fmt}
                   style={{
@@ -232,6 +234,21 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
                 {errors.format}
               </div>
             )}
+          </div>
+
+          {/* Log Root (optional, for PDF from log files) */}
+          <div>
+            <label style={labelStyle}>Log Root (optional — for PDF from log files)</label>
+            <input
+              type="text"
+              value={logRoot}
+              onChange={(e) => setLogRoot(e.target.value)}
+              style={inputStyle}
+              placeholder="/path/to/log/files"
+            />
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              When set with PDF format, reports are generated from .fbc/.rpc/.log/.lis files in this directory.
+            </div>
           </div>
 
           {/* Template (optional) */}

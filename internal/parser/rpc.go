@@ -32,10 +32,10 @@ var (
 )
 
 // extractCounters parses the counter values string (middle section of an RPC row)
-// into a slice of RPCCounter, mapping each found value to its column position.
+// into a slice of RPCCounter, mapping each found value to its column name.
 // All digit sequences in the string are treated as counter values.
 // Extra values beyond the column count are ignored.
-func extractCounters(counterStr string, columnPositions []int) []types.RPCCounter {
+func extractCounters(counterStr string, columnNames []string) []types.RPCCounter {
 	digits := rpcDigitPattern.FindAllString(counterStr, -1)
 	if len(digits) == 0 {
 		return nil
@@ -43,7 +43,7 @@ func extractCounters(counterStr string, columnPositions []int) []types.RPCCounte
 
 	var counters []types.RPCCounter
 	for i, d := range digits {
-		if i >= len(columnPositions) {
+		if i >= len(columnNames) {
 			break
 		}
 		val, err := strconv.Atoi(d)
@@ -51,7 +51,7 @@ func extractCounters(counterStr string, columnPositions []int) []types.RPCCounte
 			continue
 		}
 		counters = append(counters, types.RPCCounter{
-			Name:  strconv.Itoa(columnPositions[i]),
+			Name:  columnNames[i],
 			Value: val,
 		})
 	}
@@ -79,10 +79,41 @@ func parseRPCNotExistsRow(line string) *types.RPCModule {
 	}
 }
 
+// rpcHeaderPattern matches the RPC header line in a case-insensitive manner.
+// Real Valmet DNA output uses lowercase "pic" (e.g. "pic  IREX ERROR  POLL ERROR...")
+// but some nodes may output uppercase "PIC". This pattern accepts both.
+// Unlike the FBC headerPattern which requires "sum" at the end, the RPC header
+// has counter column names (IREX ERROR, POLL ERROR, etc.) and no "sum" suffix.
+var rpcHeaderPattern = regexp.MustCompile(`(?i)^\s*(PIC|IBC)\s+(.+?)\s*$`)
+
+// rpcColumnNames extracts column names from the RPC header.
+// Unlike FBC which has numeric column positions (5, 6, 7, 8), the RPC header
+// has text column names: "IREX ERROR  POLL ERROR  RESP FAIL  IREX COUNT  TIMEOUT".
+// We split on 2+ whitespace to get individual column names.
+var rpcColumnSplit = regexp.MustCompile(`\s{2,}`)
+
+// parseRPCColumnNames extracts the counter column names from the RPC header.
+// Returns the names as a slice (e.g. ["IREX ERROR", "POLL ERROR", "RESP FAIL", "IREX COUNT", "TIMEOUT"]).
+// These become the names of the RPCCounter structs.
+func parseRPCColumnNames(headerColPart string) []string {
+	// Split on 2+ whitespace — the header columns are separated by multiple spaces
+	parts := rpcColumnSplit.Split(strings.TrimSpace(headerColPart), -1)
+	var names []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			names = append(names, p)
+		}
+	}
+	return names
+}
+
 // ParseRPC parses RPC (RUPI Counters) telnet output into a slice of
-// typed RPCModule structs. It detects PIC/IBC header format (reusing FBC header
-// detection), extracts column positions, parses each data row (including
-// "Not Exists" rows), and returns the structured result.
+// typed RPCModule structs. It detects PIC/IBC header format (case-insensitive
+// to handle real DNA output which uses lowercase "pic"), extracts column
+// names from the header (text-based, unlike FBC's numeric positions),
+// parses each data row (including "Not Exists" rows), and returns
+// the structured result.
 //
 // The input is raw telnet output (before FilterOutput whitespace normalization)
 // so that empty counter slots (indicated by 4+ spaces) can be detected.
@@ -92,24 +123,18 @@ func parseRPCNotExistsRow(line string) *types.RPCModule {
 func ParseRPC(output string) ([]types.RPCModule, error) {
 	lines := strings.Split(output, "\n")
 
-	// Find header line (reuses FBC headerPattern for PIC/IBC detection)
+	// Find header line using case-insensitive RPC-specific pattern.
+	// Real DNA output uses lowercase "pic" — the FBC headerPattern requires
+	// uppercase "PIC" and a "sum" suffix, which RPC headers don't have.
 	headerIdx := -1
-	var columnPositions []int
+	var columnNames []string
 
 	for i, line := range lines {
-		m := headerPattern.FindStringSubmatch(line)
+		m := rpcHeaderPattern.FindStringSubmatch(line)
 		if m != nil {
 			headerIdx = i
-			// Extract column numbers from the header (e.g. "5  6  7  8")
-			colPart := m[2]
-			colNums := columnNumPattern.FindAllString(colPart, -1)
-			for _, cn := range colNums {
-				n, err := strconv.Atoi(cn)
-				if err != nil {
-					continue
-				}
-				columnPositions = append(columnPositions, n)
-			}
+			// Extract column names from the header (text-based, not numeric)
+			columnNames = parseRPCColumnNames(m[2])
 			break
 		}
 	}
@@ -118,7 +143,7 @@ func ParseRPC(output string) ([]types.RPCModule, error) {
 		return nil, fmt.Errorf("rpc parser: no PIC/IBC header found in output")
 	}
 
-	if len(columnPositions) == 0 {
+	if len(columnNames) == 0 {
 		return nil, fmt.Errorf("rpc parser: no counter columns found in header")
 	}
 
@@ -169,7 +194,7 @@ func ParseRPC(output string) ([]types.RPCModule, error) {
 		}
 
 		counterStr := m[2]
-		counters := extractCounters(counterStr, columnPositions)
+		counters := extractCounters(counterStr, columnNames)
 
 		// AXON safety: ensure counters is never nil
 		if counters == nil {
@@ -196,9 +221,9 @@ func ParseRPC(output string) ([]types.RPCModule, error) {
 func ParseRPCHeaderType(output string) types.HeaderType {
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		m := headerPattern.FindStringSubmatch(line)
+		m := rpcHeaderPattern.FindStringSubmatch(line)
 		if m != nil {
-			return types.HeaderType(m[1])
+			return types.HeaderType(strings.ToUpper(m[1]))
 		}
 	}
 	return ""

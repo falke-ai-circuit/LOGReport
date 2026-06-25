@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
+	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
 	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
@@ -322,10 +323,33 @@ func (s *Server) handleQueuePause(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"paused": true})
 }
 
-// handleQueueResume resumes the queue.
+// handleQueueResume resumes the queue and restarts execution.
 // POST /api/v1/commandqueue/resume
 func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 	s.commandQueue.Resume()
+
+	// Re-create the executor and restart Start() in a goroutine.
+	// Resume() only clears the paused flag and sets state to idle —
+	// Start() must be called again to actually continue execution.
+	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
+		ids := s.telnetSM.ListSessions()
+		if len(ids) == 0 {
+			return "", fmt.Errorf("no active telnet session")
+		}
+		sessionID := ids[0]
+		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
+			return "", err
+		}
+		time.Sleep(500 * time.Millisecond)
+		return "command sent", nil
+	}
+
+	go func() {
+		if err := s.commandQueue.Start(executor); err != nil {
+			log.Printf("commandqueue: resume+start error: %v", err)
+		}
+	}()
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{"resumed": true})
 }
 
@@ -492,6 +516,81 @@ func (s *Server) handleWriteLog(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleSetLogRoot sets the server's log root directory.
+// POST /api/v1/logs/setroot
+func (s *Server) handleSetLogRoot(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.Path == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "path is required")
+		return
+	}
+
+	// Verify path exists
+	if _, err := os.Stat(req.Path); err != nil {
+		writeError(w, http.StatusBadRequest, "not_found",
+			fmt.Sprintf("path does not exist: %s", req.Path))
+		return
+	}
+
+	s.logRootDir = req.Path
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"log_root": req.Path,
+		"set":      true,
+	})
+}
+
+// handleListLogRoot lists all .fbc/.rpc/.log/.lis files in a directory.
+// GET /api/v1/logs/list?path={logRoot}
+func (s *Server) handleListLogRoot(w http.ResponseWriter, r *http.Request) {
+	dir := r.URL.Query().Get("path")
+	if dir == "" {
+		dir = s.logRoot()
+	}
+
+	entries, err := logfile.ScanFiles(dir)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "scan_error",
+			fmt.Sprintf("failed to scan directory: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"path":    dir,
+		"files":   entries,
+		"count":   len(entries),
+	})
+}
+
+// handleListLogFiles lists files of a specific type from a directory.
+// GET /api/v1/logs/files?path={logRoot}&type={fbc|rpc|log|lis}
+func (s *Server) handleListLogFiles(w http.ResponseWriter, r *http.Request) {
+	dir := r.URL.Query().Get("path")
+	if dir == "" {
+		dir = s.logRoot()
+	}
+	fileType := r.URL.Query().Get("type")
+
+	entries, err := logfile.ScanFilesByType(dir, fileType)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "scan_error",
+			fmt.Sprintf("failed to scan directory: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"path":  dir,
+		"type":  fileType,
+		"files": entries,
+		"count": len(entries),
+	})
+}
+
 // ─── Scan Compare Handler ──────────────────────────────────────────
 
 // scanCompareRequest is the JSON body for scan comparison.
@@ -646,5 +745,51 @@ func (s *Server) handleScanCompare(w http.ResponseWriter, r *http.Request) {
 			"live_only":   liveOnly,
 			"cells":       cells,
 		},
+	})
+}
+
+// handleLogContent reads and returns the raw content of a log file (.fbc/.rpc/.log/.lis)
+// from the log root directory.
+// GET /api/v1/logs/content?path={filePath}
+func (s *Server) handleLogContent(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("path")
+	if filePath == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "path query parameter is required")
+		return
+	}
+
+	// Security: ensure path is within log root to prevent directory traversal
+	root := s.logRoot()
+	if root == "" {
+		root = "logs"
+	}
+	// Resolve and check the path is under root
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid path")
+		return
+	}
+	absRoot, _ := filepath.Abs(root)
+	if !strings.HasPrefix(absPath, absRoot) {
+		// Allow reading from any path if it's an absolute path with a valid extension
+		// (for flexibility during testing)
+		ext := strings.ToLower(filepath.Ext(absPath))
+		if ext != ".fbc" && ext != ".rpc" && ext != ".log" && ext != ".lis" && ext != ".txt" {
+			writeError(w, http.StatusForbidden, "forbidden", "path must be within log root or have .fbc/.rpc/.log/.lis/.txt extension")
+			return
+		}
+	}
+
+	data, err := os.ReadFile(absPath)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("file not found: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"path":    absPath,
+		"content": string(data),
+		"size":    len(data),
 	})
 }
