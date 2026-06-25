@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Terminal, Server, ScanLine, Settings } from 'lucide-react';
+import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2 } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
@@ -26,6 +26,11 @@ export default function CommanderLayout() {
   const [pendingServerName, setPendingServerName] = useState<string | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [logRoot, setLogRoot] = useState<string>(localStorage.getItem('logRoot') || '');
+  const [showLogRootInput, setShowLogRootInput] = useState(false);
+  const [logRootInput, setLogRootInput] = useState('');
+  const [logRootLoading, setLogRootLoading] = useState(false);
+  const [logRootError, setLogRootError] = useState<string | null>(null);
 
   // ─── Node tree callbacks ─────────────────────────────────────
 
@@ -72,7 +77,44 @@ export default function CommanderLayout() {
     [currentNodeName],
   );
 
-  // ─── Tab bar ─────────────────────────────────────────────────
+  // ─── Set Log Root ──────────────────────────────────────────────
+
+  const handleSetLogRoot = useCallback(async () => {
+    if (!logRootInput) {
+      setLogRootError('Path is required');
+      return;
+    }
+    setLogRootLoading(true);
+    setLogRootError(null);
+    try {
+      const res = await fetch('/api/v1/logs/setroot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: logRootInput }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      // Also verify the path lists files
+      const listRes = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRootInput)}&type=fbc`);
+      let fileCount = 0;
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        fileCount = listData.count || 0;
+      }
+      localStorage.setItem('logRoot', logRootInput);
+      setLogRoot(logRootInput);
+      setShowLogRootInput(false);
+      setLogRootInput('');
+    } catch (err) {
+      setLogRootError(err instanceof Error ? err.message : 'Failed to set log root');
+    } finally {
+      setLogRootLoading(false);
+    }
+  }, [logRootInput]);
+
+  // ─── Tab bar ────────────────────────────────────────────────────
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'telnet', label: 'Telnet', icon: <Terminal size={14} /> },
@@ -99,6 +141,79 @@ export default function CommanderLayout() {
           Interactive Command Center
         </span>
         <div style={{ flex: 1 }} />
+        {/* Log Root indicator + Set Log Root button */}
+        {logRoot ? (
+          <span
+            style={{
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              maxWidth: '200px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={logRoot}
+          >
+            📁 {logRoot.split('/').pop() || logRoot}
+          </span>
+        ) : null}
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px' }}
+          onClick={() => {
+            setLogRootInput(logRoot || '');
+            setShowLogRootInput(!showLogRootInput);
+          }}
+          title="Set log root directory for scan and report workflows"
+        >
+          <FolderOpen size={14} />
+          Set Log Root
+        </button>
+        {showLogRootInput && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <input
+              type="text"
+              value={logRootInput}
+              onChange={(e) => setLogRootInput(e.target.value)}
+              placeholder="/path/to/log/files"
+              style={{
+                fontSize: '12px',
+                padding: '4px 8px',
+                width: '250px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '4px',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSetLogRoot();
+                if (e.key === 'Escape') setShowLogRootInput(false);
+              }}
+              autoFocus
+            />
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '12px', padding: '4px 10px' }}
+              onClick={handleSetLogRoot}
+              disabled={logRootLoading}
+            >
+              {logRootLoading ? <Loader2 size={12} className="spin" /> : 'OK'}
+            </button>
+            {logRootError && (
+              <span style={{ fontSize: '11px', color: 'var(--error)' }}>
+                {logRootError}
+              </span>
+            )}
+          </div>
+        )}
         <button
           className="btn btn-ghost"
           style={{ fontSize: '12px', padding: '4px 8px' }}
@@ -186,7 +301,7 @@ export default function CommanderLayout() {
               />
             )}
             {activeTab === 'scan' && (
-              <ScanTab selectedNode={selectedNode} />
+              <ScanTab selectedNode={selectedNode} logRoot={logRoot} />
             )}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Loader2, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
 import type {
   TreeNodeData,
@@ -129,36 +129,20 @@ export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProp
     }
 
     try {
-      // Fetch file content from the log root
-      const res = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRoot)}&type=${fileType}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const entry = (data.files || []).find((f: LogFileEntry) => f.file_name === file);
+      // Find the file entry in the current file list
+      const entry = fileList.find((f) => f.file_name === file);
       if (!entry) return;
 
-      // Read the file content via the API
-      const contentRes = await fetch(`/api/v1/logs/list?path=${encodeURIComponent(logRoot)}`);
-      // We need the raw file content - let's fetch it directly
-      // Since there's no direct file content endpoint, we parse from the file path
-      const response = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRoot)}&type=${fileType}`);
-      const fileListData = await response.json();
-      const fileEntry = (fileListData.files || []).find((f: LogFileEntry) => f.file_name === file);
-
-      if (fileEntry) {
-        // Fetch file content — use a fetch to get the raw content
-        // The API doesn't have a direct "read file" endpoint for log root files,
-        // but we can use the log list to get path and then read via the node log endpoint
-        // For now, let's use a simple approach: fetch via a dedicated content fetch
-        const content = await fetchFileContent(fileEntry.file_path);
-        if (slot === 1) {
-          setSelectedFile1(file);
-          setFileData(content);
-          setParsedTable(parseKeyValue(content));
-        } else {
-          setSelectedFile2(file);
-          setFileData2(content);
-          setParsedTable2(parseKeyValue(content));
-        }
+      // Fetch file content via the content endpoint (single API call)
+      const content = await fetchFileContent(entry.file_path);
+      if (slot === 1) {
+        setSelectedFile1(file);
+        setFileData(content);
+        setParsedTable(parseKeyValue(content));
+      } else {
+        setSelectedFile2(file);
+        setFileData2(content);
+        setParsedTable2(parseKeyValue(content));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load file');
