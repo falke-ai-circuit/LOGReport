@@ -27,7 +27,7 @@ func ParseFlags() *Config {
 
 	// Only parse if flags haven't been parsed yet (test-safe)
 	if flag.Lookup("port") == nil {
-		flag.IntVar(&cfg.Port, "port", 8080, "HTTP server port")
+		flag.IntVar(&cfg.Port, "port", 8642, "HTTP server port")
 		flag.StringVar(&cfg.DBPath, "db-path", "logreport.db", "SQLite database path")
 		flag.StringVar(&cfg.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
 		flag.StringVar(&cfg.CORSOrigin, "cors-origin", "", "CORS allowed origin (empty = no CORS)")
@@ -39,7 +39,7 @@ func ParseFlags() *Config {
 	// Parse os.Args[1:] but don't fail on unknown flags in test environments
 	// Use a custom FlagSet to avoid interfering with go test flags
 	fs := flag.NewFlagSet("logreport", flag.ContinueOnError)
-	fs.IntVar(&cfg.Port, "port", 8080, "HTTP server port")
+	fs.IntVar(&cfg.Port, "port", 8642, "HTTP server port")
 	fs.StringVar(&cfg.DBPath, "db-path", "logreport.db", "SQLite database path")
 	fs.StringVar(&cfg.LogLevel, "log-level", "info", "Log level")
 	fs.StringVar(&cfg.CORSOrigin, "cors-origin", "", "CORS allowed origin")

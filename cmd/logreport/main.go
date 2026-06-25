@@ -48,12 +48,18 @@ func main() {
 		log.Printf("GUI routes (/, /nodes, /reports, /sysfile) will return 404 until rebuilt.")
 	}
 
-	// Log startup message
-	log.Printf("LOGReport server starting on :%d", cfg.Port)
+	// Print a prominent startup banner
+	banner := fmt.Sprintf(`
+╔══════════════════════════════════════════╗
+║  LOGReport v1.0.0 — starting...          ║
+╠══════════════════════════════════════════╣
+║  Web UI:  http://localhost:%-9d║
+║  API:     http://localhost:%d/api/v1   ║
+║  Health:  http://localhost:%d/health    ║
+╚══════════════════════════════════════════╝
+`, cfg.Port, cfg.Port, cfg.Port)
+	fmt.Print(banner)
 	log.Printf("Database: %s", cfg.DBPath)
-	log.Printf("Web UI: http://localhost:%d", cfg.Port)
-	log.Printf("API:    http://localhost:%d/api/v1/*", cfg.Port)
-	log.Printf("Health: http://localhost:%d/health", cfg.Port)
 
 	// Start the HTTP server (blocks until shutdown)
 	if err := srv.Start(); err != nil {
