@@ -8,8 +8,8 @@ import (
 func TestParseFlagsDefaults(t *testing.T) {
 	cfg := ParseFlags()
 
-	if cfg.Port != 8080 {
-		t.Errorf("default Port: got %d, want 8080", cfg.Port)
+	if cfg.Port != 8642 {
+		t.Errorf("default Port: got %d, want 8642", cfg.Port)
 	}
 	if cfg.DBPath != "logreport.db" {
 		t.Errorf("default DBPath: got %q, want logreport.db", cfg.DBPath)

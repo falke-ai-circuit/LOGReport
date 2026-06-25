@@ -5,21 +5,27 @@ GOBUILD=$(GOCMD) build
 GOVET=$(GOCMD) vet
 GOTEST=$(GOCMD) test
 
-# Default port
-PORT ?= 8080
+# Default port — matches config.go default
+PORT ?= 8642
 
-# Single command: build everything into one binary
+# Version (override with: make build VERSION=v1.2.0)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
+# LDFLAGS: inject version string at link time
+LDFLAGS = -X main.version=$(VERSION)
+
+# Single command: build frontend + backend into one self-contained binary
 build: web-build go-build
 
-# Build React frontend → web/dist/ (gitignored — AXON pattern)
+# Build React frontend → web/dist/ (gitignored)
 web-build:
 	cd web && npm ci && npm run build
 
-# Build Go binary with embedded web/dist/
+# Build Go binary with embedded web/dist/ and version stamp
 go-build:
-	$(GOBUILD) -o logreport ./cmd/logreport/
+	$(GOBUILD) -ldflags "$(LDFLAGS)" -o logreport ./cmd/logreport/
 
-# Run with embedded web UI
+# Run with embedded web UI (override port: make run PORT=9000)
 run: build
 	./logreport --port $(PORT)
 
@@ -39,9 +45,8 @@ test-integration:
 vet:
 	$(GOVET) ./...
 
-# Release build (goreleaser or manual)
-release: build
-	goreleaser release --clean
+# Release: clean build with version stamp (no goreleaser needed)
+release: clean build
 
 # Clean
 clean:
