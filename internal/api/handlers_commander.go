@@ -1,0 +1,650 @@
+package api
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
+	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
+	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
+	"github.com/falke-ai-circuit/LOGReport/internal/parser"
+	"github.com/falke-ai-circuit/LOGReport/internal/telnet"
+	"github.com/falke-ai-circuit/LOGReport/internal/types"
+)
+
+// ─── NodesConfig Handlers ──────────────────────────────────────────
+
+// nodesConfigPath returns the default path to nodes.json relative to the
+// executable or current working directory.
+func (s *Server) nodesConfigPath() string {
+	// Check for nodes.json in cwd, then in a config dir
+	candidates := []string{
+		"nodes.json",
+		"./config/nodes.json",
+		filepath.Join("data", "nodes.json"),
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return "nodes.json" // default, may not exist yet
+}
+
+// handleGetNodesConfig loads and returns nodes.json as NodeConfig[].
+// GET /api/v1/nodesconfig
+func (s *Server) handleGetNodesConfig(w http.ResponseWriter, r *http.Request) {
+	path := s.nodesConfigPath()
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Return empty array if file doesn't exist
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"configs": make([]types.NodeConfig, 0),
+				"path":    path,
+			})
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load nodes.json: %v", err))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs": configs,
+		"path":    path,
+	})
+}
+
+// handleSaveNodesConfig saves NodeConfig[] to nodes.json.
+// POST /api/v1/nodesconfig
+func (s *Server) handleSaveNodesConfig(w http.ResponseWriter, r *http.Request) {
+	var configs []types.NodeConfig
+	if err := json.NewDecoder(r.Body).Decode(&configs); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+
+	path := s.nodesConfigPath()
+	if err := nodesconfig.SaveToFile(path, configs); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_error",
+			fmt.Sprintf("failed to save nodes.json: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"saved":  true,
+		"count":  len(configs),
+		"path":   path,
+	})
+}
+
+// handleLoadNodesConfig loads nodes.json from a specified file path.
+// PUT /api/v1/nodesconfig/load?path={path}
+func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		path = s.nodesConfigPath()
+	}
+
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			writeError(w, http.StatusNotFound, "not_found",
+				fmt.Sprintf("nodes.json not found at: %s", path))
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs": configs,
+		"path":    path,
+		"count":   len(configs),
+	})
+}
+
+// handleGetNodesConfigTree returns the hierarchical tree structure.
+// GET /api/v1/nodesconfig/tree
+func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request) {
+	path := s.nodesConfigPath()
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Return empty tree
+			tree := &types.TreeNode{
+				Name:     "Root",
+				Type:     "root",
+				Children: make([]types.TreeNode, 0),
+			}
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"tree":  tree,
+				"path":  path,
+				"count": 0,
+			})
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load nodes.json: %v", err))
+		return
+	}
+
+	tree := nodesconfig.BuildTree(configs)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"tree":  tree,
+		"path":  path,
+		"count": len(configs),
+	})
+}
+
+// ─── Telnet Session Handlers ───────────────────────────────────────
+
+// telnetConnectRequest is the JSON body for creating a telnet session.
+type telnetConnectRequest struct {
+	Host    string `json:"host"`
+	Port    int    `json:"port"`
+	Timeout int    `json:"timeout"` // seconds, default 10
+}
+
+// handleTelnetConnect creates a persistent telnet session.
+// POST /api/v1/telnet/connect
+func (s *Server) handleTelnetConnect(w http.ResponseWriter, r *http.Request) {
+	var req telnetConnectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.Host == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "host is required")
+		return
+	}
+	if req.Port == 0 {
+		req.Port = 23
+	}
+	timeout := 10 * time.Second
+	if req.Timeout > 0 {
+		timeout = time.Duration(req.Timeout) * time.Second
+	}
+
+	sess, err := s.telnetSM.Connect("", req.Host, req.Port, timeout)
+	if err != nil {
+		writeErrorDetails(w, http.StatusBadGateway, "connection_failed",
+			fmt.Sprintf("telnet connect %s:%d failed: %v", req.Host, req.Port, err),
+			map[string]string{"host": req.Host, "port": fmt.Sprintf("%d", req.Port)})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id": sess.ID,
+		"host":       req.Host,
+		"port":       req.Port,
+		"connected":  true,
+	})
+}
+
+// handleTelnetCommand sends a command to an existing session.
+// POST /api/v1/telnet/{sessionID}/command
+func (s *Server) handleTelnetCommand(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("sessionID")
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "session_id is required")
+		return
+	}
+
+	var req struct {
+		Command string `json:"command"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.Command == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "command is required")
+		return
+	}
+
+	if err := s.telnetSM.SendCommand(sessionID, req.Command); err != nil {
+		writeError(w, http.StatusBadGateway, "command_failed",
+			fmt.Sprintf("failed to send command: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id": sessionID,
+		"command":    req.Command,
+		"sent":       true,
+	})
+}
+
+// handleTelnetDisconnect closes a telnet session.
+// DELETE /api/v1/telnet/{sessionID}
+func (s *Server) handleTelnetDisconnect(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("sessionID")
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "session_id is required")
+		return
+	}
+
+	if err := s.telnetSM.Disconnect(sessionID); err != nil {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("session not found: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id": sessionID,
+		"disconnected": true,
+	})
+}
+
+// handleListTelnetSessions lists all active telnet sessions.
+// GET /api/v1/telnet/sessions
+func (s *Server) handleListTelnetSessions(w http.ResponseWriter, r *http.Request) {
+	ids := s.telnetSM.ListSessions()
+	if ids == nil {
+		ids = make([]string, 0)
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"sessions": ids,
+		"count":    len(ids),
+	})
+}
+
+// ─── Command Queue Handlers ────────────────────────────────────────
+
+// handleQueueAdd adds a command to the queue.
+// POST /api/v1/commandqueue/add
+func (s *Server) handleQueueAdd(w http.ResponseWriter, r *http.Request) {
+	var cmd commandqueue.QueuedCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if cmd.Command == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "command is required")
+		return
+	}
+
+	s.commandQueue.Add(cmd)
+	_, total, _ := s.commandQueue.Status()
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"added":  true,
+		"total":  total,
+	})
+}
+
+// handleQueueStart starts queue execution.
+// POST /api/v1/commandqueue/start
+func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
+	if s.commandQueue == nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "command queue not initialized")
+		return
+	}
+
+	// Execute commands via the SessionManager if a session is active
+	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
+		// Find an active session to send commands through
+		ids := s.telnetSM.ListSessions()
+		if len(ids) == 0 {
+			return "", fmt.Errorf("no active telnet session")
+		}
+		sessionID := ids[0]
+		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
+			return "", err
+		}
+		// Wait briefly for output to accumulate
+		time.Sleep(500 * time.Millisecond)
+		return "command sent", nil
+	}
+
+	go func() {
+		if err := s.commandQueue.Start(executor); err != nil {
+			log.Printf("commandqueue: start error: %v", err)
+		}
+	}()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"started": true,
+	})
+}
+
+// handleQueuePause pauses the queue.
+// POST /api/v1/commandqueue/pause
+func (s *Server) handleQueuePause(w http.ResponseWriter, r *http.Request) {
+	s.commandQueue.Pause()
+	writeJSON(w, http.StatusOK, map[string]interface{}{"paused": true})
+}
+
+// handleQueueResume resumes the queue.
+// POST /api/v1/commandqueue/resume
+func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
+	s.commandQueue.Resume()
+	writeJSON(w, http.StatusOK, map[string]interface{}{"resumed": true})
+}
+
+// handleQueueCancel cancels the queue.
+// POST /api/v1/commandqueue/cancel
+func (s *Server) handleQueueCancel(w http.ResponseWriter, r *http.Request) {
+	s.commandQueue.Cancel()
+	writeJSON(w, http.StatusOK, map[string]interface{}{"cancelled": true})
+}
+
+// handleQueueStatus returns the current queue state.
+// GET /api/v1/commandqueue/status
+func (s *Server) handleQueueStatus(w http.ResponseWriter, r *http.Request) {
+	current, total, state := s.commandQueue.Status()
+	cmds := s.commandQueue.Commands()
+	if cmds == nil {
+		cmds = make([]commandqueue.QueuedCommand, 0)
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"current":  current,
+		"total":    total,
+		"state":    string(state),
+		"commands": cmds,
+	})
+}
+
+// handleQueueBatch generates "Print All Nodes" batch commands.
+// POST /api/v1/commandqueue/batch
+func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Configs   []types.NodeConfig `json:"configs"`
+		SessionID string             `json:"session_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// If no body, load from nodes.json
+		path := s.nodesConfigPath()
+		configs, loadErr := nodesconfig.LoadFromFile(path)
+		if loadErr != nil {
+			writeError(w, http.StatusBadRequest, "validation_error",
+				"invalid JSON body and no nodes.json found")
+			return
+		}
+		req.Configs = configs
+	}
+
+	if len(req.Configs) == 0 {
+		// Try loading from file
+		path := s.nodesConfigPath()
+		configs, _ := nodesconfig.LoadFromFile(path)
+		req.Configs = configs
+	}
+
+	if len(req.Configs) == 0 {
+		writeError(w, http.StatusBadRequest, "validation_error", "no node configs provided")
+		return
+	}
+
+	s.commandQueue.Reset()
+	s.commandQueue.AddBatchFromNodes(req.Configs, req.SessionID, s.telnetSM)
+	_, total, _ := s.commandQueue.Status()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"batch_added": true,
+		"total":       total,
+	})
+}
+
+// ─── Log Handlers ──────────────────────────────────────────────────
+
+// handleListLogs lists log files for a node.
+// GET /api/v1/logs/{nodeName}
+func (s *Server) handleListLogs(w http.ResponseWriter, r *http.Request) {
+	nodeName := r.PathValue("nodeName")
+	if nodeName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "nodeName is required")
+		return
+	}
+
+	lw := logwriter.New(s.logRoot())
+	entries, err := lw.ListLogs(nodeName)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error",
+			fmt.Sprintf("failed to list logs: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"node_name": nodeName,
+		"logs":      entries,
+		"count":     len(entries),
+	})
+}
+
+// handleReadLog reads a specific log file.
+// GET /api/v1/logs/{nodeName}/{fileName}
+func (s *Server) handleReadLog(w http.ResponseWriter, r *http.Request) {
+	nodeName := r.PathValue("nodeName")
+	fileName := r.PathValue("fileName")
+	if nodeName == "" || fileName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "nodeName and fileName are required")
+		return
+	}
+
+	// Parse fileName: {tokenType}_{tokenID}.log → e.g. "fbc_162.log"
+	// Strip .log extension, split on _
+	base := strings.TrimSuffix(fileName, ".log")
+	parts := strings.SplitN(base, "_", 2)
+	if len(parts) != 2 {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			"fileName must be in format {tokenType}_{tokenID}.log")
+		return
+	}
+	tokenType := strings.ToUpper(parts[0])
+	tokenID := parts[1]
+
+	lw := logwriter.New(s.logRoot())
+	content, err := lw.ReadLog(nodeName, tokenType, tokenID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("log file not found: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"node_name":  nodeName,
+		"file_name":  fileName,
+		"content":    content,
+	})
+}
+
+// handleWriteLog writes/appends to a log file.
+// POST /api/v1/logs/{nodeName}
+func (s *Server) handleWriteLog(w http.ResponseWriter, r *http.Request) {
+	nodeName := r.PathValue("nodeName")
+	if nodeName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "nodeName is required")
+		return
+	}
+
+	var req struct {
+		TokenType string `json:"token_type"`
+		TokenID   string `json:"token_id"`
+		Output    string `json:"output"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.TokenType == "" || req.TokenID == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "token_type and token_id are required")
+		return
+	}
+
+	lw := logwriter.New(s.logRoot())
+	if err := lw.WriteOutput(nodeName, req.TokenType, req.TokenID, req.Output); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error",
+			fmt.Sprintf("failed to write log: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"node_name":  nodeName,
+		"written":    true,
+	})
+}
+
+// ─── Scan Compare Handler ──────────────────────────────────────────
+
+// scanCompareRequest is the JSON body for scan comparison.
+type scanCompareRequest struct {
+	NodeAddress string `json:"node_address"`
+	Port        int    `json:"port"`
+	Token       string `json:"token"`
+	FileData    string `json:"file_data"`
+}
+
+// comparisonCell represents a single cell comparison result.
+type comparisonCell struct {
+	Row       int    `json:"row"`
+	Col       int    `json:"col"`
+	FileValue string `json:"file_value,omitempty"`
+	LiveValue string `json:"live_value,omitempty"`
+	Status    string `json:"status"` // "match", "mismatch", "file_only", "live_only"
+}
+
+// handleScanCompare compares file FBC data with live telnet scan.
+// POST /api/v1/scan/compare
+func (s *Server) handleScanCompare(w http.ResponseWriter, r *http.Request) {
+	var req scanCompareRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.NodeAddress == "" || req.Token == "" {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			"node_address and token are required")
+		return
+	}
+	if req.Port == 0 {
+		req.Port = 23
+	}
+
+	// Parse file data
+	fileModules, err := parser.ParseFBC(req.FileData)
+	if err != nil {
+		writeErrorDetails(w, http.StatusBadRequest, "parse_error",
+			fmt.Sprintf("failed to parse file data: %v", err),
+			map[string]string{"file_data_length": fmt.Sprintf("%d", len(req.FileData))})
+		return
+	}
+
+	// Connect to live node and scan
+	client, err := telnet.Dial(req.NodeAddress, req.Port, 30*time.Second)
+	if err != nil {
+		writeErrorDetails(w, http.StatusBadGateway, "connection_failed",
+			fmt.Sprintf("telnet connect %s:%d failed: %v", req.NodeAddress, req.Port, err),
+			map[string]string{"node_address": req.NodeAddress})
+		return
+	}
+	defer client.Close()
+
+	cmd := telnet.FBCPrint(req.Token)
+	if err := client.SendCommand(cmd); err != nil {
+		writeError(w, http.StatusBadGateway, "scan_failed",
+			fmt.Sprintf("telnet command failed: %v", err))
+		return
+	}
+	liveOutput, err := client.ReadUntilPrompt()
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "scan_failed",
+			fmt.Sprintf("reading live output failed: %v", err))
+		return
+	}
+
+	liveModules, err := parser.ParseFBC(liveOutput)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "parse_error",
+			fmt.Sprintf("failed to parse live output: %v", err))
+		return
+	}
+
+	// Build comparison map: module position → channel position → channel type
+	fileMap := make(map[int]map[int]string)
+	for _, mod := range fileModules {
+		fileMap[mod.Position] = make(map[int]string)
+		for _, ch := range mod.Channels {
+			fileMap[mod.Position][ch.Position] = string(ch.Type)
+		}
+	}
+	liveMap := make(map[int]map[int]string)
+	for _, mod := range liveModules {
+		liveMap[mod.Position] = make(map[int]string)
+		for _, ch := range mod.Channels {
+			liveMap[mod.Position][ch.Position] = string(ch.Type)
+		}
+	}
+
+	// Build cell-by-cell comparison
+	cells := make([]comparisonCell, 0)
+	matching, mismatched, fileOnly, liveOnly := 0, 0, 0, 0
+
+	// Collect all module positions
+	allMods := make(map[int]bool)
+	for pos := range fileMap {
+		allMods[pos] = true
+	}
+	for pos := range liveMap {
+		allMods[pos] = true
+	}
+
+	for modPos := range allMods {
+		fileChs := fileMap[modPos]
+		liveChs := liveMap[modPos]
+
+		// Collect all channel positions in this module
+		allChs := make(map[int]bool)
+		for ch := range fileChs {
+			allChs[ch] = true
+		}
+		for ch := range liveChs {
+			allChs[ch] = true
+		}
+
+		for chPos := range allChs {
+			fv := fileChs[chPos]
+			lv := liveChs[chPos]
+			cell := comparisonCell{Row: modPos, Col: chPos, FileValue: fv, LiveValue: lv}
+
+			switch {
+			case fv != "" && lv != "":
+				if fv == lv {
+					cell.Status = "match"
+					matching++
+				} else {
+					cell.Status = "mismatch"
+					mismatched++
+				}
+			case fv != "" && lv == "":
+				cell.Status = "file_only"
+				fileOnly++
+			case fv == "" && lv != "":
+				cell.Status = "live_only"
+				liveOnly++
+			}
+
+			cells = append(cells, cell)
+		}
+	}
+
+	totalCells := matching + mismatched + fileOnly + liveOnly
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"comparison": map[string]interface{}{
+			"total_cells": totalCells,
+			"matching":    matching,
+			"mismatched":  mismatched,
+			"file_only":   fileOnly,
+			"live_only":   liveOnly,
+			"cells":       cells,
+		},
+	})
+}

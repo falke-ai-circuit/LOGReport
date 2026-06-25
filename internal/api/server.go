@@ -150,6 +150,41 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// 12. BsTool errlog
 	mux.HandleFunc("POST /api/v1/bstool/errlog", s.handleBsToolErrLog)
+
+	// ─── Commander endpoints ──────────────────────────────────────
+
+	// Nodes config CRUD
+	mux.HandleFunc("GET /api/v1/nodesconfig", s.handleGetNodesConfig)
+	mux.HandleFunc("POST /api/v1/nodesconfig", s.handleSaveNodesConfig)
+	mux.HandleFunc("PUT /api/v1/nodesconfig/load", s.handleLoadNodesConfig)
+	mux.HandleFunc("GET /api/v1/nodesconfig/tree", s.handleGetNodesConfigTree)
+
+	// Telnet sessions
+	mux.HandleFunc("POST /api/v1/telnet/connect", s.handleTelnetConnect)
+	mux.HandleFunc("POST /api/v1/telnet/{sessionID}/command", s.handleTelnetCommand)
+	mux.HandleFunc("DELETE /api/v1/telnet/{sessionID}", s.handleTelnetDisconnect)
+	mux.HandleFunc("GET /api/v1/telnet/sessions", s.handleListTelnetSessions)
+
+	// WebSocket endpoints (GET method to avoid path conflict with {sessionID} patterns)
+	mux.HandleFunc("GET /api/v1/telnet/ws", s.telnetWSHandler)
+	mux.HandleFunc("GET /api/v1/bstool/ws", s.bstoolWSHandler)
+
+	// Command queue
+	mux.HandleFunc("POST /api/v1/commandqueue/add", s.handleQueueAdd)
+	mux.HandleFunc("POST /api/v1/commandqueue/start", s.handleQueueStart)
+	mux.HandleFunc("POST /api/v1/commandqueue/pause", s.handleQueuePause)
+	mux.HandleFunc("POST /api/v1/commandqueue/resume", s.handleQueueResume)
+	mux.HandleFunc("POST /api/v1/commandqueue/cancel", s.handleQueueCancel)
+	mux.HandleFunc("GET /api/v1/commandqueue/status", s.handleQueueStatus)
+	mux.HandleFunc("POST /api/v1/commandqueue/batch", s.handleQueueBatch)
+
+	// Log files
+	mux.HandleFunc("GET /api/v1/logs/{nodeName}", s.handleListLogs)
+	mux.HandleFunc("GET /api/v1/logs/{nodeName}/{fileName}", s.handleReadLog)
+	mux.HandleFunc("POST /api/v1/logs/{nodeName}", s.handleWriteLog)
+
+	// Scan comparison
+	mux.HandleFunc("POST /api/v1/scan/compare", s.handleScanCompare)
 }
 
 // NewTestServer creates a Server suitable for testing with an in-memory SQLite DB.

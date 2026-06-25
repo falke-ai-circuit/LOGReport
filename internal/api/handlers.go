@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
+	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
 	"github.com/falke-ai-circuit/LOGReport/internal/report"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
@@ -155,22 +156,33 @@ func reportToAPI(r *types.Report) apiReport {
 
 // Server holds the dependencies needed by all API handlers.
 type Server struct {
-	store        *store.Store
-	startTime    time.Time
-	config       *server.Config
-	embedFS      embed.FS
-	bstoolClient *bstool.Client
+	store         *store.Store
+	startTime     time.Time
+	config        *server.Config
+	embedFS       embed.FS
+	bstoolClient  *bstool.Client
+	telnetSM      *telnet.SessionManager   // Commander: persistent telnet sessions
+	commandQueue  *commandqueue.Queue       // Commander: sequential command queue
+	logRootDir    string                    // Commander: root dir for log files
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
 func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClient *bstool.Client) *Server {
 	return &Server{
-		store:        s,
-		startTime:    time.Now(),
-		config:       cfg,
-		embedFS:      embedFS,
-		bstoolClient: bstoolClient,
+		store:         s,
+		startTime:     time.Now(),
+		config:        cfg,
+		embedFS:       embedFS,
+		bstoolClient:  bstoolClient,
+		telnetSM:      telnet.NewSessionManager(),
+		commandQueue:  commandqueue.NewQueue(nil, nil),
+		logRootDir:    "logs",
 	}
+}
+
+// logRoot returns the log root directory, ensuring it exists.
+func (s *Server) logRoot() string {
+	return s.logRootDir
 }
 
 // Store returns the underlying store (used by server.go for health).

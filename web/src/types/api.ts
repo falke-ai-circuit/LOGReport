@@ -139,3 +139,182 @@ export interface ApiError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+// ─── Commander: NodeConfig / TreeNode ─────────────────────────────
+
+export interface Token {
+  token_id: string;
+  token_type: string; // "FBC", "RPC", "LOG", "LIS", "FTP"
+  port: number;
+  protocol: string; // "telnet" or "ftp"
+}
+
+export interface NodeConfig {
+  name: string;
+  ip_address: string;
+  tokens: Token[];
+}
+
+export interface TreeNodeData {
+  name: string;
+  type: string; // "root", "node", "group", "token"
+  ip?: string;
+  token_id?: string;
+  port?: number;
+  protocol?: string;
+  status?: string; // "idle", "connected", "error"
+  children?: TreeNodeData[];
+}
+
+// ─── Commander: NodesConfig API ───────────────────────────────────
+
+export interface NodesConfigResponse {
+  configs: NodeConfig[];
+  path: string;
+  count?: number;
+}
+
+export interface NodesConfigTreeResponse {
+  tree: TreeNodeData;
+  path: string;
+  count: number;
+}
+
+// ─── Commander: Telnet Session ────────────────────────────────────
+
+export interface TelnetConnectRequest {
+  host: string;
+  port: number;
+  timeout?: number;
+}
+
+export interface TelnetConnectResponse {
+  session_id: string;
+  host: string;
+  port: number;
+  connected: boolean;
+}
+
+export interface TelnetCommandResponse {
+  session_id: string;
+  command: string;
+  sent: boolean;
+}
+
+export interface TelnetSessionsResponse {
+  sessions: string[];
+  count: number;
+}
+
+// ─── Commander: WebSocket Messages ────────────────────────────────
+
+export interface TelnetWSMessage {
+  action: 'connect' | 'command' | 'disconnect';
+  host?: string;
+  port?: number;
+  command?: string;
+}
+
+export interface TelnetWSResponse {
+  type: 'output' | 'status' | 'error' | 'prompt';
+  data?: string;
+  connected?: boolean;
+  session_id?: string;
+  message?: string;
+}
+
+export interface BsToolWSMessage {
+  action: 'execute';
+  server_name: string;
+  command?: string;
+}
+
+export interface BsToolWSResponse {
+  type: 'output' | 'done' | 'error';
+  data?: string;
+  exit_code?: number;
+  message?: string;
+}
+
+// ─── Commander: Command Queue ─────────────────────────────────────
+
+export interface QueuedCommand {
+  id: string;
+  type: string; // "fbc", "rpc", "log", "bstool", "raw"
+  node_name: string;
+  token_id: string;
+  command: string;
+  status: string; // "pending", "running", "completed", "failed", "cancelled"
+  output?: string;
+  error?: string;
+  started_at?: string;
+  finished_at?: string;
+}
+
+export interface QueueStatusResponse {
+  current: number;
+  total: number;
+  state: string; // "idle", "running", "paused", "done"
+  commands: QueuedCommand[];
+}
+
+export interface QueueAddRequest {
+  type: string;
+  node_name: string;
+  token_id: string;
+  command: string;
+}
+
+export interface QueueBatchRequest {
+  configs: NodeConfig[];
+  session_id?: string;
+}
+
+// ─── Commander: Log Writer ────────────────────────────────────────
+
+export interface LogEntry {
+  file_name: string;
+  file_path: string;
+  size: number;
+  modified_at: string;
+}
+
+export interface LogListResponse {
+  node_name: string;
+  logs: LogEntry[];
+  count: number;
+}
+
+export interface LogWriteRequest {
+  token_type: string;
+  token_id: string;
+  output: string;
+}
+
+// ─── Commander: Scan Compare ──────────────────────────────────────
+
+export interface ScanCompareRequest {
+  node_address: string;
+  port: number;
+  token: string;
+  file_data: string;
+}
+
+export interface ComparisonCell {
+  row: number;
+  col: number;
+  file_value?: string;
+  live_value?: string;
+  status: string; // "match", "mismatch", "file_only", "live_only"
+}
+
+export interface ScanCompareResponse {
+  comparison: {
+    total_cells: number;
+    matching: number;
+    mismatched: number;
+    file_only: number;
+    live_only: number;
+    cells: ComparisonCell[];
+  };
+}

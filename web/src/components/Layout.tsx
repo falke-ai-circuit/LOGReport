@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Server, FileText, LayoutDashboard, Upload } from 'lucide-react';
+import { Server, FileText, LayoutDashboard, Upload, Terminal } from 'lucide-react';
 
 export default function Layout() {
   const linkStyle = (isActive: boolean): React.CSSProperties => ({
@@ -75,6 +75,14 @@ export default function Layout() {
         >
           <Upload size={16} />
           SysFile
+        </NavLink>
+
+        <NavLink
+          to="/commander"
+          style={({ isActive }) => linkStyle(isActive)}
+        >
+          <Terminal size={16} />
+          Commander
         </NavLink>
       </nav>
 

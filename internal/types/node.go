@@ -44,4 +44,45 @@ type Node struct {
 	Username string     `json:"username,omitempty"`
 	Password string     `json:"password,omitempty"`
 	LastSeen time.Time  `json:"last_seen"`
+	Tokens   []Token    `json:"tokens,omitempty"`
+}
+
+// ─── Token / NodeConfig / TreeNode ────────────────────────────────
+
+// TokenType identifies the kind of token (FBC, RPC, LOG, LIS, FTP).
+type TokenType string
+
+const (
+	TokenFBC TokenType = "FBC"
+	TokenRPC TokenType = "RPC"
+	TokenLOG TokenType = "LOG"
+	TokenLIS TokenType = "LIS"
+	TokenFTP TokenType = "FTP"
+)
+
+// Token represents a single token entry from nodes.json.
+type Token struct {
+	TokenID   string    `json:"token_id"`
+	TokenType TokenType `json:"token_type"`
+	Port      int       `json:"port"`
+	Protocol  string    `json:"protocol"` // "telnet" or "ftp"
+}
+
+// NodeConfig represents the full nodes.json entry (node + all tokens).
+type NodeConfig struct {
+	Name      string  `json:"name"`
+	IPAddress string  `json:"ip_address"`
+	Tokens    []Token `json:"tokens"`
+}
+
+// TreeNode is the hierarchical structure for the frontend node tree.
+type TreeNode struct {
+	Name     string     `json:"name"`
+	Type     string     `json:"type"` // "node", "group", "token"
+	IP       string     `json:"ip,omitempty"`
+	TokenID  string     `json:"token_id,omitempty"`
+	Port     int        `json:"port,omitempty"`
+	Protocol string     `json:"protocol,omitempty"`
+	Status   string     `json:"status,omitempty"` // "idle", "connected", "error"
+	Children []TreeNode `json:"children,omitempty"`
 }
