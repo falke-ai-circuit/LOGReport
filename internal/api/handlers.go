@@ -1034,6 +1034,11 @@ type bstoolErrLogRequest struct {
 	ServerName string `json:"server_name"`
 	Timeout    int    `json:"timeout"`
 	Mask       string `json:"mask"`
+	// TCP transport (optional): connect directly to the DNA node over TCP,
+	// bypassing BsTool.exe. If tcp_host is set, the handler creates a
+	// one-shot TCPTransport and uses it for this request.
+	TCPHost string `json:"tcp_host,omitempty"`
+	TCPPort int    `json:"tcp_port,omitempty"`
 }
 
 func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
@@ -1066,7 +1071,24 @@ func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5. Execute
-	result, err := s.bstoolClient.ErrLog(r.Context(), req.ServerName, opts...)
+	// If tcp_host is specified, use a one-shot TCP transport for this request.
+	// Otherwise, use the default client (subprocess, SSH, or pre-configured TCP).
+	var result *bstool.ErrLogResult
+	var err error
+	if req.TCPHost != "" {
+		tcpOpts := []bstool.TCPTransportOption{
+			bstool.WithTCPHost(req.TCPHost),
+		}
+		if req.TCPPort > 0 {
+			tcpOpts = append(tcpOpts, bstool.WithTCPPort(req.TCPPort))
+		}
+		tcp := bstool.NewTCPTransport(tcpOpts...)
+		defer tcp.Close()
+		tcpClient := bstool.NewClient(bstool.WithTCPTransport(tcp))
+		result, err = tcpClient.ErrLog(r.Context(), req.ServerName, opts...)
+	} else {
+		result, err = s.bstoolClient.ErrLog(r.Context(), req.ServerName, opts...)
+	}
 	if err != nil {
 		mapBstoolErrorToHTTP(w, err)
 		return

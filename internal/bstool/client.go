@@ -11,14 +11,20 @@ import (
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
-// Client manages BsTool.exe subprocess execution.
+// Client manages BsTool error log retrieval.
+// It supports three transport modes:
+//   - Subprocess (Windows only): executes BsTool.exe locally
+//   - SSH remote (any platform): executes BsTool.exe on a Windows host via SSH
+//   - Native TCP (any platform): connects directly to the DNA node, no BsTool.exe needed
+//
 // Safe for concurrent use — all fields are set at construction and never mutated.
 type Client struct {
 	bstoolPath         string
 	communicationLine  string
 	defaultTimeout     time.Duration
 	exec               executor
-	skipPlatformCheck  bool // test-only: bypass runtime.GOOS check
+	tcp                *TCPTransport // native TCP transport (nil = use executor)
+	skipPlatformCheck  bool          // test-only: bypass runtime.GOOS check
 }
 
 // Option is a functional option for configuring a Client.
@@ -60,6 +66,52 @@ func NewClient(opts ...Option) *Client {
 	}
 	c.exec = newExecutor()
 	return c
+}
+
+// WithSSHExecutor configures the client to use an SSH-based remote executor,
+// allowing BsTool.exe to run on a Windows host accessed via SSH.
+// This is the recommended approach when LOGReport runs on Linux.
+//
+// Usage:
+//
+//	client := bstool.NewClient(
+//	    bstool.WithSSHExecutor(
+//	        bstool.NewSSHExecutor(
+//	            bstool.WithSSHHost("windows-host:22"),
+//	            bstool.WithSSHUser("administrator"),
+//	            bstool.WithSSHKeyPath("/path/to/key"),
+//	            bstool.WithSSHBsToolPath(`C:\BsTool\BsTool.exe`),
+//	        ),
+//	    ),
+//	)
+func WithSSHExecutor(sshExec *SSHExecutor) Option {
+	return func(c *Client) {
+		c.exec = sshExec
+		c.skipPlatformCheck = true // SSH executor works from any platform
+	}
+}
+
+// WithTCPTransport configures the client to use a native Go TCP transport,
+// eliminating the need for BsTool.exe entirely when a TCP connection to the
+// DNA node is available. This is the fastest path — no subprocess, no SSH,
+// no Windows binary needed.
+//
+// Usage:
+//
+//	client := bstool.NewClient(
+//	    bstool.WithTCPTransport(
+//	        bstool.NewTCPTransport(
+//	            bstool.WithTCPHost("192.168.1.100"),
+//	            bstool.WithTCPPort(1516),
+//	            bstool.WithTCPTimeout(5 * time.Second),
+//	        ),
+//	    ),
+//	)
+func WithTCPTransport(tcp *TCPTransport) Option {
+	return func(c *Client) {
+		c.tcp = tcp
+		c.skipPlatformCheck = true // TCP transport works from any platform
+	}
 }
 
 // ─── ErrLogResult ───────────────────────────────────────────────────────────
@@ -133,7 +185,63 @@ func (c *Client) ErrLog(ctx context.Context, serverName string, opts ...ErrLogOp
 		return nil, &ErrInvalidServer{}
 	}
 
-	// Platform check
+	// Apply timeout
+	timeout := c.defaultTimeout
+	if cfg.requestTimeout > 0 {
+		timeout = cfg.requestTimeout
+	}
+
+	// ── Native TCP transport path ──────────────────────────────────────
+	// When a TCPTransport is configured, bypass BsTool.exe entirely and
+	// communicate directly with the DNA node over TCP using the reverse-
+	// engineered wire protocol.
+	if c.tcp != nil {
+		ctx2, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		start := time.Now()
+		// Ensure connection
+		if !c.tcp.IsConnected() {
+			if err := c.tcp.Connect(); err != nil {
+				return nil, fmt.Errorf("bstool tcp connect: %w", err)
+			}
+		}
+
+		// Use a goroutine so we can respect context cancellation
+		type tcpResult struct {
+			output string
+			err    error
+		}
+		resultCh := make(chan tcpResult, 1)
+		go func() {
+			output, err := c.tcp.ErrLog(stripped)
+			resultCh <- tcpResult{output, err}
+		}()
+
+		select {
+		case <-ctx2.Done():
+			c.tcp.Close()
+			return nil, &ErrTimeout{Timeout: timeout.String()}
+		case res := <-resultCh:
+			duration := time.Since(start)
+			if res.err != nil {
+				return nil, fmt.Errorf("bstool tcp: %w", res.err)
+			}
+			messages := splitMessages(res.output)
+			return &ErrLogResult{
+				ServerName: stripped,
+				Messages:   messages,
+				RawOutput:  res.output,
+				Duration:   duration,
+				ExitCode:   0,
+				TimedOut:   false,
+			}, nil
+		}
+	}
+
+	// ── Subprocess / SSH executor path ────────────────────────────────
+
+	// Platform check (only for subprocess mode — TCP and SSH bypass this)
 	if runtime.GOOS != "windows" && !c.skipPlatformCheck {
 		return nil, &ErrUnsupportedPlatform{}
 	}
@@ -152,12 +260,6 @@ func (c *Client) ErrLog(ctx context.Context, serverName string, opts ...ErrLogOp
 
 	// Build env
 	env := []string{fmt.Sprintf("COMMUNICATION_LINE=%s", c.communicationLine)}
-
-	// Apply timeout: per-request > context deadline > client default
-	timeout := c.defaultTimeout
-	if cfg.requestTimeout > 0 {
-		timeout = cfg.requestTimeout
-	}
 
 	execCtx := ctx
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
