@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -285,13 +284,15 @@ func (sm *SessionManager) SendCommand(sessionID, cmd string) error {
 	// Step 6: Filter output
 	filtered := FilterOutput(response)
 
-	// Step 7: Remove command echo from the response
-	// Python: response.replace(f"{command}\r\n", "")
-	echoPattern := regexp.MustCompile(regexp.QuoteMeta(cmd + "\r\n"))
-	filtered = echoPattern.ReplaceAllString(filtered, "")
-	// Also try without \r\n (in case DIA echoes just the command)
-	echoPattern2 := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(cmd) + `$`)
-	filtered = echoPattern2.ReplaceAllString(filtered, "")
+	// Step 7: Do NOT remove command echo — the user wants to see the full
+	// DIA response including command echo and any error indicators (BEL).
+	// This matches raw telnet behavior where you see what you typed + the
+	// response. The Python reference also keeps the echo in some code paths.
+	// The echo is useful for debugging and matches what a standard telnet
+	// client shows.
+	//
+	// Old behavior (removed): echo was stripped via regex, which also
+	// stripped the command text when DIA echoed it with backspaces.
 
 	if readErr != nil && filtered == "" {
 		return fmt.Errorf("telnet read: %w", readErr)

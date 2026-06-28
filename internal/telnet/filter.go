@@ -9,11 +9,15 @@ import (
 // Mirrors Python telnet_client.py:191: re.sub(r'\x1b\[[0-9;]*[mK]', ”, text)
 var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
 
-// controlCharPattern matches control characters except newline (\x0A),
-// carriage return (\x0D), and space (\x20).
+// belPattern matches the BEL character (0x07) and converts it to a visible
+// error indicator. DIA sends BEL when a command fails (e.g., invalid command
+// or no process station running). Without this, the error is silently stripped.
+var belPattern = regexp.MustCompile("\x07")
+
+// controlCharPattern matches control characters except BEL (0x07, handled
+// separately), newline (\x0A), carriage return (\x0D), and space (\x20).
 // Backspaces (\x08) are handled separately by backspacePattern.
-// Mirrors Python telnet_client.py:193: re.sub(r'[\x00-\x09\x0B-\x1F\x7F]', '', filtered)
-var controlCharPattern = regexp.MustCompile(`[\x00-\x08\x0B-\x1F\x7F]`)
+var controlCharPattern = regexp.MustCompile(`[\x00-\x06\x08\x0B-\x1F\x7F]`)
 
 // backspacePattern matches a backspace character (\x08).
 // DIA sends backspaces to erase echoed characters in INSERT mode.
@@ -68,8 +72,14 @@ func FilterOutput(raw string) string {
 	// This matches Python which strips all \x00-\x09 control chars including 0x08.
 	filtered = stripBackspaces(filtered)
 
+	// Step 2b: Convert BEL (0x07) to a visible error indicator.
+	// DIA sends BEL when a command fails (invalid command, no process station,
+	// permission denied). Stripping it silently hides errors from the user.
+	// We convert it to "[BEL]" so the caller knows the command produced an error.
+	filtered = belPattern.ReplaceAllString(filtered, "[BEL]")
+
 	// Step 3: Remove control characters but preserve newlines (\x0A)
-	// and carriage returns (\x0D)
+	// and carriage returns (\x0D). BEL is already handled above.
 	filtered = controlCharPattern.ReplaceAllString(filtered, "")
 
 	// Step 4: Remove the "texitoggleure" artifact

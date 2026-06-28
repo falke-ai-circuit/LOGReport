@@ -192,14 +192,18 @@ func (t *TCPTransport) recvBlock() (*Block, error) {
 //
 // Debug: set BSTOOL_DEBUG=1 to log raw hex of all sent/received blocks.
 //
-// Flow (verified by traffic capture against real BU 2026-06-28):
-//  1. Connect to node (host, port 1516)
+// Flow (verified by MITM traffic capture against real BU 2026-06-28):
+//  1. Connect to node (host, port 1516) — control channel
 //  2. Send HANDSHAKE blocks (cmd=0x000C) three times — BU responds with size=0x02CC
 //  3. Send OPEN_ERRLOG (cmd=0x48) with seq=0xFFFF, src=0xFFFFFFFB, data="AB01\0"
 //  4. Receive response — Size field contains total log size in bytes
-//  5. Send GET_LOG_DATA blocks (cmd=0x1F, seq=0x0001, param=offset, size=chunk_size)
-//  6. Read log data in 448-byte chunks until total log size reached
+//  5. Connect to port 1518 (Proxy.exe) — data channel
+//  6. Read log data from port 1518 until connection closes or timeout
 //  7. Concatenate and decode from CP1252
+//
+// BsTool.exe uses TWO TCP connections: port 1516 (control) + port 1518 (data via Proxy.exe).
+// GET_LOG_DATA (cmd=0x1F) on port 1516 only returns 8-byte metadata blocks, not log text.
+// The actual log text (DbCopier messages) flows through port 1518.
 func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	debug := os.Getenv("BSTOOL_DEBUG") != ""
 	if !t.connected {
@@ -215,11 +219,7 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	}
 
 	// Phase 0: Handshake (cmd=0x000C) — sent 3 times
-	// Captured from real BsTool.exe traffic:
-	//   Send:  cmd=0x000C, seq=0x0136, src=0x00EFD61C, param=0, size=0, dlen=0
-	//   Recv:  cmd=0x000C, seq=0x0136, src=0x00EFD61C, param=0, size=0x02CC, dlen=0
-	// The BU responds with size=0x02CC (716) which may be buffer size negotiation.
-	// The src field (0x00EFD61C) appears to be a session identifier or timestamp.
+	// The BU responds with param=0x02CC (716 = buffer size negotiation).
 	handshakeSrc := uint32(0x00EFD61C) // from traffic capture
 	for i := 0; i < 3; i++ {
 		hsBlock := &Block{
@@ -241,15 +241,137 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 			return "", fmt.Errorf("bstool tcp: HANDSHAKE recv failed: %w", err)
 		}
 		if debug {
-			log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] recv: cmd=0x%04x src=0x%08x size=0x%08x",
-				i, hsResp.Header.Command, hsResp.Header.Source, hsResp.Header.Size)
+			log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] recv: cmd=0x%04x src=0x%08x param=0x%08x size=0x%08x",
+				i, hsResp.Header.Command, hsResp.Header.Source, hsResp.Header.Param, hsResp.Header.Size)
 		}
 	}
 
-	// Phase 1: Open error log (cmd=0x48)
-	// Captured from real BsTool.exe traffic:
-	//   Send:  cmd=0x0048, seq=0xFFFF, src=0xFFFFFFFB, param=0, size=0, dlen=5, data="AB01\0"
-	//   Recv:  cmd=0x0048, seq=0xFFFF, src=0xFFFFFFFB, param=0, size=<log_size>, dlen=0
+	// Phase 1: Open error log (cmd=0x48) via Proxy.exe on port 1518
+	//
+	// CRITICAL DISCOVERY (2026-06-28 netstat analysis):
+	// Proxy.exe (PID 5796) listens on 127.0.0.1:1518 and has an ESTABLISHED
+	// connection to 127.0.0.1:1516 (the BU). BsTool.exe connects to Proxy.exe
+	// on port 1518, and Proxy.exe relays ALL traffic (handshake + OPEN_ERRLOG +
+	// log data) to the BU on port 1516.
+	//
+	// The protocol is: BsTool.exe → port 1518 (Proxy.exe) → port 1516 (BU)
+	// NOT: BsTool.exe → port 1516 directly + port 1518 for data
+	//
+	// Our previous attempts connected to port 1516 directly (BU) and port 1518
+	// (Proxy.exe) separately. The BU accepts handshake on 1516 but doesn't push
+	// log data to port 1518. Proxy.exe mediates the entire conversation.
+	//
+	// FIX: Send handshake + OPEN_ERRLOG through port 1518 (Proxy.exe), which
+	// relays to the BU on port 1516 and relays the response back.
+
+	// Close the control port connection (1516) — we don't need it anymore
+	t.Close()
+
+	// Connect to Proxy.exe on port 1518
+	dataPort := t.port + 2 // 1516 → 1518
+	dataAddr := net.JoinHostPort(t.host, fmt.Sprintf("%d", dataPort))
+
+	if debug {
+		log.Printf("[BSTOOL_DEBUG] Connecting to Proxy.exe on %s (relay to BU on 1516)", dataAddr)
+	}
+
+	proxyConn, err := net.DialTimeout("tcp", dataAddr, t.timeout)
+	if err != nil {
+		if debug {
+			log.Printf("[BSTOOL_DEBUG] Proxy.exe connection failed: %v, trying direct BU on 1516", err)
+		}
+		// Reconnect to BU directly on 1516 and use GET_LOG_DATA fallback
+		t.conn = nil
+		t.connected = false
+		if err := t.Connect(); err != nil {
+			return "", fmt.Errorf("bstool tcp: reconnect failed: %w", err)
+		}
+		// Redo handshake on direct BU connection
+		for i := 0; i < 3; i++ {
+			hsBlock := &Block{Header: BlockHeader{Command: 0x000C, Sequence: 0x0136, Source: handshakeSrc}}
+			t.sendBlock(hsBlock)
+			t.recvBlock()
+		}
+		return t.errLogViaGetLogData(debug, 0)
+	}
+	defer proxyConn.Close()
+
+	// Use the Proxy.exe connection for ALL communication
+	// Replace t.conn with proxyConn so sendBlock/recvBlock use it
+	t.conn = proxyConn
+	t.connected = true
+
+	// Increase timeout for Proxy.exe relay — it adds latency compared to
+	// direct BU connection. Use 10s instead of the default 1516ms.
+	t.timeout = 10 * time.Second
+	if tcpConn, ok := proxyConn.(*net.TCPConn); ok {
+		tcpConn.SetReadDeadline(time.Now().Add(t.timeout))
+		tcpConn.SetNoDelay(true)
+	}
+
+	if debug {
+		log.Printf("[BSTOOL_DEBUG] Connected to Proxy.exe, redoing handshake through relay")
+	}
+
+	// Redo handshake through Proxy.exe — it may need to initialize its own
+	// relay state before it will forward OPEN_ERRLOG to the BU
+	for i := 0; i < 3; i++ {
+		hsBlock := &Block{
+			Header: BlockHeader{
+				Command:  0x000C,
+				Sequence: 0x0136,
+				Source:   handshakeSrc,
+			},
+		}
+		if debug {
+			wire, _ := hsBlock.MarshalBinary()
+			log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] via Proxy send: %x", i, wire)
+		}
+		if err := t.sendBlock(hsBlock); err != nil {
+			return "", fmt.Errorf("bstool tcp: HANDSHAKE via Proxy send failed: %w", err)
+		}
+		hsResp, err := t.recvBlock()
+		if err != nil {
+			if debug {
+				log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] via Proxy recv failed: %v", i, err)
+			}
+			// Proxy.exe didn't respond to handshake — fall back to direct BU
+			t.conn = nil
+			t.connected = false
+			if err := t.Connect(); err != nil {
+				return "", fmt.Errorf("bstool tcp: reconnect failed: %w", err)
+			}
+			// Redo handshake on direct BU
+			for j := 0; j < 3; j++ {
+				hs := &Block{Header: BlockHeader{Command: 0x000C, Sequence: 0x0136, Source: handshakeSrc}}
+				t.sendBlock(hs)
+				t.recvBlock()
+			}
+			// Send OPEN_ERRLOG directly to BU and use GET_LOG_DATA
+			openBlk := &Block{
+				Header: BlockHeader{
+					Command:  CmdOpenErrLog,
+					Sequence: 0xFFFF,
+					Source:   0xFFFFFFFB,
+					DataLen:  uint32(len(append([]byte(stripped), 0x00))),
+				},
+				Data: append([]byte(stripped), 0x00),
+			}
+			t.sendBlock(openBlk)
+			openResp, _ := t.recvBlock()
+			tls := uint32(0)
+			if openResp != nil {
+				tls = openResp.Header.Size
+			}
+			return t.errLogViaGetLogData(debug, tls)
+		}
+		if debug {
+			log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] via Proxy recv: cmd=0x%04x param=0x%08x",
+				i, hsResp.Header.Command, hsResp.Header.Param)
+		}
+	}
+
+	// Send OPEN_ERRLOG through Proxy.exe (it relays to BU on 1516)
 	serverBytes := append([]byte(stripped), 0x00)
 	openBlock := &Block{
 		Header: BlockHeader{
@@ -262,7 +384,7 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	}
 	if debug {
 		wire, _ := openBlock.MarshalBinary()
-		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG send: %x", wire)
+		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG send (via Proxy): %x", wire)
 	}
 	if err := t.sendBlock(openBlock); err != nil {
 		return "", fmt.Errorf("bstool tcp: OPEN_ERRLOG send failed: %w", err)
@@ -283,7 +405,6 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		return "", fmt.Errorf("bstool tcp: server not found (0x16)")
 	}
 
-	// The OPEN_ERRLOG response Size field contains the total log size in bytes.
 	totalLogSize := respBlock.Header.Size
 	if debug {
 		log.Printf("[BSTOOL_DEBUG] totalLogSize=%d", totalLogSize)
@@ -292,15 +413,71 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		return "", nil
 	}
 
-	// Phase 2: Retrieve log data in chunks
-	// CRITICAL: GET_LOG_DATA must use seq=0xFFFF and src=0xFFFFFFFB (same as OPEN_ERRLOG).
-	// With seq=0x0001 and src=0x00000000, the BU returns param=0xFFFFFFFF (error/empty).
-	// With seq=0xFFFF and src=0xFFFFFFFB, the BU returns actual log data.
-	//
-	// The first GET_LOG_DATA response's data contains:
-	//   bytes 0-3: offset (LE uint32, usually 0)
-	//   bytes 4-7: total_size (LE uint32) — total log data size to retrieve
-	// Subsequent responses contain the actual log text in 448-byte chunks.
+	// Read log data from Proxy.exe — after OPEN_ERRLOG, the BU pushes log
+	// data through Proxy.exe to us. Read until connection closes or timeout.
+	// The data is raw log text (not 20-byte blocks).
+	proxyConn.SetReadDeadline(time.Now().Add(15 * time.Second))
+
+	var logData []byte
+	dataBuf := make([]byte, 4096)
+	for {
+		n, readErr := proxyConn.Read(dataBuf)
+		if n > 0 {
+			logData = append(logData, dataBuf[:n]...)
+			if debug {
+				log.Printf("[BSTOOL_DEBUG] Proxy read %d bytes (total: %d)", n, len(logData))
+			}
+			proxyConn.SetReadDeadline(time.Now().Add(3 * time.Second))
+		}
+		if readErr != nil {
+			if netErr, ok := readErr.(net.Error); ok && netErr.Timeout() {
+				if debug {
+					log.Printf("[BSTOOL_DEBUG] Proxy timeout after %d bytes", len(logData))
+				}
+				break
+			}
+			if readErr == io.EOF {
+				if debug {
+					log.Printf("[BSTOOL_DEBUG] Proxy EOF after %d bytes", len(logData))
+				}
+				break
+			}
+			if debug {
+				log.Printf("[BSTOOL_DEBUG] Proxy read error: %v", readErr)
+			}
+			break
+		}
+	}
+
+	if len(logData) == 0 {
+		// No data from Proxy — fall back to GET_LOG_DATA on direct BU connection
+		if debug {
+			log.Printf("[BSTOOL_DEBUG] No data from Proxy, falling back to GET_LOG_DATA on direct BU")
+		}
+		// Reconnect to BU directly
+		t.conn = nil
+		t.connected = false
+		if err := t.Connect(); err != nil {
+			return "", fmt.Errorf("bstool tcp: reconnect for GET_LOG_DATA: %w", err)
+		}
+		return t.errLogViaGetLogData(debug, totalLogSize)
+	}
+
+	decoded, err := decodeWindows1252(logData)
+	if err != nil {
+		decoded = string(logData)
+	}
+
+	filtered := filterStatusMessages(decoded)
+
+	return filtered, nil
+}
+
+// errLogViaGetLogData is the fallback path when port 1518 (Proxy.exe) is
+// unreachable. It uses GET_LOG_DATA (cmd=0x1F) on port 1516, which returns
+// 8-byte metadata blocks (offset + total_size) instead of actual log text.
+// This is NOT what BsTool.exe does — BsTool.exe always uses port 1518.
+func (t *TCPTransport) errLogViaGetLogData(debug bool, totalLogSize uint32) (string, error) {
 	var logData []byte
 	offset := uint32(0)
 	totalSize := uint32(0)
@@ -316,10 +493,10 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		getBlock := &Block{
 			Header: BlockHeader{
 				Command:  CmdGetLogData,
-				Sequence: 0xFFFF,     // MUST be 0xFFFF (same as OPEN_ERRLOG)
-				Source:   0xFFFFFFFB, // MUST be 0xFFFFFFFB (same as OPEN_ERRLOG)
-				Param:    offset,     // offset in log data
-				Size:     chunkSize,  // bytes to read
+				Sequence: 0xFFFF,
+				Source:   0xFFFFFFFB,
+				Param:    offset,
+				Size:     chunkSize,
 				DataLen:  uint32(len(req)),
 			},
 			Data: req,
@@ -340,39 +517,26 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 			break
 		}
 		if debug {
-			hdr, _ := respBlock.Header.MarshalBinary()
-			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv header: %x", hdr)
-			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv: cmd=0x%04x src=0x%08x param=0x%08x size=0x%08x dlen=%d datalen=%d",
-				respBlock.Header.Command, respBlock.Header.Source,
-				respBlock.Header.Param, respBlock.Header.Size,
-				respBlock.Header.DataLen, len(respBlock.Data))
-			if len(respBlock.Data) > 0 {
-				showLen := len(respBlock.Data)
-				if showLen > 64 {
-					showLen = 64
-				}
-				log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA data[0:%d]: %x", showLen, respBlock.Data[:showLen])
-			}
+			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv: cmd=0x%04x param=0x%08x dlen=%d",
+				respBlock.Header.Command, respBlock.Header.Param, respBlock.Header.DataLen)
 		}
 
 		if len(respBlock.Data) == 0 {
 			break
 		}
 
-		// First read: extract total_size from data bytes 4-7 (LE uint32)
 		if firstRead {
 			firstRead = false
 			if len(respBlock.Data) >= 8 {
 				totalSize = binary.LittleEndian.Uint32(respBlock.Data[4:8])
 				if debug {
-					log.Printf("[BSTOOL_DEBUG] first read: totalSize=%d (from data[4:8])", totalSize)
+					log.Printf("[BSTOOL_DEBUG] first read: totalSize=%d", totalSize)
 				}
 			}
-			// The first response's data is metadata, not log text — skip it
 			if totalSize == 0 {
 				break
 			}
-			continue // skip adding metadata to logData
+			continue
 		}
 
 		logData = append(logData, respBlock.Data...)
