@@ -26,7 +26,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"os"
 	"time"
 )
 
@@ -188,14 +190,19 @@ func (t *TCPTransport) recvBlock() (*Block, error) {
 // ErrLog retrieves RS log messages from a DNA node over TCP.
 // This replaces `BsTool.exe -errlog <server>`.
 //
+// Debug: set BSTOOL_DEBUG=1 to log raw hex of all sent/received blocks.
+//
 // Flow (from zzOpenErrLog + zzGetLog disassembly):
 //  1. Connect to node (host from COMMUNICATION_LINE, port 1516)
 //  2. Send OPEN_ERRLOG block (cmd=0x48, data=server name + null terminator)
 //  3. Receive response block (check for error codes)
-//  4. Send GET_LOG_DATA blocks (cmd=0x1F, param=offset, size=chunk_size)
-//  5. Receive log data in 448-byte chunks
-//  6. Concatenate and decode from CP1252
+//  4. Send GET_LOG_DATA blocks (cmd=0x1F, field_2=offset, field_3=chunk_size)
+//  5. On first response: check field_2 (Source) for error, read field_3 (Param)
+//     for total_size — this tells us how many bytes to retrieve
+//  6. Read log data in 448-byte chunks
+//  7. Concatenate and decode from CP1252
 func (t *TCPTransport) ErrLog(serverName string) (string, error) {
+	debug := os.Getenv("BSTOOL_DEBUG") != ""
 	if !t.connected {
 		if err := t.Connect(); err != nil {
 			return "", err
@@ -209,7 +216,6 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	}
 
 	// Phase 1: Open error log (cmd=0x48)
-	// zzOpenErrLog sends server name as data with command 0x48
 	serverBytes := append([]byte(stripped), 0x00) // null-terminated
 	openBlock := &Block{
 		Header: BlockHeader{
@@ -218,27 +224,37 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		},
 		Data: serverBytes,
 	}
+	if debug {
+		wire, _ := openBlock.MarshalBinary()
+		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG send: %x", wire)
+	}
 	if err := t.sendBlock(openBlock); err != nil {
 		return "", fmt.Errorf("bstool tcp: OPEN_ERRLOG send failed: %w", err)
 	}
 
-	// Receive response
 	respBlock, err := t.recvBlock()
 	if err != nil {
 		return "", fmt.Errorf("bstool tcp: OPEN_ERRLOG recv failed: %w", err)
 	}
+	if debug {
+		hdr, _ := respBlock.Header.MarshalBinary()
+		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG recv header: %x", hdr)
+		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG recv: cmd=0x%04x seq=0x%04x src=0x%08x param=0x%08x size=0x%08x dlen=%d data=%x",
+			respBlock.Header.Command, respBlock.Header.Sequence,
+			respBlock.Header.Source, respBlock.Header.Param,
+			respBlock.Header.Size, respBlock.Header.DataLen, respBlock.Data)
+	}
 
-	// Check for error states (from zzOpenErrLog disassembly)
+	// Check for error states
 	if respBlock.Header.Source == 0xFFFFFFFF {
 		return "", fmt.Errorf("bstool tcp: server not found (0x16)")
 	}
-	if respBlock.Header.Param != 0 && respBlock.Header.Param == 0xFFFFFFFF {
-		return "", fmt.Errorf("bstool tcp: log empty or no data (0x19/0x14)")
-	}
 
-	// Phase 2: Retrieve log data in chunks (cmd=0x1F, chunk=448 bytes)
+	// Phase 2: Retrieve log data in chunks
 	var logData []byte
 	offset := uint32(0)
+	totalSize := uint32(0)
+	firstRead := true
 
 	for {
 		chunkSize := uint32(DefaultChunkSize) // 448 bytes
@@ -249,12 +265,16 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 
 		getBlock := &Block{
 			Header: BlockHeader{
-				Command: CmdGetLogData,
-				Param:   offset,    // offset in the log data
-				Size:    chunkSize, // bytes to read
-				DataLen: uint32(len(req)),
+				Command:  CmdGetLogData,
+				Source:   offset,    // field_2 = offset
+				Param:    chunkSize, // field_3 = chunk_size
+				DataLen:  uint32(len(req)),
 			},
 			Data: req,
+		}
+		if debug {
+			wire, _ := getBlock.MarshalBinary()
+			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA send (offset=%d): %x", offset, wire)
 		}
 		if err := t.sendBlock(getBlock); err != nil {
 			break
@@ -262,7 +282,39 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 
 		respBlock, err := t.recvBlock()
 		if err != nil {
+			if debug {
+				log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv error: %v", err)
+			}
 			break
+		}
+		if debug {
+			hdr, _ := respBlock.Header.MarshalBinary()
+			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv header: %x", hdr)
+			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv: cmd=0x%04x src=0x%08x param=0x%08x size=0x%08x dlen=%d datalen=%d",
+				respBlock.Header.Command, respBlock.Header.Source,
+				respBlock.Header.Param, respBlock.Header.Size,
+				respBlock.Header.DataLen, len(respBlock.Data))
+			if len(respBlock.Data) > 0 {
+				showLen := len(respBlock.Data)
+				if showLen > 64 {
+					showLen = 64
+				}
+				log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA data[0:%d]: %x", showLen, respBlock.Data[:showLen])
+			}
+		}
+
+		if firstRead {
+			firstRead = false
+			if respBlock.Header.Source == 0xFFFFFFFF {
+				return "", nil
+			}
+			totalSize = respBlock.Header.Param
+			if debug {
+				log.Printf("[BSTOOL_DEBUG] first read: totalSize=%d", totalSize)
+			}
+			if totalSize == 0 {
+				return "", nil
+			}
 		}
 
 		if len(respBlock.Data) == 0 {
@@ -272,18 +324,19 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		logData = append(logData, respBlock.Data...)
 		offset += uint32(len(respBlock.Data))
 
+		if totalSize > 0 && offset >= totalSize {
+			break
+		}
 		if len(respBlock.Data) < int(chunkSize) {
-			break // no more data
+			break
 		}
 	}
 
-	// Decode from CP1252 to UTF-8
 	decoded, err := decodeWindows1252(logData)
 	if err != nil {
 		decoded = string(logData)
 	}
 
-	// Filter status messages
 	filtered := filterStatusMessages(decoded)
 
 	return filtered, nil
