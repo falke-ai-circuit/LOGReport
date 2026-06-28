@@ -326,38 +326,77 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		return "", nil
 	}
 
-	// Read log data from Proxy.exe — after OPEN_ERRLOG, the BU pushes log
-	// data through Proxy.exe to us. Read until connection closes or timeout.
-	// The data is raw log text (not 20-byte blocks).
-	proxyConn.SetReadDeadline(time.Now().Add(15 * time.Second))
-
+	// Phase 2: Retrieve log data via GET_LOG_DATA through Proxy.exe
+	// After OPEN_ERRLOG, the BU has the log ready but doesn't push it —
+	// we must request it via GET_LOG_DATA (cmd=0x1F) in chunks.
+	// All communication goes through Proxy.exe (transparent relay to BU).
 	var logData []byte
-	dataBuf := make([]byte, 4096)
+	offset := uint32(0)
+	totalSize := uint32(0)
+	firstRead := true
+
 	for {
-		n, readErr := proxyConn.Read(dataBuf)
-		if n > 0 {
-			logData = append(logData, dataBuf[:n]...)
-			if debug {
-				log.Printf("[BSTOOL_DEBUG] Proxy read %d bytes (total: %d)", n, len(logData))
-			}
-			proxyConn.SetReadDeadline(time.Now().Add(3 * time.Second))
+		chunkSize := uint32(DefaultChunkSize) // 448 bytes
+		req := make([]byte, 8)
+		binary.LittleEndian.PutUint32(req[0:], offset)
+		binary.LittleEndian.PutUint32(req[4:], chunkSize)
+
+		getBlock := &Block{
+			Header: BlockHeader{
+				Command:  CmdGetLogData,
+				Sequence: 0xFFFF,
+				Source:   0xFFFFFFFB,
+				Param:    offset,
+				Size:     chunkSize,
+				DataLen:  uint32(len(req)),
+			},
+			Data: req,
 		}
-		if readErr != nil {
-			if netErr, ok := readErr.(net.Error); ok && netErr.Timeout() {
-				if debug {
-					log.Printf("[BSTOOL_DEBUG] Proxy timeout after %d bytes", len(logData))
-				}
-				break
-			}
-			if readErr == io.EOF {
-				if debug {
-					log.Printf("[BSTOOL_DEBUG] Proxy EOF after %d bytes", len(logData))
-				}
-				break
-			}
+		if debug {
+			wire, _ := getBlock.MarshalBinary()
+			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA send (offset=%d): %x", offset, wire)
+		}
+		if err := t.sendBlock(getBlock); err != nil {
+			break
+		}
+
+		respBlock, err := t.recvBlock()
+		if err != nil {
 			if debug {
-				log.Printf("[BSTOOL_DEBUG] Proxy read error: %v", readErr)
+				log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv error: %v", err)
 			}
+			break
+		}
+		if debug {
+			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv: cmd=0x%04x param=0x%08x dlen=%d",
+				respBlock.Header.Command, respBlock.Header.Param, respBlock.Header.DataLen)
+		}
+
+		if len(respBlock.Data) == 0 {
+			break
+		}
+
+		if firstRead {
+			firstRead = false
+			if len(respBlock.Data) >= 8 {
+				totalSize = binary.LittleEndian.Uint32(respBlock.Data[4:8])
+				if debug {
+					log.Printf("[BSTOOL_DEBUG] first read: totalSize=%d", totalSize)
+				}
+			}
+			if totalSize == 0 {
+				break
+			}
+			continue
+		}
+
+		logData = append(logData, respBlock.Data...)
+		offset += uint32(len(respBlock.Data))
+
+		if totalSize > 0 && offset >= totalSize {
+			break
+		}
+		if len(respBlock.Data) < int(chunkSize) {
 			break
 		}
 	}
