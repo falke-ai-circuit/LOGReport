@@ -164,6 +164,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/telnet/{sessionID}/command", s.handleTelnetCommand)
 	mux.HandleFunc("DELETE /api/v1/telnet/{sessionID}", s.handleTelnetDisconnect)
 	mux.HandleFunc("GET /api/v1/telnet/sessions", s.handleListTelnetSessions)
+	mux.HandleFunc("GET /api/v1/telnet/{sessionID}/output", s.handleTelnetOutput)
 
 	// WebSocket endpoints (GET method to avoid path conflict with {sessionID} patterns)
 	mux.HandleFunc("GET /api/v1/telnet/ws", s.telnetWSHandler)
@@ -191,6 +192,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Scan comparison
 	mux.HandleFunc("POST /api/v1/scan/compare", s.handleScanCompare)
+
+	// Sys file loading and folder structure creation
+	mux.HandleFunc("POST /api/v1/sysfiles/load", s.handleLoadSysFiles)
+	mux.HandleFunc("GET /api/v1/sysfiles/parse", s.handleSysFileParseDir)
 }
 
 // NewTestServer creates a Server suitable for testing with an in-memory SQLite DB.

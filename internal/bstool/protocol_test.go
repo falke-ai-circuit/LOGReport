@@ -28,9 +28,9 @@ func TestCRC16Modbus_SingleByte(t *testing.T) {
 
 func TestCRC16Modbus_KnownValues(t *testing.T) {
 	tests := []struct {
-		name  string
-		data  []byte
-		want  uint16
+		name string
+		data []byte
+		want uint16
 	}{
 		{"empty", []byte{}, 0xFFFF},
 		{"zero", []byte{0x00}, 0x40BF},

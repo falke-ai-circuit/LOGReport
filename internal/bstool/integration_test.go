@@ -20,7 +20,7 @@ func TestErrLog_FullFlow_Linux(t *testing.T) {
 	c := NewClient(
 		WithPath("/opt/bstool/BsTool.exe"),
 		WithCommunicationLine("CD02"),
-		WithTimeout(30 * time.Second),
+		WithTimeout(30*time.Second),
 	)
 
 	ctx := context.Background()
@@ -61,7 +61,7 @@ func TestErrLog_FullFlow_Linux(t *testing.T) {
 func TestClientOptionsChain(t *testing.T) {
 	c := NewClient(
 		WithPath("/custom/BsTool.exe"),
-		WithTimeout(45 * time.Second),
+		WithTimeout(45*time.Second),
 		WithCommunicationLine("EF03"),
 	)
 
@@ -277,10 +277,10 @@ func TestErrLog_Concurrent(t *testing.T) {
 
 func TestErrorType_CodeAndError(t *testing.T) {
 	tests := []struct {
-		name     string
-		err      error
-		code     string
-		errMsg   string
+		name   string
+		err    error
+		code   string
+		errMsg string
 	}{
 		{
 			name:   "ErrNotFound",
@@ -380,7 +380,7 @@ func newMockClient(opts ...Option) *Client {
 func TestErrLog_MockSuccess(t *testing.T) {
 	c := newMockClient(WithPath("/fake/BsTool.exe"))
 	c.exec = &mockExecutor{
-		stdout: []byte("2024-03-15 08:12:34.567 [ERR] Module M01: Channel 3 overrange\n2024-03-15 08:12:35.001 [WRN] Module M02: Communication timeout\n"),
+		stdout:   []byte("2024-03-15 08:12:34.567 [ERR] Module M01: Channel 3 overrange\n2024-03-15 08:12:35.001 [WRN] Module M02: Communication timeout\n"),
 		exitCode: 0,
 	}
 
@@ -412,7 +412,7 @@ func TestErrLog_MockSuccessWithStatusMessages(t *testing.T) {
 	c := newMockClient(WithPath("/fake/BsTool.exe"))
 	// Use ASCII-only status patterns to avoid CP1252 decode corruption
 	c.exec = &mockExecutor{
-		stdout: []byte("Writing to RS log for AP01...\n2024-03-15 08:12:34.567 [ERR] Module M01: Channel 3 overrange\nContent written to output\nNow the future log is ready\n"),
+		stdout:   []byte("Writing to RS log for AP01...\n2024-03-15 08:12:34.567 [ERR] Module M01: Channel 3 overrange\nContent written to output\nNow the future log is ready\n"),
 		exitCode: 0,
 	}
 

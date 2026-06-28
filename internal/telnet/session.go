@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,14 +22,15 @@ type SessionManager struct {
 
 // Session wraps a persistent telnet connection with streaming output.
 type Session struct {
-	ID        string
-	Client    *Client
-	Address   string
-	Port      int
-	Connected bool
-	Output    chan string // streamed output to WebSocket
-	Done      chan struct{}
-	mu        sync.Mutex
+	ID           string
+	Client       *Client
+	Address      string
+	Port         int
+	Connected    bool
+	Output       chan string // streamed output to WebSocket
+	Done         chan struct{}
+	mu           sync.Mutex
+	outputBuffer strings.Builder // accumulated output for REST retrieval
 }
 
 // NewSessionManager creates a new session manager.
@@ -56,9 +58,10 @@ func generateSessionID() string {
 // After establishing the TCP connection, verifySystemMode() is called
 // to initialize the DNA debugger into system mode. This matches the
 // Python telnet_service.py behavior:
-//   1. Send "yes\r\n" (handle "someone else is connected" conflict prompt)
-//   2. Send Ctrl+Z (\x1a) to clear terminal
-//   3. Send "systemmode\r\n" to switch to system mode
+//  1. Send "yes\r\n" (handle "someone else is connected" conflict prompt)
+//  2. Send Ctrl+Z (\x1a) to clear terminal
+//  3. Send "systemmode\r\n" to switch to system mode
+//
 // This is required for FBC/RPC print commands to work on real DNA nodes.
 func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time.Duration) (*Session, error) {
 	if sessionID == "" {
@@ -97,9 +100,9 @@ func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time
 
 // verifySystemMode initializes the DNA debugger into system mode.
 // This sequence mirrors the Python telnet_service.py verify_system_mode():
-//   1. Send "yes\r\n" — handles the "someone else is connected, disconnect?" prompt
-//   2. Send Ctrl+Z (\x1a) — clears the terminal of any leftover content
-//   3. Send "systemmode\r\n" — switches from application mode to system mode
+//  1. Send "yes\r\n" — handles the "someone else is connected, disconnect?" prompt
+//  2. Send Ctrl+Z (\x1a) — clears the terminal of any leftover content
+//  3. Send "systemmode\r\n" — switches from application mode to system mode
 //
 // On real DNA nodes, FBC/RPC print commands only work in system mode.
 // On mock/test servers, these writes are harmless (server just echoes or ignores).
@@ -117,11 +120,13 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 	conn.Write([]byte("yes\r\n"))
 	time.Sleep(300 * time.Millisecond)
 
-	// Drain any response
+	// Drain any response (with IAC stripping)
 	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
 	drainBuf := make([]byte, 4096)
 	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
-		filtered := FilterOutput(string(drainBuf[:n]))
+		cleaned := sess.Client.stripIAC(drainBuf[:n])
+		sess.outputBuffer.WriteString(string(cleaned))
+		filtered := FilterOutputNoBackspace(processBackspaces(string(cleaned)))
 		if filtered != "" {
 			select {
 			case sess.Output <- filtered:
@@ -138,7 +143,9 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 	// Drain
 	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
 	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
-		filtered := FilterOutput(string(drainBuf[:n]))
+		cleaned := sess.Client.stripIAC(drainBuf[:n])
+		sess.outputBuffer.WriteString(string(cleaned))
+		filtered := FilterOutputNoBackspace(processBackspaces(string(cleaned)))
 		if filtered != "" {
 			select {
 			case sess.Output <- filtered:
@@ -155,7 +162,9 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 	// Drain and push any response to output
 	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
-		filtered := FilterOutput(string(drainBuf[:n]))
+		cleaned := sess.Client.stripIAC(drainBuf[:n])
+		sess.outputBuffer.WriteString(string(cleaned))
+		filtered := FilterOutputNoBackspace(processBackspaces(string(cleaned)))
 		if filtered != "" {
 			select {
 			case sess.Output <- filtered:
@@ -192,7 +201,19 @@ func (s *Session) readLoop() {
 		conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
 		n, err := conn.Read(buf)
 		if n > 0 {
-			filtered := FilterOutput(string(buf[:n]))
+			// Strip IAC commands from the data before filtering
+			cleaned := s.Client.stripIAC(buf[:n])
+			// Append raw (post-IAC) data to buffer first, THEN filter
+			// This ensures backspaces from DIA echo are processed across
+			// chunk boundaries (echo and backspaces may arrive in separate reads)
+			s.mu.Lock()
+			s.outputBuffer.WriteString(string(cleaned))
+			// Now apply backspace processing + filter on the full buffer
+			full := s.outputBuffer.String()
+			s.mu.Unlock()
+			// Process backspaces on the full accumulated buffer
+			processed := processBackspaces(full)
+			filtered := FilterOutputNoBackspace(processed)
 			if filtered != "" {
 				select {
 				case s.Output <- filtered:
@@ -215,9 +236,11 @@ func (s *Session) readLoop() {
 }
 
 // SendCommand sends a command through an existing session.
-// Before sending, it clears the input buffer by sending Ctrl+X (\x18)
-// then Ctrl+Z (\x1A) with a short delay, matching the Python
+// Before sending, it clears the input buffer by sending Ctrl+X (\\x18)
+// then Ctrl+Z (\\x1A) with a short delay, matching the Python
 // telnet_client.py:82-89 behavior.
+// Note: The readLoop handles all reading from the connection. We do NOT
+// drain here to avoid racing with the readLoop goroutine.
 func (sm *SessionManager) SendCommand(sessionID, cmd string) error {
 	sm.mu.RLock()
 	sess, ok := sm.sessions[sessionID]
@@ -243,27 +266,7 @@ func (sm *SessionManager) SendCommand(sessionID, cmd string) error {
 	conn.Write([]byte{0x1A}) // Ctrl+Z
 	time.Sleep(100 * time.Millisecond)
 
-	// Drain any pending read data
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	drainBuf := make([]byte, 4096)
-	for {
-		n, err := conn.Read(drainBuf)
-		if n > 0 {
-			filtered := FilterOutput(string(drainBuf[:n]))
-			if filtered != "" {
-				select {
-				case sess.Output <- filtered:
-				default:
-				}
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	conn.SetReadDeadline(time.Time{})
-
-	// Send the actual command
+	// Send the actual command (readLoop will capture the response)
 	return sess.Client.SendCommand(cmd)
 }
 
@@ -300,6 +303,39 @@ func (sm *SessionManager) GetSession(sessionID string) (*Session, bool) {
 	defer sm.mu.RUnlock()
 	sess, ok := sm.sessions[sessionID]
 	return sess, ok
+}
+
+// GetOutput returns the accumulated output buffer for a session.
+// The output is processed through backspace removal and filtering
+// to produce clean text without DIA INSERT-mode echo artifacts.
+func (sm *SessionManager) GetOutput(sessionID string) (string, error) {
+	sm.mu.RLock()
+	sess, ok := sm.sessions[sessionID]
+	sm.mu.RUnlock()
+	if !ok {
+		return "", fmt.Errorf("session %s not found", sessionID)
+	}
+
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	// Process backspaces on the full accumulated buffer, then filter
+	processed := processBackspaces(sess.outputBuffer.String())
+	return FilterOutputNoBackspace(processed), nil
+}
+
+// ClearOutput resets the output buffer for a session.
+func (sm *SessionManager) ClearOutput(sessionID string) error {
+	sm.mu.RLock()
+	sess, ok := sm.sessions[sessionID]
+	sm.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("session %s not found", sessionID)
+	}
+
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	sess.outputBuffer.Reset()
+	return nil
 }
 
 // ListSessions returns all active session IDs.

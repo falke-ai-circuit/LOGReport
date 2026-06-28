@@ -15,7 +15,8 @@ import (
 )
 
 // version is injected at build time via LDFLAGS:
-//   go build -ldflags "-X main.version=v1.0.0" -o logreport ./cmd/logreport/
+//
+//	go build -ldflags "-X main.version=v1.0.0" -o logreport ./cmd/logreport/
 var version = "dev"
 
 func main() {
@@ -49,6 +50,9 @@ func main() {
 	}
 	if cfg.BsToolTimeout > 0 {
 		bstoolOpts = append(bstoolOpts, bstool.WithTimeout(time.Duration(cfg.BsToolTimeout)*time.Second))
+		if cfg.CommunicationLine != "" {
+			bstoolOpts = append(bstoolOpts, bstool.WithCommunicationLine(cfg.CommunicationLine))
+		}
 	}
 	bstoolClient := bstool.NewClient(bstoolOpts...)
 

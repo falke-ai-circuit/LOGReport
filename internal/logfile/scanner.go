@@ -30,10 +30,10 @@ type FileData struct {
 	FileName  string            `json:"file_name"`
 	FilePath  string            `json:"file_path"`
 	NodeName  string            `json:"node_name"`
-	FileType  string            `json:"file_type"` // "fbc", "rpc", "log", "lis"
-	Header    string            `json:"header"`    // first line (e.g. "#FBC AP01m 2026-06-25")
-	Metadata  map[string]string `json:"metadata"`  // NODE=, TYPE=, etc.
-	Lines     []string          `json:"lines"`     // raw content lines (excluding header)
+	FileType  string            `json:"file_type"`  // "fbc", "rpc", "log", "lis"
+	Header    string            `json:"header"`     // first line (e.g. "#FBC AP01m 2026-06-25")
+	Metadata  map[string]string `json:"metadata"`   // NODE=, TYPE=, etc.
+	Lines     []string          `json:"lines"`      // raw content lines (excluding header)
 	KeyValues []KeyValue        `json:"key_values"` // parsed key=value entries
 }
 

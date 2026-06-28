@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // Store wraps a SQLite database connection and provides CRUD operations
@@ -19,7 +19,7 @@ type Store struct {
 // Open opens a SQLite database at the given path, runs migrations,
 // and returns a ready-to-use Store.
 func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_foreign_keys=on")
+	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=foreign_keys(on)")
 	if err != nil {
 		return nil, fmt.Errorf("store: open %s: %w", path, err)
 	}

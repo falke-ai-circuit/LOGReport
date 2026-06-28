@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
 	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
+	"github.com/falke-ai-circuit/LOGReport/internal/sysloader"
 	"github.com/falke-ai-circuit/LOGReport/internal/telnet"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
@@ -44,7 +46,8 @@ func (s *Server) handleGetNodesConfig(w http.ResponseWriter, r *http.Request) {
 	path := s.nodesConfigPath()
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		log.Printf("handleGetNodesConfig: LoadFromFile(%q) error: %v", path, err)
+		if errors.Is(err, os.ErrNotExist) {
 			// Return empty array if file doesn't exist
 			writeJSON(w, http.StatusOK, map[string]interface{}{
 				"configs": make([]types.NodeConfig, 0),
@@ -79,9 +82,9 @@ func (s *Server) handleSaveNodesConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"saved":  true,
-		"count":  len(configs),
-		"path":   path,
+		"saved": true,
+		"count": len(configs),
+		"path":  path,
 	})
 }
 
@@ -95,7 +98,7 @@ func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
 
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			writeError(w, http.StatusNotFound, "not_found",
 				fmt.Sprintf("nodes.json not found at: %s", path))
 			return
@@ -118,7 +121,7 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 	path := s.nodesConfigPath()
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			// Return empty tree
 			tree := &types.TreeNode{
 				Name:     "Root",
@@ -240,7 +243,7 @@ func (s *Server) handleTelnetDisconnect(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"session_id": sessionID,
+		"session_id":   sessionID,
 		"disconnected": true,
 	})
 }
@@ -255,6 +258,29 @@ func (s *Server) handleListTelnetSessions(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"sessions": ids,
 		"count":    len(ids),
+	})
+}
+
+// handleTelnetOutput returns the accumulated output buffer for a session.
+// GET /api/v1/telnet/{sessionID}/output
+func (s *Server) handleTelnetOutput(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("sessionID")
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "session_id is required")
+		return
+	}
+
+	output, err := s.telnetSM.GetOutput(sessionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("session not found: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id": sessionID,
+		"output":     output,
+		"length":     len(output),
 	})
 }
 
@@ -276,8 +302,8 @@ func (s *Server) handleQueueAdd(w http.ResponseWriter, r *http.Request) {
 	s.commandQueue.Add(cmd)
 	_, total, _ := s.commandQueue.Status()
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"added":  true,
-		"total":  total,
+		"added": true,
+		"total": total,
 	})
 }
 
@@ -297,12 +323,31 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 			return "", fmt.Errorf("no active telnet session")
 		}
 		sessionID := ids[0]
+
+		// 1. Clear the session output buffer before sending
+		_ = s.telnetSM.ClearOutput(sessionID)
+
+		// 2. Send the command
 		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
 			return "", err
 		}
-		// Wait briefly for output to accumulate
-		time.Sleep(500 * time.Millisecond)
-		return "command sent", nil
+
+		// 3. Wait for output: poll GetOutput, wait up to 10 seconds for
+		// non-empty output, then collect for 2 more seconds for trailing data
+		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+
+		// 4. Write output to structured log files
+		lw := logwriter.New(s.logRoot())
+		tokenType := string(cmd.Type)
+		if tokenType == "" {
+			tokenType = "raw"
+		}
+		if err := lw.WriteOutput(cmd.NodeName, tokenType, cmd.TokenID, output); err != nil {
+			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+		}
+
+		// 5. Return the output string
+		return output, nil
 	}
 
 	go func() {
@@ -337,11 +382,31 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 			return "", fmt.Errorf("no active telnet session")
 		}
 		sessionID := ids[0]
+
+		// 1. Clear the session output buffer before sending
+		_ = s.telnetSM.ClearOutput(sessionID)
+
+		// 2. Send the command
 		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
 			return "", err
 		}
-		time.Sleep(500 * time.Millisecond)
-		return "command sent", nil
+
+		// 3. Wait for output: poll GetOutput, wait up to 10 seconds for
+		// non-empty output, then collect for 2 more seconds for trailing data
+		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+
+		// 4. Write output to structured log files
+		lw := logwriter.New(s.logRoot())
+		tokenType := string(cmd.Type)
+		if tokenType == "" {
+			tokenType = "raw"
+		}
+		if err := lw.WriteOutput(cmd.NodeName, tokenType, cmd.TokenID, output); err != nil {
+			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+		}
+
+		// 5. Return the output string
+		return output, nil
 	}
 
 	go func() {
@@ -474,9 +539,9 @@ func (s *Server) handleReadLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"node_name":  nodeName,
-		"file_name":  fileName,
-		"content":    content,
+		"node_name": nodeName,
+		"file_name": fileName,
+		"content":   content,
 	})
 }
 
@@ -511,8 +576,8 @@ func (s *Server) handleWriteLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"node_name":  nodeName,
-		"written":    true,
+		"node_name": nodeName,
+		"written":   true,
 	})
 }
 
@@ -561,9 +626,9 @@ func (s *Server) handleListLogRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"path":    dir,
-		"files":   entries,
-		"count":   len(entries),
+		"path":  dir,
+		"files": entries,
+		"count": len(entries),
 	})
 }
 
@@ -791,5 +856,105 @@ func (s *Server) handleLogContent(w http.ResponseWriter, r *http.Request) {
 		"path":    absPath,
 		"content": string(data),
 		"size":    len(data),
+	})
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+// waitForOutput polls the session output buffer for non-empty output.
+// It waits up to maxWait for the first non-empty result, then collects
+// for trailWait more seconds to capture trailing data.
+func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWait time.Duration) string {
+	deadline := time.Now().Add(maxWait)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	// Phase 1: Wait for non-empty output
+	for time.Now().Before(deadline) {
+		out, err := sm.GetOutput(sessionID)
+		if err != nil {
+			return ""
+		}
+		if out != "" {
+			// Phase 2: Collect trailing data
+			time.Sleep(trailWait)
+			final, _ := sm.GetOutput(sessionID)
+			if final != "" {
+				return final
+			}
+			return out
+		}
+		<-ticker.C
+	}
+
+	// Timeout: return whatever we have (may be empty)
+	out, _ := sm.GetOutput(sessionID)
+	return out
+}
+
+// ─── Sys File Handlers ──────────────────────────────────────────────
+
+// handleLoadSysFiles loads .sys files from a directory and creates the
+// FBC/RPC/LOG/LIS folder structure.
+// POST /api/v1/sysfiles/load
+func (s *Server) handleLoadSysFiles(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Directory string `json:"directory"`
+		OutputDir string `json:"output_dir"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.Directory == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "directory is required")
+		return
+	}
+	if req.OutputDir == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "output_dir is required")
+		return
+	}
+
+	configs, err := sysloader.LoadSysFiles(req.Directory)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load sys files: %v", err))
+		return
+	}
+
+	if err := sysloader.CreateFolderStructure(req.OutputDir, configs); err != nil {
+		writeError(w, http.StatusInternalServerError, "create_error",
+			fmt.Sprintf("failed to create folder structure: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs_count": len(configs),
+		"directory":     req.Directory,
+		"output_dir":    req.OutputDir,
+	})
+}
+
+// handleSysFileParseDir parses .sys files from a directory and returns
+// the configs as JSON without creating folders.
+// GET /api/v1/sysfiles/parse?dir={path}
+func (s *Server) handleSysFileParseDir(w http.ResponseWriter, r *http.Request) {
+	dir := r.URL.Query().Get("dir")
+	if dir == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "dir query parameter is required")
+		return
+	}
+
+	configs, err := sysloader.LoadSysFiles(dir)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to parse sys files: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs": configs,
+		"count":   len(configs),
+		"dir":     dir,
 	})
 }

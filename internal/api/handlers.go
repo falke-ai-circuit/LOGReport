@@ -95,8 +95,8 @@ func nodeToAPI(n *types.Node) apiNode {
 
 // apiFBCModule is the JSON response shape for an FBC module.
 type apiFBCModule struct {
-	ModulePosition int              `json:"module_position"`
-	Channels       []apiFBCChannel  `json:"channels"`
+	ModulePosition int             `json:"module_position"`
+	Channels       []apiFBCChannel `json:"channels"`
 }
 
 // apiFBCChannel is the JSON response shape for an FBC channel.
@@ -107,8 +107,8 @@ type apiFBCChannel struct {
 
 // apiRPCModule is the JSON response shape for an RPC module.
 type apiRPCModule struct {
-	ModulePosition int              `json:"module_position"`
-	Counters       []apiRPCCounter  `json:"counters"`
+	ModulePosition int             `json:"module_position"`
+	Counters       []apiRPCCounter `json:"counters"`
 }
 
 // apiRPCCounter is the JSON response shape for an RPC counter.
@@ -156,27 +156,27 @@ func reportToAPI(r *types.Report) apiReport {
 
 // Server holds the dependencies needed by all API handlers.
 type Server struct {
-	store         *store.Store
-	startTime     time.Time
-	config        *server.Config
-	embedFS       embed.FS
-	bstoolClient  *bstool.Client
-	telnetSM      *telnet.SessionManager   // Commander: persistent telnet sessions
-	commandQueue  *commandqueue.Queue       // Commander: sequential command queue
-	logRootDir    string                    // Commander: root dir for log files
+	store        *store.Store
+	startTime    time.Time
+	config       *server.Config
+	embedFS      embed.FS
+	bstoolClient *bstool.Client
+	telnetSM     *telnet.SessionManager // Commander: persistent telnet sessions
+	commandQueue *commandqueue.Queue    // Commander: sequential command queue
+	logRootDir   string                 // Commander: root dir for log files
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
 func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClient *bstool.Client) *Server {
 	return &Server{
-		store:         s,
-		startTime:     time.Now(),
-		config:        cfg,
-		embedFS:       embedFS,
-		bstoolClient:  bstoolClient,
-		telnetSM:      telnet.NewSessionManager(),
-		commandQueue:  commandqueue.NewQueue(nil, nil),
-		logRootDir:    "logs",
+		store:        s,
+		startTime:    time.Now(),
+		config:       cfg,
+		embedFS:      embedFS,
+		bstoolClient: bstoolClient,
+		telnetSM:     telnet.NewSessionManager(),
+		commandQueue: commandqueue.NewQueue(nil, nil),
+		logRootDir:   "logs",
 	}
 }
 
@@ -339,10 +339,10 @@ func (s *Server) getNodeHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"node": nodeToAPI(node),
 		"io_summary": map[string]interface{}{
-			"fbc_modules":    fbcCount,
-			"rpc_modules":    rpcCount,
+			"fbc_modules":     fbcCount,
+			"rpc_modules":     rpcCount,
 			"total_io_points": len(ioPoints),
-			"last_scan":      nil,
+			"last_scan":       nil,
 		},
 	})
 }
@@ -742,30 +742,30 @@ func (s *Server) parseSysfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"filename":       header.Filename,
+		"filename":        header.Filename,
 		"file_size_bytes": fileSize,
-		"parsed_at":      time.Now().UTC().Format(time.RFC3339),
-		"entries":        entries,
-		"total_entries":  len(entries),
-		"nodes_created":  nodesCreated,
+		"parsed_at":       time.Now().UTC().Format(time.RFC3339),
+		"entries":         entries,
+		"total_entries":   len(entries),
+		"nodes_created":   nodesCreated,
 	})
 }
 
 // ─── Handler 9: POST /api/v1/reports/generate ───────────────────
 
 type generateReportRequest struct {
-	NodeAddresses []string          `json:"node_addresses"`
-	Format        string           `json:"format"`
-	Template      string           `json:"template"`
-	LogRoot       string           `json:"log_root"`
-	Options       *reportOptions   `json:"options"`
+	NodeAddresses []string       `json:"node_addresses"`
+	Format        string         `json:"format"`
+	Template      string         `json:"template"`
+	LogRoot       string         `json:"log_root"`
+	Options       *reportOptions `json:"options"`
 }
 
 type reportOptions struct {
-	LineLimit  *int        `json:"line_limit"`
-	LineRange  *lineRange  `json:"line_range"`
-	WrapWidth  *int        `json:"wrap_width"`
-	IncludeRaw *bool       `json:"include_raw"`
+	LineLimit  *int       `json:"line_limit"`
+	LineRange  *lineRange `json:"line_range"`
+	WrapWidth  *int       `json:"wrap_width"`
+	IncludeRaw *bool      `json:"include_raw"`
 }
 
 type lineRange struct {
@@ -799,8 +799,8 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// PDF with log_root: skip scan data check, generate from log files
-	if format == types.FormatPDF && req.LogRoot != "" {
+	// PDF/DOCX with log_root: skip scan data check, generate from log files
+	if (format == types.FormatPDF || format == types.FormatDOCX) && req.LogRoot != "" {
 		// Use "*" as default node address for log-root reports
 		addresses := req.NodeAddresses
 		if len(addresses) == 0 {
@@ -936,9 +936,9 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 			apiReports = append(apiReports, reportToAPI(rpt))
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"reports":     apiReports,
-			"total":       len(apiReports),
-			"node_count":  len(addresses),
+			"reports":    apiReports,
+			"total":      len(apiReports),
+			"node_count": len(addresses),
 		})
 	}
 }

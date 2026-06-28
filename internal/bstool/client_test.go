@@ -55,7 +55,7 @@ func TestStripNodeSuffix(t *testing.T) {
 		{"EP99", "EP99"},
 		{"m", ""}, // edge: only suffix
 		{"r", ""}, // edge: only suffix
-		{"", ""},   // edge: empty
+		{"", ""},  // edge: empty
 	}
 	for _, tt := range tests {
 		result := stripNodeSuffix(tt.input)

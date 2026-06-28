@@ -16,6 +16,7 @@
 //  7. Multi-node scan — verify all nodes scanned independently
 //  8. Concurrent operations — verify no race conditions
 //  9. Graceful shutdown — verify clean disconnect from all nodes
+//
 // 10. Regression probe — byte-level comparison with Python output
 package e2e
 

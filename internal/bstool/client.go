@@ -19,12 +19,12 @@ import (
 //
 // Safe for concurrent use — all fields are set at construction and never mutated.
 type Client struct {
-	bstoolPath         string
-	communicationLine  string
-	defaultTimeout     time.Duration
-	exec               executor
-	tcp                *TCPTransport // native TCP transport (nil = use executor)
-	skipPlatformCheck  bool          // test-only: bypass runtime.GOOS check
+	bstoolPath        string
+	communicationLine string
+	defaultTimeout    time.Duration
+	exec              executor
+	tcp               *TCPTransport // native TCP transport (nil = use executor)
+	skipPlatformCheck bool          // test-only: bypass runtime.GOOS check
 }
 
 // Option is a functional option for configuring a Client.

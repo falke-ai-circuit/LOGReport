@@ -82,7 +82,7 @@ func (t *TCPTransport) Connect() error {
 		return fmt.Errorf("bstool tcp: host not set")
 	}
 
-	addr := fmt.Sprintf("%s:%d", t.host, t.port)
+	addr := net.JoinHostPort(t.host, fmt.Sprintf("%d", t.port))
 
 	var lastErr error
 	for attempt := 0; attempt < MaxTCPRetries; attempt++ {
@@ -125,8 +125,8 @@ func (t *TCPTransport) Close() error {
 
 // sendBlock sends a raw binary block over TCP.
 // Mimics zzSendTcpBlk (RVA 0x43B570):
-//   1. Byte-swap header fields to big-endian (send16/send32)
-//   2. Send entire block (header + data) in ONE write call
+//  1. Byte-swap header fields to big-endian (send16/send32)
+//  2. Send entire block (header + data) in ONE write call
 //
 // The Block.MarshalBinary() method already produces big-endian wire format,
 // so we just marshal and write.
@@ -147,10 +147,10 @@ func (t *TCPTransport) sendBlock(block *Block) error {
 
 // recvBlock receives a raw binary block from TCP.
 // Mimics zzRcvTcpBlk (RVA 0x43ABF0):
-//   1. Read 20-byte header via tcp_recv_wrapper
-//   2. Byte-swap header fields back to host order (send16/send32)
-//   3. Extract data_length from header[0x10]
-//   4. Read data_length bytes of payload
+//  1. Read 20-byte header via tcp_recv_wrapper
+//  2. Byte-swap header fields back to host order (send16/send32)
+//  3. Extract data_length from header[0x10]
+//  4. Read data_length bytes of payload
 func (t *TCPTransport) recvBlock() (*Block, error) {
 	// Refresh read deadline
 	if tcpConn, ok := t.conn.(*net.TCPConn); ok {
@@ -189,12 +189,12 @@ func (t *TCPTransport) recvBlock() (*Block, error) {
 // This replaces `BsTool.exe -errlog <server>`.
 //
 // Flow (from zzOpenErrLog + zzGetLog disassembly):
-//   1. Connect to node (host from COMMUNICATION_LINE, port 1516)
-//   2. Send OPEN_ERRLOG block (cmd=0x48, data=server name + null terminator)
-//   3. Receive response block (check for error codes)
-//   4. Send GET_LOG_DATA blocks (cmd=0x1F, param=offset, size=chunk_size)
-//   5. Receive log data in 448-byte chunks
-//   6. Concatenate and decode from CP1252
+//  1. Connect to node (host from COMMUNICATION_LINE, port 1516)
+//  2. Send OPEN_ERRLOG block (cmd=0x48, data=server name + null terminator)
+//  3. Receive response block (check for error codes)
+//  4. Send GET_LOG_DATA blocks (cmd=0x1F, param=offset, size=chunk_size)
+//  5. Receive log data in 448-byte chunks
+//  6. Concatenate and decode from CP1252
 func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	if !t.connected {
 		if err := t.Connect(); err != nil {

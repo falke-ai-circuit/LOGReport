@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func TestGetHealthConnected(t *testing.T) {
 	// Open an in-memory SQLite DB
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestGetHealthNilDB(t *testing.T) {
 
 func TestGetHealthDBPingError(t *testing.T) {
 	// Open a DB then close it to simulate ping failure
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestGetHealthDBPingError(t *testing.T) {
 }
 
 func TestGetHealthEmptyNodes(t *testing.T) {
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}

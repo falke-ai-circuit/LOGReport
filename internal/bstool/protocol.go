@@ -24,12 +24,12 @@ import (
 // Evidence: zzSendRsBlk sends fields at offsets +0, +2 (16-bit) and +4, +8, +0xC,
 // +0x10 (32-bit). Total = 2+2+4+4+4+4 = 20 = 0x14.
 type BlockHeader struct {
-	Command   uint16 // +0x00: command code (e.g., 0x48=OPEN_ERRLOG, 0x1F=GET_LOG_DATA)
-	Sequence  uint16 // +0x02: sequence number (toggles 0↔1 during handshake)
-	Source    uint32 // +0x04: source/destination identifier
-	Param     uint32 // +0x08: parameter (offset for GET_LOG_DATA)
-	Size      uint32 // +0x0C: size parameter (chunk size for GET_LOG_DATA)
-	DataLen   uint32 // +0x10: payload length following header
+	Command  uint16 // +0x00: command code (e.g., 0x48=OPEN_ERRLOG, 0x1F=GET_LOG_DATA)
+	Sequence uint16 // +0x02: sequence number (toggles 0↔1 during handshake)
+	Source   uint32 // +0x04: source/destination identifier
+	Param    uint32 // +0x08: parameter (offset for GET_LOG_DATA)
+	Size     uint32 // +0x0C: size parameter (chunk size for GET_LOG_DATA)
+	DataLen  uint32 // +0x10: payload length following header
 }
 
 // HeaderSize is the fixed size of the block header.
@@ -164,13 +164,13 @@ const (
 
 // "2111" Handshake constants (from disassembly of zzInit2111, zzSend2111, zzRcv2111).
 const (
-	MaxSendRetries    = 21   // 0x15 — max TX attempts in zzSend2111
-	MaxRecvRetries    = 5    // max RX attempts in zzRcv2111
-	HandshakeTimeout  = 4196 // 0x1064 ms — response timeout in zzSend2111
-	MaxResponseSize   = 4196 // 0x1064 — max block size for handshake
-	ACKStatus         = 6    // status byte value for ACK
-	NACKStatus        = 21   // 0x15 — status byte value for NACK
-	DefaultChunkSize  = 448  // 0x1C0 — default log data chunk size in zzGetLog
+	MaxSendRetries   = 21   // 0x15 — max TX attempts in zzSend2111
+	MaxRecvRetries   = 5    // max RX attempts in zzRcv2111
+	HandshakeTimeout = 4196 // 0x1064 ms — response timeout in zzSend2111
+	MaxResponseSize  = 4196 // 0x1064 — max block size for handshake
+	ACKStatus        = 6    // status byte value for ACK
+	NACKStatus       = 21   // 0x15 — status byte value for NACK
+	DefaultChunkSize = 448  // 0x1C0 — default log data chunk size in zzGetLog
 )
 
 // TCP transport constants (from tcp_init_impl disassembly).
@@ -218,10 +218,10 @@ func (s *Session) NextBlock(cmd uint16, data []byte) *Block {
 
 // Command codes identified from disassembly of zzOpenErrLog and zzGetLog.
 const (
-	CmdOpenErrLog  uint16 = 0x48 // 'H' — open error log stream for a server
-	CmdGetLogData  uint16 = 0x1F // 31  — retrieve log data chunk
-	CmdACK         uint16 = 0x06 // 6   — acknowledge (handshake)
-	CmdNACK        uint16 = 0x15 // 21  — negative acknowledge (handshake retry)
+	CmdOpenErrLog uint16 = 0x48 // 'H' — open error log stream for a server
+	CmdGetLogData uint16 = 0x1F // 31  — retrieve log data chunk
+	CmdACK        uint16 = 0x06 // 6   — acknowledge (handshake)
+	CmdNACK       uint16 = 0x15 // 21  — negative acknowledge (handshake retry)
 )
 
 // ─── Error State Codes ───────────────────────────────────────────────────────

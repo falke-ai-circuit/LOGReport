@@ -278,8 +278,8 @@ AIU8: 15, AOU4: 4, BIU8: 131, BI8N: 6, BOU8: 63, FIU1: 2, AIU4: 1, TIU6: 16
 	}
 	// Check specific channels
 	expected := []struct {
-		pos  int
-		ct   types.ChannelType
+		pos int
+		ct  types.ChannelType
 	}{
 		{5, types.AI8}, {6, types.BI8}, {7, types.BO8}, {8, types.BI8},
 		{9, types.BI8}, {10, types.BI8}, {11, types.BO8}, {12, types.BI8},

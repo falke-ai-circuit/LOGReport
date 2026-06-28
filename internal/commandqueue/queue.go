@@ -52,10 +52,10 @@ type QueuedCommand struct {
 type QueueState string
 
 const (
-	QueueIdle     QueueState = "idle"
-	QueueRunning  QueueState = "running"
-	QueuePaused   QueueState = "paused"
-	QueueDone     QueueState = "done"
+	QueueIdle    QueueState = "idle"
+	QueueRunning QueueState = "running"
+	QueuePaused  QueueState = "paused"
+	QueueDone    QueueState = "done"
 )
 
 // Queue manages sequential command execution with pause/resume/cancel.
@@ -74,10 +74,10 @@ type Queue struct {
 // NewQueue creates a new command queue with optional output and status callbacks.
 func NewQueue(onOutput, onStatus func(QueuedCommand)) *Queue {
 	return &Queue{
-		commands:  make([]QueuedCommand, 0),
-		state:     QueueIdle,
-		onOutput:  onOutput,
-		onStatus:  onStatus,
+		commands: make([]QueuedCommand, 0),
+		state:    QueueIdle,
+		onOutput: onOutput,
+		onStatus: onStatus,
 	}
 }
 

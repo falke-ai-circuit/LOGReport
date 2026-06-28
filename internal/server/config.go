@@ -10,13 +10,14 @@ import (
 
 // Config holds server configuration parsed from command-line flags.
 type Config struct {
-	Port          int
-	DBPath        string
-	LogLevel      string
-	CORSOrigin    string
-	BsToolPath    string
-	BsToolRemote  string
-	BsToolTimeout int
+	Port              int
+	DBPath            string
+	LogLevel          string
+	CORSOrigin        string
+	BsToolPath        string
+	BsToolRemote      string
+	BsToolTimeout     int
+	CommunicationLine string
 }
 
 // ParseFlags parses command-line flags and returns a Config.
@@ -34,6 +35,7 @@ func ParseFlags() *Config {
 		flag.StringVar(&cfg.BsToolPath, "bstool-path", "", "Path to BsTool.exe (auto-detect if empty)")
 		flag.StringVar(&cfg.BsToolRemote, "bstool-remote", "", "hermes-remote agent for remote BsTool execution")
 		flag.IntVar(&cfg.BsToolTimeout, "bstool-timeout", 15, "Default BsTool timeout in seconds")
+		flag.StringVar(&cfg.CommunicationLine, "communication-line", "", "COMMUNICATION_LINE env var for BsTool (BU hostname)")
 	}
 
 	// Parse os.Args[1:] but don't fail on unknown flags in test environments
@@ -46,6 +48,7 @@ func ParseFlags() *Config {
 	fs.StringVar(&cfg.BsToolPath, "bstool-path", "", "Path to BsTool.exe")
 	fs.StringVar(&cfg.BsToolRemote, "bstool-remote", "", "hermes-remote agent for remote BsTool execution")
 	fs.IntVar(&cfg.BsToolTimeout, "bstool-timeout", 15, "Default BsTool timeout in seconds")
+	fs.StringVar(&cfg.CommunicationLine, "communication-line", "", "COMMUNICATION_LINE env var for BsTool")
 
 	// Filter out test flags
 	var args []string

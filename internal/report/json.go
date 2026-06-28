@@ -11,15 +11,15 @@ import (
 
 // jsonReport is the structured output for JSON reports.
 type jsonReport struct {
-	Title        string          `json:"title"`
-	Node         jsonNode        `json:"node"`
-	FBCModules   []jsonFBCModule `json:"fbc_modules"`
-	RPCCounters  []jsonRPCCounter `json:"rpc_counters"`
-	IOPoints     []types.IOPoint `json:"io_points"`
-	GeneratedAt  string          `json:"generated_at"`
-	TotalFBC     int             `json:"total_fbc_points"`
-	TotalRPC     int             `json:"total_rpc_points"`
-	TotalIOPoints int            `json:"total_io_points"`
+	Title         string           `json:"title"`
+	Node          jsonNode         `json:"node"`
+	FBCModules    []jsonFBCModule  `json:"fbc_modules"`
+	RPCCounters   []jsonRPCCounter `json:"rpc_counters"`
+	IOPoints      []types.IOPoint  `json:"io_points"`
+	GeneratedAt   string           `json:"generated_at"`
+	TotalFBC      int              `json:"total_fbc_points"`
+	TotalRPC      int              `json:"total_rpc_points"`
+	TotalIOPoints int              `json:"total_io_points"`
 }
 
 type jsonNode struct {
@@ -97,13 +97,13 @@ func generateJSON(node *types.Node, ioPoints []types.IOPoint, reportID string) (
 			Status:  string(node.Status),
 			Port:    node.Port,
 		},
-		FBCModules:     fbcModules,
-		RPCCounters:    rpcCounters,
-		IOPoints:       ioPoints,
-		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
-		TotalFBC:       fbcCount,
-		TotalRPC:       rpcCount,
-		TotalIOPoints:  len(ioPoints),
+		FBCModules:    fbcModules,
+		RPCCounters:   rpcCounters,
+		IOPoints:      ioPoints,
+		GeneratedAt:   time.Now().UTC().Format(time.RFC3339),
+		TotalFBC:      fbcCount,
+		TotalRPC:      rpcCount,
+		TotalIOPoints: len(ioPoints),
 	}
 
 	data, err := json.MarshalIndent(report, "", "  ")

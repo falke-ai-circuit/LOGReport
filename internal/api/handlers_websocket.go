@@ -33,11 +33,11 @@ type telnetWSMessage struct {
 
 // telnetWSResponse is the JSON message sent from server to client.
 type telnetWSResponse struct {
-	Type       string `json:"type"`                  // "output", "status", "error", "prompt"
-	Data       string `json:"data,omitempty"`        // for "output", "prompt"
-	Connected  bool   `json:"connected,omitempty"`   // for "status"
-	SessionID  string `json:"session_id,omitempty"`  // for "status"
-	Message    string `json:"message,omitempty"`     // for "error"
+	Type      string `json:"type"`                 // "output", "status", "error", "prompt"
+	Data      string `json:"data,omitempty"`       // for "output", "prompt"
+	Connected bool   `json:"connected,omitempty"`  // for "status"
+	SessionID string `json:"session_id,omitempty"` // for "status"
+	Message   string `json:"message,omitempty"`    // for "error"
 }
 
 // telnetWSHandler handles WebSocket connections for interactive telnet sessions.
@@ -218,9 +218,9 @@ func (s *Server) writeTelnetWS(conn *websocket.Conn, resp telnetWSResponse) {
 
 // bstoolWSMessage is the JSON message format for BsTool WebSocket.
 type bstoolWSMessage struct {
-	Action     string `json:"action"`                       // "execute"
-	ServerName string `json:"server_name,omitempty"`        // for "execute"
-	Command    string `json:"command,omitempty"`            // for "execute" (future)
+	Action     string `json:"action"`                // "execute"
+	ServerName string `json:"server_name,omitempty"` // for "execute"
+	Command    string `json:"command,omitempty"`     // for "execute" (future)
 }
 
 // bstoolWSResponse is the JSON message sent from server to client.

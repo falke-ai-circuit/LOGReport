@@ -57,19 +57,6 @@ func (e *windowsExecutor) execute(ctx context.Context, exePath string, args []st
 	return stdout.Bytes(), stderr.Bytes(), exitCode, nil
 }
 
-// executionStderr wraps stderr output from a failed execution.
-type executionStderr struct {
-	exitCode int
-	stderr   string
-}
-
-func (e *executionStderr) Error() string {
-	if e.stderr != "" {
-		return e.stderr
-	}
-	return "execution failed"
-}
-
 // platformExecutor returns the windowsExecutor on Windows.
 func platformExecutor() executor {
 	return &windowsExecutor{}
