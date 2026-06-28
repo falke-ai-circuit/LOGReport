@@ -214,6 +214,10 @@ func (s *Server) handleTelnetCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clear the output buffer before sending so the caller gets clean
+	// per-command output when they poll GET /telnet/{sessionID}/output
+	_ = s.telnetSM.ClearOutput(sessionID)
+
 	if err := s.telnetSM.SendCommand(sessionID, req.Command); err != nil {
 		writeError(w, http.StatusBadGateway, "command_failed",
 			fmt.Sprintf("failed to send command: %v", err))

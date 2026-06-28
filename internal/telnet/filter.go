@@ -23,11 +23,17 @@ var backspacePattern = regexp.MustCompile("\x08")
 // processBackspaces handles backspace sequences: each \x08 removes the
 // preceding character. This strips the DIA's INSERT-mode command echo
 // (it echoes "show all" then backspaces to erase it before processing).
+//
+// IMPORTANT: Backspaces only affect the CURRENT line. Once a \r or \n
+// is encountered, backspaces on the next line cannot remove characters
+// from the previous line. This prevents echo backspaces from eating
+// into the DIA's response text that follows on a new line.
 func processBackspaces(s string) string {
 	var result []rune
 	for _, ch := range s {
 		if ch == '\x08' {
-			if len(result) > 0 {
+			// Remove last char on current line (don't cross newlines)
+			if len(result) > 0 && result[len(result)-1] != '\n' && result[len(result)-1] != '\r' {
 				result = result[:len(result)-1]
 			}
 		} else {

@@ -101,8 +101,12 @@ func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time
 // verifySystemMode initializes the DNA debugger into system mode.
 // This sequence mirrors the Python telnet_service.py verify_system_mode():
 //  1. Send "yes\r\n" — handles the "someone else is connected, disconnect?" prompt
-//  2. Send Ctrl+Z (\x1a) — clears the terminal of any leftover content
-//  3. Send "systemmode\r\n" — switches from application mode to system mode
+//  2. Send "systemmode\r\n" — switches from application mode to system mode
+//
+// Note: We do NOT send Ctrl+Z (\x1a) here — in DIA system mode, Ctrl+Z
+// triggers the "?" help menu, which pollutes the output buffer with
+// 1000+ bytes of help text. The original Python code sent Ctrl+Z to
+// clear the terminal, but that behavior is specific to application mode.
 //
 // On real DNA nodes, FBC/RPC print commands only work in system mode.
 // On mock/test servers, these writes are harmless (server just echoes or ignores).
@@ -118,10 +122,10 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 	// Step 1: Send "yes" to handle potential conflict prompt
 	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	conn.Write([]byte("yes\r\n"))
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// Drain any response (with IAC stripping)
-	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	drainBuf := make([]byte, 4096)
 	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
 		cleaned := sess.Client.stripIAC(drainBuf[:n])
@@ -135,32 +139,14 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 		}
 	}
 
-	// Step 2: Send Ctrl+Z to clear terminal
-	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
-	conn.Write([]byte{0x1a}) // Ctrl+Z
-	time.Sleep(200 * time.Millisecond)
-
-	// Drain
-	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
-	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
-		cleaned := sess.Client.stripIAC(drainBuf[:n])
-		sess.outputBuffer.WriteString(string(cleaned))
-		filtered := FilterOutputNoBackspace(processBackspaces(string(cleaned)))
-		if filtered != "" {
-			select {
-			case sess.Output <- filtered:
-			default:
-			}
-		}
-	}
-
-	// Step 3: Send "systemmode" to switch to system mode
+	// Step 2: Send "systemmode" to switch to system mode
+	// (skip Ctrl+Z — it triggers help menu in system mode)
 	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	conn.Write([]byte("systemmode\r\n"))
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// Drain and push any response to output
-	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
 		cleaned := sess.Client.stripIAC(drainBuf[:n])
 		sess.outputBuffer.WriteString(string(cleaned))
@@ -236,11 +222,15 @@ func (s *Session) readLoop() {
 }
 
 // SendCommand sends a command through an existing session.
-// Before sending, it clears the input buffer by sending Ctrl+X (\\x18)
-// then Ctrl+Z (\\x1A) with a short delay, matching the Python
-// telnet_client.py:82-89 behavior.
-// Note: The readLoop handles all reading from the connection. We do NOT
-// drain here to avoid racing with the readLoop goroutine.
+// The readLoop handles all reading from the connection.
+// We do NOT send Ctrl+X/Ctrl+Z before commands — in DIA system mode,
+// Ctrl+Z triggers the "?" help menu, which pollutes the output buffer.
+//
+// To clear the DIA's INSERT-mode line editor (which may retain text from
+// a previous command or session), we send a bare \r\n first. This submits
+// whatever is on the current line (producing an error/no-op) and gives us
+// a fresh prompt. The caller should call ClearOutput before sending to get
+// clean per-command output.
 func (sm *SessionManager) SendCommand(sessionID, cmd string) error {
 	sm.mu.RLock()
 	sess, ok := sm.sessions[sessionID]
@@ -258,15 +248,15 @@ func (sm *SessionManager) SendCommand(sessionID, cmd string) error {
 
 	conn := sess.Client.conn
 
-	// Buffer clearing: send Ctrl+X then Ctrl+Z with 100ms delay
-	// (matches Python telnet_client.py:82-89)
-	conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	conn.Write([]byte{0x18}) // Ctrl+X
-	time.Sleep(100 * time.Millisecond)
-	conn.Write([]byte{0x1A}) // Ctrl+Z
-	time.Sleep(100 * time.Millisecond)
+	// Step 1: Send a bare Enter to flush the DIA's line editor.
+	// In INSERT/REPLACE mode, the DIA line may contain leftover text
+	// from a previous command. Pressing Enter submits it (harmless error)
+	// and gives us a fresh prompt with an empty line.
+	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	conn.Write([]byte("\r\n"))
+	time.Sleep(300 * time.Millisecond)
 
-	// Send the actual command (readLoop will capture the response)
+	// Step 2: Send the actual command
 	return sess.Client.SendCommand(cmd)
 }
 
