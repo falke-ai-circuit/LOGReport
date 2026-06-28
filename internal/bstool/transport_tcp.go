@@ -293,8 +293,18 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	}
 
 	// Phase 2: Retrieve log data in chunks
+	// CRITICAL: GET_LOG_DATA must use seq=0xFFFF and src=0xFFFFFFFB (same as OPEN_ERRLOG).
+	// With seq=0x0001 and src=0x00000000, the BU returns param=0xFFFFFFFF (error/empty).
+	// With seq=0xFFFF and src=0xFFFFFFFB, the BU returns actual log data.
+	//
+	// The first GET_LOG_DATA response's data contains:
+	//   bytes 0-3: offset (LE uint32, usually 0)
+	//   bytes 4-7: total_size (LE uint32) — total log data size to retrieve
+	// Subsequent responses contain the actual log text in 448-byte chunks.
 	var logData []byte
 	offset := uint32(0)
+	totalSize := uint32(0)
+	firstRead := true
 
 	for {
 		chunkSize := uint32(DefaultChunkSize) // 448 bytes
@@ -306,9 +316,10 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		getBlock := &Block{
 			Header: BlockHeader{
 				Command:  CmdGetLogData,
-				Sequence: 0x0001,    // seq=1 (matches validated C# test client)
-				Param:    offset,    // field_3 = offset (validated: Param holds offset)
-				Size:     chunkSize, // field_4 = chunk_size (validated: Size holds chunk)
+				Sequence: 0xFFFF,     // MUST be 0xFFFF (same as OPEN_ERRLOG)
+				Source:   0xFFFFFFFB, // MUST be 0xFFFFFFFB (same as OPEN_ERRLOG)
+				Param:    offset,     // offset in log data
+				Size:     chunkSize,  // bytes to read
 				DataLen:  uint32(len(req)),
 			},
 			Data: req,
@@ -348,10 +359,26 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 			break
 		}
 
+		// First read: extract total_size from data bytes 4-7 (LE uint32)
+		if firstRead {
+			firstRead = false
+			if len(respBlock.Data) >= 8 {
+				totalSize = binary.LittleEndian.Uint32(respBlock.Data[4:8])
+				if debug {
+					log.Printf("[BSTOOL_DEBUG] first read: totalSize=%d (from data[4:8])", totalSize)
+				}
+			}
+			// The first response's data is metadata, not log text — skip it
+			if totalSize == 0 {
+				break
+			}
+			continue // skip adding metadata to logData
+		}
+
 		logData = append(logData, respBlock.Data...)
 		offset += uint32(len(respBlock.Data))
 
-		if totalLogSize > 0 && offset >= totalLogSize {
+		if totalSize > 0 && offset >= totalSize {
 			break
 		}
 		if len(respBlock.Data) < int(chunkSize) {
