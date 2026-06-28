@@ -20,27 +20,17 @@ var controlCharPattern = regexp.MustCompile(`[\x00-\x08\x0B-\x1F\x7F]`)
 // We process these by removing the previous character.
 var backspacePattern = regexp.MustCompile("\x08")
 
-// processBackspaces handles backspace sequences: each \x08 removes the
-// preceding character. This strips the DIA's INSERT-mode command echo
-// (it echoes "show all" then backspaces to erase it before processing).
+// stripBackspaces removes all backspace (0x08) characters from the string.
+// This matches the Python telnet_client.py approach which strips ALL control
+// chars in the range \x00-\x09 (which includes 0x08) via:
+//   re.sub(r'[\x00-\x09\x0B-\x1F\x7F]', '', filtered)
 //
-// IMPORTANT: Backspaces only affect the CURRENT line. Once a \r or \n
-// is encountered, backspaces on the next line cannot remove characters
-// from the previous line. This prevents echo backspaces from eating
-// into the DIA's response text that follows on a new line.
-func processBackspaces(s string) string {
-	var result []rune
-	for _, ch := range s {
-		if ch == '\x08' {
-			// Remove last char on current line (don't cross newlines)
-			if len(result) > 0 && result[len(result)-1] != '\n' && result[len(result)-1] != '\r' {
-				result = result[:len(result)-1]
-			}
-		} else {
-			result = append(result, ch)
-		}
-	}
-	return string(result)
+// We strip backspaces rather than processing them as erase operations because
+// the DIA's INSERT-mode echo produces interleaved char+backspace sequences that
+// would erase actual response content if processed as erase operations.
+// The Python code simply removes them, and we match that behavior.
+func stripBackspaces(s string) string {
+	return strings.ReplaceAll(s, "\x08", "")
 }
 
 // texitoggleurePattern matches the "texitoggleure" artifact.
@@ -55,31 +45,12 @@ var multiSpacePattern = regexp.MustCompile(`[ \t]+`)
 // Mirrors Python telnet_client.py:199: re.sub(r'\n\s+', '\n', filtered)
 var leadingWhitespaceAfterNewline = regexp.MustCompile(`\n[ \t]+`)
 
-// FilterOutputNoBackspace is the same as FilterOutput but skips the
-// backspace processing step (since backspaces are already processed
-// on the accumulated buffer before calling this).
+// FilterOutputNoBackspace is the same as FilterOutput. The name is kept for
+// backward compatibility — callers that previously did processBackspaces then
+// FilterOutputNoBackspace now just call FilterOutput (which strips backspaces
+// as control chars, matching the Python reference implementation).
 func FilterOutputNoBackspace(raw string) string {
-	if raw == "" {
-		return ""
-	}
-
-	// Step 1: Remove ANSI escape codes
-	filtered := ansiPattern.ReplaceAllString(raw, "")
-
-	// Step 2: Remove control characters but preserve newlines (\x0A)
-	// and carriage returns (\x0D)
-	filtered = controlCharPattern.ReplaceAllString(filtered, "")
-
-	// Step 3: Remove the "texitoggleure" artifact
-	filtered = texitoggleurePattern.ReplaceAllString(filtered, "")
-
-	// Step 4: Normalize whitespace — collapse multiple spaces/tabs to single space
-	filtered = multiSpacePattern.ReplaceAllString(filtered, " ")
-
-	// Step 5: Remove leading whitespace after newlines
-	filtered = leadingWhitespaceAfterNewline.ReplaceAllString(filtered, "\n")
-
-	return strings.TrimSpace(filtered)
+	return FilterOutput(raw)
 }
 
 // FilterOutput cleans raw telnet response text by removing ANSI escape codes,
@@ -93,10 +64,9 @@ func FilterOutput(raw string) string {
 	// Step 1: Remove ANSI escape codes
 	filtered := ansiPattern.ReplaceAllString(raw, "")
 
-	// Step 2: Process backspaces (DIA INSERT mode echo removal)
-	// Each \x08 removes the preceding character — this strips the
-	// echoed command text that DIA sends before processing.
-	filtered = processBackspaces(filtered)
+	// Step 2: Strip backspaces (0x08) — not process as erase, just remove.
+	// This matches Python which strips all \x00-\x09 control chars including 0x08.
+	filtered = stripBackspaces(filtered)
 
 	// Step 3: Remove control characters but preserve newlines (\x0A)
 	// and carriage returns (\x0D)

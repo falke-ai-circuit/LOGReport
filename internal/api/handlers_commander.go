@@ -215,7 +215,10 @@ func (s *Server) handleTelnetCommand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear the output buffer before sending so the caller gets clean
-	// per-command output when they poll GET /telnet/{sessionID}/output
+	// per-command output when they poll GET /telnet/{sessionID}/output.
+	// Note: SendCommand is now synchronous — it writes the result to the
+	// output buffer before returning. ClearOutput just ensures any stale
+	// data from prior commands is removed before the new command runs.
 	_ = s.telnetSM.ClearOutput(sessionID)
 
 	if err := s.telnetSM.SendCommand(sessionID, req.Command); err != nil {
@@ -224,10 +227,15 @@ func (s *Server) handleTelnetCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SendCommand is synchronous — the output is already in the buffer.
+	// Read it and include in the response for convenience.
+	output, _ := s.telnetSM.GetOutput(sessionID)
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"session_id": sessionID,
 		"command":    req.Command,
 		"sent":       true,
+		"output":     output,
 	})
 }
 

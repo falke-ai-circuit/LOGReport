@@ -36,11 +36,14 @@ const (
 )
 
 // promptPatterns mirrors the Python telnet_client.py:12-16 prompt regexes.
-// These detect the Valmet DNA command prompt (e.g. "162a% ").
+// These detect the Valmet DNA command prompt (e.g. "162a% " or "19s% ").
+// The DIA system mode prompt has leading spaces (e.g. "    19s% ").
+// The prompt format is: [spaces] + digits + letter + % + mode_char + space
+// where mode_char is 's' for system mode, 'a' for application mode.
 var promptPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`\n\d+[a-z]%\s*$`),   // prompt after newline
-	regexp.MustCompile(`^\d+[a-z]%\s*$`),    // prompt at beginning
-	regexp.MustCompile(`\r\n\d+[a-z]%\s*$`), // prompt after CR+LF
+	regexp.MustCompile(`\n\s*\d+[a-z]%[sa]?\s*$`),   // prompt after newline (with optional leading spaces and mode char)
+	regexp.MustCompile(`^\s*\d+[a-z]%[sa]?\s*$`),    // prompt at beginning
+	regexp.MustCompile(`\r\n\s*\d+[a-z]%[sa]?\s*$`),  // prompt after CR+LF
 }
 
 // Client is a native Go telnet client for DNA node communication.
@@ -211,41 +214,45 @@ func (c *Client) ReadUntilPrompt() (string, error) {
 // ReadUntilPromptContext reads until prompt with context-based timeout.
 // IAC commands are automatically processed and stripped from the output.
 func (c *Client) ReadUntilPromptContext(ctx context.Context) (string, error) {
+	return c.ReadUntilPromptContextWithTimeout(c.timeout)
+}
+
+// ReadUntilPromptContextWithTimeout reads until prompt with a specific timeout.
+// IAC commands are automatically processed and stripped from the output.
+func (c *Client) ReadUntilPromptContextWithTimeout(timeout time.Duration) (string, error) {
 	if c.conn == nil {
 		return "", fmt.Errorf("telnet: not connected")
 	}
 
-	// Apply timeout via context
-	if c.timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, c.timeout)
+	var cancel context.CancelFunc
+	ctx := context.Background()
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 
 	buf := make([]byte, 4096)
 	var response []byte
+	lastDataTime := time.Now()
 
 	for {
-		// Check context before reading
 		select {
 		case <-ctx.Done():
 			return string(response), ctx.Err()
 		default:
 		}
 
-		// Set read deadline for this chunk
-		if c.timeout > 0 {
+		if timeout > 0 {
 			c.conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 		}
 
 		n, err := c.conn.Read(buf)
 		if n > 0 {
-			// Strip IAC commands from the data
 			cleaned := c.stripIAC(buf[:n])
 			response = append(response, cleaned...)
+			lastDataTime = time.Now()
 			decoded := string(response)
 
-			// Check for prompt patterns
 			for _, pat := range promptPatterns {
 				if pat.MatchString(decoded) {
 					c.conn.SetReadDeadline(time.Time{})
@@ -259,13 +266,14 @@ func (c *Client) ReadUntilPromptContext(ctx context.Context) (string, error) {
 				c.conn.SetReadDeadline(time.Time{})
 				return string(response), nil
 			}
-			// Timeout on individual read is expected — continue loop
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				// Check context again
 				select {
 				case <-ctx.Done():
 					return string(response), ctx.Err()
 				default:
+					if time.Since(lastDataTime) > timeout/2 {
+						return string(response), nil
+					}
 					continue
 				}
 			}
