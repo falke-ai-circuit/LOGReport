@@ -161,6 +161,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Telnet sessions
 	mux.HandleFunc("POST /api/v1/telnet/connect", s.handleTelnetConnect)
+	mux.HandleFunc("POST /api/v1/telnet/execute", s.handleExecuteSingleCommand)
 	mux.HandleFunc("POST /api/v1/telnet/{sessionID}/command", s.handleTelnetCommand)
 	mux.HandleFunc("DELETE /api/v1/telnet/{sessionID}", s.handleTelnetDisconnect)
 	mux.HandleFunc("GET /api/v1/telnet/sessions", s.handleListTelnetSessions)

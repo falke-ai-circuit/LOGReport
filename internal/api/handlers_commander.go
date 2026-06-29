@@ -117,6 +117,7 @@ func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
 
 // handleGetNodesConfigTree returns the hierarchical tree structure.
 // GET /api/v1/nodesconfig/tree
+// If ?log_root= is provided, includes actual log files in the tree.
 func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request) {
 	path := s.nodesConfigPath()
 	configs, err := nodesconfig.LoadFromFile(path)
@@ -140,11 +141,23 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tree := nodesconfig.BuildTree(configs)
+	// Check for log_root query param or use server's logRoot
+	logRoot := r.URL.Query().Get("log_root")
+	if logRoot == "" {
+		logRoot = s.logRoot()
+	}
+
+	var tree *types.TreeNode
+	if logRoot != "" {
+		tree = nodesconfig.BuildFileTree(configs, logRoot)
+	} else {
+		tree = nodesconfig.BuildTree(configs)
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"tree":  tree,
-		"path":  path,
-		"count": len(configs),
+		"tree":     tree,
+		"path":     path,
+		"count":    len(configs),
+		"log_root": logRoot,
 	})
 }
 
@@ -293,6 +306,79 @@ func (s *Server) handleTelnetOutput(w http.ResponseWriter, r *http.Request) {
 		"session_id": sessionID,
 		"output":     output,
 		"length":     len(output),
+	})
+}
+
+// handleExecuteSingleCommand executes a single command via telnet and returns
+// the output. This is used by the context menu for "Print FieldBus Structure",
+// "Print Rupi counters", etc. — commands that should execute immediately and
+// show output in the terminal, without adding to the queue.
+// POST /api/v1/telnet/execute
+// Body: {"command": "fis AB010000", "host": "127.0.0.1", "port": 1234}
+func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Command string `json:"command"`
+		Host    string `json:"host"`
+		Port    int    `json:"port"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.Command == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "command is required")
+		return
+	}
+	if req.Host == "" {
+		req.Host = "127.0.0.1"
+	}
+	if req.Port == 0 {
+		req.Port = 1234
+	}
+
+	// Find an existing session or create a new one
+	ids := s.telnetSM.ListSessions()
+	var sessionID string
+
+	if len(ids) > 0 {
+		sessionID = ids[0]
+		sess, ok := s.telnetSM.GetSession(sessionID)
+		if ok && sess != nil && !sess.Connected {
+			s.telnetSM.Disconnect(sessionID)
+			sessionID = ""
+		}
+	}
+
+	if sessionID == "" {
+		sess, err := s.telnetSM.Connect("", req.Host, req.Port, 10*time.Second)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, "connection_failed",
+				fmt.Sprintf("telnet connect %s:%d failed: %v", req.Host, req.Port, err))
+			return
+		}
+		sessionID = sess.ID
+	}
+
+	// Clear and send command
+	_ = s.telnetSM.ClearOutput(sessionID)
+	if err := s.telnetSM.SendCommand(sessionID, req.Command); err != nil {
+		sess, ok := s.telnetSM.GetSession(sessionID)
+		if ok && sess != nil {
+			sess.Connected = false
+		}
+		writeError(w, http.StatusBadGateway, "command_failed",
+			fmt.Sprintf("failed to send command: %v", err))
+		return
+	}
+
+	// Wait for output
+	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id": sessionID,
+		"command":    req.Command,
+		"output":     output,
+		"sent":       true,
 	})
 }
 

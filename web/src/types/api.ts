@@ -157,12 +157,16 @@ export interface NodeConfig {
 
 export interface TreeNodeData {
   name: string;
-  type: string; // "root", "node", "group", "token"
+  type: string; // "root", "node", "group", "token", "file"
   ip?: string;
   token_id?: string;
   port?: number;
   protocol?: string;
-  status?: string; // "idle", "connected", "error"
+  status?: string; // "idle", "connected", "error", "warning"
+  file_path?: string; // absolute path for file-type nodes
+  file_name?: string; // base filename for file-type nodes
+  section_type?: string; // "FBC", "RPC", "LOG", "LIS"
+  line_count?: number; // line count for file-type nodes
   children?: TreeNodeData[];
 }
 

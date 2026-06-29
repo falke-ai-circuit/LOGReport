@@ -40,6 +40,8 @@ export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProp
   const [configs, setConfigs] = useState<TreeNodeData[]>([]);
   const [activeNodeName, setActiveNodeName] = useState<string>('');
   const [fileData, setFileData] = useState('');
+  // fileData2 is set but not yet read (future feature: dual-file compare)
+  // @ts-expect-error - suppress unused var
   const [fileData2, setFileData2] = useState('');
   const [selectedFile1, setSelectedFile1] = useState<string>('');
   const [selectedFile2, setSelectedFile2] = useState<string>('');

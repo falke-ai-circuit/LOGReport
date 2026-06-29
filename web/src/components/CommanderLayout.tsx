@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2 } from 'lucide-react';
+import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
@@ -8,7 +8,7 @@ import CommandQueueBar from './CommandQueueBar';
 import NodeConfigDialog from './NodeConfigDialog';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 
-type Tab = 'telnet' | 'bstool' | 'scan';
+type Tab = 'telnet' | 'bstool' | 'scan' | 'logviewer';
 
 // Strip suffix from node name: "AP01m" → "AP01", "AP01r" → "AP01"
 function stripNodeSuffix(name: string): string {
@@ -32,6 +32,15 @@ export default function CommanderLayout() {
   const [logRootLoading, setLogRootLoading] = useState(false);
   const [logRootError, setLogRootError] = useState<string | null>(null);
 
+  // File viewer state
+  const [fileContent, setFileContent] = useState<string>('');
+  const [fileViewName, setFileViewName] = useState<string>('');
+  const [fileViewPath, setFileViewPath] = useState<string>('');
+  const [fileLoading, setFileLoading] = useState(false);
+
+  // Terminal output log (accumulated from single-command execution via context menu)
+  const [terminalLog, setTerminalLog] = useState<string[]>([]);
+
   // ─── Node tree callbacks ─────────────────────────────────────
 
   const handleSelectNode = useCallback((node: TreeNodeData) => {
@@ -42,30 +51,48 @@ export default function CommanderLayout() {
   const handleSelectToken = useCallback((token: TreeNodeData) => {
     setSelectedToken(token);
     setCurrentToken(token.token_id || '');
-    // Determine token type from parent group — we infer from the token's context
-    // The tree structure is node → group (FBC/RPC/LOG) → token
-    // We don't have the parent here, so default to FBC
-    setCurrentTokenType('FBC');
+    setCurrentTokenType(token.section_type || 'FBC');
   }, []);
 
-  // ─── Context menu actions ───────────────────────────────────
+  // ─── Double-click file → open content in log viewer ─────────
+
+  const handleDoubleClickFile = useCallback(async (node: TreeNodeData) => {
+    if (!node.file_path) return;
+    setFileLoading(true);
+    setFileViewName(node.file_name || node.name);
+    setFileViewPath(node.file_path);
+    setActiveTab('logviewer');
+    try {
+      const res = await fetch(`/api/v1/logs/content?path=${encodeURIComponent(node.file_path)}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Failed' }));
+        setFileContent(`Error: ${data.message || res.statusText}`);
+        return;
+      }
+      const data = await res.json();
+      setFileContent(data.content || '(empty file)');
+    } catch (err) {
+      setFileContent(`Error loading file: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setFileLoading(false);
+    }
+  }, []);
+
+  // ─── Context menu actions (context-aware) ────────────────────
 
   const handleContextAction = useCallback(
-    (action: string, token: TreeNodeData) => {
-      const tokenId = token.token_id || '';
-      const nodeName = token.name || currentNodeName;
+    async (action: string, node: TreeNodeData) => {
+      const nodeName = node.name || currentNodeName;
+      const tokenId = node.token_id || '';
 
       switch (action) {
         case 'print_all': {
-          // Execute all print commands for this node (FBC + RPC + LOG)
-          // Uses the batch-node API endpoint
-          setActiveTab('commander');
+          setActiveTab('telnet');
           fetch('/api/v1/commandqueue/batch-node', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ node_name: nodeName }),
-          }).then(res => res.json()).then(data => {
-            // Start queue execution
+          }).then(() => {
             fetch('/api/v1/commandqueue/start', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -75,12 +102,12 @@ export default function CommanderLayout() {
           break;
         }
         case 'fbc_print_all': {
-          setActiveTab('commander');
+          setActiveTab('telnet');
           fetch('/api/v1/commandqueue/batch-node', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ node_name: nodeName, token_type: 'FBC' }),
-          }).then(res => res.json()).then(data => {
+          }).then(() => {
             fetch('/api/v1/commandqueue/start', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -90,12 +117,12 @@ export default function CommanderLayout() {
           break;
         }
         case 'rpc_print_all': {
-          setActiveTab('commander');
+          setActiveTab('telnet');
           fetch('/api/v1/commandqueue/batch-node', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }),
-          }).then(res => res.json()).then(data => {
+          }).then(() => {
             fetch('/api/v1/commandqueue/start', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -104,23 +131,80 @@ export default function CommanderLayout() {
           }).catch(err => console.error('rpc_batch error:', err));
           break;
         }
-        case 'fbc_print':
+        case 'fbc_print': {
+          // Execute single FBC command via telnet, show output in terminal
           setActiveTab('telnet');
-          setPendingCommand(`fis ${tokenId}`);
+          setTerminalLog(prev => [...prev, `> fis ${tokenId}0000`]);
+          try {
+            const res = await fetch('/api/v1/telnet/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ command: `fis ${tokenId}0000` }),
+            });
+            const data = await res.json();
+            if (data.output) {
+              setTerminalLog(prev => [...prev, data.output]);
+            }
+          } catch (err) {
+            setTerminalLog(prev => [...prev, `Error: ${err instanceof Error ? err.message : String(err)}`]);
+          }
           break;
-        case 'rpc_print':
+        }
+        case 'rpc_print': {
           setActiveTab('telnet');
-          setPendingCommand(`rc ${tokenId}`);
+          setTerminalLog(prev => [...prev, `> rc ${tokenId}0000`]);
+          try {
+            const res = await fetch('/api/v1/telnet/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ command: `rc ${tokenId}0000` }),
+            });
+            const data = await res.json();
+            if (data.output) {
+              setTerminalLog(prev => [...prev, data.output]);
+            }
+          } catch (err) {
+            setTerminalLog(prev => [...prev, `Error: ${err instanceof Error ? err.message : String(err)}`]);
+          }
           break;
-        case 'bstool_errlog':
+        }
+        case 'rpc_clear': {
+          setActiveTab('telnet');
+          setTerminalLog(prev => [...prev, `> rcl ${tokenId}0000`]);
+          try {
+            const res = await fetch('/api/v1/telnet/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ command: `rcl ${tokenId}0000` }),
+            });
+            const data = await res.json();
+            if (data.output) {
+              setTerminalLog(prev => [...prev, data.output]);
+            }
+          } catch (err) {
+            setTerminalLog(prev => [...prev, `Error: ${err instanceof Error ? err.message : String(err)}`]);
+          }
+          break;
+        }
+        case 'bstool_errlog': {
           setActiveTab('bstool');
           setPendingServerName(stripNodeSuffix(nodeName));
           break;
-        case 'copy_to_log':
+        }
+        case 'open_file': {
+          handleDoubleClickFile(node);
+          break;
+        }
+        case 'fbc_scan':
+        case 'rpc_scan': {
+          setActiveTab('scan');
+          break;
+        }
+        case 'clear_logs':
           break;
       }
     },
-    [currentNodeName],
+    [currentNodeName, handleDoubleClickFile],
   );
 
   // ─── Set Log Root ──────────────────────────────────────────────
@@ -142,13 +226,6 @@ export default function CommanderLayout() {
         const data = await res.json().catch(() => ({ message: 'Failed' }));
         throw new Error(data.message || `HTTP ${res.status}`);
       }
-      // Also verify the path lists files
-      const listRes = await fetch(`/api/v1/logs/files?path=${encodeURIComponent(logRootInput)}&type=fbc`);
-      let fileCount = 0;
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        fileCount = listData.count || 0;
-      }
       localStorage.setItem('logRoot', logRootInput);
       setLogRoot(logRootInput);
       setShowLogRootInput(false);
@@ -166,6 +243,7 @@ export default function CommanderLayout() {
     { id: 'telnet', label: 'Telnet', icon: <Terminal size={14} /> },
     { id: 'bstool', label: 'BsTool', icon: <Server size={14} /> },
     { id: 'scan', label: 'Scan', icon: <ScanLine size={14} /> },
+    { id: 'logviewer', label: 'Log Viewer', icon: <FileText size={14} /> },
   ];
 
   return (
@@ -286,6 +364,7 @@ export default function CommanderLayout() {
             onSelectNode={handleSelectNode}
             onSelectToken={handleSelectToken}
             onContextAction={handleContextAction}
+            onDoubleClickFile={handleDoubleClickFile}
             onQueueStatusChange={setQueueStatus}
           />
         </div>
@@ -331,13 +410,36 @@ export default function CommanderLayout() {
           {/* Tab content */}
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {activeTab === 'telnet' && (
-              <TelnetTerminal
-                currentToken={currentToken}
-                currentTokenType={currentTokenType}
-                currentNodeName={currentNodeName}
-                pendingCommand={pendingCommand}
-                onCommandSent={() => setPendingCommand(null)}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <TelnetTerminal
+                  currentToken={currentToken}
+                  currentTokenType={currentTokenType}
+                  currentNodeName={currentNodeName}
+                  pendingCommand={pendingCommand}
+                  onCommandSent={() => setPendingCommand(null)}
+                />
+                {/* Context menu command output log */}
+                {terminalLog.length > 0 && (
+                  <div
+                    style={{
+                      maxHeight: '150px',
+                      overflow: 'auto',
+                      borderTop: '1px solid var(--border)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {terminalLog.map((line, i) => (
+                      <div key={i}>{line}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             {activeTab === 'bstool' && (
               <BsToolPanel
@@ -348,6 +450,56 @@ export default function CommanderLayout() {
             )}
             {activeTab === 'scan' && (
               <ScanTab selectedNode={selectedNode} logRoot={logRoot} />
+            )}
+            {activeTab === 'logviewer' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
+                {/* File viewer header */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  <FileText size={14} color="var(--accent)" />
+                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fileViewName || 'No file selected'}
+                  </span>
+                  {fileViewPath && (
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }} title={fileViewPath}>
+                      {fileViewPath}
+                    </span>
+                  )}
+                </div>
+                {/* File content */}
+                <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+                  {fileLoading ? (
+                    <div style={{ textAlign: 'center', padding: '24px' }}>
+                      <Loader2 size={20} color="var(--accent)" style={{ animation: 'spin 1s linear infinite' }} />
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '8px' }}>Loading file...</p>
+                    </div>
+                  ) : fileContent ? (
+                    <pre
+                      style={{
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        margin: 0,
+                      }}
+                    >
+                      {fileContent}
+                    </pre>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                      Double-click a file in the node tree to view its content.
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
