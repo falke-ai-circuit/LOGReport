@@ -36,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 // File color by line count: red (empty), yellow (<10), green (>=10)
 function fileColor(node: TreeNodeData): string {
+  if (node.line_count === undefined) return 'var(--text-muted)';
   if (node.line_count === 0) return 'var(--error)';
   if (node.line_count && node.line_count < 10) return '#f59e0b';
   return 'var(--success)';
@@ -396,7 +397,8 @@ export default function NodeTree({
 }
 
 // ─── TreeBranch (recursive) ───────────────────────────────────────
-interface TreeBranchProps {  node: TreeNodeData;
+interface TreeBranchProps {
+  node: TreeNodeData;
   depth: number;
   expandedNodes: Set<string>;
   onToggle: (id: string) => void;
@@ -404,6 +406,7 @@ interface TreeBranchProps {  node: TreeNodeData;
   onSelectToken: (token: TreeNodeData) => void;
   onContextMenu: (e: React.MouseEvent, node: TreeNodeData, parentNode?: TreeNodeData) => void;
   onDoubleClickFile: (node: TreeNodeData) => void;
+  parentNode?: TreeNodeData;
 }
 
 function TreeBranch({
@@ -415,6 +418,7 @@ function TreeBranch({
   onSelectToken,
   onContextMenu,
   onDoubleClickFile,
+  parentNode,
 }: TreeBranchProps) {
   const isExpanded = expandedNodes.has(node.name);
   const hasChildren = node.children && node.children.length > 0;
@@ -442,14 +446,14 @@ function TreeBranch({
   }
 
   // Color for file nodes based on line count
-  const nodeColor = node.type === 'file' ? fileColor(node) : statusColor;
+  const nodeColor = (node.type === 'file' || node.type === 'token') ? fileColor(node) : statusColor;
 
   return (
     <div>
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        onContextMenu={(e) => onContextMenu(e, node)}
+        onContextMenu={(e) => onContextMenu(e, node, parentNode)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -489,8 +493,8 @@ function TreeBranch({
         {node.type === 'token' && (
           <Circle
             size={8}
-            fill={statusColor}
-            color={statusColor}
+            fill={nodeColor}
+            color={nodeColor}
             style={{ flexShrink: 0, marginLeft: '3px' }}
           />
         )}
@@ -507,7 +511,7 @@ function TreeBranch({
           style={{
             fontSize: '12px',
             fontWeight: node.type === 'node' ? 600 : 400,
-            color: node.type === 'node' ? 'var(--text-primary)' : node.type === 'file' ? nodeColor : 'var(--text-secondary)',
+            color: node.type === 'node' ? 'var(--text-primary)' : (node.type === 'file' || node.type === 'token') ? nodeColor : 'var(--text-secondary)',
           }}
         >
           {node.name}
@@ -540,6 +544,7 @@ function TreeBranch({
               onSelectToken={onSelectToken}
               onContextMenu={onContextMenu}
               onDoubleClickFile={onDoubleClickFile}
+              parentNode={node}
             />
           ))}
         </div>

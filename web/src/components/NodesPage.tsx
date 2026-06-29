@@ -243,6 +243,37 @@ export default function NodesPage() {
       case 'open_file':
         handleDoubleClickFile(node);
         break;
+      case 'bstool_errlog': {
+        const cmd = 'errlog ' + nodeName;
+        setTerminalLog(prev => [...prev, '> BsTool errlog ' + nodeName]);
+        try {
+          const res = await fetch('/api/v1/bstool/errlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ server_name: nodeName }) });
+          const data = await res.json();
+          if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'rpc_clear': {
+        const cmd = 'clear from fbc rupi counters ' + tokenId + '0000';
+        setTerminalLog(prev => [...prev, '> ' + cmd]);
+        try {
+          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
+          const data = await res.json();
+          if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'fbc_scan':
+      case 'rpc_scan': {
+        setTerminalLog(prev => [...prev, '> Scan not yet implemented for token ' + tokenId]);
+        break;
+      }
+      case 'clear_logs': {
+        setTerminalLog(prev => [...prev, '> Clear logs not yet implemented for ' + nodeName]);
+        break;
+      }
       default:
         break;
     }
@@ -322,18 +353,6 @@ export default function NodesPage() {
                 <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '12px' }}>No content.</div>
               )}
             </div>
-          </div>
-        </div>
-      )}
-      {fileContent && (
-        <div style={{ position: 'fixed', bottom: '60px', right: '16px', width: '500px', maxHeight: '400px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 999, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => { setFileContent(''); }}>
-            <FileText size={14} color="var(--accent)" />
-            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', flex: 1 }}>{fileViewName}</span>
-            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>\u2715</span>
-          </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
-            {fileLoading ? <div style={{ textAlign: 'center' }}><Loader2 size={20} color="var(--accent)" className="spin" /></div> : <ColorizedLog content={fileContent} />}
           </div>
         </div>
       )}
