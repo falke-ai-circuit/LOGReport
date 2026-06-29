@@ -13,3 +13,4 @@ __pycache__/
 logreport.db-shm
 logreport.db-wal
 logreport-bin
+logreport_v30_linux
