@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
@@ -153,4 +154,28 @@ func (s *Store) DeleteReport(id string) error {
 		return fmt.Errorf("store: delete report %s: %w", id, err)
 	}
 	return nil
+}
+
+// ListReportsByProject returns all reports for a given project ID.
+func (s *Store) ListReportsByProject(projectID int64) []*types.Report {
+	rows, err := s.db.Query(`SELECT id, node_address, format, template, title, author, status, file_path, created_at, completed_at FROM reports WHERE project_id = ? ORDER BY created_at DESC`, projectID)
+	if err != nil {
+		log.Printf("store: ListReportsByProject query error: %v", err)
+		return []*types.Report{}
+	}
+	defer rows.Close()
+	var reports []*types.Report
+	for rows.Next() {
+		r := &types.Report{}
+		err := rows.Scan(&r.ID, &r.NodeAddress, &r.Format, &r.Template, &r.Title, &r.Author, &r.Status, &r.FilePath, &r.CreatedAt, &r.CompletedAt)
+		if err != nil {
+			log.Printf("store: ListReportsByProject scan error: %v", err)
+			continue
+		}
+		reports = append(reports, r)
+	}
+	if reports == nil {
+		reports = []*types.Report{}
+	}
+	return reports
 }

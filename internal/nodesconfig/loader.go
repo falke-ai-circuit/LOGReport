@@ -178,9 +178,9 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 			// LIS dir: {logRoot}/LIS/{stationName}/
 			var scanDir string
 			if gType == "LOG" {
-				scanDir = filepath.Join(logRoot, "LOG")
+				scanDir = filepath.Join(logRoot, stationName, "LOG")
 			} else {
-				scanDir = filepath.Join(logRoot, gType, stationName)
+				scanDir = filepath.Join(logRoot, stationName, gType)
 			}
 
 			entries, err := os.ReadDir(scanDir)

@@ -88,6 +88,8 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 	// Build report record
 	report := &types.Report{
 		ID:          reportID,
+		ReportType:  cfg.ReportType,
+		ProjectID:   cfg.ProjectID,
 		NodeAddress: cfg.NodeAddress,
 		Format:      cfg.Format,
 		Template:    cfg.Template,
@@ -177,6 +179,8 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 
 	report := &types.Report{
 		ID:          reportID,
+		ReportType:  cfg.ReportType,
+		ProjectID:   cfg.ProjectID,
 		NodeAddress: nodeAddr,
 		Format:      cfg.Format,
 		Template:    cfg.Template,

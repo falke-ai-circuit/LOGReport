@@ -342,7 +342,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// FBC files
 		if tokenTypeSet[types.TokenFBC] {
-			nodeDir := filepath.Join(outputDir, "FBC", stationName)
+			nodeDir := filepath.Join(outputDir, stationName, "FBC")
 			if err := os.MkdirAll(nodeDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create FBC dir %s: %w", nodeDir, err)
 			}
@@ -362,7 +362,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// RPC files
 		if tokenTypeSet[types.TokenRPC] {
-			nodeDir := filepath.Join(outputDir, "RPC", stationName)
+			nodeDir := filepath.Join(outputDir, stationName, "RPC")
 			if err := os.MkdirAll(nodeDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create RPC dir %s: %w", nodeDir, err)
 			}
@@ -382,7 +382,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// LOG files for PCS nodes (FBC/RPC tokens) — BsTool errlog output
 		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] {
-			logDir := filepath.Join(outputDir, "LOG")
+			logDir := filepath.Join(outputDir, stationName, "LOG")
 			if err := os.MkdirAll(logDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
 			}
@@ -397,7 +397,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// LOG files
 		if tokenTypeSet[types.TokenLOG] {
-			logDir := filepath.Join(outputDir, "LOG")
+			logDir := filepath.Join(outputDir, stationName, "LOG")
 			if err := os.MkdirAll(logDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
 			}
@@ -412,7 +412,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// LIS files (6 per node: exe1..exe6)
 		if tokenTypeSet[types.TokenLIS] {
-			lisDir := filepath.Join(outputDir, "LIS", stationName)
+			lisDir := filepath.Join(outputDir, stationName, "LIS")
 			if err := os.MkdirAll(lisDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}

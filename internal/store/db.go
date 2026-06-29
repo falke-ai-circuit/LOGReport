@@ -66,6 +66,9 @@ func (s *Store) Migrate() error {
 		if err := s.EnsureProjectsTable(); err != nil {
 			return fmt.Errorf("store: ensure projects table: %w", err)
 		}
+		if err := s.ensureReportColumns(); err != nil {
+			return fmt.Errorf("store: ensure report columns: %w", err)
+		}
 		return nil
 	}
 
@@ -81,6 +84,7 @@ func (s *Store) Migrate() error {
 	if err := s.EnsureProjectsTable(); err != nil {
 		return fmt.Errorf("store: ensure projects table: %w", err)
 	}
+	s.ensureReportColumns()
 
 	// Set final version
 	_, err = s.db.Exec(fmt.Sprintf("PRAGMA user_version = %d", version))
@@ -143,4 +147,33 @@ func (s *Store) migrateV1() error {
 
 	_, err := s.db.Exec(schema)
 	return err
+}
+
+// ensureReportColumns idempotently adds report_type and project_id columns to the reports table.
+func (s *Store) ensureReportColumns() error {
+	cols, err := s.db.Query("PRAGMA table_info(reports)")
+	if err != nil {
+		return err
+	}
+	defer cols.Close()
+	hasReportType := false
+	hasProjectID := false
+	for cols.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt sql.NullString
+		cols.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk)
+		if name == "report_type" { hasReportType = true }
+		if name == "project_id" { hasProjectID = true }
+	}
+	if !hasReportType {
+		_, err = s.db.Exec("ALTER TABLE reports ADD COLUMN report_type TEXT DEFAULT ''")
+		if err != nil { return err }
+	}
+	if !hasProjectID {
+		_, err = s.db.Exec("ALTER TABLE reports ADD COLUMN project_id INTEGER DEFAULT 0")
+		if err != nil { return err }
+	}
+	return nil
 }

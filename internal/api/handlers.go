@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -129,6 +130,8 @@ type apiReport struct {
 	CreatedAt     string   `json:"created_at"`
 	CompletedAt   string   `json:"completed_at,omitempty"`
 	ErrorMessage  string   `json:"error_message,omitempty"`
+	ReportType    string   `json:"report_type,omitempty"`
+	ProjectID    int64    `json:"project_id,omitempty"`
 }
 
 // reportToAPI converts a types.Report to the API response shape.
@@ -758,6 +761,8 @@ type generateReportRequest struct {
 	Format        string         `json:"format"`
 	Template      string         `json:"template"`
 	LogRoot       string         `json:"log_root"`
+	ReportType    string         `json:"report_type,omitempty"`
+	ProjectID     int64          `json:"project_id,omitempty"`
 	Options       *reportOptions `json:"options"`
 }
 
@@ -819,6 +824,8 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 				Format:      format,
 				Template:    template,
 				LogRoot:     req.LogRoot,
+				ReportType:  req.ReportType,
+				ProjectID:   req.ProjectID,
 			}
 			rpt, err := report.GenerateReport(cfg, s.store)
 			if err != nil {
@@ -946,7 +953,16 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 // ─── Handler 10: GET /api/v1/reports ─────────────────────────────
 
 func (s *Server) listReportsHandler(w http.ResponseWriter, r *http.Request) {
-	reports, err := s.store.ListReports()
+// Check for project_id query param
+	projectIDStr := r.URL.Query().Get("project_id")
+	if projectIDStr != "" {
+		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+		if err == nil {
+			reports = s.store.ListReportsByProject(projectID)
+		}
+	} else {
+		reports, err := s.store.ListReports()
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error",
 			fmt.Sprintf("failed to list reports: %v", err))

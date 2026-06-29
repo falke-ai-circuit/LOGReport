@@ -27,6 +27,8 @@ type ReportConfig struct {
 	Title       string       `json:"title"`
 	Author      string       `json:"author"`
 	LogRoot     string       `json:"log_root"` // root directory for log files (optional)
+	ReportType  string       `json:"report_type,omitempty"` // "survey" or "drydock"
+	ProjectID   int64        `json:"project_id,omitempty"` // associated project
 }
 
 // Report represents a generated report record stored in the database.
@@ -41,6 +43,8 @@ type Report struct {
 	FilePath    string       `json:"file_path,omitempty"`
 	CreatedAt   string       `json:"created_at"`
 	CompletedAt string       `json:"completed_at,omitempty"`
+	ReportType  string       `json:"report_type,omitempty"`
+	ProjectID   int64         `json:"project_id,omitempty"`
 }
 
 // Template represents a report template definition.

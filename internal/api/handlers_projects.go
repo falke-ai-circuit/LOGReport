@@ -149,6 +149,7 @@ func (s *Server) deleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.store.DeleteProject(id); err != nil {
+		os.Remove(nodesConfigPathForProject(id))
 		writeError(w, http.StatusInternalServerError, "internal_error",
 			fmt.Sprintf("failed to delete project %d: %v", id, err))
 		return
