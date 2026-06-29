@@ -309,7 +309,7 @@ export default function NodeTree({
     }
 
     // FILE type (actual .fbc/.rpc/.log file in the tree)
-    if (node.type === 'file') {
+    if (node.type === 'file' || node.type === 'token') {
       const sectionType = node.section_type || '';
       const tokenId = node.token_id || '';
 
@@ -348,17 +348,20 @@ export default function NodeTree({
       if (sectionType === 'FBC') {
         return [
           { icon: <Play size={14} />, label: `Print FieldBus Structure (Token ${tokenId})`, action: 'fbc_print' },
+          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
         ];
       }
       if (sectionType === 'RPC') {
         return [
           { icon: <Play size={14} />, label: `Print Rupi counters Token '${tokenId}'`, action: 'rpc_print' },
           { icon: <Play size={14} />, label: `Clear Rupi counters '${tokenId}'`, action: 'rpc_clear' },
+          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
         ];
       }
       if (sectionType === 'LOG') {
         return [
           { icon: <Server size={14} />, label: 'Run BsTool on this file', action: 'bstool_errlog' },
+          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
         ];
       }
     }
@@ -628,7 +631,7 @@ function TreeBranch({
   }
 
   function handleDoubleClick() {
-    if (node.type === 'file') {
+    if (node.type === 'file' || node.type === 'token') {
       onDoubleClickFile(node);
     } else if (node.type === 'node' && hasChildren) {
       onToggle(node.name);

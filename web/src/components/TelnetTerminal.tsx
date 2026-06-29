@@ -39,8 +39,11 @@ export default function TelnetTerminal({
   onCommandSent,
   onOutputChange,
 }: TelnetTerminalProps) {
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState(23);
+  const [host, setHost] = useState(() => localStorage.getItem('telnetHost') || '');
+  const [port, setPort] = useState(() => {
+    const stored = localStorage.getItem('telnetPort');
+    return stored ? parseInt(stored, 10) : 23;
+  });
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
@@ -126,6 +129,8 @@ export default function TelnetTerminal({
     setConnecting(true);
     setError(null);
     appendOutput(`[Connecting to ${host}:${port}...]`);
+    localStorage.setItem('telnetHost', host);
+    localStorage.setItem('telnetPort', String(port));
 
     try {
       // Ensure WebSocket is open

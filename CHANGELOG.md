@@ -2,6 +2,37 @@
 
 All notable changes to LOGReport will be documented in this file.
 
+## [v3.9.0] — 2026-06-29
+
+### Added
+
+- **Horizontal top navigation** — Dashboard, Nodes, Reports, Commander as horizontal tabs across the top, replacing the left sidebar (Layout.tsx)
+- **Nodes as standalone main area** — New `NodesPage.tsx` component with node tree (left panel) + station cards + sys file ingest + "Open File" button + colorized log viewer. Moved from Commander sub-tab to its own main navigation area.
+- **Colorized log file viewer** — Log content rendered with color coding: green (#22c55e) = normal output, red (#ef4444) = errors, yellow (#f59e0b) = prompts/status, teal (#10b981) = success. Available in both NodesPage and CommanderLayout.
+- **Double-click on token nodes** — Token-type nodes in the tree now respond to double-click, constructing the file path from log_root + station + type + filename and opening content in the log viewer.
+- **"Open File Content" in token context menus** — Right-click on FBC/RPC/LOG token nodes now includes "Open File Content" action.
+- **Value persistence across tab changes** — Telnet host/port and BsTool server name/comm line/bstool path are saved to localStorage on connect/execute and restored on component mount. Values survive tab switches.
+
+### Changed
+
+- **CommanderLayout simplified** — Removed Nodes tab, sys scan panel, and NodesTabContent function. Commander now has: Telnet, BsTool, Scan, Log Viewer tabs only. Node tree stays on left for right-click commands.
+- **App.tsx routes** — `/nodes` now renders `NodesPage` instead of old `NodeBrowser`. Old NodeBrowser preserved at `/nodes/browser`.
+- **embed.go** — Reverted to `web/dist/*` path (was temporarily changed to `web/dist-new/*` during build directory issues).
+
+### Fixed
+
+- **handlers.go listReportsHandler** — Fixed broken variable declarations: `reports` was assigned with `=` without prior declaration in scope; `err` was used from wrong scope. Rewrote with proper `var` declarations.
+- **handlers_projects.go** — Added missing `os` import; fixed `nodesConfigPathForProject` call to use `s.` prefix and `strconv.FormatInt` for int64→string conversion.
+- **internal/types/sysfile.go** — Added missing `SlotNum int` and `IsFieldbus bool` fields to `SysFileNode` struct (were in deployed binary but not committed to git).
+
+### Commits
+
+| # | Type | Description |
+|---|------|-------------|
+| 1 | feat | Horizontal top nav, NodesPage, colorized logs, double-click tokens, value persistence |
+| 2 | fix | handlers.go listReportsHandler variable scope, handlers_projects.go missing os import, sysfile.go missing struct fields |
+
+
 ## [v1.1.1] — 2026-06-16
 
 ### Fixed

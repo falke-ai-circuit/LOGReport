@@ -1,7 +1,7 @@
 {
   "project": "LOGReport",
-  "version": "v1.1.1",
-  "last_updated": "2026-06-24T21:45:00Z",
+  "version": "v3.9.0",
+  "last_updated": "2026-06-29T18:30:00Z",
   "hot_cache": [
     {
       "key": "binary_name",
@@ -31,7 +31,7 @@
     {
       "key": "embed_path",
       "value": "web/dist/*",
-      "note": "//go:embed directive in embed.go at repo root; must be in root package to reach web/dist/"
+      "note": "//go:embed web/dist/* web/dist/assets/* in embed.go at repo root. Vite outputs to web/dist/"
     },
     {
       "key": "api_prefix",
@@ -50,7 +50,9 @@
     },
     {
       "key": "dependencies",
-      "value": ["github.com/mattn/go-sqlite3 v1.14.45"],
+      "value": [
+        "github.com/mattn/go-sqlite3 v1.14.45"
+      ],
       "note": "Single external dependency: CGo SQLite driver"
     },
     {
@@ -82,77 +84,249 @@
       "key": "r_live_phase",
       "value": "mandatory",
       "note": "R-LIVE: reviewer must start binary and test both API and GUI surfaces with real HTTP requests"
+    },
+    {
+      "key": "nav_layout",
+      "value": "horizontal-top",
+      "note": "Main navigation is horizontal top bar: Dashboard, Nodes, Reports, Commander. Changed from left sidebar in v3.9.0"
+    },
+    {
+      "key": "nodes_page",
+      "value": "NodesPage.tsx",
+      "note": "Nodes is its own main area with node tree + station cards + sys file ingest + log viewer. Not a Commander sub-tab anymore."
+    },
+    {
+      "key": "commander_tabs",
+      "value": "telnet,bstool,scan,logviewer",
+      "note": "Commander has 4 tabs: Telnet, BsTool, Scan, Log Viewer. Nodes tab removed in v3.9.0"
+    },
+    {
+      "key": "log_colorization",
+      "value": "green=output,red=error,yellow=prompt,teal=success",
+      "note": "ColorizedLog component in NodesPage.tsx and CommanderLayout.tsx"
+    },
+    {
+      "key": "value_persistence",
+      "value": "localStorage",
+      "note": "Telnet host/port and BsTool server/commLine/path saved to localStorage, survive tab switches"
+    },
+    {
+      "key": "build_command_windows",
+      "value": "GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o LOGReport.exe ./cmd/logreport/",
+      "note": "Cross-compile for Windows VM. Must build from ./cmd/logreport/ not repo root (root is package assets, not main)"
+    },
+    {
+      "key": "sysfile_node_fields",
+      "value": "SlotNum int, IsFieldbus bool",
+      "note": "Added to SysFileNode in internal/types/sysfile.go for CPU/fieldbus slot distinction"
     }
   ],
   "architecture": {
     "cmd/logreport": {
       "purpose": "Main entry point",
-      "depends_on": ["internal/api", "internal/server", "internal/store", "embed.go"],
-      "key_files": ["main.go"]
+      "depends_on": [
+        "internal/api",
+        "internal/server",
+        "internal/store",
+        "embed.go"
+      ],
+      "key_files": [
+        "main.go"
+      ]
     },
     "embed.go": {
       "purpose": "Embeds web/dist/ into binary via //go:embed",
-      "depends_on": ["web/dist/"],
-      "key_files": ["embed.go"],
+      "depends_on": [
+        "web/dist/"
+      ],
+      "key_files": [
+        "embed.go"
+      ],
       "note": "Must be in root package (package assets) to reach web/dist/"
     },
     "internal/types": {
       "purpose": "Core type definitions shared across all packages",
       "depends_on": [],
-      "key_files": ["node.go", "iopoint.go", "fbc.go", "rpc.go", "report.go", "sysfile.go"],
-      "types": ["Node", "IOPoint", "FBCModule", "FBCChannel", "RPCModule", "RPCCounter", "Report", "ReportConfig", "ReportFormat", "ReportStatus", "SysFile", "SysFileEntry", "NodeType", "NodeStatus", "ModuleType", "ChannelType"]
+      "key_files": [
+        "node.go",
+        "iopoint.go",
+        "fbc.go",
+        "rpc.go",
+        "report.go",
+        "sysfile.go"
+      ],
+      "types": [
+        "Node",
+        "IOPoint",
+        "FBCModule",
+        "FBCChannel",
+        "RPCModule",
+        "RPCCounter",
+        "Report",
+        "ReportConfig",
+        "ReportFormat",
+        "ReportStatus",
+        "SysFile",
+        "SysFileEntry",
+        "NodeType",
+        "NodeStatus",
+        "ModuleType",
+        "ChannelType"
+      ]
     },
     "internal/telnet": {
       "purpose": "Native Go telnet client for Valmet DNA nodes",
-      "depends_on": ["internal/types"],
-      "key_files": ["client.go", "commands.go", "filter.go"],
-      "commands": ["MOD_LIST", "IO_LIST", "SYS_INFO", "FBC_PRINT", "RPC_PRINT"]
+      "depends_on": [
+        "internal/types"
+      ],
+      "key_files": [
+        "client.go",
+        "commands.go",
+        "filter.go"
+      ],
+      "commands": [
+        "MOD_LIST",
+        "IO_LIST",
+        "SYS_INFO",
+        "FBC_PRINT",
+        "RPC_PRINT"
+      ]
     },
     "internal/parser": {
       "purpose": "Parsers for FBC, RPC, and SysFile output",
-      "depends_on": ["internal/types"],
-      "key_files": ["fbc.go", "rpc.go", "sysfile.go"],
-      "testdata": ["fbc_sample_*.txt", "rpc_sample_*.txt", "sysfile_*.txt", "*.sys"]
+      "depends_on": [
+        "internal/types"
+      ],
+      "key_files": [
+        "fbc.go",
+        "rpc.go",
+        "sysfile.go"
+      ],
+      "testdata": [
+        "fbc_sample_*.txt",
+        "rpc_sample_*.txt",
+        "sysfile_*.txt",
+        "*.sys"
+      ]
     },
     "internal/store": {
       "purpose": "SQLite persistence layer",
-      "depends_on": ["internal/types", "github.com/mattn/go-sqlite3"],
-      "key_files": ["db.go", "nodes.go", "iopoints.go", "reports.go", "templates.go", "helpers.go"],
-      "tables": ["nodes", "io_points", "reports", "templates"]
+      "depends_on": [
+        "internal/types",
+        "github.com/mattn/go-sqlite3"
+      ],
+      "key_files": [
+        "db.go",
+        "nodes.go",
+        "iopoints.go",
+        "reports.go",
+        "templates.go",
+        "helpers.go"
+      ],
+      "tables": [
+        "nodes",
+        "io_points",
+        "reports",
+        "templates"
+      ]
     },
     "internal/report": {
       "purpose": "DOCX and JSON report generation",
-      "depends_on": ["internal/types", "internal/store"],
-      "key_files": ["generator.go", "docx.go", "json.go"]
+      "depends_on": [
+        "internal/types",
+        "internal/store"
+      ],
+      "key_files": [
+        "generator.go",
+        "docx.go",
+        "json.go"
+      ]
     },
     "internal/bstool": {
       "purpose": "Go wrapper for proprietary Windows BsTool.exe utility",
       "depends_on": [],
-      "key_files": ["client.go", "executor.go", "executor_linux.go", "executor_windows.go", "filter.go", "encoding.go", "errors.go"],
+      "key_files": [
+        "client.go",
+        "executor.go",
+        "executor_linux.go",
+        "executor_windows.go",
+        "filter.go",
+        "encoding.go",
+        "errors.go"
+      ],
       "note": "Platform-adaptive: Windows runs real BsTool.exe, Linux returns 501 UNSUPPORTED_PLATFORM. 96.3% test coverage."
     },
     "internal/api": {
       "purpose": "HTTP handlers, middleware, and server startup",
-      "depends_on": ["internal/types", "internal/store", "internal/telnet", "internal/parser", "internal/report", "internal/bstool", "internal/server", "embed.go"],
-      "key_files": ["handlers.go", "server.go", "middleware.go"],
-      "endpoints": ["GET /health", "POST /api/v1/connect", "GET /api/v1/nodes", "GET /api/v1/nodes/{addr}", "POST /api/v1/nodes/{addr}/scan", "GET /api/v1/nodes/{addr}/fbc", "GET /api/v1/nodes/{addr}/rpc", "POST /api/v1/parse/sysfile", "POST /api/v1/reports/generate", "GET /api/v1/reports", "GET /api/v1/reports/{id}", "POST /api/v1/bstool/errlog"]
+      "depends_on": [
+        "internal/types",
+        "internal/store",
+        "internal/telnet",
+        "internal/parser",
+        "internal/report",
+        "internal/bstool",
+        "internal/server",
+        "embed.go"
+      ],
+      "key_files": [
+        "handlers.go",
+        "server.go",
+        "middleware.go"
+      ],
+      "endpoints": [
+        "GET /health",
+        "POST /api/v1/connect",
+        "GET /api/v1/nodes",
+        "GET /api/v1/nodes/{addr}",
+        "POST /api/v1/nodes/{addr}/scan",
+        "GET /api/v1/nodes/{addr}/fbc",
+        "GET /api/v1/nodes/{addr}/rpc",
+        "POST /api/v1/parse/sysfile",
+        "POST /api/v1/reports/generate",
+        "GET /api/v1/reports",
+        "GET /api/v1/reports/{id}",
+        "POST /api/v1/bstool/errlog"
+      ]
     },
     "internal/server": {
       "purpose": "Server config, health checks, graceful shutdown",
       "depends_on": [],
-      "key_files": ["config.go", "health.go", "shutdown.go"],
-      "flags": ["--port", "--db-path", "--log-level", "--cors-origin"]
+      "key_files": [
+        "config.go",
+        "health.go",
+        "shutdown.go"
+      ],
+      "flags": [
+        "--port",
+        "--db-path",
+        "--log-level",
+        "--cors-origin"
+      ]
     },
     "web": {
       "purpose": "React/TypeScript frontend",
       "depends_on": [],
-      "key_files": ["src/App.tsx", "src/main.tsx", "src/components/*.tsx", "src/hooks/*.ts", "vite.config.ts", "package.json"],
-      "stack": ["Vite", "React 18", "TypeScript", "Tailwind CSS"],
+      "key_files": [
+        "src/App.tsx",
+        "src/main.tsx",
+        "src/components/*.tsx",
+        "src/hooks/*.ts",
+        "vite.config.ts",
+        "package.json"
+      ],
+      "stack": [
+        "Vite",
+        "React 18",
+        "TypeScript",
+        "Tailwind CSS"
+      ],
       "theme": "AXON dark theme"
     },
     "test": {
       "purpose": "Integration, E2E, and mock-based tests",
-      "depends_on": ["all internal packages"],
+      "depends_on": [
+        "all internal packages"
+      ],
       "key_files": [
         "integration/pipeline_test.go",
         "integration/bstool_integration_test.go",
@@ -168,7 +342,21 @@
         "framework": "vitest + @testing-library/react + jsdom",
         "files": "web/src/components/__tests__/*.test.tsx (13 files)",
         "test_count": "146 tests",
-        "components_tested": ["App", "ErrorBoundary", "StatusBar", "NodeBrowser", "NodeDetail", "ReportList", "ReportDetail", "ReportConfig", "SysFileUpload", "IOTable", "FBCView", "RPCView", "Layout"]
+        "components_tested": [
+          "App",
+          "ErrorBoundary",
+          "StatusBar",
+          "NodeBrowser",
+          "NodeDetail",
+          "ReportList",
+          "ReportDetail",
+          "ReportConfig",
+          "SysFileUpload",
+          "IOTable",
+          "FBCView",
+          "RPCView",
+          "Layout"
+        ]
       }
     }
   },
@@ -177,80 +365,111 @@
       "id": "AXON-001",
       "rule": "Never return nil slices in JSON responses",
       "detail": "Always initialize slices as empty (make([]T, 0)) before JSON marshaling. nil slices serialize as null; empty slices serialize as [].",
-      "affected": ["internal/api/handlers.go"]
+      "affected": [
+        "internal/api/handlers.go"
+      ]
     },
     {
       "id": "AXON-002",
       "rule": "//go:embed must be in root package",
       "detail": "The //go:embed directive can only reach files in or below its own package directory. To embed web/dist/*, the directive must live in a .go file at the repo root (embed.go, package assets).",
-      "affected": ["embed.go"]
+      "affected": [
+        "embed.go"
+      ]
     },
     {
       "id": "AXON-003",
       "rule": "Go 1.22+ routing patterns require METHOD prefix",
       "detail": "Route patterns like 'GET /api/v1/nodes/{addr}' include the HTTP method. Without the method prefix, the pattern matches all methods.",
-      "affected": ["internal/api/server.go"]
+      "affected": [
+        "internal/api/server.go"
+      ]
     },
     {
       "id": "AXON-004",
       "rule": "CGo SQLite requires gcc for cross-compilation",
       "detail": "github.com/mattn/go-sqlite3 uses CGo. Cross-compiling (e.g., GOOS=linux GOARCH=arm64) requires a C cross-compiler. For pure-Go builds, consider a CGo-free SQLite driver.",
-      "affected": ["internal/store/db.go", "go.mod"]
+      "affected": [
+        "internal/store/db.go",
+        "go.mod"
+      ]
     },
     {
       "id": "AXON-005",
       "rule": "Test flags must be filtered from os.Args",
       "detail": "When running tests, go test injects flags like -test.v, -test.run, etc. into os.Args. The config parser must filter these out to avoid flag parsing errors.",
-      "affected": ["internal/server/config.go"]
+      "affected": [
+        "internal/server/config.go"
+      ]
     },
     {
       "id": "AXON-006",
       "rule": "SPA fallback: serve index.html for unknown paths",
       "detail": "The embedded web UI is a Single Page Application. Any path that doesn't match a static file or API route must serve index.html for client-side routing to work.",
-      "affected": ["internal/api/server.go"]
+      "affected": [
+        "internal/api/server.go"
+      ]
     },
     {
       "id": "AXON-007",
       "rule": "Telnet prompt detection is DNA-specific",
       "detail": "Valmet DNA nodes use '>' as the command prompt. The telnet client reads until this prompt character appears. Different DNA versions may use different prompts.",
-      "affected": ["internal/telnet/client.go"]
+      "affected": [
+        "internal/telnet/client.go"
+      ]
     },
     {
       "id": "AXON-008",
       "rule": "SysFile entries don't have IP addresses",
       "detail": "Parsed .sys file entries have LID (logical ID) but no IP address. When storing as nodes, the LID is used as a placeholder address. Real IPs must be resolved separately.",
-      "affected": ["internal/parser/sysfile.go", "internal/api/handlers.go"]
+      "affected": [
+        "internal/parser/sysfile.go",
+        "internal/api/handlers.go"
+      ]
     },
     {
       "id": "AXON-009",
       "rule": "npm run build must precede go build for embedded web UI",
       "detail": "The //go:embed directive in embed.go embeds web/dist/* at compile time. If web/dist/ is empty (only .gitkeep), the binary starts but GUI routes return 404. Always run 'make build' (which does npm run build then go build). The startup guard warns if embed is empty.",
-      "affected": ["embed.go", "cmd/logreport/main.go", "Makefile"]
+      "affected": [
+        "embed.go",
+        "cmd/logreport/main.go",
+        "Makefile"
+      ]
     },
     {
       "id": "AXON-010",
       "rule": "R-LIVE phase is mandatory in dev-cycle loop",
       "detail": "After every build, the reviewer MUST start the binary and test both API and GUI surfaces with real HTTP requests. Auto-re-loop on FAIL with exact failure evidence. This caught the StatusBar bug (wrong URL + field names) and the template-default-not-found bug.",
-      "affected": ["dev-cycle-loop-blueprint.md", "reviewer/SOUL.md"]
+      "affected": [
+        "dev-cycle-loop-blueprint.md",
+        "reviewer/SOUL.md"
+      ]
     },
     {
       "id": "AXON-011",
-      "rule": "Template 'default' is a soft default — not an error if missing",
+      "rule": "Template 'default' is a soft default \u2014 not an error if missing",
       "detail": "When no template is specified in report generation, the API defaults to 'default'. If no 'default' template is seeded in the store, the generator falls through with nil (uses built-in title). Custom templates still fail hard if not found.",
-      "affected": ["internal/report/generator.go", "internal/api/handlers.go"]
+      "affected": [
+        "internal/report/generator.go",
+        "internal/api/handlers.go"
+      ]
     },
     {
       "id": "AXON-012",
       "rule": "BsTool.exe is Windows-only; Linux executor returns 501",
       "detail": "The BsTool wrapper has a platform-adaptive executor. On Windows, it runs the real BsTool.exe subprocess. On Linux, it returns HTTP 501 UNSUPPORTED_PLATFORM with a remediation hint. Tests use a mock executor on both platforms.",
-      "affected": ["internal/bstool/executor_linux.go", "internal/bstool/executor_windows.go"]
+      "affected": [
+        "internal/bstool/executor_linux.go",
+        "internal/bstool/executor_windows.go"
+      ]
     }
   ],
   "recent_changes": [
     {
       "version": "v1.1.2-test",
       "date": "2026-06-24",
-      "summary": "Comprehensive test suite refactor — 28 files, 7830 insertions. API coverage 68.2%→81.2%, server 82.3%→96.8%. Added frontend vitest suite (13 files, 146 tests). Mock external services: DNA telnet nodes (mock TCP server), BsTool.exe (mock executor), SQLite (in-memory). New files: handlers_gapfill_test.go, handlers_bstool_mock_test.go, shutdown_test.go, config_test.go, edge_cases_test.go, injection_test.go, bstool_integration_test.go, mock_e2e_test.go, web/vitest.config.ts, web/src/test/setup.ts, 13 frontend test files.",
+      "summary": "Comprehensive test suite refactor \u2014 28 files, 7830 insertions. API coverage 68.2%\u219281.2%, server 82.3%\u219296.8%. Added frontend vitest suite (13 files, 146 tests). Mock external services: DNA telnet nodes (mock TCP server), BsTool.exe (mock executor), SQLite (in-memory). New files: handlers_gapfill_test.go, handlers_bstool_mock_test.go, shutdown_test.go, config_test.go, edge_cases_test.go, injection_test.go, bstool_integration_test.go, mock_e2e_test.go, web/vitest.config.ts, web/src/test/setup.ts, 13 frontend test files.",
       "files": [
         "internal/api/handlers_gapfill_test.go",
         "internal/api/handlers_bstool_mock_test.go",
@@ -269,37 +488,39 @@
     {
       "version": "v1.1.1",
       "date": "2026-06-16",
-      "summary": "Template 'default' not found fix — non-fatal fallthrough in report generator. Found via R-LIVE phase.",
-      "files": ["internal/report/generator.go"]
+      "summary": "Template 'default' not found fix \u2014 non-fatal fallthrough in report generator. Found via R-LIVE phase.",
+      "files": [
+        "internal/report/generator.go"
+      ]
     },
     {
       "version": "v1.1.0",
       "date": "2026-06-16",
       "summary": "BsTool wrapper (3 commits, 96.3% coverage) + R-LIVE review phase (StatusBar fix, .gitkeep sentinel, startup guard) + Creative Integration Testing doctrine",
       "files": [
-        "internal/bstool/ — new package",
-        "internal/api/handlers.go — bstool/errlog endpoint",
-        "web/src/components/StatusBar.tsx — fix URL + field names",
-        "web/dist/.gitkeep — sentinel",
-        "cmd/logreport/main.go — startup guard",
-        "reviewer/SOUL.md — Creative Integration Testing",
-        "dev-cycle-loop-blueprint.md — R-LIVE phase"
+        "internal/bstool/ \u2014 new package",
+        "internal/api/handlers.go \u2014 bstool/errlog endpoint",
+        "web/src/components/StatusBar.tsx \u2014 fix URL + field names",
+        "web/dist/.gitkeep \u2014 sentinel",
+        "cmd/logreport/main.go \u2014 startup guard",
+        "reviewer/SOUL.md \u2014 Creative Integration Testing",
+        "dev-cycle-loop-blueprint.md \u2014 R-LIVE phase"
       ]
     },
     {
       "version": "v1.0.0",
       "date": "2026-06-16",
-      "summary": "v1.0.0 release — complete Go refactor with 16 commits, embedded web UI, REST API, >80% test coverage",
+      "summary": "v1.0.0 release \u2014 complete Go refactor with 16 commits, embedded web UI, REST API, >80% test coverage",
       "files": [
-        "ALL files — 16-commit dev cycle complete"
+        "ALL files \u2014 16-commit dev cycle complete"
       ]
     },
     {
       "version": "v0.1.0",
       "date": "2026-06-15",
-      "summary": "Repo init — Go scaffold, Makefile, CI, docs, agent briefs",
+      "summary": "Repo init \u2014 Go scaffold, Makefile, CI, docs, agent briefs",
       "files": [
-        "ALL files — initial commit"
+        "ALL files \u2014 initial commit"
       ]
     }
   ]

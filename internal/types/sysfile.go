@@ -30,8 +30,10 @@ var LIDMapping = map[string]string{
 
 // SysFileNode represents a node extracted from a _sys file.
 type SysFileNode struct {
-	LID     string `json:"lid"`
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Program string `json:"program"`
+	LID        string `json:"lid"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Program    string `json:"program"`
+	SlotNum    int   `json:"slot_num"`
+	IsFieldbus bool  `json:"is_fieldbus"`
 }

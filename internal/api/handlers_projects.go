@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/report"
@@ -149,7 +150,7 @@ func (s *Server) deleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.store.DeleteProject(id); err != nil {
-		os.Remove(nodesConfigPathForProject(id))
+		os.Remove(s.nodesConfigPathForProject(strconv.FormatInt(id, 10)))
 		writeError(w, http.StatusInternalServerError, "internal_error",
 			fmt.Sprintf("failed to delete project %d: %v", id, err))
 		return

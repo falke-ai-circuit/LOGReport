@@ -21,9 +21,9 @@ export default function BsToolPanel({
   currentNodeName,
   onOutputChange,
 }: BsToolPanelProps) {
-  const [bstoolPath, setBstoolPath] = useState('');
-  const [commLine, setCommLine] = useState('AB01');
-  const [serverName, setServerName] = useState('');
+  const [bstoolPath, setBstoolPath] = useState(() => localStorage.getItem('bstoolPath') || '');
+  const [commLine, setCommLine] = useState(() => localStorage.getItem('bstoolCommLine') || 'AB01');
+  const [serverName, setServerName] = useState(() => localStorage.getItem('bstoolServerName') || '');
   const [output, setOutput] = useState<string[]>([]);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +59,9 @@ export default function BsToolPanel({
     setExecuting(true);
     setError(null);
     appendOutput(`[Executing BsTool errlog for ${srvName}...]`);
+    localStorage.setItem('bstoolServerName', srvName);
+    localStorage.setItem('bstoolCommLine', commLine);
+    if (bstoolPath) localStorage.setItem('bstoolPath', bstoolPath);
 
     try {
       // Use REST endpoint as fallback if WebSocket not available

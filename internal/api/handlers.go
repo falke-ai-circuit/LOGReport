@@ -953,15 +953,17 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 // ─── Handler 10: GET /api/v1/reports ─────────────────────────────
 
 func (s *Server) listReportsHandler(w http.ResponseWriter, r *http.Request) {
-// Check for project_id query param
+	var reports []*types.Report
+	var err error
+	// Check for project_id query param
 	projectIDStr := r.URL.Query().Get("project_id")
 	if projectIDStr != "" {
-		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
-		if err == nil {
+		projectID, parseErr := strconv.ParseInt(projectIDStr, 10, 64)
+		if parseErr == nil {
 			reports = s.store.ListReportsByProject(projectID)
 		}
 	} else {
-		reports, err := s.store.ListReports()
+		reports, err = s.store.ListReports()
 	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error",
