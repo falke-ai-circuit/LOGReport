@@ -372,9 +372,12 @@ export default function NodeTree({
             minWidth: '160px',
           }}
         >
-          <ContextMenuItem icon={<Printer size={14} />} label="FBC Print" onClick={() => handleContextAction('fbc_print')} />
-          <ContextMenuItem icon={<Printer size={14} />} label="RPC Print" onClick={() => handleContextAction('rpc_print')} />
+          <ContextMenuItem icon={<Printer size={14} />} label="Execute All Print Commands" onClick={() => handleContextAction('print_all')} />
+          <ContextMenuItem icon={<Printer size={14} />} label="Print All FBC Tokens" onClick={() => handleContextAction('fbc_print_all')} />
+          <ContextMenuItem icon={<Printer size={14} />} label="Print All RPC Tokens" onClick={() => handleContextAction('rpc_print_all')} />
           <ContextMenuItem icon={<Server size={14} />} label="BsTool ErrLog" onClick={() => handleContextAction('bstool_errlog')} />
+          <ContextMenuItem icon={<Play size={14} />} label="FBC Print (single)" onClick={() => handleContextAction('fbc_print')} />
+          <ContextMenuItem icon={<Play size={14} />} label="RPC Print (single)" onClick={() => handleContextAction('rpc_print')} />
           <ContextMenuItem icon={<Play size={14} />} label="Copy to Log" onClick={() => handleContextAction('copy_to_log')} />
         </div>
       )}

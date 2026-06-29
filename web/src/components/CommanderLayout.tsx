@@ -53,8 +53,57 @@ export default function CommanderLayout() {
   const handleContextAction = useCallback(
     (action: string, token: TreeNodeData) => {
       const tokenId = token.token_id || '';
+      const nodeName = token.name || currentNodeName;
 
       switch (action) {
+        case 'print_all': {
+          // Execute all print commands for this node (FBC + RPC + LOG)
+          // Uses the batch-node API endpoint
+          setActiveTab('commander');
+          fetch('/api/v1/commandqueue/batch-node', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ node_name: nodeName }),
+          }).then(res => res.json()).then(data => {
+            // Start queue execution
+            fetch('/api/v1/commandqueue/start', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}',
+            });
+          }).catch(err => console.error('batch-node error:', err));
+          break;
+        }
+        case 'fbc_print_all': {
+          setActiveTab('commander');
+          fetch('/api/v1/commandqueue/batch-node', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ node_name: nodeName, token_type: 'FBC' }),
+          }).then(res => res.json()).then(data => {
+            fetch('/api/v1/commandqueue/start', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}',
+            });
+          }).catch(err => console.error('fbc_batch error:', err));
+          break;
+        }
+        case 'rpc_print_all': {
+          setActiveTab('commander');
+          fetch('/api/v1/commandqueue/batch-node', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }),
+          }).then(res => res.json()).then(data => {
+            fetch('/api/v1/commandqueue/start', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}',
+            });
+          }).catch(err => console.error('rpc_batch error:', err));
+          break;
+        }
         case 'fbc_print':
           setActiveTab('telnet');
           setPendingCommand(`fis ${tokenId}`);
@@ -65,12 +114,9 @@ export default function CommanderLayout() {
           break;
         case 'bstool_errlog':
           setActiveTab('bstool');
-          // Strip suffix from current node name for BsTool
-          setPendingServerName(stripNodeSuffix(currentNodeName));
+          setPendingServerName(stripNodeSuffix(nodeName));
           break;
         case 'copy_to_log':
-          // This is handled by the TelnetTerminal's own Copy to Log button
-          // But we can trigger it via a state signal
           break;
       }
     },

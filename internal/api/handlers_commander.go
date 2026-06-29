@@ -389,7 +389,7 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		if tokenType == "" {
 			tokenType = "raw"
 		}
-		if err := lw.WriteOutput(cmd.NodeName, tokenType, cmd.TokenID, output); err != nil {
+		if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, output, cmd.IPAddress); err != nil {
 			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
 		}
 
@@ -466,7 +466,7 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		if tokenType == "" {
 			tokenType = "raw"
 		}
-		if err := lw.WriteOutput(cmd.NodeName, tokenType, cmd.TokenID, output); err != nil {
+		if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, output, cmd.IPAddress); err != nil {
 			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
 		}
 
@@ -548,6 +548,70 @@ func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleQueueBatchNode generates commands for a single node only.
+// POST /api/v1/commandqueue/batch-node
+// Body: {"node_name": "NCU2", "token_type": "FBC"}  (token_type optional, empty = all types)
+// This matches the Python right-click "Execute All Print Commands for {node}" behavior.
+func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		NodeName  string `json:"node_name"`
+		TokenType string `json:"token_type"` // optional: FBC, RPC, LOG, or empty for all
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+	if req.NodeName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "node_name is required")
+		return
+	}
+
+	// Load configs from nodes.json
+	path := s.nodesConfigPath()
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load nodes.json: %v", err))
+		return
+	}
+
+	// Filter to just the requested node
+	var filtered []types.NodeConfig
+	for _, c := range configs {
+		if c.Name == req.NodeName {
+			// If token_type specified, filter tokens
+			if req.TokenType != "" {
+				var filteredTokens []types.Token
+				for _, t := range c.Tokens {
+					if strings.EqualFold(string(t.TokenType), req.TokenType) {
+						filteredTokens = append(filteredTokens, t)
+					}
+				}
+				c.Tokens = filteredTokens
+			}
+			filtered = append(filtered, c)
+			break
+		}
+	}
+
+	if len(filtered) == 0 {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("node %s not found in nodes.json", req.NodeName))
+		return
+	}
+
+	s.commandQueue.Reset()
+	s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM)
+	_, total, _ := s.commandQueue.Status()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"batch_added": true,
+		"node_name":   req.NodeName,
+		"token_type":  req.TokenType,
+		"total":       total,
+	})
+}
+
 // ─── Log Handlers ──────────────────────────────────────────────────
 
 // handleListLogs lists log files for a node.
@@ -597,7 +661,7 @@ func (s *Server) handleReadLog(w http.ResponseWriter, r *http.Request) {
 	tokenID := parts[1]
 
 	lw := logwriter.New(s.logRoot())
-	content, err := lw.ReadLog(nodeName, tokenType, tokenID)
+	content, err := lw.ReadLog(nodeName, tokenType, tokenID, "")
 	if err != nil {
 		writeError(w, http.StatusNotFound, "not_found",
 			fmt.Sprintf("log file not found: %v", err))

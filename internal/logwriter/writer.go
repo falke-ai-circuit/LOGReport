@@ -1,7 +1,16 @@
 // Package logwriter writes command output to per-node log files.
 // It mirrors the Python log_writer.py behavior for the Commander window.
 //
-// Log directory structure: {logRoot}/{nodeName}/{tokenType}_{tokenID}.log
+// Log directory structure: {logRoot}/{tokenType}/{nodeName}/{filename}
+// Filename patterns (matching Python log_writer.py):
+//
+//	FBC: {nodeName}_{ipFormatted}_{tokenID}.fbc
+//	RPC: {nodeName}_{ipFormatted}_{tokenID}.rpc
+//	LOG: {nodeName}_{ipFormatted}.log
+//	LIS: {nodeName}_{ipFormatted}_exe{i}_5irb_5orb.lis
+//
+// Where ipFormatted = IP address with dots replaced by hyphens (e.g. 192-168-0-11).
+// When IP is unknown, "unknown-ip" is used as placeholder.
 package logwriter
 
 import (
@@ -32,34 +41,82 @@ func New(logRoot string) *LogWriter {
 	return &LogWriter{logRoot: logRoot}
 }
 
+// formatIP replaces dots with hyphens in an IP address for filename use.
+// Returns "unknown-ip" if the IP is empty.
+func formatIP(ip string) string {
+	if ip == "" {
+		return "unknown-ip"
+	}
+	return strings.ReplaceAll(ip, ".", "-")
+}
+
+// fileExtension returns the file extension for a token type.
+func fileExtension(tokenType string) string {
+	switch strings.ToUpper(tokenType) {
+	case "FBC":
+		return ".fbc"
+	case "RPC":
+		return ".rpc"
+	case "LIS":
+		return ".lis"
+	default:
+		return ".log"
+	}
+}
+
+// logPath returns the full path for a specific log file.
+// Directory: {logRoot}/{tokenType}/{nodeName}/
+// Filename: {nodeName}_{ipFormatted}_{tokenID}.{ext}
+// For LOG type: {nodeName}_{ipFormatted}.log (no tokenID in filename)
+func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
+	ext := fileExtension(tokenType)
+	ipFmt := formatIP(ip)
+	typeDir := strings.ToUpper(tokenType)
+
+	// Clean node name for filesystem (spaces → underscores)
+	safeNode := strings.ReplaceAll(nodeName, " ", "_")
+
+	var fileName string
+	if strings.ToUpper(tokenType) == "LOG" {
+		fileName = fmt.Sprintf("%s_%s%s", safeNode, ipFmt, ext)
+	} else {
+		fileName = fmt.Sprintf("%s_%s_%s%s", safeNode, ipFmt, tokenID, ext)
+	}
+
+	return filepath.Join(lw.logRoot, typeDir, safeNode, fileName)
+}
+
 // nodeDir returns the directory path for a node's logs, creating it if needed.
-func (lw *LogWriter) nodeDir(nodeName string) (string, error) {
-	dir := filepath.Join(lw.logRoot, nodeName)
+func (lw *LogWriter) nodeDir(nodeName, tokenType string) (string, error) {
+	safeNode := strings.ReplaceAll(nodeName, " ", "_")
+	dir := filepath.Join(lw.logRoot, strings.ToUpper(tokenType), safeNode)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("logwriter: create dir %s: %w", dir, err)
 	}
 	return dir, nil
 }
 
-// logPath returns the full path for a specific log file.
-func (lw *LogWriter) logPath(nodeName, tokenType, tokenID string) string {
-	fileName := fmt.Sprintf("%s_%s.log", strings.ToLower(tokenType), tokenID)
-	return filepath.Join(lw.logRoot, nodeName, fileName)
-}
-
 // WriteOutput appends command output to a node's log file.
-// File path: {logRoot}/{nodeName}/{tokenType}_{tokenID}.log
+// File path: {logRoot}/{tokenType}/{nodeName}/{nodeName}_{ip}_{tokenID}.{ext}
 // A decorative header with ═══ bars, command metadata, and ─── separators
 // is prepended to each write (matching Python log_writer.py style).
+//
+// The ipAddress parameter is used for filename formatting (dots → hyphens).
+// If empty, "unknown-ip" is used.
 func (lw *LogWriter) WriteOutput(nodeName, tokenType, tokenID, output string) error {
+	return lw.WriteOutputWithIP(nodeName, tokenType, tokenID, output, "")
+}
+
+// WriteOutputWithIP is like WriteOutput but includes the IP address in the filename.
+func (lw *LogWriter) WriteOutputWithIP(nodeName, tokenType, tokenID, output, ipAddress string) error {
 	if nodeName == "" {
 		return fmt.Errorf("logwriter: nodeName is required")
 	}
-	if _, err := lw.nodeDir(nodeName); err != nil {
+	if _, err := lw.nodeDir(nodeName, tokenType); err != nil {
 		return err
 	}
 
-	path := lw.logPath(nodeName, tokenType, tokenID)
+	path := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
 
 	// Open in append mode (create if not exists)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -104,8 +161,8 @@ func buildSeparator() string {
 }
 
 // ReadLog reads the content of a node's log file.
-func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID string) (string, error) {
-	path := lw.logPath(nodeName, tokenType, tokenID)
+func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID, ipAddress string) (string, error) {
+	path := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -116,37 +173,35 @@ func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID string) (string, error
 	return string(data), nil
 }
 
-// ListLogs lists all log files for a node.
+// ListLogs lists all log files for a node across all token types.
 // Returns a slice of LogEntry sorted by file name.
 func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
-	dir := filepath.Join(lw.logRoot, nodeName)
+	safeNode := strings.ReplaceAll(nodeName, " ", "_")
+	result := make([]LogEntry, 0)
 
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return make([]LogEntry, 0), nil
-		}
-		return nil, fmt.Errorf("logwriter: list %s: %w", dir, err)
-	}
-
-	result := make([]LogEntry, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if !strings.HasSuffix(entry.Name(), ".log") {
-			continue
-		}
-		info, err := entry.Info()
+	// Check all token type directories
+	for _, tokenType := range []string{"FBC", "RPC", "LOG", "LIS"} {
+		dir := filepath.Join(lw.logRoot, tokenType, safeNode)
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			continue
+			continue // Directory doesn't exist, skip
 		}
-		result = append(result, LogEntry{
-			FileName:   entry.Name(),
-			FilePath:   filepath.Join(dir, entry.Name()),
-			Size:       info.Size(),
-			ModifiedAt: info.ModTime(),
-		})
+
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			result = append(result, LogEntry{
+				FileName:   entry.Name(),
+				FilePath:   filepath.Join(dir, entry.Name()),
+				Size:       info.Size(),
+				ModifiedAt: info.ModTime(),
+			})
+		}
 	}
 
 	// Sort by file name for stable output
@@ -158,8 +213,8 @@ func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
 }
 
 // ClearLog truncates a node's log file (removes all content).
-func (lw *LogWriter) ClearLog(nodeName, tokenType, tokenID string) error {
-	path := lw.logPath(nodeName, tokenType, tokenID)
+func (lw *LogWriter) ClearLog(nodeName, tokenType, tokenID, ipAddress string) error {
+	path := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
 	if err := os.Truncate(path, 0); err != nil {
 		if os.IsNotExist(err) {
 			return nil // Nothing to clear

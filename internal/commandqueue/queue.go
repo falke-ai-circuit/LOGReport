@@ -44,6 +44,7 @@ type QueuedCommand struct {
 	Status     CommandStatus `json:"status"`
 	Output     string        `json:"output,omitempty"`
 	Error      string        `json:"error,omitempty"`
+	IPAddress  string        `json:"ip_address,omitempty"`
 	StartedAt  *time.Time    `json:"started_at,omitempty"`
 	FinishedAt *time.Time    `json:"finished_at,omitempty"`
 }
@@ -254,12 +255,13 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 			}
 
 			q.Add(QueuedCommand{
-				ID:       fmt.Sprintf("%s-%s-%s", node.Name, tok.TokenType, tok.TokenID),
-				Type:     cmdType,
-				NodeName: node.Name,
-				TokenID:  tok.TokenID,
-				Command:  cmd,
-				Status:   StatusPending,
+				ID:        fmt.Sprintf("%s-%s-%s", node.Name, tok.TokenType, tok.TokenID),
+				Type:      cmdType,
+				NodeName:  node.Name,
+				TokenID:   tok.TokenID,
+				Command:   cmd,
+				Status:    StatusPending,
+				IPAddress: node.IPAddress,
 			})
 		}
 	}

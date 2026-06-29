@@ -24,7 +24,7 @@ func TestWriteAndReadLog(t *testing.T) {
 	}
 
 	// Read back
-	content, err := lw.ReadLog("AP01m", "FBC", "162")
+	content, err := lw.ReadLog("AP01m", "FBC", "162", "")
 	if err != nil {
 		t.Fatalf("ReadLog failed: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestWriteOutputAppends(t *testing.T) {
 	// Write second output
 	lw.WriteOutput("AP01", "FBC", "100", "second output")
 
-	content, _ := lw.ReadLog("AP01", "FBC", "100")
+	content, _ := lw.ReadLog("AP01", "FBC", "100", "")
 	if !strings.Contains(content, "first output") {
 		t.Error("expected first output in log")
 	}
@@ -108,7 +108,7 @@ func TestReadLogNotFound(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
 
-	_, err := lw.ReadLog("NonExistent", "FBC", "999")
+	_, err := lw.ReadLog("NonExistent", "FBC", "999", "")
 	if err == nil {
 		t.Fatal("expected error for non-existent log file")
 	}
@@ -126,7 +126,7 @@ func TestClearLog(t *testing.T) {
 		t.Fatal("expected non-zero size before clear")
 	}
 
-	if err := lw.ClearLog("AP01", "FBC", "100"); err != nil {
+	if err := lw.ClearLog("AP01", "FBC", "100", ""); err != nil {
 		t.Fatalf("ClearLog failed: %v", err)
 	}
 
@@ -140,7 +140,7 @@ func TestClearLogNotFound(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
 	// Should not error for non-existent file
-	if err := lw.ClearLog("NonExistent", "FBC", "999"); err != nil {
+	if err := lw.ClearLog("NonExistent", "FBC", "999", ""); err != nil {
 		t.Errorf("expected no error for clearing non-existent log, got: %v", err)
 	}
 }
