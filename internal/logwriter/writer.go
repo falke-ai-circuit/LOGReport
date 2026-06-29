@@ -1,16 +1,17 @@
 // Package logwriter writes command output to per-node log files.
 // It mirrors the Python log_writer.py behavior for the Commander window.
 //
-// Log directory structure: {logRoot}/{tokenType}/{nodeName}/{filename}
-// Filename patterns (matching Python log_writer.py):
+// Log directory structure: {logRoot}/{stationName}/{tokenType}/{filename}
+// Filename patterns (matching Python log_creator.py):
 //
-//	FBC: {nodeName}_{ipFormatted}_{tokenID}.fbc
-//	RPC: {nodeName}_{ipFormatted}_{tokenID}.rpc
-//	LOG: {nodeName}_{ipFormatted}.log
-//	LIS: {nodeName}_{ipFormatted}_exe{i}_5irb_5orb.lis
+//	FBC: {stationName}_{ipFormatted}_{tokenID}.fbc
+//	RPC: {stationName}_{ipFormatted}_{tokenID}.rpc
+//	LOG: {stationName}_{ipFormatted}.log
+//	LIS: {stationName}_{ipFormatted}_exe{i}_irb_orb.lis
 //
 // Where ipFormatted = IP address with dots replaced by hyphens (e.g. 192-168-0-11).
-// When IP is unknown, "unknown-ip" is used as placeholder.
+// All slots of a station share the station name in the filename.
+// e.g. AP01m_192-168-0-11_162.fbc, AP01m_192-168-0-11_163.fbc (both under AP01m/FBC/)
 package logwriter
 
 import (
@@ -24,7 +25,7 @@ import (
 
 // LogWriter writes command output to per-node log files.
 type LogWriter struct {
-	logRoot string // root directory for log files
+	logRoot string
 }
 
 // LogEntry represents a log file entry.
@@ -36,13 +37,11 @@ type LogEntry struct {
 }
 
 // New creates a LogWriter with the given root directory.
-// The root directory is created if it doesn't exist.
 func New(logRoot string) *LogWriter {
 	return &LogWriter{logRoot: logRoot}
 }
 
 // formatIP replaces dots with hyphens in an IP address for filename use.
-// Returns "unknown-ip" if the IP is empty.
 func formatIP(ip string) string {
 	if ip == "" {
 		return "unknown-ip"
@@ -51,13 +50,10 @@ func formatIP(ip string) string {
 }
 
 // extractStationName derives the station folder name from a node name.
-// All slots of a station are nested under one station folder:
-//
-//	"AP01" → "AP01m", "AP01 Main" → "AP01m", "AP01_m2" → "AP01m"
-//	"AP02 Reserve" → "AP02r", "AP02_r2" → "AP02r"
-//	"AL01" → "AL01" (LIS, no suffix), "A1OA OPS" → "A1OA" (OPS, no suffix)
+// "AP01" -> "AP01m", "AP01 Main" -> "AP01m", "AP01_m2" -> "AP01m"
+// "AP02 Reserve" -> "AP02r", "AP02_r2" -> "AP02r"
+// "AL01" -> "AL01" (LIS, no suffix), "A1OA OPS" -> "A1OA" (OPS, no suffix)
 func extractStationName(nodeName string) string {
-	// LIS nodes (AL prefix) and OPS nodes don't get m/r suffix
 	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
 		base := nodeName
 		if idx := strings.Index(base, " "); idx >= 0 {
@@ -68,7 +64,6 @@ func extractStationName(nodeName string) string {
 
 	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
 
-	// Strip suffixes to get base name
 	base := nodeName
 	if idx := strings.Index(base, " "); idx >= 0 {
 		base = base[:idx]
@@ -98,36 +93,30 @@ func fileExtension(tokenType string) string {
 }
 
 // logPath returns the full path for a specific log file.
-// Directory: {logRoot}/{tokenType}/{stationName}/
-// Filename: {nodeName}_{ipFormatted}_{tokenID}.{ext}
-// For LOG type: {nodeName}_{ipFormatted}.log (no tokenID in filename)
+// Directory: {logRoot}/{stationName}/{tokenType}/
+// Filename: {stationName}_{ipFormatted}_{tokenID}.{ext}
+// For LOG type: {stationName}_{ipFormatted}.log (no tokenID in filename)
 func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	ext := fileExtension(tokenType)
 	ipFmt := formatIP(ip)
 	typeDir := strings.ToUpper(tokenType)
-
-	// Clean node name for filesystem (spaces → underscores)
-	safeNode := strings.ReplaceAll(nodeName, " ", "_")
-
-	// Station folder: all slots of a station are nested under one folder.
-	// e.g. AP01, AP01_m2, AP01_m3 → all under AP01m/
 	stationName := extractStationName(nodeName)
 
 	var fileName string
 	if strings.ToUpper(tokenType) == "LOG" {
-		fileName = fmt.Sprintf("%s_%s%s", safeNode, ipFmt, ext)
+		fileName = fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
 	} else {
-		fileName = fmt.Sprintf("%s_%s_%s%s", safeNode, ipFmt, tokenID, ext)
+		fileName = fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
 	}
 
-	return filepath.Join(lw.logRoot, typeDir, stationName, fileName)
+	return filepath.Join(lw.logRoot, stationName, typeDir, fileName)
 }
 
 // nodeDir returns the directory path for a node's logs, creating it if needed.
-// Directory: {logRoot}/{tokenType}/{stationName}/
+// Directory: {logRoot}/{stationName}/{tokenType}/
 func (lw *LogWriter) nodeDir(nodeName, tokenType string) (string, error) {
 	stationName := extractStationName(nodeName)
-	dir := filepath.Join(lw.logRoot, strings.ToUpper(tokenType), stationName)
+	dir := filepath.Join(lw.logRoot, stationName, strings.ToUpper(tokenType))
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("logwriter: create dir %s: %w", dir, err)
 	}
@@ -135,12 +124,6 @@ func (lw *LogWriter) nodeDir(nodeName, tokenType string) (string, error) {
 }
 
 // WriteOutput appends command output to a node's log file.
-// File path: {logRoot}/{tokenType}/{nodeName}/{nodeName}_{ip}_{tokenID}.{ext}
-// A decorative header with ═══ bars, command metadata, and ─── separators
-// is prepended to each write (matching Python log_writer.py style).
-//
-// The ipAddress parameter is used for filename formatting (dots → hyphens).
-// If empty, "unknown-ip" is used.
 func (lw *LogWriter) WriteOutput(nodeName, tokenType, tokenID, output string) error {
 	return lw.WriteOutputWithIP(nodeName, tokenType, tokenID, output, "")
 }
@@ -154,115 +137,128 @@ func (lw *LogWriter) WriteOutputWithIP(nodeName, tokenType, tokenID, output, ipA
 		return err
 	}
 
-	path := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
+	filePath := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
 
-	// Open in append mode (create if not exists)
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	header := formatHeader(nodeName, tokenType, tokenID)
+	content := header + output + "\n"
+
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("logwriter: open %s: %w", path, err)
+		return fmt.Errorf("logwriter: open %s: %w", filePath, err)
 	}
 	defer f.Close()
 
-	// Write decorative header
-	header := buildDecorativeHeader(nodeName, tokenType, tokenID)
-	if _, err := f.WriteString(header); err != nil {
-		return fmt.Errorf("logwriter: write header: %w", err)
-	}
-	if _, err := f.WriteString(output); err != nil {
-		return fmt.Errorf("logwriter: write output: %w", err)
-	}
-	if !strings.HasSuffix(output, "\n") {
-		f.WriteString("\n")
-	}
-
-	// Write footer separator
-	footer := buildSeparator()
-	if _, err := f.WriteString(footer); err != nil {
-		return fmt.Errorf("logwriter: write footer: %w", err)
+	if _, err := f.WriteString(content); err != nil {
+		return fmt.Errorf("logwriter: write %s: %w", filePath, err)
 	}
 
 	return nil
 }
 
-// buildDecorativeHeader creates a decorative header block with ═══ bars,
-// command metadata, and ─── separators (matching Python log_writer.py style).
-func buildDecorativeHeader(nodeName, tokenType, tokenID string) string {
-	now := time.Now().UTC().Format("2006-01-02 15:04:05 UTC")
-	bar := strings.Repeat("═", 60)
-	return fmt.Sprintf("\n%s\n  NODE: %s  |  TYPE: %s  |  TOKEN: %s  |  TIME: %s\n%s\n",
-		bar, nodeName, strings.ToUpper(tokenType), tokenID, now, bar)
+// formatHeader creates a decorative header for each log entry.
+func formatHeader(nodeName, tokenType, tokenID string) string {
+	ts := time.Now().Format("2006-01-02 15:04:05")
+	station := extractStationName(nodeName)
+	bar := strings.Repeat("=", 70)
+	sep := strings.Repeat("-", 70)
+	return fmt.Sprintf("\n%s\n# Node: %s | Station: %s | Type: %s | Token: %s | Time: %s\n%s\n", bar, nodeName, station, tokenType, tokenID, ts, sep)
 }
 
-// buildSeparator creates a ─── separator line used after output.
-func buildSeparator() string {
-	return strings.Repeat("─", 60) + "\n"
-}
+// ListFiles returns all log files of a given type in the log root.
+func (lw *LogWriter) ListFiles(tokenType string) ([]LogEntry, error) {
+	typeDir := strings.ToUpper(tokenType)
+	entries := make([]LogEntry, 0)
 
-// ReadLog reads the content of a node's log file.
-func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID, ipAddress string) (string, error) {
-	path := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
-	data, err := os.ReadFile(path)
+	rootEntries, err := os.ReadDir(lw.logRoot)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("logwriter: log file not found: %s", path)
-		}
-		return "", fmt.Errorf("logwriter: read %s: %w", path, err)
+		return entries, nil
 	}
-	return string(data), nil
-}
 
-// ListLogs lists all log files for a node across all token types.
-// Returns a slice of LogEntry sorted by file name.
-func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
-	stationName := extractStationName(nodeName)
-	result := make([]LogEntry, 0)
-
-	// Check all token type directories
-	for _, tokenType := range []string{"FBC", "RPC", "LOG", "LIS"} {
-		dir := filepath.Join(lw.logRoot, tokenType, stationName)
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue // Directory doesn't exist, skip
+	for _, stationEntry := range rootEntries {
+		if !stationEntry.IsDir() {
+			continue
 		}
-
-		for _, entry := range entries {
-			if entry.IsDir() {
+		typePath := filepath.Join(lw.logRoot, stationEntry.Name(), typeDir)
+		fileEntries, err := os.ReadDir(typePath)
+		if err != nil {
+			continue
+		}
+		for _, fe := range fileEntries {
+			if fe.IsDir() {
 				continue
 			}
-			info, err := entry.Info()
+			info, err := fe.Info()
 			if err != nil {
 				continue
 			}
-			result = append(result, LogEntry{
-				FileName:   entry.Name(),
-				FilePath:   filepath.Join(dir, entry.Name()),
+			entries = append(entries, LogEntry{
+				FileName:   fe.Name(),
+				FilePath:   filepath.Join(typePath, fe.Name()),
 				Size:       info.Size(),
 				ModifiedAt: info.ModTime(),
 			})
 		}
 	}
 
-	// Sort by file name for stable output
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].FileName < result[j].FileName
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].FileName < entries[j].FileName
 	})
 
-	return result, nil
+	return entries, nil
 }
 
-// ClearLog truncates a node's log file (removes all content).
-func (lw *LogWriter) ClearLog(nodeName, tokenType, tokenID, ipAddress string) error {
-	path := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
-	if err := os.Truncate(path, 0); err != nil {
-		if os.IsNotExist(err) {
-			return nil // Nothing to clear
-		}
-		return fmt.Errorf("logwriter: clear %s: %w", path, err)
+
+// ListLogs returns all log files for a given node (by station name).
+// It scans {logRoot}/{stationName}/*/ for all files.
+func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
+	stationName := extractStationName(nodeName)
+	entries := make([]LogEntry, 0)
+
+	stationDir := filepath.Join(lw.logRoot, stationName)
+	typeEntries, err := os.ReadDir(stationDir)
+	if err != nil {
+		return entries, nil
 	}
-	return nil
+
+	for _, typeEntry := range typeEntries {
+		if !typeEntry.IsDir() {
+			continue
+		}
+		typePath := filepath.Join(stationDir, typeEntry.Name())
+		fileEntries, err := os.ReadDir(typePath)
+		if err != nil {
+			continue
+		}
+		for _, fe := range fileEntries {
+			if fe.IsDir() {
+				continue
+			}
+			info, err := fe.Info()
+			if err != nil {
+				continue
+			}
+			entries = append(entries, LogEntry{
+				FileName:   fe.Name(),
+				FilePath:   filepath.Join(typePath, fe.Name()),
+				Size:       info.Size(),
+				ModifiedAt: info.ModTime(),
+			})
+		}
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].FileName < entries[j].FileName
+	})
+
+	return entries, nil
 }
 
-// LogRoot returns the configured log root directory.
-func (lw *LogWriter) LogRoot() string {
-	return lw.logRoot
+// ReadLog reads the content of a specific log file.
+func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID, ipAddress string) (string, error) {
+	filePath := lw.logPath(nodeName, tokenType, tokenID, ipAddress)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("logwriter: read %s: %w", filePath, err)
+	}
+	return string(data), nil
 }

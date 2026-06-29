@@ -1,12 +1,7 @@
 // Package sysloader loads Valmet DNA .sys configuration files and creates
 // the FBC/RPC/LOG/LIS folder structure for log file collection.
 //
-// It mirrors the Python sys_file_loader.py and log_creator.py behavior:
-//   - LoadSysFiles scans a directory for .sys files, parses each one,
-//     groups entries by LID prefix, extracts token IDs from hardware
-//     addresses, and returns []types.NodeConfig.
-//   - CreateFolderStructure creates the output directory tree with
-//     placeholder .fbc/.rpc/.log/.lis files per node.
+// It mirrors the Python sys_file_loader.py and log_creator.py behavior.
 package sysloader
 
 import (
@@ -21,10 +16,9 @@ import (
 )
 
 // nodeTypeToTokenTypes maps a node type string to the token types
-// that should be created for that node (mirrors Python log_creator.py
-// node['types'] field).
+// that should be created for that node.
 var nodeTypeToTokenTypes = map[string][]types.TokenType{
-	"PCS":      {types.TokenFBC, types.TokenRPC},
+	"PCS":      {types.TokenFBC, types.TokenRPC}, // PCS fieldbus slots
 	"LIS":      {types.TokenLIS},
 	"DIA":      {types.TokenLOG},
 	"NETWATCH": {types.TokenLOG},
@@ -36,23 +30,18 @@ var nodeTypeToTokenTypes = map[string][]types.TokenType{
 }
 
 // LoadSysFiles scans a directory for .sys files, parses each one,
-// groups entries by LID prefix, extracts token IDs from hardware
-// addresses, and returns a slice of NodeConfig.
+// groups entries by LID prefix, extracts token IDs, and returns []types.NodeConfig.
 //
-// For each .sys file:
-//  1. parser.ParseSysFile extracts :e:hw: entries and IP address
-//  2. Entries are grouped by LID (each unique LID = one node)
-//  3. Token IDs are extracted from the hardware address field
-//  4. Node types are derived from the LID prefix via types.LIDMapping
-//
-// The IP address from set XD_IP_ADDR is assigned to each node config.
+// Slot handling:
+//   - Slot 1 (CPU, PROGRAM=PCS_CODE): LOG-only token (BsTool errlog). No FBC/RPC.
+//   - Slot 2+ (fieldbus, PROGRAM=CIO_FBC_CODE): FBC + RPC tokens.
+//   - NCU2 nodes: skipped (infrastructure).
 func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, fmt.Errorf("sysloader: read dir %s: %w", dirPath, err)
 	}
 
-	// Collect all .sys file paths
 	var sysFiles []string
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -67,36 +56,30 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		return make([]types.NodeConfig, 0), nil
 	}
 
-	// Parse each .sys file and accumulate nodes
-	// Key: LID → NodeConfig (merge tokens from multiple files)
 	nodeMap := make(map[string]*types.NodeConfig)
-	nodeOrder := make([]string, 0) // preserve discovery order
+	nodeOrder := make([]string, 0)
 
 	for _, sysPath := range sysFiles {
 		result, err := parser.ParseSysFile(sysPath)
 		if err != nil {
-			continue // skip files that can't be parsed
+			continue
 		}
 
 		ipAddr := result.IPAddr
 
-		// Process :e:hw: entries — each entry has a hardware address (token ID)
-		// and a LID (node identifier)
+		// Process :e:hw: entries (legacy format)
 		for _, entry := range result.Entries {
 			lid := entry.LID
 			if lid == "" {
 				continue
 			}
 
-			// Determine token type from node type
 			nodeType := entry.NodeType
 			tokenTypes := nodeTypeToTokenTypes[nodeType]
 			if len(tokenTypes) == 0 {
-				// Default: treat as FBC+RPC for PCS-like nodes
 				tokenTypes = []types.TokenType{types.TokenFBC, types.TokenRPC}
 			}
 
-			// Get or create node config
 			node, exists := nodeMap[lid]
 			if !exists {
 				node = &types.NodeConfig{
@@ -107,25 +90,16 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				nodeOrder = append(nodeOrder, lid)
 			}
 
-			// Update IP if this file had one and the node doesn't
 			if node.IPAddress == "" && ipAddr != "" {
 				node.IPAddress = ipAddr
 			}
 
-			// Extract token ID from the hardware address
-			// The hardware address in :e:hw: lines is a hex string (e.g. "222", "1a1")
-			// This is the actual token ID used in DIA commands:
-			//   "print from fbc io structure 2220000"
-			//   "print from fbc rupi counters 2220000"
 			tokenID := entry.HWAddr
 			if tokenID == "" {
-				// Fallback: use LID with spaces → underscores
 				tokenID = strings.ReplaceAll(lid, " ", "_")
 			}
 
-			// Add tokens for each token type this node supports
 			for _, tt := range tokenTypes {
-				// Avoid duplicate tokens
 				alreadyExists := false
 				for _, existing := range node.Tokens {
 					if existing.TokenType == tt && existing.TokenID == tokenID {
@@ -145,13 +119,13 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 
 		// Process Slot-format nodes (TITLE=/PROGRAM= sections)
 		// The filename stem (e.g. "161" from "161.sys") is the base hardware address.
-		// Token IDs are calculated based on the slot number from the node name suffix:
-		//   AP01 (base)    → slot 1 → token = base (e.g. "161")
-		//   AP01_m2        → slot 2 → token = base + 1 (e.g. "162")
-		//   AP01_m3        → slot 3 → token = base + 2 (e.g. "163")
-		//   AP02_r2 (reserve) → slot 2 → token = base + 1 (e.g. "382")
-		// NCU2 nodes are skipped — they are infrastructure, not project process stations.
-		// AL (LIS) and OPS (LOG) nodes use the base token directly (no slot offset).
+		// Token IDs are calculated based on the slot number:
+		//   AP01 (base, slot 1 CPU)    -> token = base (e.g. "161") -- but LOG only
+		//   AP01_m2 (slot 2 fieldbus)  -> token = base + 1 (e.g. "162") -- FBC + RPC
+		//   AP01_m3 (slot 3 fieldbus)  -> token = base + 2 (e.g. "163") -- FBC + RPC
+		// NCU2 nodes are skipped.
+		// CPU slots (Slot 1, PROGRAM=PCS_CODE) get LOG-only token (BsTool errlog).
+		// Fieldbus slots (Slot 2+, PROGRAM=CIO_FBC_CODE) get FBC + RPC tokens.
 		sysFileToken := strings.TrimSuffix(filepath.Base(sysPath), filepath.Ext(sysPath))
 		for _, sfn := range result.Nodes {
 			lid := sfn.LID
@@ -159,7 +133,7 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				continue
 			}
 
-			// Skip NCU2 — infrastructure node, not a project process station
+			// Skip NCU2
 			if lid == "NCU2" {
 				continue
 			}
@@ -178,21 +152,33 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				node.IPAddress = ipAddr
 			}
 
-			// Calculate token ID based on slot number from node name suffix.
-			// _m2, _m3, _m4 → slot 2, 3, 4 → token = base + (slot-1)
-			// _r2, _r3, _r4 → same pattern for reserve nodes
-			// Base node (no suffix or " Main"/" Reserve") → slot 1 → token = base
+			// Calculate token ID based on slot number
 			tokenID := sysFileToken
 			slotNum := extractSlotNumber(lid)
 			if slotNum > 1 {
 				tokenID = offsetToken(sysFileToken, slotNum-1)
 			}
 
-			// Add default tokens based on node type
-			tokenTypes := nodeTypeToTokenTypes[sfn.Type]
-			if len(tokenTypes) == 0 {
+			// Determine token types based on whether this is a fieldbus slot or CPU slot.
+			// FBC/RPC only apply to fieldbus cards (PROGRAM=CIO_FBC_CODE).
+			// CPU slots (PROGRAM=PCS_CODE) get LOG-only (BsTool errlog output).
+			var tokenTypes []types.TokenType
+			if sfn.IsFieldbus {
+				// Fieldbus slot: FBC + RPC (all FBC have corresponding RPC)
 				tokenTypes = []types.TokenType{types.TokenFBC, types.TokenRPC}
+			} else {
+				// CPU slot or other: LOG-only (BsTool errlog)
+				// LIS/OPS nodes use their type mapping instead
+				tokenTypes = nodeTypeToTokenTypes[sfn.Type]
+				if len(tokenTypes) == 0 {
+					tokenTypes = []types.TokenType{types.TokenLOG}
+				}
+				// For PCS CPU slots, override to LOG-only
+				if sfn.Type == "PCS" {
+					tokenTypes = []types.TokenType{types.TokenLOG}
+				}
 			}
+
 			for _, tt := range tokenTypes {
 				alreadyExists := false
 				for _, existing := range node.Tokens {
@@ -212,7 +198,6 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		}
 	}
 
-	// Build result slice in discovery order
 	configs := make([]types.NodeConfig, 0, len(nodeOrder))
 	for _, lid := range nodeOrder {
 		configs = append(configs, *nodeMap[lid])
@@ -221,13 +206,9 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 	return configs, nil
 }
 
-
-
 // extractSlotNumber parses the slot number from a node LID name.
-// "AP01" → 1, "AP01_m2" → 2, "AP01_m3" → 3, "AP02_r4" → 4, "AP02 Main" → 1, "AP02 Reserve" → 1
-// Returns 1 if no slot suffix is found (base/main/reserve node).
+// "AP01" -> 1, "AP01_m2" -> 2, "AP01_m3" -> 3, "AP02_r4" -> 4
 func extractSlotNumber(lid string) int {
-	// Check for _mN or _rN suffix
 	parts := strings.Split(lid, "_")
 	for _, p := range parts {
 		if len(p) >= 2 && (p[0] == 'm' || p[0] == 'r') {
@@ -241,38 +222,26 @@ func extractSlotNumber(lid string) int {
 					}
 				}
 				if n > 0 {
-						return n
+					return n
 				}
 			}
 		}
 	}
-	// " Main", " Reserve", or no suffix → slot 1
 	return 1
 }
 
 // offsetToken adds an offset to a hex token ID string.
-// e.g. offsetToken("161", 1) = "162", offsetToken("1a1", 2) = "1a3"
 func offsetToken(base string, offset int) string {
-	// Parse as hex
 	val, err := strconv.ParseInt(base, 16, 64)
 	if err != nil {
-		// Not hex, return base as-is
 		return base
 	}
 	val += int64(offset)
-	// Format back as hex, preserving case and length
-	result := strconv.FormatInt(val, 16)
-	return result
+	return strconv.FormatInt(val, 16)
 }
 
 // extractStationName derives the station folder name from a node name.
-// All slots of a station are nested under one station folder:
-//
-//	"AP01" → "AP01m", "AP01 Main" → "AP01m", "AP01_m2" → "AP01m"
-//	"AP02 Reserve" → "AP02r", "AP02_r2" → "AP02r"
-//	"AL01" → "AL01" (LIS, no suffix), "A1OA OPS" → "A1OA" (OPS, no suffix)
 func extractStationName(nodeName string) string {
-	// LIS nodes (AL prefix) and OPS nodes don't get m/r suffix
 	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
 		base := nodeName
 		if idx := strings.Index(base, " "); idx >= 0 {
@@ -283,7 +252,6 @@ func extractStationName(nodeName string) string {
 
 	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
 
-	// Strip suffixes to get base name
 	base := nodeName
 	if idx := strings.Index(base, " "); idx >= 0 {
 		base = base[:idx]
@@ -297,21 +265,11 @@ func extractStationName(nodeName string) string {
 	}
 	return base + "m"
 }
-// CreateFolderStructure creates the FBC/RPC/LOG/LIS directory tree with
-// placeholder files, mirroring Python log_creator.py create_file_structure().
-//
-// For each node config, based on token types:
-//   - FBC: create outputDir/FBC/{stationName}/ and placeholder files
-//     {nodeName}_{ip}_{tokenID}.fbc
-//   - RPC: create outputDir/RPC/{stationName}/ and placeholder files
-//     {nodeName}_{ip}_{tokenID}.rpc
-//   - LOG: create outputDir/LOG/ and placeholder file
-//     {nodeName}_{ip}.log
-//   - LIS: create outputDir/LIS/{stationName}/ and placeholder files
-//     {nodeName}_{ip}_exe{i}_5irb_5orb.lis (i=1..6)
-//
-// All slots of a station (AP01, AP01_m2, AP01_m3) are nested under
-// the station folder (AP01m).
+
+// CreateFolderStructure creates the FBC/RPC/LOG/LIS directory tree.
+// Only fieldbus slots (FBC/RPC tokens) create FBC and RPC files.
+// CPU slots (LOG-only) create LOG files for BsTool errlog output.
+// All FBC files have corresponding RPC files in the same station folder.
 func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("sysloader: create output dir %s: %w", outputDir, err)
@@ -323,24 +281,20 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			continue
 		}
 
-		// Station folder: all slots of a station are nested under one folder.
-		// e.g. AP01, AP01_m2, AP01_m3 → all under AP01m/
 		stationName := extractStationName(cfg.Name)
 
-		// Format IP for filename (replace dots with hyphens, matching Python)
 		ipFormatted := cfg.IPAddress
 		if ipFormatted == "" {
 			ipFormatted = "192.168.0.1"
 		}
 		ipFormatted = strings.ReplaceAll(ipFormatted, ".", "-")
 
-		// Collect unique token types for this node
 		tokenTypeSet := make(map[types.TokenType]bool)
 		for _, tok := range cfg.Tokens {
 			tokenTypeSet[tok.TokenType] = true
 		}
 
-		// FBC files
+		// FBC files (only for fieldbus slots)
 		if tokenTypeSet[types.TokenFBC] {
 			nodeDir := filepath.Join(outputDir, stationName, "FBC")
 			if err := os.MkdirAll(nodeDir, 0755); err != nil {
@@ -350,7 +304,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 				if tok.TokenType != types.TokenFBC {
 					continue
 				}
-				fileName := fmt.Sprintf("%s_%s_%s.fbc", nodeName, ipFormatted, tok.TokenID)
+				fileName := fmt.Sprintf("%s_%s_%s.fbc", stationName, ipFormatted, tok.TokenID)
 				filePath := filepath.Join(nodeDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
@@ -360,7 +314,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			}
 		}
 
-		// RPC files
+		// RPC files (always paired with FBC -- all FBC have corresponding RPC)
 		if tokenTypeSet[types.TokenRPC] {
 			nodeDir := filepath.Join(outputDir, stationName, "RPC")
 			if err := os.MkdirAll(nodeDir, 0755); err != nil {
@@ -370,7 +324,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 				if tok.TokenType != types.TokenRPC {
 					continue
 				}
-				fileName := fmt.Sprintf("%s_%s_%s.rpc", nodeName, ipFormatted, tok.TokenID)
+				fileName := fmt.Sprintf("%s_%s_%s.rpc", stationName, ipFormatted, tok.TokenID)
 				filePath := filepath.Join(nodeDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
@@ -380,28 +334,13 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			}
 		}
 
-		// LOG files for PCS nodes (FBC/RPC tokens) — BsTool errlog output
-		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] {
+		// LOG files for PCS nodes (both CPU and fieldbus slots get errlog)
+		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] || tokenTypeSet[types.TokenLOG] {
 			logDir := filepath.Join(outputDir, stationName, "LOG")
 			if err := os.MkdirAll(logDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
 			}
-			fileName := fmt.Sprintf("%s_%s.log", nodeName, ipFormatted)
-			filePath := filepath.Join(logDir, fileName)
-			if _, err := os.Stat(filePath); os.IsNotExist(err) {
-				if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
-					return fmt.Errorf("sysloader: create LOG file %s: %w", filePath, err)
-				}
-			}
-		}
-
-		// LOG files
-		if tokenTypeSet[types.TokenLOG] {
-			logDir := filepath.Join(outputDir, stationName, "LOG")
-			if err := os.MkdirAll(logDir, 0755); err != nil {
-				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
-			}
-			fileName := fmt.Sprintf("%s_%s.log", nodeName, ipFormatted)
+			fileName := fmt.Sprintf("%s_%s.log", stationName, ipFormatted)
 			filePath := filepath.Join(logDir, fileName)
 			if _, err := os.Stat(filePath); os.IsNotExist(err) {
 				if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
@@ -417,7 +356,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}
 			for i := 1; i <= 6; i++ {
-				fileName := fmt.Sprintf("%s_%s_exe%d_irb_orb.lis", nodeName, ipFormatted, i)
+				fileName := fmt.Sprintf("%s_%s_exe%d_irb_orb.lis", stationName, ipFormatted, i)
 				filePath := filepath.Join(lisDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
