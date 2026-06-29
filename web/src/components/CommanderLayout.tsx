@@ -1,18 +1,44 @@
-import { useState, useCallback } from 'react';
-import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText, Upload } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText, Upload, Plus, Trash2, Save, Box, ChevronDown } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
 import ScanTab from './ScanTab';
 import CommandQueueBar from './CommandQueueBar';
 import NodeConfigDialog from './NodeConfigDialog';
-import type { TreeNodeData, QueueStatusResponse } from '../types/api';
+import type { TreeNodeData, QueueStatusResponse, NodeConfig, Token } from '../types/api';
 
-type Tab = 'telnet' | 'bstool' | 'scan' | 'logviewer';
+type Tab = 'telnet' | 'nodes' | 'bstool' | 'scan' | 'logviewer';
+
+// ─── Project interface ──────────────────────────────────────────
+interface Project {
+  id: number;
+  project_number: string;
+  ship_name: string;
+  log_root: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
 
 // Strip suffix from node name: "AP01m" → "AP01", "AP01r" → "AP01"
 function stripNodeSuffix(name: string): string {
   return name.replace(/[mr]$/, '');
+}
+
+// Read project_id from URL query param (?project_id=N)
+function getProjectIdFromURL(): number | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const val = params.get('project_id');
+    if (val) {
+      const n = parseInt(val, 10);
+      if (!isNaN(n) && n > 0) return n;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 export default function CommanderLayout() {
@@ -32,6 +58,21 @@ export default function CommanderLayout() {
   const [logRootLoading, setLogRootLoading] = useState(false);
   const [logRootError, setLogRootError] = useState<string | null>(null);
 
+  // ─── Project selector state ────────────────────────────────────
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
+    const fromURL = getProjectIdFromURL();
+    if (fromURL) {
+      localStorage.setItem('activeProjectId', String(fromURL));
+      return fromURL;
+    }
+    const stored = localStorage.getItem('activeProjectId');
+    return stored ? parseInt(stored, 10) : null;
+  });
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [treeReloadKey, setTreeReloadKey] = useState(0);
+
   // Sys file scan state
   const [showSysScan, setShowSysScan] = useState(false);
   const [sysDir, setSysDir] = useState(localStorage.getItem('sysDir') || '');
@@ -48,6 +89,39 @@ export default function CommanderLayout() {
 
   // Terminal output log (accumulated from single-command execution via context menu)
   const [terminalLog, setTerminalLog] = useState<string[]>([]);
+
+  // ─── Fetch projects ────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchProjects() {
+      setProjectsLoading(true);
+      try {
+        const res = await fetch('/api/v1/projects');
+        if (!res.ok) return;
+        const data = await res.json();
+        setProjects(data.projects || []);
+        // Auto-select first project if none selected and projects exist
+        if (!activeProjectId && data.projects && data.projects.length > 0) {
+          const first = data.projects[0];
+          setActiveProjectId(first.id);
+          localStorage.setItem('activeProjectId', String(first.id));
+        }
+      } catch {
+        // ignore
+      } finally {
+        setProjectsLoading(false);
+      }
+    }
+    fetchProjects();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+
+  function handleSelectProject(id: number) {
+    setActiveProjectId(id);
+    localStorage.setItem('activeProjectId', String(id));
+    setShowProjectDropdown(false);
+    setTreeReloadKey((k) => k + 1); // force tree reload
+  }
 
   // ─── Node tree callbacks ─────────────────────────────────────
 
@@ -140,8 +214,6 @@ export default function CommanderLayout() {
           break;
         }
         case 'fbc_print': {
-          // Execute single FBC command via telnet, show output in terminal
-          // Uses the full DIA command: "print from fbc io structure {token}0000"
           const cmd = `print from fbc io structure ${tokenId}0000`;
           setActiveTab('telnet');
           setTerminalLog(prev => [...prev, `> ${cmd}`]);
@@ -161,7 +233,6 @@ export default function CommanderLayout() {
           break;
         }
         case 'rpc_print': {
-          // Execute single RPC command: "print from fbc rupi counters {token}0000"
           const cmd = `print from fbc rupi counters ${tokenId}0000`;
           setActiveTab('telnet');
           setTerminalLog(prev => [...prev, `> ${cmd}`]);
@@ -181,7 +252,6 @@ export default function CommanderLayout() {
           break;
         }
         case 'rpc_clear': {
-          // Clear RPC counters: "clear fbc rupi counters {token}0000"
           const cmd = `clear fbc rupi counters ${tokenId}0000`;
           setActiveTab('telnet');
           setTerminalLog(prev => [...prev, `> ${cmd}`]);
@@ -251,7 +321,7 @@ export default function CommanderLayout() {
     }
   }, [logRootInput]);
 
-  // ─── Sys file scan + ingest ────────────────────────────────────
+  // ─── Sys file scan + ingest (header version, legacy) ───────────
 
   const handleSysScan = useCallback(async () => {
     if (!sysDir) {
@@ -281,7 +351,8 @@ export default function CommanderLayout() {
   const handleSaveNodes = useCallback(async () => {
     if (!scanResult?.configs) return;
     try {
-      const res = await fetch('/api/v1/nodesconfig', {
+      const projectIdParam = activeProjectId ? `?project_id=${activeProjectId}` : '';
+      const res = await fetch(`/api/v1/nodesconfig${projectIdParam}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scanResult.configs),
@@ -290,20 +361,19 @@ export default function CommanderLayout() {
         const data = await res.json().catch(() => ({ message: 'Save failed' }));
         throw new Error(data.message || `HTTP ${res.status}`);
       }
-      // Refresh tree by reloading
       setShowSysScan(false);
       setScanResult(null);
-      // Trigger tree reload via key change
-      window.location.reload();
+      setTreeReloadKey((k) => k + 1);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Save failed');
     }
-  }, [scanResult]);
+  }, [scanResult, activeProjectId]);
 
   // ─── Tab bar ────────────────────────────────────────────────────
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'telnet', label: 'Telnet', icon: <Terminal size={14} /> },
+    { id: 'nodes', label: 'Nodes', icon: <Box size={14} /> },
     { id: 'bstool', label: 'BsTool', icon: <Server size={14} /> },
     { id: 'scan', label: 'Scan', icon: <ScanLine size={14} /> },
     { id: 'logviewer', label: 'Log Viewer', icon: <FileText size={14} /> },
@@ -327,6 +397,80 @@ export default function CommanderLayout() {
         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
           Interactive Command Center
         </span>
+
+        {/* ─── Project selector dropdown ─────────────────────────── */}
+        <div style={{ position: 'relative', marginLeft: '8px' }}>
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+            title="Select active project"
+          >
+            <Box size={12} />
+            {activeProject ? (
+              <span>{activeProject.project_number} — {activeProject.ship_name}</span>
+            ) : projectsLoading ? (
+              <Loader2 size={12} className="spin" />
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>Select Project...</span>
+            )}
+            <ChevronDown size={12} />
+          </button>
+          {showProjectDropdown && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                zIndex: 1000,
+                minWidth: '280px',
+                maxHeight: '300px',
+                overflow: 'auto',
+              }}
+            >
+              {projects.length === 0 ? (
+                <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  No projects. Create one from the Dashboard.
+                </div>
+              ) : (
+                projects.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => handleSelectProject(p.id)}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      borderBottom: '1px solid var(--border)',
+                      backgroundColor: p.id === activeProjectId ? 'rgba(99,102,241,0.1)' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(99,102,241,0.08)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = p.id === activeProjectId ? 'rgba(99,102,241,0.1)' : 'transparent'; }}
+                  >
+                    <Box size={12} color={p.id === activeProjectId ? 'var(--accent)' : 'var(--text-muted)'} />
+                    <div>
+                      <div style={{ fontWeight: p.id === activeProjectId ? 600 : 400 }}>
+                        {p.project_number} — {p.ship_name}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        {p.status} · {p.log_root || 'no log root'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
         <div style={{ flex: 1 }} />
         {/* Log Root indicator + Set Log Root button */}
         {logRoot ? (
@@ -421,7 +565,7 @@ export default function CommanderLayout() {
         </button>
       </div>
 
-      {/* Sys file scan panel */}
+      {/* Sys file scan panel (header version, legacy) */}
       {showSysScan && (
         <div
           style={{
@@ -473,7 +617,7 @@ export default function CommanderLayout() {
                 style={{ fontSize: '12px', padding: '4px 12px', backgroundColor: 'var(--success)' }}
                 onClick={handleSaveNodes}
               >
-                Save to nodes.json ({scanResult.count} nodes)
+                Save to project ({scanResult.count} nodes)
               </button>
             )}
             <button
@@ -490,7 +634,8 @@ export default function CommanderLayout() {
           {scanResult && (
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
               Found {scanResult.count} nodes (before filtering: {scanResult.totalBefore}).
-              Review and click "Save to nodes.json" to apply.
+              {activeProject ? ` Saving to project "${activeProject.ship_name}".` : ' No project selected — saves to global nodes.'}
+              Review and click "Save to project" to apply.
             </div>
           )}
         </div>
@@ -508,6 +653,8 @@ export default function CommanderLayout() {
           }}
         >
           <NodeTree
+            key={treeReloadKey}
+            projectId={activeProjectId}
             onSelectNode={handleSelectNode}
             onSelectToken={handleSelectToken}
             onContextAction={handleContextAction}
@@ -588,6 +735,12 @@ export default function CommanderLayout() {
                 )}
               </div>
             )}
+            {activeTab === 'nodes' && (
+              <NodesTabContent
+                projectId={activeProjectId}
+                onNodesSaved={() => setTreeReloadKey((k) => k + 1)}
+              />
+            )}
             {activeTab === 'bstool' && (
               <BsToolPanel
                 pendingServerName={pendingServerName}
@@ -663,3 +816,672 @@ export default function CommanderLayout() {
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════
+// NodesTabContent — Node browser + sys file import
+// ═══════════════════════════════════════════════════════════════
+
+interface NodesTabContentProps {
+  projectId: number | null;
+  onNodesSaved: () => void;
+}
+
+function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
+  // Node config state (NodeConfig[] from nodesconfig API)
+  const [nodes, setNodes] = useState<NodeConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editNode, setEditNode] = useState<NodeConfig>({ name: '', ip_address: '', tokens: [] });
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Sys file import state
+  const [importDir, setImportDir] = useState(localStorage.getItem('sysDir') || '');
+  const [importScanning, setImportScanning] = useState(false);
+  const [importResult, setImportResult] = useState<{ count: number; totalBefore: number; configs: NodeConfig[] } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [selectedImports, setSelectedImports] = useState<Set<number>>(new Set());
+  const [singleSysPath, setSingleSysPath] = useState('');
+  const [showImport, setShowImport] = useState(false);
+
+  // ─── Fetch nodes for active project ────────────────────────────
+  const fetchNodes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const pidParam = projectId ? `?project_id=${projectId}` : '';
+      const res = await fetch(`/api/v1/nodesconfig${pidParam}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setNodes(data.configs || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load nodes');
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchNodes();
+  }, [fetchNodes]);
+
+  // ─── Save all nodes ─────────────────────────────────────────────
+  async function handleSaveAll() {
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const pidParam = projectId ? `?project_id=${projectId}` : '';
+      const res = await fetch(`/api/v1/nodesconfig${pidParam}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nodes),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Save failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      setSaveMsg('Saved successfully');
+      setTimeout(() => setSaveMsg(null), 3000);
+      onNodesSaved();
+    } catch (err) {
+      setSaveMsg(`Error: ${err instanceof Error ? err.message : 'Save failed'}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ─── Add new node ────────────────────────────────────────────────
+  function handleAddNode() {
+    const newNode: NodeConfig = { name: 'NewNode', ip_address: '192.168.0.1', tokens: [] };
+    setNodes([...nodes, newNode]);
+    setEditingIdx(nodes.length);
+    setEditNode(newNode);
+  }
+
+  // ─── Delete node ─────────────────────────────────────────────────
+  function handleDeleteNode(idx: number) {
+    const updated = nodes.filter((_, i) => i !== idx);
+    setNodes(updated);
+    if (editingIdx === idx) {
+      setEditingIdx(null);
+    }
+  }
+
+  // ─── Start editing a node ────────────────────────────────────────
+  function startEdit(idx: number) {
+    setEditingIdx(idx);
+    setEditNode(JSON.parse(JSON.stringify(nodes[idx])));
+  }
+
+  // ─── Save edited node ────────────────────────────────────────────
+  function saveEdit() {
+    if (editingIdx !== null) {
+      const updated = [...nodes];
+      updated[editingIdx] = editNode;
+      setNodes(updated);
+      setEditingIdx(null);
+    }
+  }
+
+  // ─── Cancel editing ──────────────────────────────────────────────
+  function cancelEdit() {
+    setEditingIdx(null);
+  }
+
+  // ─── Add token to edited node ────────────────────────────────────
+  function addToken() {
+    setEditNode({
+      ...editNode,
+      tokens: [...editNode.tokens, { token_id: '0000', token_type: 'FBC', port: 23, protocol: 'telnet' }],
+    });
+  }
+
+  // ─── Remove token from edited node ───────────────────────────────
+  function removeToken(ti: number) {
+    setEditNode({
+      ...editNode,
+      tokens: editNode.tokens.filter((_, i) => i !== ti),
+    });
+  }
+
+  // ─── Sys file import: Scan ──────────────────────────────────────
+  async function handleImportScan() {
+    if (!importDir) {
+      setImportError('Directory is required');
+      return;
+    }
+    setImportScanning(true);
+    setImportError(null);
+    setImportResult(null);
+    setSelectedImports(new Set());
+    try {
+      const res = await fetch(`/api/v1/sysfiles/parse?dir=${encodeURIComponent(importDir)}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Scan failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const configs: NodeConfig[] = data.configs || data.nodes || [];
+      setImportResult({ count: configs.length, totalBefore: data.total_before_filter || configs.length, configs });
+      // Select all by default
+      setSelectedImports(new Set(configs.map((_, i) => i)));
+      localStorage.setItem('sysDir', importDir);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Scan failed');
+    } finally {
+      setImportScanning(false);
+    }
+  }
+
+  // ─── Sys file import: Import selected ────────────────────────────
+  async function handleImportSelected() {
+    if (!importResult || selectedImports.size === 0) return;
+    const selectedNodes = importResult.configs.filter((_, i) => selectedImports.has(i));
+    // Merge with existing nodes
+    const merged = [...nodes, ...selectedNodes];
+    setSaving(true);
+    setImportError(null);
+    try {
+      const pidParam = projectId ? `?project_id=${projectId}` : '';
+      const res = await fetch(`/api/v1/nodesconfig${pidParam}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(merged),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Import failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      setNodes(merged);
+      setImportResult(null);
+      setSelectedImports(new Set());
+      setSaveMsg(`Imported ${selectedNodes.length} nodes`);
+      setTimeout(() => setSaveMsg(null), 3000);
+      onNodesSaved();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ─── Import single .sys file ─────────────────────────────────────
+  async function handleImportSingle() {
+    if (!singleSysPath) {
+      setImportError('File path is required');
+      return;
+    }
+    setImportScanning(true);
+    setImportError(null);
+    try {
+      // Use parse endpoint with the file path — it handles single files too
+      const res = await fetch(`/api/v1/sysfiles/parse?dir=${encodeURIComponent(singleSysPath)}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Parse failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const configs: NodeConfig[] = data.configs || data.nodes || [];
+      if (configs.length === 0) {
+        setImportError('No nodes found in file');
+        return;
+      }
+      const merged = [...nodes, ...configs];
+      const pidParam = projectId ? `?project_id=${projectId}` : '';
+      const saveRes = await fetch(`/api/v1/nodesconfig${pidParam}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(merged),
+      });
+      if (!saveRes.ok) throw new Error('Save failed');
+      setNodes(merged);
+      setSingleSysPath('');
+      setSaveMsg(`Imported ${configs.length} node(s) from file`);
+      setTimeout(() => setSaveMsg(null), 3000);
+      onNodesSaved();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImportScanning(false);
+    }
+  }
+
+  // ─── Toggle import selection ─────────────────────────────────────
+  function toggleImportSelection(idx: number) {
+    setSelectedImports((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  // ─── Token type badge colors ──────────────────────────────────────
+  const TOKEN_COLORS: Record<string, string> = {
+    FBC: '#6366f1',
+    RPC: '#10b981',
+    LOG: '#f59e0b',
+    LIS: '#ec4899',
+    FTP: '#8b5cf6',
+  };
+
+  function getTokenTypes(node: NodeConfig): string[] {
+    const types = new Set<string>();
+    node.tokens.forEach((t) => types.add(t.token_type));
+    return Array.from(types);
+  }
+
+  return (
+    <div style={{ height: '100%', overflow: 'auto', backgroundColor: 'var(--bg-primary)' }}>
+      {/* Toolbar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 16px',
+          borderBottom: '1px solid var(--border)',
+          backgroundColor: 'var(--bg-secondary)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Box size={16} color="var(--accent)" />
+        <span style={{ fontSize: '13px', fontWeight: 600 }}>
+          Node Browser
+          {projectId ? '' : ' (no project selected)'}
+        </span>
+        <div style={{ flex: 1 }} />
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px' }}
+          onClick={() => setShowImport(!showImport)}
+          title="Import nodes from .sys files"
+        >
+          <Upload size={14} />
+          Import
+        </button>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px' }}
+          onClick={handleAddNode}
+          title="Add a new node manually"
+        >
+          <Plus size={14} />
+          Add Node
+        </button>
+        <button
+          className="btn btn-primary"
+          style={{ fontSize: '12px', padding: '4px 12px' }}
+          onClick={handleSaveAll}
+          disabled={saving}
+          title="Save all node changes"
+        >
+          {saving ? <Loader2 size={12} className="spin" /> : <Save size={14} />}
+          Save Changes
+        </button>
+        {saveMsg && (
+          <span style={{ fontSize: '11px', color: saveMsg.startsWith('Error') ? 'var(--error)' : 'var(--success)' }}>
+            {saveMsg}
+          </span>
+        )}
+      </div>
+
+      {/* Import panel */}
+      {showImport && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            backgroundColor: 'var(--bg-secondary)',
+          }}
+        >
+          {/* BU Directory scan */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <Upload size={14} color="var(--accent)" />
+            <span style={{ fontSize: '12px', fontWeight: 600 }}>Scan BU Directory for .sys files</span>
+            <div style={{ flex: 1 }} />
+            <input
+              type="text"
+              value={importDir}
+              onChange={(e) => setImportDir(e.target.value)}
+              placeholder="C:\dna\CA\bu or path to _SYS directory"
+              style={{
+                fontSize: '12px',
+                padding: '4px 8px',
+                width: '300px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '4px',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleImportScan(); }}
+            />
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '12px', padding: '4px 12px' }}
+              onClick={handleImportScan}
+              disabled={importScanning}
+            >
+              {importScanning ? <Loader2 size={12} className="spin" /> : 'Scan'}
+            </button>
+          </div>
+
+          {/* Single .sys file path */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Or import a single .sys file:</span>
+            <input
+              type="text"
+              value={singleSysPath}
+              onChange={(e) => setSingleSysPath(e.target.value)}
+              placeholder="C:\path\to\file.sys"
+              style={{
+                fontSize: '12px',
+                padding: '4px 8px',
+                width: '250px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '4px',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleImportSingle(); }}
+            />
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '4px 10px' }}
+              onClick={handleImportSingle}
+              disabled={importScanning}
+            >
+              Import File
+            </button>
+          </div>
+
+          {importError && (
+            <div style={{ fontSize: '11px', color: 'var(--error)', marginTop: '8px' }}>{importError}</div>
+          )}
+
+          {/* Scan results with checkboxes */}
+          {importResult && (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                  Found {importResult.count} nodes (before filter: {importResult.totalBefore})
+                </span>
+                <div style={{ flex: 1 }} />
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                  onClick={() => setSelectedImports(new Set(importResult.configs.map((_, i) => i)))}
+                >
+                  Select All
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                  onClick={() => setSelectedImports(new Set())}
+                >
+                  Select None
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ fontSize: '12px', padding: '4px 12px', backgroundColor: 'var(--success)' }}
+                  onClick={handleImportSelected}
+                  disabled={saving || selectedImports.size === 0}
+                >
+                  Import Selected ({selectedImports.size})
+                </button>
+              </div>
+              <div style={{ maxHeight: '200px', overflow: 'auto', border: '1px solid var(--border)', borderRadius: '4px' }}>
+                {importResult.configs.map((cfg, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
+                      borderBottom: '1px solid var(--border)',
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedImports.has(i)}
+                      onChange={() => toggleImportSelection(i)}
+                    />
+                    <span style={{ fontWeight: 600 }}>{cfg.name}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{cfg.ip_address}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      {cfg.tokens.length} token(s): {cfg.tokens.map((t) => t.token_type).join(', ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Node cards grid */}
+      <div style={{ padding: '16px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '48px' }}>
+            <Loader2 size={24} color="var(--accent)" className="spin" />
+            <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '8px' }}>Loading nodes...</p>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '48px' }}>
+            <p style={{ color: 'var(--error)', fontSize: '13px', marginBottom: '12px' }}>{error}</p>
+            <button className="btn btn-secondary" onClick={fetchNodes}>Retry</button>
+          </div>
+        ) : nodes.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+            <Box size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+            <p style={{ fontSize: '13px', marginBottom: '16px' }}>
+              No nodes in this project. Use Import to scan .sys files, or Add Node to create one manually.
+            </p>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '12px',
+            }}
+          >
+            {nodes.map((node, idx) => (
+              <div
+                key={idx}
+                style={{
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  transition: 'border-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+              >
+                {editingIdx === idx ? (
+                  // ─── Edit mode ────────────────────────────────────
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Name</label>
+                      <input
+                        type="text"
+                        value={editNode.name}
+                        onChange={(e) => setEditNode({ ...editNode, name: e.target.value })}
+                        style={nodeInputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>IP Address</label>
+                      <input
+                        type="text"
+                        value={editNode.ip_address}
+                        onChange={(e) => setEditNode({ ...editNode, ip_address: e.target.value })}
+                        style={nodeInputStyle}
+                      />
+                    </div>
+                    {/* Tokens editor */}
+                    <div>
+                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Tokens</label>
+                      {editNode.tokens.map((tok, ti) => (
+                        <div key={ti} style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+                          <input
+                            type="text"
+                            value={tok.token_id}
+                            onChange={(e) => {
+                              const newTokens = [...editNode.tokens];
+                              newTokens[ti] = { ...tok, token_id: e.target.value };
+                              setEditNode({ ...editNode, tokens: newTokens });
+                            }}
+                            placeholder="token_id"
+                            style={{ ...nodeInputStyle, width: '80px', fontSize: '11px', padding: '2px 4px' }}
+                          />
+                          <select
+                            value={tok.token_type}
+                            onChange={(e) => {
+                              const newTokens = [...editNode.tokens];
+                              newTokens[ti] = { ...tok, token_type: e.target.value };
+                              setEditNode({ ...editNode, tokens: newTokens });
+                            }}
+                            style={{ ...nodeInputStyle, width: '70px', fontSize: '11px', padding: '2px 4px' }}
+                          >
+                            <option value="FBC">FBC</option>
+                            <option value="RPC">RPC</option>
+                            <option value="LOG">LOG</option>
+                            <option value="LIS">LIS</option>
+                            <option value="FTP">FTP</option>
+                          </select>
+                          <input
+                            type="number"
+                            value={tok.port}
+                            onChange={(e) => {
+                              const newTokens = [...editNode.tokens];
+                              newTokens[ti] = { ...tok, port: Number(e.target.value) || 23 };
+                              setEditNode({ ...editNode, tokens: newTokens });
+                            }}
+                            placeholder="port"
+                            style={{ ...nodeInputStyle, width: '50px', fontSize: '11px', padding: '2px 4px' }}
+                          />
+                          <button
+                            className="btn btn-ghost"
+                            style={{ fontSize: '10px', padding: '2px 4px', color: 'var(--error)' }}
+                            onClick={() => removeToken(ti)}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: '10px', padding: '2px 8px' }}
+                        onClick={addToken}
+                      >
+                        <Plus size={10} /> Add Token
+                      </button>
+                    </div>
+                    {/* Save / Cancel buttons */}
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ fontSize: '11px', padding: '4px 10px' }}
+                        onClick={saveEdit}
+                      >
+                        <Save size={12} /> OK
+                      </button>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: '11px', padding: '4px 10px' }}
+                        onClick={cancelEdit}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // ─── Display mode ─────────────────────────────────
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                          {node.name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                          {node.ip_address}
+                        </div>
+                      </div>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: '10px', padding: '2px 4px', color: 'var(--error)' }}
+                        onClick={() => handleDeleteNode(idx)}
+                        title="Delete this node"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    {/* Token count + type badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {node.tokens.length} token{node.tokens.length !== 1 ? 's' : ''}
+                      </span>
+                      {getTokenTypes(node).map((tt) => (
+                        <span
+                          key={tt}
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            backgroundColor: (TOKEN_COLORS[tt] || '#666') + '22',
+                            color: TOKEN_COLORS[tt] || '#666',
+                            border: `1px solid ${TOKEN_COLORS[tt] || '#666'}44`,
+                          }}
+                        >
+                          {tt}
+                        </span>
+                      ))}
+                    </div>
+                    {/* Token IDs list */}
+                    {node.tokens.length > 0 && (
+                      <div style={{ marginTop: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                        {node.tokens.map((t) => `${t.token_type}:${t.token_id}`).join(' · ')}
+                      </div>
+                    )}
+                    {/* Edit button */}
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: '11px', padding: '4px 10px', marginTop: '8px', width: '100%' }}
+                      onClick={() => startEdit(idx)}
+                    >
+                      Edit Node
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared styles for NodesTabContent ──────────────────────────────
+const nodeInputStyle: React.CSSProperties = {
+  fontSize: '12px',
+  padding: '4px 8px',
+  backgroundColor: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: '4px',
+  color: 'var(--text-primary)',
+  fontFamily: 'var(--font-mono)',
+  width: '100%',
+  boxSizing: 'border-box',
+};

@@ -208,6 +208,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/projects/{id}", s.updateProjectHandler)
 	mux.HandleFunc("DELETE /api/v1/projects/{id}", s.deleteProjectHandler)
 	mux.HandleFunc("POST /api/v1/projects/{id}/report", s.generateProjectReportHandler)
+
+	// Project-scoped nodes config
+	mux.HandleFunc("GET /api/v1/projects/{id}/nodes", s.handleGetProjectNodes)
+	mux.HandleFunc("POST /api/v1/projects/{id}/nodes", s.handleSaveProjectNodes)
 }
 
 // NewTestServer creates a Server suitable for testing with an in-memory SQLite DB.

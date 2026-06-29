@@ -83,9 +83,15 @@ export default function Dashboard() {
         const data = await res.json().catch(() => ({ message: 'Failed' }));
         throw new Error(data.message || `HTTP ${res.status}`);
       }
+      const created = await res.json().catch(() => null);
       setShowCreate(false);
       setNewProject({ project_number: '', ship_name: '', log_root: '' });
       fetchProjects();
+      // If the API returns the created project id, link to Commander with that project
+      if (created && created.id) {
+        localStorage.setItem('activeProjectId', String(created.id));
+        window.location.href = `/commander?project_id=${created.id}`;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
@@ -305,7 +311,7 @@ function ProjectCard({ project }: { project: Project }) {
         </div>
       </div>
       <a
-        href={`/commander`}
+        href={`/commander?project_id=${project.id}`}
         style={{
           display: 'flex',
           alignItems: 'center',

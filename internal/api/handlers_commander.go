@@ -40,10 +40,23 @@ func (s *Server) nodesConfigPath() string {
 	return "nodes.json" // default, may not exist yet
 }
 
+// nodesConfigPathForProject returns the path to the nodes config file,
+// scoped to a project if projectID is non-empty.
+// If projectID is empty, falls back to the default nodesConfigPath().
+func (s *Server) nodesConfigPathForProject(projectID string) string {
+	if projectID == "" {
+		return s.nodesConfigPath()
+	}
+	return fmt.Sprintf("nodes_%s.json", projectID)
+}
+
 // handleGetNodesConfig loads and returns nodes.json as NodeConfig[].
+// GET /api/v1/nodesconfig?project_id={id}
+// If project_id is provided, loads from nodes_{id}.json instead of nodes.json.
 // GET /api/v1/nodesconfig
 func (s *Server) handleGetNodesConfig(w http.ResponseWriter, r *http.Request) {
-	path := s.nodesConfigPath()
+	projectID := r.URL.Query().Get("project_id")
+	path := s.nodesConfigPathForProject(projectID)
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
 		log.Printf("handleGetNodesConfig: LoadFromFile(%q) error: %v", path, err)
@@ -74,7 +87,8 @@ func (s *Server) handleSaveNodesConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := s.nodesConfigPath()
+	projectID := r.URL.Query().Get("project_id")
+	path := s.nodesConfigPathForProject(projectID)
 	if err := nodesconfig.SaveToFile(path, configs); err != nil {
 		writeError(w, http.StatusInternalServerError, "save_error",
 			fmt.Sprintf("failed to save nodes.json: %v", err))
@@ -158,6 +172,66 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 		"path":     path,
 		"count":    len(configs),
 		"log_root": logRoot,
+	})
+}
+
+// handleGetProjectNodes loads and returns nodes_{id}.json for a specific project.
+// GET /api/v1/projects/{id}/nodes
+func (s *Server) handleGetProjectNodes(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "project id is required")
+		return
+	}
+
+	path := s.nodesConfigPathForProject(projectID)
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil {
+		log.Printf("handleGetProjectNodes: LoadFromFile(%q) error: %v", path, err)
+		if errors.Is(err, os.ErrNotExist) {
+			// Return empty array if file doesn't exist
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"configs": make([]types.NodeConfig, 0),
+				"path":    path,
+			})
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load nodes for project %s: %v", projectID, err))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs": configs,
+		"path":    path,
+	})
+}
+
+// handleSaveProjectNodes saves nodes config to nodes_{id}.json for a specific project.
+// POST /api/v1/projects/{id}/nodes
+func (s *Server) handleSaveProjectNodes(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "project id is required")
+		return
+	}
+
+	var configs []types.NodeConfig
+	if err := json.NewDecoder(r.Body).Decode(&configs); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+
+	path := s.nodesConfigPathForProject(projectID)
+	if err := nodesconfig.SaveToFile(path, configs); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_error",
+			fmt.Sprintf("failed to save nodes for project %s: %v", projectID, err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"saved": true,
+		"count": len(configs),
+		"path":  path,
 	})
 }
 

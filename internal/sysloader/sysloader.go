@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
@@ -143,14 +144,23 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		}
 
 		// Process Slot-format nodes (TITLE=/PROGRAM= sections)
-		// The filename stem (e.g. "161" from "161.sys") is the hardware address / token ID
-		// used in DIA commands like "print from fbc io structure 1610000".
-		// This matches the Python file_utils.py parse_sys_file behavior where
-		// the filename stem is used as the token when there are no :e:hw: entries.
+		// The filename stem (e.g. "161" from "161.sys") is the base hardware address.
+		// Token IDs are calculated based on the slot number from the node name suffix:
+		//   AP01 (base)    → slot 1 → token = base (e.g. "161")
+		//   AP01_m2        → slot 2 → token = base + 1 (e.g. "162")
+		//   AP01_m3        → slot 3 → token = base + 2 (e.g. "163")
+		//   AP02_r2 (reserve) → slot 2 → token = base + 1 (e.g. "382")
+		// NCU2 nodes are skipped — they are infrastructure, not project process stations.
+		// AL (LIS) and OPS (LOG) nodes use the base token directly (no slot offset).
 		sysFileToken := strings.TrimSuffix(filepath.Base(sysPath), filepath.Ext(sysPath))
 		for _, sfn := range result.Nodes {
 			lid := sfn.LID
 			if lid == "" {
+				continue
+			}
+
+			// Skip NCU2 — infrastructure node, not a project process station
+			if lid == "NCU2" {
 				continue
 			}
 
@@ -168,6 +178,16 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				node.IPAddress = ipAddr
 			}
 
+			// Calculate token ID based on slot number from node name suffix.
+			// _m2, _m3, _m4 → slot 2, 3, 4 → token = base + (slot-1)
+			// _r2, _r3, _r4 → same pattern for reserve nodes
+			// Base node (no suffix or " Main"/" Reserve") → slot 1 → token = base
+			tokenID := sysFileToken
+			slotNum := extractSlotNumber(lid)
+			if slotNum > 1 {
+				tokenID = offsetToken(sysFileToken, slotNum-1)
+			}
+
 			// Add default tokens based on node type
 			tokenTypes := nodeTypeToTokenTypes[sfn.Type]
 			if len(tokenTypes) == 0 {
@@ -175,9 +195,6 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 			}
 			for _, tt := range tokenTypes {
 				alreadyExists := false
-				// Use the filename stem (hardware address) as the token ID, not the LID.
-				// e.g. "161" from "161.sys" → DIA command "print from fbc io structure 1610000"
-				tokenID := sysFileToken
 				for _, existing := range node.Tokens {
 					if existing.TokenType == tt && existing.TokenID == tokenID {
 						alreadyExists = true
@@ -204,6 +221,49 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 	return configs, nil
 }
 
+
+
+// extractSlotNumber parses the slot number from a node LID name.
+// "AP01" → 1, "AP01_m2" → 2, "AP01_m3" → 3, "AP02_r4" → 4, "AP02 Main" → 1, "AP02 Reserve" → 1
+// Returns 1 if no slot suffix is found (base/main/reserve node).
+func extractSlotNumber(lid string) int {
+	// Check for _mN or _rN suffix
+	parts := strings.Split(lid, "_")
+	for _, p := range parts {
+		if len(p) >= 2 && (p[0] == 'm' || p[0] == 'r') {
+			if p[1] >= '0' && p[1] <= '9' {
+				n := 0
+				for i := 1; i < len(p); i++ {
+					if p[i] >= '0' && p[i] <= '9' {
+						n = n*10 + int(p[i]-'0')
+					} else {
+						break
+					}
+				}
+				if n > 0 {
+						return n
+				}
+			}
+		}
+	}
+	// " Main", " Reserve", or no suffix → slot 1
+	return 1
+}
+
+// offsetToken adds an offset to a hex token ID string.
+// e.g. offsetToken("161", 1) = "162", offsetToken("1a1", 2) = "1a3"
+func offsetToken(base string, offset int) string {
+	// Parse as hex
+	val, err := strconv.ParseInt(base, 16, 64)
+	if err != nil {
+		// Not hex, return base as-is
+		return base
+	}
+	val += int64(offset)
+	// Format back as hex, preserving case and length
+	result := strconv.FormatInt(val, 16)
+	return result
+}
 // CreateFolderStructure creates the FBC/RPC/LOG/LIS directory tree with
 // placeholder files, mirroring Python log_creator.py create_file_structure().
 //
@@ -276,6 +336,21 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
 						return fmt.Errorf("sysloader: create RPC file %s: %w", filePath, err)
 					}
+				}
+			}
+		}
+
+		// LOG files for PCS nodes (FBC/RPC tokens) — BsTool errlog output
+		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] {
+			logDir := filepath.Join(outputDir, "LOG")
+			if err := os.MkdirAll(logDir, 0755); err != nil {
+				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
+			}
+			fileName := fmt.Sprintf("%s_%s.log", nodeName, ipFormatted)
+			filePath := filepath.Join(logDir, fileName)
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
+					return fmt.Errorf("sysloader: create LOG file %s: %w", filePath, err)
 				}
 			}
 		}

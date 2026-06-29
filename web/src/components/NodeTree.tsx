@@ -21,6 +21,7 @@ export interface NodeTreeProps {
   onContextAction: (action: string, node: TreeNodeData) => void;
   onDoubleClickFile: (node: TreeNodeData) => void;
   onQueueStatusChange?: (status: QueueStatusResponse | null) => void;
+  projectId?: number | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,6 +45,7 @@ export default function NodeTree({
   onContextAction,
   onDoubleClickFile,
   onQueueStatusChange,
+  projectId,
 }: NodeTreeProps) {
   const [tree, setTree] = useState<TreeNodeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,15 +62,17 @@ export default function NodeTree({
   const [batchError, setBatchError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch tree (now includes log_root to get file tree)
+  // Fetch tree (now includes log_root + project_id to get project-scoped tree)
   const fetchTree = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const logRoot = localStorage.getItem('logRoot') || '';
-      const url = logRoot
-        ? `/api/v1/nodesconfig/tree?log_root=${encodeURIComponent(logRoot)}`
-        : '/api/v1/nodesconfig/tree';
+      const params: string[] = [];
+      if (logRoot) params.push(`log_root=${encodeURIComponent(logRoot)}`);
+      if (projectId) params.push(`project_id=${projectId}`);
+      const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
+      const url = `/api/v1/nodesconfig/tree${queryStr}`;
       const res = await fetch(url);
       if (!res.ok) {
         const text = await res.text().catch(() => 'Unknown error');
@@ -94,7 +98,7 @@ export default function NodeTree({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     fetchTree();
@@ -256,7 +260,6 @@ export default function NodeTree({
     if (node.type === 'file') {
       const sectionType = node.section_type || '';
       const tokenId = node.token_id || '';
-      
 
       if (sectionType === 'FBC') {
         return [
@@ -289,7 +292,6 @@ export default function NodeTree({
     if (node.type === 'token') {
       const sectionType = node.section_type || parentNode?.section_type || '';
       const tokenId = node.token_id || node.name;
-      
 
       if (sectionType === 'FBC') {
         return [
@@ -496,9 +498,7 @@ export default function NodeTree({
 }
 
 // ─── TreeBranch (recursive) ───────────────────────────────────────
-
-interface TreeBranchProps {
-  node: TreeNodeData;
+interface TreeBranchProps {  node: TreeNodeData;
   depth: number;
   expandedNodes: Set<string>;
   onToggle: (id: string) => void;
