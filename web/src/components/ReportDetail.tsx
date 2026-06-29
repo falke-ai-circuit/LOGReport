@@ -333,11 +333,12 @@ export default function ReportDetail() {
             </>
           )}
 
-          {/* PDF preview — inline viewer */}
+          {/* PDF preview — inline viewer using <object> for IE11 compatibility */}
           {report.format === 'pdf' && (
             <div style={{ width: '100%' }}>
-              <iframe
-                src={`/api/v1/reports/${encodeURIComponent(report.report_id)}`}
+              <object
+                data={`/api/v1/reports/${encodeURIComponent(report.report_id)}`}
+                type="application/pdf"
                 style={{
                   width: '100%',
                   height: '600px',
@@ -345,10 +346,40 @@ export default function ReportDetail() {
                   borderRadius: '6px',
                   backgroundColor: 'var(--bg-secondary)',
                 }}
-                title="PDF Preview"
-              />
+              >
+                <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>
+                  <FileText size={32} color="var(--accent)" style={{ marginBottom: '12px' }} />
+                  <p style={{ fontSize: '13px', marginBottom: '12px' }}>
+                    PDF cannot be displayed inline in this browser.
+                  </p>
+                  <a
+                    href={`/api/v1/reports/${encodeURIComponent(report.report_id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      color: 'var(--accent)',
+                      textDecoration: 'none',
+                      padding: '6px 16px',
+                      border: '1px solid var(--accent)',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    <Download size={14} />
+                    Download PDF
+                  </a>
+                </div>
+              </object>
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                If the PDF doesn't display inline, click Download to open in a new tab.
+                If the PDF doesn't display inline, <a
+                  href={`/api/v1/reports/${encodeURIComponent(report.report_id)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--accent)', textDecoration: 'underline' }}
+                >click here to open in a new window</a>.
               </p>
             </div>
           )}

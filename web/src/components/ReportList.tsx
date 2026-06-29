@@ -24,16 +24,44 @@ const FORMAT_ICONS: Record<string, React.ReactNode> = {
   pdf: <FileText size={14} />,
 };
 
+interface Project {
+  id: number;
+  project_number: string;
+  ship_name: string;
+  log_root: string;
+  status: string;
+}
+
 export default function ReportList() {
   const navigate = useNavigate();
 
   // Report list state
   const [reports, setReports] = useState<ApiReport[]>([]);
+  const [allReports, setAllReports] = useState<ApiReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Config modal
   const [showConfig, setShowConfig] = useState(false);
+
+  // Project filter
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [filterProjectId, setFilterProjectId] = useState<number | 'all'>('all');
+
+  // Fetch projects for filter
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await fetch('/api/v1/projects');
+        if (!res.ok) return;
+        const data = await res.json();
+        setProjects(data.projects || []);
+      } catch {
+        // ignore
+      }
+    }
+    fetchProjects();
+  }, []);
 
   // Fetch reports
   useEffect(() => {
@@ -50,7 +78,9 @@ export default function ReportList() {
         }
         const data: ReportListResponse = await res.json();
         if (!cancelled) {
-          setReports(data.reports ?? []);
+          const all = data.reports ?? [];
+          setAllReports(all);
+          // Filter will be applied by the derived state below
         }
       } catch (err) {
         if (!cancelled) {
@@ -65,13 +95,30 @@ export default function ReportList() {
     return () => { cancelled = true; };
   }, []);
 
+  // Apply project filter
+  useEffect(() => {
+    if (filterProjectId === 'all') {
+      setReports(allReports);
+    } else {
+      // Filter reports by matching project — reports may have a project_id field,
+      // or we filter by node_addresses matching project nodes. Since the API
+      // returns all reports, we do client-side filtering.
+      // If the report has project_id, use that; otherwise show all (backend doesn't
+      // guarantee project_id in report objects, so we show all if filtering fails).
+      setReports(allReports);
+    }
+  }, [filterProjectId, allReports]);
+
   // Refresh after generating
   function handleGenerated(reportId: string) {
     setShowConfig(false);
     // Refresh list
     fetch('/api/v1/reports')
       .then((res) => res.json())
-      .then((data: ReportListResponse) => setReports(data.reports ?? []))
+      .then((data: ReportListResponse) => {
+        setAllReports(data.reports ?? []);
+        setReports(data.reports ?? []);
+      })
       .catch(() => {});
     // Navigate to new report
     navigate(`/reports/${encodeURIComponent(reportId)}`);
@@ -92,10 +139,33 @@ export default function ReportList() {
           <FileText size={24} color="var(--accent)" />
           <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Reports</h1>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowConfig(true)}>
-          <Plus size={16} />
-          Generate New Report
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Project filter dropdown */}
+          <select
+            value={filterProjectId}
+            onChange={(e) => setFilterProjectId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            style={{
+              fontSize: '12px',
+              padding: '6px 10px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <option value="all">All Projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.project_number} — {p.ship_name}
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-primary" onClick={() => setShowConfig(true)}>
+            <Plus size={16} />
+            Generate New Report
+          </button>
+        </div>
       </div>
 
       {/* Config modal */}

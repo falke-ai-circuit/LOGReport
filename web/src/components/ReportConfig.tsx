@@ -21,6 +21,11 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
   const [author, setAuthor] = useState('');
   const [logRoot, setLogRoot] = useState('');
 
+  // Project + report type
+  const [projectId, setProjectId] = useState<number | ''>('');
+  const [reportType, setReportType] = useState<'survey' | 'drydock'>('survey');
+  const [projects, setProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
+
   // Submission state
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -58,6 +63,21 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
     return () => { cancelled = true; };
   }, []);
 
+  // Fetch projects for dropdown
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await fetch('/api/v1/projects');
+        if (!res.ok) return;
+        const data = await res.json();
+        setProjects(data.projects || []);
+      } catch {
+        // ignore
+      }
+    }
+    fetchProjects();
+  }, []);
+
   // Validate form
   function validate(): boolean {
     const newErrors: Record<string, string> = {};
@@ -83,7 +103,9 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
       const body: Record<string, unknown> = {
         node_addresses: [nodeAddress],
         format,
+        report_type: reportType,
       };
+      if (projectId) body.project_id = projectId;
       if (template) body.template = template;
       if (logRoot) body.log_root = logRoot;
       if (title || author) {
@@ -157,6 +179,59 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
       {/* Form */}
       {!nodesLoading && !nodesError && (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Project dropdown */}
+          <div>
+            <label style={labelStyle}>Project</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value === '' ? '' : Number(e.target.value))}
+              style={inputStyle}
+            >
+              <option value="">Select a project (optional)...</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.project_number} — {p.ship_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Report type dropdown */}
+          <div>
+            <label style={labelStyle}>Report Type *</label>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+              {(['survey', 'drydock'] as const).map((rt) => (
+                <label
+                  key={rt}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: `1.5px solid ${reportType === rt ? 'var(--accent)' : 'var(--border)'}`,
+                    backgroundColor: reportType === rt ? 'var(--accent-dim)' : 'var(--bg-secondary)',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: reportType === rt ? 600 : 400,
+                    color: reportType === rt ? 'var(--accent)' : 'var(--text-secondary)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reportType"
+                    value={rt}
+                    checked={reportType === rt}
+                    onChange={() => setReportType(rt)}
+                    style={{ display: 'none' }}
+                  />
+                  {rt === 'survey' ? 'Survey Report' : 'Drydock Report'}
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Node address dropdown */}
           <div>
             <label style={labelStyle}>Node *</label>

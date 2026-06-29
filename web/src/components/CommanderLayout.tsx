@@ -738,6 +738,7 @@ export default function CommanderLayout() {
             {activeTab === 'nodes' && (
               <NodesTabContent
                 projectId={activeProjectId}
+                projectName={activeProject ? `${activeProject.project_number} — ${activeProject.ship_name}` : null}
                 onNodesSaved={() => setTreeReloadKey((k) => k + 1)}
               />
             )}
@@ -823,16 +824,17 @@ export default function CommanderLayout() {
 
 interface NodesTabContentProps {
   projectId: number | null;
+  projectName: string | null;
   onNodesSaved: () => void;
 }
 
-function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
+function NodesTabContent({ projectId, projectName, onNodesSaved }: NodesTabContentProps) {
   // Node config state (NodeConfig[] from nodesconfig API)
   const [nodes, setNodes] = useState<NodeConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [editNode, setEditNode] = useState<NodeConfig>({ name: '', ip_address: '', tokens: [] });
+  const [editingStation, setEditingStation] = useState<string | null>(null);
+  const [editNodes, setEditNodes] = useState<NodeConfig[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
@@ -844,6 +846,88 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
   const [selectedImports, setSelectedImports] = useState<Set<number>>(new Set());
   const [singleSysPath, setSingleSysPath] = useState('');
   const [showImport, setShowImport] = useState(false);
+
+  // Load from project state
+  const [allProjects, setAllProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
+  const [loadProjectId, setLoadProjectId] = useState<number | ''>('');
+
+  // ─── Station grouping helpers ────────────────────────────────────
+  function getStationName(name: string): string {
+    const match = name.match(/^(.+?)(?:_m\d+)?$/);
+    return match ? match[1] : name;
+  }
+
+  function getSlotNumber(name: string): number {
+    const match = name.match(/_m(\d+)$/);
+    return match ? parseInt(match[1], 10) : 1;
+  }
+
+  interface StationGroup {
+    stationName: string;
+    ipAddress: string;
+    slots: Array<{ node: NodeConfig; slotNumber: number; index: number }>;
+  }
+
+  function groupByStation(nodeList: NodeConfig[]): StationGroup[] {
+    const map = new Map<string, StationGroup>();
+    nodeList.forEach((node, idx) => {
+      const stationName = getStationName(node.name);
+      if (!map.has(stationName)) {
+        map.set(stationName, {
+          stationName,
+          ipAddress: node.ip_address,
+          slots: [],
+        });
+      }
+      const station = map.get(stationName)!;
+      if (!station.ipAddress && node.ip_address) {
+        station.ipAddress = node.ip_address;
+      }
+      station.slots.push({ node, slotNumber: getSlotNumber(node.name), index: idx });
+    });
+    // Sort slots by slot number
+    for (const station of map.values()) {
+      station.slots.sort((a, b) => a.slotNumber - b.slotNumber);
+    }
+    return Array.from(map.values()).sort((a, b) => a.stationName.localeCompare(b.stationName));
+  }
+
+  // ─── Fetch all projects for "Load from project" dropdown ───────
+  useEffect(() => {
+    async function fetchAllProjects() {
+      try {
+        const res = await fetch('/api/v1/projects');
+        if (!res.ok) return;
+        const data = await res.json();
+        setAllProjects(data.projects || []);
+      } catch {
+        // ignore
+      }
+    }
+    fetchAllProjects();
+  }, []);
+
+  // ─── Load nodes from another project (without saving) ──────────
+  async function handleLoadFromProject(otherId: number) {
+    setLoadProjectId(otherId);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/nodesconfig?project_id=${otherId}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const loadedNodes: NodeConfig[] = data.configs || [];
+      setNodes(loadedNodes);
+      setSaveMsg(`Loaded ${loadedNodes.length} nodes from another project — click Save Changes to commit to current project`);
+      setTimeout(() => setSaveMsg(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load nodes from project');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ─── Fetch nodes for active project ────────────────────────────
   const fetchNodes = useCallback(async () => {
@@ -893,58 +977,80 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
     }
   }
 
-  // ─── Add new node ────────────────────────────────────────────────
+  // ─── Add new node (adds a new station) ────────────────────────────
   function handleAddNode() {
-    const newNode: NodeConfig = { name: 'NewNode', ip_address: '192.168.0.1', tokens: [] };
+    const newNode: NodeConfig = { name: 'NewStation', ip_address: '192.168.0.1', tokens: [{ token_id: '0000', token_type: 'FBC', port: 23, protocol: 'telnet' }] };
     setNodes([...nodes, newNode]);
-    setEditingIdx(nodes.length);
-    setEditNode(newNode);
+    setEditingStation(getStationName('NewStation'));
+    setEditNodes([JSON.parse(JSON.stringify(newNode))]);
   }
 
-  // ─── Delete node ─────────────────────────────────────────────────
-  function handleDeleteNode(idx: number) {
-    const updated = nodes.filter((_, i) => i !== idx);
+  // ─── Delete station (all nodes belonging to that station) ───────
+  function handleDeleteStation(stationName: string) {
+    const updated = nodes.filter((n) => getStationName(n.name) !== stationName);
     setNodes(updated);
-    if (editingIdx === idx) {
-      setEditingIdx(null);
+    if (editingStation === stationName) {
+      setEditingStation(null);
     }
   }
 
-  // ─── Start editing a node ────────────────────────────────────────
-  function startEdit(idx: number) {
-    setEditingIdx(idx);
-    setEditNode(JSON.parse(JSON.stringify(nodes[idx])));
+  // ─── Start editing a station ─────────────────────────────────────
+  function startEditStation(stationName: string, stationSlots: NodeConfig[]) {
+    setEditingStation(stationName);
+    setEditNodes(JSON.parse(JSON.stringify(stationSlots)));
   }
 
-  // ─── Save edited node ────────────────────────────────────────────
-  function saveEdit() {
-    if (editingIdx !== null) {
-      const updated = [...nodes];
-      updated[editingIdx] = editNode;
-      setNodes(updated);
-      setEditingIdx(null);
-    }
+  // ─── Save edited station ──────────────────────────────────────────
+  function saveEditStation(stationName: string) {
+    if (editingStation !== stationName) return;
+    // Replace all nodes belonging to this station with the edited versions
+    const otherNodes = nodes.filter((n) => getStationName(n.name) !== stationName);
+    const updated = [...otherNodes, ...editNodes];
+    setNodes(updated);
+    setEditingStation(null);
   }
 
   // ─── Cancel editing ──────────────────────────────────────────────
   function cancelEdit() {
-    setEditingIdx(null);
+    setEditingStation(null);
   }
 
-  // ─── Add token to edited node ────────────────────────────────────
-  function addToken() {
-    setEditNode({
-      ...editNode,
-      tokens: [...editNode.tokens, { token_id: '0000', token_type: 'FBC', port: 23, protocol: 'telnet' }],
-    });
+  // ─── Add token to edited slot ─────────────────────────────────────
+  function addTokenToSlot(slotIdx: number) {
+    const updated = [...editNodes];
+    updated[slotIdx] = {
+      ...updated[slotIdx],
+      tokens: [...updated[slotIdx].tokens, { token_id: '0000', token_type: 'FBC', port: 23, protocol: 'telnet' }],
+    };
+    setEditNodes(updated);
   }
 
-  // ─── Remove token from edited node ───────────────────────────────
-  function removeToken(ti: number) {
-    setEditNode({
-      ...editNode,
-      tokens: editNode.tokens.filter((_, i) => i !== ti),
-    });
+  // ─── Remove token from edited slot ────────────────────────────────
+  function removeTokenFromSlot(slotIdx: number, ti: number) {
+    const updated = [...editNodes];
+    updated[slotIdx] = {
+      ...updated[slotIdx],
+      tokens: updated[slotIdx].tokens.filter((_, i) => i !== ti),
+    };
+    setEditNodes(updated);
+  }
+
+  // ─── Add a new slot to the station being edited ──────────────────
+  function addSlotToStation(stationName: string) {
+    const existingSlots = editNodes.map((n) => getSlotNumber(n.name));
+    const maxSlot = existingSlots.length > 0 ? Math.max(...existingSlots) : 0;
+    const newSlotNum = maxSlot + 1;
+    const newNode: NodeConfig = {
+      name: newSlotNum === 1 ? stationName : `${stationName}_m${newSlotNum}`,
+      ip_address: editNodes[0]?.ip_address || '',
+      tokens: [{ token_id: '0000', token_type: 'FBC', port: 23, protocol: 'telnet' }],
+    };
+    setEditNodes([...editNodes, newNode]);
+  }
+
+  // ─── Remove a slot from the station being edited ─────────────────
+  function removeSlotFromStation(slotIdx: number) {
+    setEditNodes(editNodes.filter((_, i) => i !== slotIdx));
   }
 
   // ─── Sys file import: Scan ──────────────────────────────────────
@@ -1076,6 +1182,25 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
 
   return (
     <div style={{ height: '100%', overflow: 'auto', backgroundColor: 'var(--bg-primary)' }}>
+      {/* Active project name banner (Issue 3) */}
+      {projectName && (
+        <div
+          style={{
+            padding: '8px 16px',
+            backgroundColor: 'var(--accent-dim)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Box size={16} color="var(--accent)" />
+          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>
+            {projectName}
+          </span>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div
         style={{
@@ -1093,6 +1218,41 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
           Node Browser
           {projectId ? '' : ' (no project selected)'}
         </span>
+
+        {/* Load from project dropdown (Issue 5) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Load from project:</span>
+          <select
+            value={loadProjectId}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') { setLoadProjectId(''); return; }
+              const id = Number(val);
+              if (id !== projectId) {
+                handleLoadFromProject(id);
+              }
+            }}
+            style={{
+              fontSize: '11px',
+              padding: '3px 8px',
+              backgroundColor: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-sans)',
+              maxWidth: '200px',
+            }}
+            title="Load nodes from another project into the editor (without saving)"
+          >
+            <option value="">— Select —</option>
+            {allProjects.filter((p) => p.id !== projectId).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.project_number} — {p.ship_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div style={{ flex: 1 }} />
         <button
           className="btn btn-ghost"
@@ -1267,7 +1427,7 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
         </div>
       )}
 
-      {/* Node cards grid */}
+      {/* Station cards grid (Issue 4) */}
       <div style={{ padding: '16px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '48px' }}>
@@ -1290,13 +1450,13 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
               gap: '12px',
             }}
           >
-            {nodes.map((node, idx) => (
+            {groupByStation(nodes).map((station) => (
               <div
-                key={idx}
+                key={station.stationName}
                 style={{
                   backgroundColor: 'var(--bg-secondary)',
                   border: '1px solid var(--border)',
@@ -1307,15 +1467,22 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
               >
-                {editingIdx === idx ? (
-                  // ─── Edit mode ────────────────────────────────────
+                {editingStation === station.stationName ? (
+                  // ─── Station edit mode ───────────────────────────
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div>
-                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Name</label>
+                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Station Name</label>
                       <input
                         type="text"
-                        value={editNode.name}
-                        onChange={(e) => setEditNode({ ...editNode, name: e.target.value })}
+                        value={getStationName(editNodes[0]?.name || '')}
+                        onChange={(e) => {
+                          const newStationName = e.target.value;
+                          const updated = editNodes.map((n) => {
+                            const slotNum = getSlotNumber(n.name);
+                            return { ...n, name: slotNum === 1 ? newStationName : `${newStationName}_m${slotNum}` };
+                          });
+                          setEditNodes(updated);
+                        }}
                         style={nodeInputStyle}
                       />
                     </div>
@@ -1323,68 +1490,101 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
                       <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>IP Address</label>
                       <input
                         type="text"
-                        value={editNode.ip_address}
-                        onChange={(e) => setEditNode({ ...editNode, ip_address: e.target.value })}
+                        value={editNodes[0]?.ip_address || ''}
+                        onChange={(e) => {
+                          const updated = editNodes.map((n) => ({ ...n, ip_address: e.target.value }));
+                          setEditNodes(updated);
+                        }}
                         style={nodeInputStyle}
                       />
                     </div>
-                    {/* Tokens editor */}
+                    {/* Slots editor */}
                     <div>
-                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Tokens</label>
-                      {editNode.tokens.map((tok, ti) => (
-                        <div key={ti} style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
-                          <input
-                            type="text"
-                            value={tok.token_id}
-                            onChange={(e) => {
-                              const newTokens = [...editNode.tokens];
-                              newTokens[ti] = { ...tok, token_id: e.target.value };
-                              setEditNode({ ...editNode, tokens: newTokens });
-                            }}
-                            placeholder="token_id"
-                            style={{ ...nodeInputStyle, width: '80px', fontSize: '11px', padding: '2px 4px' }}
-                          />
-                          <select
-                            value={tok.token_type}
-                            onChange={(e) => {
-                              const newTokens = [...editNode.tokens];
-                              newTokens[ti] = { ...tok, token_type: e.target.value };
-                              setEditNode({ ...editNode, tokens: newTokens });
-                            }}
-                            style={{ ...nodeInputStyle, width: '70px', fontSize: '11px', padding: '2px 4px' }}
-                          >
-                            <option value="FBC">FBC</option>
-                            <option value="RPC">RPC</option>
-                            <option value="LOG">LOG</option>
-                            <option value="LIS">LIS</option>
-                            <option value="FTP">FTP</option>
-                          </select>
-                          <input
-                            type="number"
-                            value={tok.port}
-                            onChange={(e) => {
-                              const newTokens = [...editNode.tokens];
-                              newTokens[ti] = { ...tok, port: Number(e.target.value) || 23 };
-                              setEditNode({ ...editNode, tokens: newTokens });
-                            }}
-                            placeholder="port"
-                            style={{ ...nodeInputStyle, width: '50px', fontSize: '11px', padding: '2px 4px' }}
-                          />
+                      <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Slots</label>
+                      {editNodes.map((slotNode, slotIdx) => (
+                        <div key={slotIdx} style={{ border: '1px solid var(--border)', borderRadius: '4px', padding: '6px', marginBottom: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                              Slot {getSlotNumber(slotNode.name)}: {slotNode.name}
+                            </span>
+                            <button
+                              className="btn btn-ghost"
+                              style={{ fontSize: '10px', padding: '1px 4px', color: 'var(--error)', marginLeft: 'auto' }}
+                              onClick={() => removeSlotFromStation(slotIdx)}
+                              title="Remove this slot"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
+                          {slotNode.tokens.map((tok, ti) => (
+                            <div key={ti} style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+                              <input
+                                type="text"
+                                value={tok.token_id}
+                                onChange={(e) => {
+                                  const updated = [...editNodes];
+                                  const newTokens = [...updated[slotIdx].tokens];
+                                  newTokens[ti] = { ...tok, token_id: e.target.value };
+                                  updated[slotIdx] = { ...updated[slotIdx], tokens: newTokens };
+                                  setEditNodes(updated);
+                                }}
+                                placeholder="token_id"
+                                style={{ ...nodeInputStyle, width: '80px', fontSize: '11px', padding: '2px 4px' }}
+                              />
+                              <select
+                                value={tok.token_type}
+                                onChange={(e) => {
+                                  const updated = [...editNodes];
+                                  const newTokens = [...updated[slotIdx].tokens];
+                                  newTokens[ti] = { ...tok, token_type: e.target.value };
+                                  updated[slotIdx] = { ...updated[slotIdx], tokens: newTokens };
+                                  setEditNodes(updated);
+                                }}
+                                style={{ ...nodeInputStyle, width: '70px', fontSize: '11px', padding: '2px 4px' }}
+                              >
+                                <option value="FBC">FBC</option>
+                                <option value="RPC">RPC</option>
+                                <option value="LOG">LOG</option>
+                                <option value="LIS">LIS</option>
+                                <option value="FTP">FTP</option>
+                              </select>
+                              <input
+                                type="number"
+                                value={tok.port}
+                                onChange={(e) => {
+                                  const updated = [...editNodes];
+                                  const newTokens = [...updated[slotIdx].tokens];
+                                  newTokens[ti] = { ...tok, port: Number(e.target.value) || 23 };
+                                  updated[slotIdx] = { ...updated[slotIdx], tokens: newTokens };
+                                  setEditNodes(updated);
+                                }}
+                                placeholder="port"
+                                style={{ ...nodeInputStyle, width: '50px', fontSize: '11px', padding: '2px 4px' }}
+                              />
+                              <button
+                                className="btn btn-ghost"
+                                style={{ fontSize: '10px', padding: '2px 4px', color: 'var(--error)' }}
+                                onClick={() => removeTokenFromSlot(slotIdx, ti)}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
                           <button
                             className="btn btn-ghost"
-                            style={{ fontSize: '10px', padding: '2px 4px', color: 'var(--error)' }}
-                            onClick={() => removeToken(ti)}
+                            style={{ fontSize: '10px', padding: '2px 8px' }}
+                            onClick={() => addTokenToSlot(slotIdx)}
                           >
-                            <Trash2 size={12} />
+                            <Plus size={10} /> Add Token
                           </button>
                         </div>
                       ))}
                       <button
                         className="btn btn-ghost"
-                        style={{ fontSize: '10px', padding: '2px 8px' }}
-                        onClick={addToken}
+                        style={{ fontSize: '10px', padding: '2px 8px', marginTop: '4px' }}
+                        onClick={() => addSlotToStation(station.stationName)}
                       >
-                        <Plus size={10} /> Add Token
+                        <Plus size={10} /> Add Slot
                       </button>
                     </div>
                     {/* Save / Cancel buttons */}
@@ -1392,7 +1592,7 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
                       <button
                         className="btn btn-primary"
                         style={{ fontSize: '11px', padding: '4px 10px' }}
-                        onClick={saveEdit}
+                        onClick={() => saveEditStation(station.stationName)}
                       >
                         <Save size={12} /> OK
                       </button>
@@ -1406,61 +1606,76 @@ function NodesTabContent({ projectId, onNodesSaved }: NodesTabContentProps) {
                     </div>
                   </div>
                 ) : (
-                  // ─── Display mode ─────────────────────────────────
+                  // ─── Station display mode ────────────────────────
                   <div>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                          {node.name}
+                        <div style={{ fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                          {station.stationName}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
-                          {node.ip_address}
+                          {station.ipAddress || '—'}
                         </div>
                       </div>
-                      <button
-                        className="btn btn-ghost"
-                        style={{ fontSize: '10px', padding: '2px 4px', color: 'var(--error)' }}
-                        onClick={() => handleDeleteNode(idx)}
-                        title="Delete this node"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: '10px', padding: '2px 4px', color: 'var(--error)' }}
+                          onClick={() => handleDeleteStation(station.stationName)}
+                          title="Delete this station (all slots)"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    {/* Token count + type badges */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {node.tokens.length} token{node.tokens.length !== 1 ? 's' : ''}
-                      </span>
-                      {getTokenTypes(node).map((tt) => (
-                        <span
-                          key={tt}
+                    {/* Slots listing */}
+                    <div style={{ marginTop: '8px' }}>
+                      {station.slots.map((slot) => (
+                        <div
+                          key={slot.index}
                           style={{
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                            backgroundColor: (TOKEN_COLORS[tt] || '#666') + '22',
-                            color: TOKEN_COLORS[tt] || '#666',
-                            border: `1px solid ${TOKEN_COLORS[tt] || '#666'}44`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 0',
+                            borderBottom: '1px solid var(--border)',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-mono)',
                           }}
                         >
-                          {tt}
-                        </span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', minWidth: '48px' }}>
+                            Slot {slot.slotNumber}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)' }}>
+                            {slot.node.name}
+                          </span>
+                          {/* Token IDs */}
+                          {slot.node.tokens.map((t, ti) => (
+                            <span key={ti} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                padding: '1px 6px',
+                                borderRadius: '8px',
+                                backgroundColor: (TOKEN_COLORS[t.token_type] || '#666') + '22',
+                                color: TOKEN_COLORS[t.token_type] || '#666',
+                                border: `1px solid ${TOKEN_COLORS[t.token_type] || '#666'}44`,
+                              }}>
+                                {t.token_type}
+                              </span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.token_id}</span>
+                            </span>
+                          ))}
+                        </div>
                       ))}
                     </div>
-                    {/* Token IDs list */}
-                    {node.tokens.length > 0 && (
-                      <div style={{ marginTop: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                        {node.tokens.map((t) => `${t.token_type}:${t.token_id}`).join(' · ')}
-                      </div>
-                    )}
                     {/* Edit button */}
                     <button
                       className="btn btn-ghost"
                       style={{ fontSize: '11px', padding: '4px 10px', marginTop: '8px', width: '100%' }}
-                      onClick={() => startEdit(idx)}
+                      onClick={() => startEditStation(station.stationName, station.slots.map((s) => s.node))}
                     >
-                      Edit Node
+                      Edit Station
                     </button>
                   </div>
                 )}

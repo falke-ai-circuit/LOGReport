@@ -12,6 +12,7 @@ import {
   FileText,
   Trash2,
   ScanLine,
+  RefreshCw,
 } from 'lucide-react';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 
@@ -60,6 +61,9 @@ export default function NodeTree({
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Fetch tree (now includes log_root + project_id to get project-scoped tree)
@@ -103,6 +107,54 @@ export default function NodeTree({
   useEffect(() => {
     fetchTree();
   }, [fetchTree]);
+
+  // ─── Refresh from .sys files ──────────────────────────────────
+  // Calls GET /api/v1/sysfiles/parse?dir={sysDir} then POST /api/v1/nodesconfig?project_id={id}
+  async function handleRefreshFromSys() {
+    const sysDir = localStorage.getItem('sysDir') || '';
+    if (!sysDir) {
+      setRefreshError('No sysDir set. Use the Ingest Nodes button in the header to set a .sys directory first.');
+      return;
+    }
+    if (!projectId) {
+      setRefreshError('No project selected.');
+      return;
+    }
+    setRefreshing(true);
+    setRefreshError(null);
+    setRefreshMsg(null);
+    try {
+      // Step 1: Parse .sys files
+      const parseRes = await fetch(`/api/v1/sysfiles/parse?dir=${encodeURIComponent(sysDir)}`);
+      if (!parseRes.ok) {
+        const data = await parseRes.json().catch(() => ({ message: 'Parse failed' }));
+        throw new Error(data.message || `HTTP ${parseRes.status}`);
+      }
+      const parseData = await parseRes.json();
+      const configs = parseData.configs || parseData.nodes || [];
+      if (configs.length === 0) {
+        throw new Error('No node configs found in .sys files');
+      }
+      // Step 2: Save to project
+      const saveRes = await fetch(`/api/v1/nodesconfig?project_id=${projectId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configs),
+      });
+      if (!saveRes.ok) {
+        const data = await saveRes.json().catch(() => ({ message: 'Save failed' }));
+        throw new Error(data.message || `HTTP ${saveRes.status}`);
+      }
+      setRefreshMsg(`Refreshed ${configs.length} nodes from .sys`);
+      setTimeout(() => setRefreshMsg(null), 5000);
+      // Step 3: Reload tree
+      await fetchTree();
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : 'Refresh failed');
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // Poll queue status
   useEffect(() => {
@@ -350,6 +402,20 @@ export default function NodeTree({
           Load Nodes
         </button>
         <button
+          className="btn btn-secondary"
+          style={{ fontSize: '11px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          onClick={handleRefreshFromSys}
+          disabled={refreshing}
+          title="Re-parse .sys files from BU directory and reload tree (fixes stale nodes)"
+        >
+          {refreshing ? (
+            <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+          ) : (
+            <RefreshCw size={12} />
+          )}
+          Refresh from .sys
+        </button>
+        <button
           className="btn btn-primary"
           style={{ fontSize: '11px', padding: '4px 8px' }}
           onClick={handlePrintAllNodes}
@@ -405,6 +471,32 @@ export default function NodeTree({
           }}
         >
           {batchError}
+        </div>
+      )}
+
+      {/* Refresh messages */}
+      {refreshError && (
+        <div
+          style={{
+            padding: '6px 8px',
+            fontSize: '11px',
+            color: 'var(--error)',
+            backgroundColor: 'rgba(239,68,68,0.1)',
+          }}
+        >
+          {refreshError}
+        </div>
+      )}
+      {refreshMsg && (
+        <div
+          style={{
+            padding: '6px 8px',
+            fontSize: '11px',
+            color: 'var(--success)',
+            backgroundColor: 'rgba(16,185,129,0.1)',
+          }}
+        >
+          {refreshMsg}
         </div>
       )}
 

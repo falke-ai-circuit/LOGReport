@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight } from 'lucide-react';
+import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2 } from 'lucide-react';
 
 interface Project {
   id: number;
@@ -96,6 +96,24 @@ export default function Dashboard() {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDeleteProject(id: number, name: string) {
+    if (!window.confirm(`Delete project "${name}"? This will also delete all its nodes and reports. This cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/projects/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Delete failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      fetchProjects();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete project');
     }
   }
 
@@ -226,7 +244,7 @@ export default function Dashboard() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {projects.map((p) => (
-              <ProjectCard key={p.id} project={p} />
+              <ProjectCard key={p.id} project={p} onDelete={() => handleDeleteProject(p.id, `${p.project_number} — ${p.ship_name}`)} />
             ))}
           </div>
         )}
@@ -285,7 +303,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => void }) {
   return (
     <div
       style={{
@@ -323,6 +341,22 @@ function ProjectCard({ project }: { project: Project }) {
       >
         Open <ArrowRight size={14} />
       </a>
+      <button
+        className="btn btn-ghost"
+        style={{
+          fontSize: '12px',
+          padding: '4px 8px',
+          color: 'var(--error)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+        onClick={onDelete}
+        title="Delete this project"
+      >
+        <Trash2 size={14} />
+        Delete
+      </button>
     </div>
   );
 }
