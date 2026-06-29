@@ -327,20 +327,55 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Execute commands via the SessionManager if a session is active
+	// Execute commands via the SessionManager.
+	// Auto-reconnects if the telnet session dies (DIA closes connections
+	// after timeout or errors). Matches Python sequential_command_processor.py
+	// behavior: if connection lost, reconnect and retry.
 	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
 		// Find an active session to send commands through
 		ids := s.telnetSM.ListSessions()
-		if len(ids) == 0 {
-			return "", fmt.Errorf("no active telnet session")
+		var sessionID string
+
+		if len(ids) > 0 {
+			sessionID = ids[0]
+			// Check if session is still connected
+			sess, ok := s.telnetSM.GetSession(sessionID)
+			if ok && sess != nil && !sess.Connected {
+				// Session died — disconnect and reconnect
+				s.telnetSM.Disconnect(sessionID)
+				sessionID = ""
+			}
 		}
-		sessionID := ids[0]
+
+		if sessionID == "" {
+			// No active session — try to reconnect using stored host/port
+			// from a previous session, or default to localhost:1234
+			host := "127.0.0.1"
+			port := 1234
+			if len(ids) > 0 {
+				oldSess, ok := s.telnetSM.GetSession(ids[0])
+				if ok && oldSess != nil {
+					host = oldSess.Address
+					port = oldSess.Port
+				}
+			}
+			sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+			if err != nil {
+				return "", fmt.Errorf("reconnect failed: %w", err)
+			}
+			sessionID = sess.ID
+		}
 
 		// 1. Clear the session output buffer before sending
 		_ = s.telnetSM.ClearOutput(sessionID)
 
 		// 2. Send the command
 		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
+			// Command failed — mark session as needing reconnect for next command
+			sess, ok := s.telnetSM.GetSession(sessionID)
+			if ok && sess != nil {
+				sess.Connected = false
+			}
 			return "", err
 		}
 
@@ -385,29 +420,47 @@ func (s *Server) handleQueuePause(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 	s.commandQueue.Resume()
 
-	// Re-create the executor and restart Start() in a goroutine.
-	// Resume() only clears the paused flag and sets state to idle —
-	// Start() must be called again to actually continue execution.
+	// Re-create the executor with auto-reconnect (same as handleQueueStart)
 	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
 		ids := s.telnetSM.ListSessions()
-		if len(ids) == 0 {
-			return "", fmt.Errorf("no active telnet session")
+		var sessionID string
+
+		if len(ids) > 0 {
+			sessionID = ids[0]
+			sess, ok := s.telnetSM.GetSession(sessionID)
+			if ok && sess != nil && !sess.Connected {
+				s.telnetSM.Disconnect(sessionID)
+				sessionID = ""
+			}
 		}
-		sessionID := ids[0]
 
-		// 1. Clear the session output buffer before sending
+		if sessionID == "" {
+			host := "127.0.0.1"
+			port := 1234
+			if len(ids) > 0 {
+				oldSess, ok := s.telnetSM.GetSession(ids[0])
+				if ok && oldSess != nil {
+					host = oldSess.Address
+					port = oldSess.Port
+				}
+			}
+			sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+			if err != nil {
+				return "", fmt.Errorf("reconnect failed: %w", err)
+			}
+			sessionID = sess.ID
+		}
+
 		_ = s.telnetSM.ClearOutput(sessionID)
-
-		// 2. Send the command
 		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
+			sess, ok := s.telnetSM.GetSession(sessionID)
+			if ok && sess != nil {
+				sess.Connected = false
+			}
 			return "", err
 		}
-
-		// 3. Wait for output: poll GetOutput, wait up to 10 seconds for
-		// non-empty output, then collect for 2 more seconds for trailing data
 		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
 
-		// 4. Write output to structured log files
 		lw := logwriter.New(s.logRoot())
 		tokenType := string(cmd.Type)
 		if tokenType == "" {
@@ -417,17 +470,18 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
 		}
 
-		// 5. Return the output string
 		return output, nil
 	}
 
 	go func() {
 		if err := s.commandQueue.Start(executor); err != nil {
-			log.Printf("commandqueue: resume+start error: %v", err)
+			log.Printf("commandqueue: resume error: %v", err)
 		}
 	}()
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"resumed": true})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"resumed": true,
+	})
 }
 
 // handleQueueCancel cancels the queue.
