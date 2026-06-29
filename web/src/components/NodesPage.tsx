@@ -64,7 +64,7 @@ export default function NodesPage() {
   const [fileViewName, setFileViewName] = useState<string>('');
   const [fileViewPath, setFileViewPath] = useState<string>('');
   const [fileLoading, setFileLoading] = useState(false);
-  // terminalLog removed
+  const [terminalLog, setTerminalLog] = useState<string[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
     const fromURL = getProjectIdFromURL();
@@ -96,6 +96,20 @@ export default function NodesPage() {
       setTerminalLog(prev => [...prev, 'Scan Error: ' + (err instanceof Error ? err.message : String(err))]);
     } finally {
       setScanning(false);
+    }
+  }, []);
+
+  // Auto-set log root on page load so file paths resolve correctly
+  useEffect(() => {
+    const logRoot = localStorage.getItem('logRoot');
+    if (!logRoot) {
+      fetch('/api/v1/logs/setroot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'C:\\temp\\logreport-output' }),
+      }).then(() => {
+        localStorage.setItem('logRoot', 'C:\\temp\\logreport-output');
+      }).catch(() => {});
     }
   }, []);
 

@@ -60,11 +60,6 @@ export default function NodeTree({
     parentNode?: TreeNodeData;
   } | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
-  const _batchLoading = None  // removed(false);
-  const _batchError = None  // removed<string | null>(null);
-  const _refreshing = None  // removed(false);
-  const _refreshError = None  // removed<string | null>(null);
-  const _refreshMsg = None  // removed<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Fetch tree (now includes log_root + project_id to get project-scoped tree)
@@ -109,54 +104,6 @@ export default function NodeTree({
     fetchTree();
   }, [fetchTree]);
 
-  // ─── Refresh from .sys files ──────────────────────────────────
-  // Calls GET /api/v1/sysfiles/parse?dir={sysDir} then POST /api/v1/nodesconfig?project_id={id}
-  async function handleRefreshFromSys() {
-    const sysDir = localStorage.getItem('sysDir') || '';
-    if (!sysDir) {
-      setRefreshError('No sysDir set. Use the Ingest Nodes button in the header to set a .sys directory first.');
-      return;
-    }
-    if (!projectId) {
-      setRefreshError('No project selected.');
-      return;
-    }
-    setRefreshing(true);
-    setRefreshError(null);
-    setRefreshMsg(null);
-    try {
-      // Step 1: Parse .sys files
-      const parseRes = await fetch(`/api/v1/sysfiles/parse?dir=${encodeURIComponent(sysDir)}`);
-      if (!parseRes.ok) {
-        const data = await parseRes.json().catch(() => ({ message: 'Parse failed' }));
-        throw new Error(data.message || `HTTP ${parseRes.status}`);
-      }
-      const parseData = await parseRes.json();
-      const configs = parseData.configs || parseData.nodes || [];
-      if (configs.length === 0) {
-        throw new Error('No node configs found in .sys files');
-      }
-      // Step 2: Save to project
-      const saveRes = await fetch(`/api/v1/nodesconfig?project_id=${projectId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(configs),
-      });
-      if (!saveRes.ok) {
-        const data = await saveRes.json().catch(() => ({ message: 'Save failed' }));
-        throw new Error(data.message || `HTTP ${saveRes.status}`);
-      }
-      setRefreshMsg(`Refreshed ${configs.length} nodes from .sys`);
-      setTimeout(() => setRefreshMsg(null), 5000);
-      // Step 3: Reload tree
-      await fetchTree();
-    } catch (err) {
-      setRefreshError(err instanceof Error ? err.message : 'Refresh failed');
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
   // Poll queue status
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -195,61 +142,6 @@ export default function NodeTree({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // ─── Queue controls ───────────────────────────────────────────
-
-  async function handlePrintAllNodes() {
-    setBatchLoading(true);
-    setBatchError(null);
-    try {
-      const batchRes = await fetch('/api/v1/commandqueue/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (!batchRes.ok) {
-        const data = await batchRes.json().catch(() => ({ message: 'Batch failed' }));
-        throw new Error(data.message || `HTTP ${batchRes.status}`);
-      }
-
-      const startRes = await fetch('/api/v1/commandqueue/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!startRes.ok) {
-        const data = await startRes.json().catch(() => ({ message: 'Start failed' }));
-        throw new Error(data.message || `HTTP ${startRes.status}`);
-      }
-
-      const statusRes = await fetch('/api/v1/commandqueue/status');
-      if (statusRes.ok) {
-        const data: QueueStatusResponse = await statusRes.json();
-        setQueueStatus(data);
-        onQueueStatusChange?.(data);
-      }
-    } catch (err) {
-      setBatchError(err instanceof Error ? err.message : 'Print All Nodes failed');
-    } finally {
-      setBatchLoading(false);
-    }
-  }
-
-  async function handleQueueAction(action: 'pause' | 'resume' | 'cancel') {
-    try {
-      await fetch(`/api/v1/commandqueue/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const res = await fetch('/api/v1/commandqueue/status');
-      if (res.ok) {
-        const data: QueueStatusResponse = await res.json();
-        setQueueStatus(data);
-        onQueueStatusChange?.(data);
-      }
-    } catch {
-      // ignore
-    }
-  }
 
   // ─── Tree expansion ───────────────────────────────────────────
 

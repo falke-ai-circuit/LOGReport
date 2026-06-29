@@ -14,3 +14,6 @@ logreport.db-shm
 logreport.db-wal
 logreport-bin
 logreport_v30_linux
+
+# Build output (embedded into binary)
+web/dist-new/
