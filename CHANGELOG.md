@@ -1,5 +1,18 @@
 # Changelog
 
+## [v3.9.3] — 2026-06-29
+
+### Fixed
+
+- **NodesPage: duplicate file viewer** — Removed floating panel that overlapped with modal (both rendered simultaneously, z-index conflict)
+- **NodesPage: missing context menu handlers** — Added bstool_errlog, rpc_clear, fbc_scan, rpc_scan, clear_logs actions (5 dead buttons fixed)
+- **NodeTree: parentNode never passed** — Context menu labels for group/token nodes were empty ("Print All FBC Tokens for " with no name). Fixed by adding parentNode to TreeBranchProps and passing it through recursive calls
+- **NodeTree: fileColor not applied to tokens** — Token-type nodes used statusColor instead of fileColor. Now token nodes show green/yellow/red based on line count
+- **NodeTree: undefined line_count** — Files with unknown line count appeared green (has content). Now show gray (unknown)
+- **NodeTree: dead code removed** — Unreachable second token handler block (lines 237-260) that provided fewer menu items
+- **CommanderLayout: auto-set log root** — Now auto-sets log root on page load (same as NodesPage)
+
+
 All notable changes to LOGReport will be documented in this file.
 
 ## [v3.9.0] — 2026-06-29
