@@ -1,5 +1,9 @@
 // Package logfile scans log root directories for .fbc/.rpc/.log/.lis files
 // and parses their contents into structured data for report generation.
+//
+// Supports station-nested directory structure:
+//   {logRoot}/{stationName}/{type}/{stationName}_{ip}_{token}.{ext}
+//   e.g. {logRoot}/AP01m/FBC/AP01m_192-168-0-11_162.fbc
 package logfile
 
 import (
@@ -22,7 +26,9 @@ type FileEntry struct {
 	Extension  string    `json:"extension"`
 	Size       int64     `json:"size"`
 	ModifiedAt time.Time `json:"modified_at"`
-	NodeName   string    `json:"node_name"` // derived from filename (e.g. AP01m.fbc → AP01m)
+	NodeName   string    `json:"node_name"`
+	StationName string   `json:"station_name"`
+	FileType   string    `json:"file_type"`
 }
 
 // FileData represents parsed content of a single log file.
@@ -30,11 +36,12 @@ type FileData struct {
 	FileName  string            `json:"file_name"`
 	FilePath  string            `json:"file_path"`
 	NodeName  string            `json:"node_name"`
-	FileType  string            `json:"file_type"`  // "fbc", "rpc", "log", "lis"
-	Header    string            `json:"header"`     // first line (e.g. "#FBC AP01m 2026-06-25")
-	Metadata  map[string]string `json:"metadata"`   // NODE=, TYPE=, etc.
-	Lines     []string          `json:"lines"`      // raw content lines (excluding header)
-	KeyValues []KeyValue        `json:"key_values"` // parsed key=value entries
+	StationName string          `json:"station_name"`
+	FileType  string            `json:"file_type"`
+	Header    string            `json:"header"`
+	Metadata  map[string]string `json:"metadata"`
+	Lines     []string          `json:"lines"`
+	KeyValues []KeyValue        `json:"key_values"`
 }
 
 // KeyValue is a parsed key=value pair from FBC/RPC/LIS files.
@@ -43,38 +50,59 @@ type KeyValue struct {
 	Value string `json:"value"`
 }
 
-// ScanFiles scans the given directory for supported log files.
-// Returns a slice of FileEntry sorted by file name.
+// ScanFiles recursively scans the log root for supported log files.
+// Handles station-nested structure: {logRoot}/{station}/{type}/{file}
+// Also handles flat structure for backward compatibility.
 func ScanFiles(dir string) ([]FileEntry, error) {
-	entries, err := os.ReadDir(dir)
+	result := make([]FileEntry, 0)
+
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip errors
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(filepath.Ext(d.Name()))
+		if !isSupported(ext) {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+
+		// Derive station name from path: {logRoot}/{station}/{type}/{file}
+		relPath, _ := filepath.Rel(dir, path)
+		pathParts := strings.Split(filepath.ToSlash(relPath), "/")
+		stationName := ""
+		if len(pathParts) >= 3 {
+			stationName = pathParts[0]
+		}
+
+		// NodeName from filename (strip extension)
+		nodeName := strings.TrimSuffix(d.Name(), ext)
+
+		result = append(result, FileEntry{
+			FileName:    d.Name(),
+			FilePath:    path,
+			Extension:   ext,
+			Size:        info.Size(),
+			ModifiedAt:  info.ModTime(),
+			NodeName:    nodeName,
+			StationName: stationName,
+			FileType:    strings.TrimPrefix(ext, "."),
+		})
+		return nil
+	})
+
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make([]FileEntry, 0), nil
+			return result, nil
 		}
 		return nil, fmt.Errorf("logfile: scan %s: %w", dir, err)
-	}
-
-	result := make([]FileEntry, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(entry.Name()))
-		if !isSupported(ext) {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		result = append(result, FileEntry{
-			FileName:   entry.Name(),
-			FilePath:   filepath.Join(dir, entry.Name()),
-			Extension:  ext,
-			Size:       info.Size(),
-			ModifiedAt: info.ModTime(),
-			NodeName:   strings.TrimSuffix(entry.Name(), ext),
-		})
 	}
 
 	sort.Slice(result, func(i, j int) bool {
@@ -84,7 +112,7 @@ func ScanFiles(dir string) ([]FileEntry, error) {
 	return result, nil
 }
 
-// ScanFilesByType scans for files of a specific extension (e.g. ".fbc").
+// ScanFilesByType scans for files of a specific extension recursively.
 func ScanFilesByType(dir, ext string) ([]FileEntry, error) {
 	all, err := ScanFiles(dir)
 	if err != nil {
@@ -115,23 +143,22 @@ func ParseFile(path string) (*FileData, error) {
 	nodeName := strings.TrimSuffix(fileName, ext)
 
 	fd := &FileData{
-		FileName: fileName,
-		FilePath: path,
-		NodeName: nodeName,
-		FileType: fileType,
-		Metadata: make(map[string]string),
-		Lines:    make([]string, 0),
+		FileName:  fileName,
+		FilePath:  path,
+		NodeName:  nodeName,
+		FileType:  fileType,
+		Metadata:  make(map[string]string),
+		Lines:     make([]string, 0),
 	}
 
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
-	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB max line
+	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
 	first := true
 	for scanner.Scan() {
 		line := scanner.Text()
 		if first {
 			fd.Header = line
 			first = false
-			// Parse header: "#FBC AP01m 2026-06-25" → type, node, date
 			if strings.HasPrefix(line, "#") {
 				parts := strings.Fields(line)
 				if len(parts) >= 1 {
@@ -147,19 +174,16 @@ func ParseFile(path string) (*FileData, error) {
 			continue
 		}
 
-		// Skip END markers
 		if strings.TrimSpace(line) == "END" {
 			continue
 		}
 
 		fd.Lines = append(fd.Lines, line)
 
-		// Parse key=value lines
 		if idx := strings.Index(line, "="); idx > 0 {
 			key := strings.TrimSpace(line[:idx])
 			val := strings.TrimSpace(line[idx+1:])
 			fd.KeyValues = append(fd.KeyValues, KeyValue{Key: key, Value: val})
-			// Also check for NODE=, TYPE= metadata
 			upperKey := strings.ToUpper(key)
 			if upperKey == "NODE" || upperKey == "TYPE" {
 				fd.Metadata[strings.ToLower(upperKey)] = val
@@ -174,7 +198,7 @@ func ParseFile(path string) (*FileData, error) {
 	return fd, nil
 }
 
-// ParseAllFiles parses all supported files in a directory.
+// ParseAllFiles parses all supported files in a directory (recursive).
 func ParseAllFiles(dir string) ([]FileData, error) {
 	entries, err := ScanFiles(dir)
 	if err != nil {
@@ -185,8 +209,9 @@ func ParseAllFiles(dir string) ([]FileData, error) {
 	for _, e := range entries {
 		fd, err := ParseFile(e.FilePath)
 		if err != nil {
-			continue // skip files that can't be parsed
+			continue
 		}
+		fd.StationName = e.StationName
 		result = append(result, *fd)
 	}
 

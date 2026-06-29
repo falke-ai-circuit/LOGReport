@@ -391,9 +391,13 @@ func (s *Server) handleTelnetOutput(w http.ResponseWriter, r *http.Request) {
 // Body: {"command": "fis AB010000", "host": "127.0.0.1", "port": 1234}
 func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Command string `json:"command"`
-		Host    string `json:"host"`
-		Port    int    `json:"port"`
+		Command    string `json:"command"`
+		Host       string `json:"host"`
+		Port       int    `json:"port"`
+		NodeName   string `json:"node_name"`
+		TokenType  string `json:"token_type"`
+		TokenID    string `json:"token_id"`
+		IPAddress  string `json:"ip_address"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
@@ -448,11 +452,20 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	// Wait for output
 	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
 
+	// Write output to log file if node info is provided (from context menu)
+	if req.NodeName != "" && req.TokenType != "" {
+		lw := logwriter.New(s.logRoot())
+		if err := lw.WriteOutputWithIP(req.NodeName, req.TokenType, req.TokenID, output, req.IPAddress); err != nil {
+			log.Printf("telnet/execute: failed to write log for %s/%s: %v", req.NodeName, req.TokenID, err)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"session_id": sessionID,
 		"command":    req.Command,
 		"output":     output,
 		"sent":       true,
+		"file_written": req.NodeName != "" && req.TokenType != "",
 	})
 }
 
