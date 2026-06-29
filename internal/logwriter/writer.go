@@ -262,3 +262,8 @@ func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID, ipAddress string) (st
 	}
 	return string(data), nil
 }
+
+// LogPath returns the full path for a log file (public version of logPath).
+func (lw *LogWriter) LogPath(nodeName, tokenType, tokenID, ip string) string {
+	return lw.logPath(nodeName, tokenType, tokenID, ip)
+}

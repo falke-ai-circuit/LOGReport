@@ -208,6 +208,7 @@ export default function CommanderLayout() {
           const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: tokenId }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -219,6 +220,7 @@ export default function CommanderLayout() {
           const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -230,6 +232,7 @@ export default function CommanderLayout() {
           const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -453,19 +455,36 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
 
 	// Write output to log file if node info is provided (from context menu)
+	fileWritten := false
+	var filePathStr string
 	if req.NodeName != "" && req.TokenType != "" {
-		lw := logwriter.New(s.logRoot())
+		// Auto-set log root if not configured or still at default "logs"
+		lr := s.logRoot()
+		if lr == "" || lr == "logs" {
+			if runtime.GOOS == "windows" {
+				lr = "C:\\temp\\logreport-output"
+			} else {
+				lr = "/tmp/logreport-output"
+			}
+			s.SetLogRoot(lr)
+			os.MkdirAll(lr, 0755)
+		}
+		lw := logwriter.New(lr)
 		if err := lw.WriteOutputWithIP(req.NodeName, req.TokenType, req.TokenID, output, req.IPAddress); err != nil {
 			log.Printf("telnet/execute: failed to write log for %s/%s: %v", req.NodeName, req.TokenID, err)
+		} else {
+			fileWritten = true
+			filePathStr = lw.LogPath(req.NodeName, req.TokenType, req.TokenID, req.IPAddress)
 		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"session_id": sessionID,
-		"command":    req.Command,
-		"output":     output,
-		"sent":       true,
-		"file_written": req.NodeName != "" && req.TokenType != "",
+		"session_id":   sessionID,
+		"command":      req.Command,
+		"output":       output,
+		"sent":         true,
+		"file_written": fileWritten,
+		"file_path":    filePathStr,
 	})
 }
 
@@ -899,11 +918,13 @@ func (s *Server) handleSetLogRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify path exists
+	// Create directory if it doesn't exist
 	if _, err := os.Stat(req.Path); err != nil {
-		writeError(w, http.StatusBadRequest, "not_found",
-			fmt.Sprintf("path does not exist: %s", req.Path))
-		return
+		if mkErr := os.MkdirAll(req.Path, 0755); mkErr != nil {
+			writeError(w, http.StatusBadRequest, "cannot_create",
+				fmt.Sprintf("cannot create path: %s: %v", req.Path, mkErr))
+			return
+		}
 	}
 
 	s.logRootDir = req.Path
@@ -1366,5 +1387,243 @@ func (s *Server) handleSysFileScan(w http.ResponseWriter, r *http.Request) {
 			"include_lis":  includeLIS,
 			"exclude_nodes": strings.Split(excludeNodesStr, ","),
 		},
+	})
+}
+
+
+// ─── Scan Nodes Handler (DIA "print structure") ──────────────────────
+
+// handleScanNodes connects to DIA, sends "print structure", parses VME
+// token/slot layout, probes each token, and returns NodeConfig[].
+// POST /api/v1/sysfiles/scan-nodes
+func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
+	// Step 1: Connect to DIA at 127.0.0.1:1234
+	host := "127.0.0.1"
+	port := 1234
+
+	// Find an existing telnet session or create a new one
+	ids := s.telnetSM.ListSessions()
+	var sessionID string
+	if len(ids) > 0 {
+		sessionID = ids[0]
+		sess, ok := s.telnetSM.GetSession(sessionID)
+		if ok && sess != nil && !sess.Connected {
+			s.telnetSM.Disconnect(sessionID)
+			sessionID = ""
+		}
+	}
+	if sessionID == "" {
+		sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, "connection_failed",
+				fmt.Sprintf("DIA connect %s:%d failed: %v", host, port, err))
+			return
+		}
+		sessionID = sess.ID
+	}
+
+	// Step 2: Send "print structure" command
+	_ = s.telnetSM.ClearOutput(sessionID)
+	if err := s.telnetSM.SendCommand(sessionID, "print structure"); err != nil {
+		writeError(w, http.StatusBadGateway, "command_failed",
+			fmt.Sprintf("print structure failed: %v", err))
+		return
+	}
+	structureOutput := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+
+	// Step 3: Parse the structure output to extract token numbers and slot types
+	type slotInfo struct {
+		tokenNum int
+		slotType string // "CPU" or "FBC"
+	}
+	var slots []slotInfo
+
+	lines := strings.Split(structureOutput, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Look for lines with CPU or FBC type indicators
+		// Format: "1 20 CPU CPU CPU CPU CPU CPU CPU CPU NCU"
+		// or similar VME structure lines
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		// Check if this line has slot type info (CPU or FBC in fields)
+		for i, field := range fields {
+			upperField := strings.ToUpper(field)
+			if upperField == "CPU" || upperField == "FBC" || upperField == "NCU" {
+				// The token number is the first field (hex)
+				if i > 0 {
+					tokenNum, err := strconv.ParseInt(fields[0], 16, 32)
+					if err == nil {
+						slots = append(slots, slotInfo{
+							tokenNum: int(tokenNum),
+							slotType: upperField,
+						})
+					}
+				}
+				break
+			}
+		}
+	}
+
+	// Also try to parse the "token VME 1 2 3 4 ..." header line
+	// to get the list of all token numbers
+	var allTokens []int
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.Contains(strings.ToUpper(line), "TOKEN") && strings.Contains(strings.ToUpper(line), "VME") {
+			fields := strings.Fields(line)
+			for _, f := range fields {
+				if n, err := strconv.ParseInt(f, 16, 32); err == nil && n > 0 {
+					allTokens = append(allTokens, int(n))
+				}
+			}
+		}
+	}
+
+	// If we didn't find tokens from the structure, try line-by-line
+	if len(allTokens) == 0 && len(slots) > 0 {
+		for _, s := range slots {
+			allTokens = append(allTokens, s.tokenNum)
+		}
+	}
+
+	// Step 4: Build slot type map from the structure line
+	slotTypeMap := make(map[int]string) // tokenNum -> "CPU" or "FBC"
+	for _, slot := range slots {
+		if slot.slotType == "CPU" {
+			slotTypeMap[slot.tokenNum] = "CPU"
+		} else if slot.slotType == "FBC" {
+			slotTypeMap[slot.tokenNum] = "FBC"
+		}
+	}
+
+	// Step 5: For each token, probe with "print from fbc io structure TOKEN0000"
+	type detectedNode struct {
+		tokenNum int
+		active   bool
+		slotType string
+	}
+	var detectedNodes []detectedNode
+
+	for _, tokenNum := range allTokens {
+		// Determine slot type - if unknown, assume FBC for probing
+		slotType := slotTypeMap[tokenNum]
+		if slotType == "" {
+			slotType = "FBC" // default: probe as FBC
+		}
+
+		// Skip NCU tokens
+		if slotType == "NCU" {
+			continue
+		}
+
+		// Build probe command: TOKEN*16 = TOKEN*16 in hex format
+		// e.g. token 0x161 -> command "print from fbc io structure 1610000"
+		probeCmd := fmt.Sprintf("print from fbc io structure %x0000", tokenNum)
+
+		_ = s.telnetSM.ClearOutput(sessionID)
+		if err := s.telnetSM.SendCommand(sessionID, probeCmd); err != nil {
+			// Token not active or error - skip
+			continue
+		}
+		probeOutput := waitForOutput(s.telnetSM, sessionID, 5*time.Second, 1*time.Second)
+
+		// Active if output has content and doesn't contain error/no response
+		active := probeOutput != "" && !strings.Contains(strings.ToLower(probeOutput), "no such") &&
+			!strings.Contains(strings.ToLower(probeOutput), "not found") &&
+			!strings.Contains(strings.ToLower(probeOutput), "error")
+
+		detectedNodes = append(detectedNodes, detectedNode{
+			tokenNum: tokenNum,
+			active:   active,
+			slotType:  slotType,
+		})
+	}
+
+	// Step 6: Build NodeConfig array from detected nodes
+	// Group tokens by station. CPU slots get LOG-only, FBC slots get FBC+RPC.
+	type stationTokens struct {
+		cpuToken   int
+		fbcTokens  []int
+	}
+	stationMap := make(map[string]*stationTokens)
+	stationOrder := make([]string, 0)
+
+	// Assign tokens to stations. Each station has one CPU token and multiple FBC tokens.
+	// We'll group by proximity: the first CPU token starts a new station,
+	// subsequent FBC tokens belong to that station until the next CPU token.
+	var currentStation string
+	for i, dn := range detectedNodes {
+		if dn.slotType == "CPU" {
+			// Start a new station
+			currentStation = fmt.Sprintf("NODE_%d", i+1)
+			st := &stationTokens{cpuToken: dn.tokenNum}
+			stationMap[currentStation] = st
+			stationOrder = append(stationOrder, currentStation)
+		} else if currentStation != "" {
+			// Add FBC token to current station
+			stationMap[currentStation].fbcTokens = append(stationMap[currentStation].fbcTokens, dn.tokenNum)
+		}
+	}
+
+	// If no stations detected from structure, create one per token
+	if len(stationOrder) == 0 {
+		for i, dn := range detectedNodes {
+			stName := fmt.Sprintf("NODE_%d", i+1)
+			if dn.slotType == "CPU" {
+				stationMap[stName] = &stationTokens{cpuToken: dn.tokenNum}
+			} else {
+				stationMap[stName] = &stationTokens{fbcTokens: []int{dn.tokenNum}}
+			}
+			stationOrder = append(stationOrder, stName)
+		}
+	}
+
+	// Build NodeConfig array
+	configs := make([]types.NodeConfig, 0, len(stationOrder))
+	for _, stName := range stationOrder {
+		st := stationMap[stName]
+		var tokens []types.Token
+
+		// CPU slot gets LOG token
+		if st.cpuToken > 0 {
+			tokens = append(tokens, types.Token{
+				TokenID:   fmt.Sprintf("%x", st.cpuToken),
+				TokenType: types.TokenLOG,
+				Protocol:  "telnet",
+			})
+		}
+
+		// FBC slots get FBC + RPC paired tokens
+		for _, fbcToken := range st.fbcTokens {
+			tokens = append(tokens, types.Token{
+				TokenID:   fmt.Sprintf("%x", fbcToken),
+				TokenType: types.TokenFBC,
+				Protocol:  "telnet",
+			})
+			tokens = append(tokens, types.Token{
+				TokenID:   fmt.Sprintf("%x", fbcToken),
+				TokenType: types.TokenRPC,
+				Protocol:  "telnet",
+			})
+		}
+
+		if len(tokens) > 0 {
+			configs = append(configs, types.NodeConfig{
+				Name:      stName,
+				IPAddress: "",
+				Tokens:    tokens,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs":       configs,
+		"count":          len(configs),
+		"structure_raw":  structureOutput,
+		"tokens_detected": len(allTokens),
+		"nodes_detected":  len(detectedNodes),
 	})
 }

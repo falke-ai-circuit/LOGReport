@@ -200,6 +200,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/sysfiles/parse", s.handleSysFileParseDir)
 	mux.HandleFunc("GET /api/v1/sysfiles/scan", s.handleSysFileScan)
 
+	// Scan nodes via DIA
+	mux.HandleFunc("POST /api/v1/sysfiles/scan-nodes", s.handleScanNodes)
+
 	// ─── Project management endpoints ──────────────────────────────
 
 	mux.HandleFunc("POST /api/v1/projects", s.createProjectHandler)
