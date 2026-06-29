@@ -264,18 +264,54 @@ func offsetToken(base string, offset int) string {
 	result := strconv.FormatInt(val, 16)
 	return result
 }
+
+// extractStationName derives the station folder name from a node name.
+// All slots of a station are nested under one station folder:
+//
+//	"AP01" → "AP01m", "AP01 Main" → "AP01m", "AP01_m2" → "AP01m"
+//	"AP02 Reserve" → "AP02r", "AP02_r2" → "AP02r"
+//	"AL01" → "AL01" (LIS, no suffix), "A1OA OPS" → "A1OA" (OPS, no suffix)
+func extractStationName(nodeName string) string {
+	// LIS nodes (AL prefix) and OPS nodes don't get m/r suffix
+	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
+		base := nodeName
+		if idx := strings.Index(base, " "); idx >= 0 {
+			base = base[:idx]
+		}
+		return base
+	}
+
+	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
+
+	// Strip suffixes to get base name
+	base := nodeName
+	if idx := strings.Index(base, " "); idx >= 0 {
+		base = base[:idx]
+	}
+	if idx := strings.Index(base, "_"); idx >= 0 {
+		base = base[:idx]
+	}
+
+	if isReserve {
+		return base + "r"
+	}
+	return base + "m"
+}
 // CreateFolderStructure creates the FBC/RPC/LOG/LIS directory tree with
 // placeholder files, mirroring Python log_creator.py create_file_structure().
 //
 // For each node config, based on token types:
-//   - FBC: create outputDir/FBC/{nodeName}/ and placeholder files
+//   - FBC: create outputDir/FBC/{stationName}/ and placeholder files
 //     {nodeName}_{ip}_{tokenID}.fbc
-//   - RPC: create outputDir/RPC/{nodeName}/ and placeholder files
+//   - RPC: create outputDir/RPC/{stationName}/ and placeholder files
 //     {nodeName}_{ip}_{tokenID}.rpc
 //   - LOG: create outputDir/LOG/ and placeholder file
 //     {nodeName}_{ip}.log
-//   - LIS: create outputDir/LIS/{nodeName}/ and placeholder files
+//   - LIS: create outputDir/LIS/{stationName}/ and placeholder files
 //     {nodeName}_{ip}_exe{i}_5irb_5orb.lis (i=1..6)
+//
+// All slots of a station (AP01, AP01_m2, AP01_m3) are nested under
+// the station folder (AP01m).
 func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("sysloader: create output dir %s: %w", outputDir, err)
@@ -286,6 +322,10 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 		if nodeName == "" {
 			continue
 		}
+
+		// Station folder: all slots of a station are nested under one folder.
+		// e.g. AP01, AP01_m2, AP01_m3 → all under AP01m/
+		stationName := extractStationName(cfg.Name)
 
 		// Format IP for filename (replace dots with hyphens, matching Python)
 		ipFormatted := cfg.IPAddress
@@ -302,7 +342,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// FBC files
 		if tokenTypeSet[types.TokenFBC] {
-			nodeDir := filepath.Join(outputDir, "FBC", nodeName)
+			nodeDir := filepath.Join(outputDir, "FBC", stationName)
 			if err := os.MkdirAll(nodeDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create FBC dir %s: %w", nodeDir, err)
 			}
@@ -322,7 +362,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// RPC files
 		if tokenTypeSet[types.TokenRPC] {
-			nodeDir := filepath.Join(outputDir, "RPC", nodeName)
+			nodeDir := filepath.Join(outputDir, "RPC", stationName)
 			if err := os.MkdirAll(nodeDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create RPC dir %s: %w", nodeDir, err)
 			}
@@ -372,7 +412,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 
 		// LIS files (6 per node: exe1..exe6)
 		if tokenTypeSet[types.TokenLIS] {
-			lisDir := filepath.Join(outputDir, "LIS", nodeName)
+			lisDir := filepath.Join(outputDir, "LIS", stationName)
 			if err := os.MkdirAll(lisDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}

@@ -50,6 +50,39 @@ func formatIP(ip string) string {
 	return strings.ReplaceAll(ip, ".", "-")
 }
 
+// extractStationName derives the station folder name from a node name.
+// All slots of a station are nested under one station folder:
+//
+//	"AP01" → "AP01m", "AP01 Main" → "AP01m", "AP01_m2" → "AP01m"
+//	"AP02 Reserve" → "AP02r", "AP02_r2" → "AP02r"
+//	"AL01" → "AL01" (LIS, no suffix), "A1OA OPS" → "A1OA" (OPS, no suffix)
+func extractStationName(nodeName string) string {
+	// LIS nodes (AL prefix) and OPS nodes don't get m/r suffix
+	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
+		base := nodeName
+		if idx := strings.Index(base, " "); idx >= 0 {
+			base = base[:idx]
+		}
+		return base
+	}
+
+	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
+
+	// Strip suffixes to get base name
+	base := nodeName
+	if idx := strings.Index(base, " "); idx >= 0 {
+		base = base[:idx]
+	}
+	if idx := strings.Index(base, "_"); idx >= 0 {
+		base = base[:idx]
+	}
+
+	if isReserve {
+		return base + "r"
+	}
+	return base + "m"
+}
+
 // fileExtension returns the file extension for a token type.
 func fileExtension(tokenType string) string {
 	switch strings.ToUpper(tokenType) {
@@ -65,7 +98,7 @@ func fileExtension(tokenType string) string {
 }
 
 // logPath returns the full path for a specific log file.
-// Directory: {logRoot}/{tokenType}/{nodeName}/
+// Directory: {logRoot}/{tokenType}/{stationName}/
 // Filename: {nodeName}_{ipFormatted}_{tokenID}.{ext}
 // For LOG type: {nodeName}_{ipFormatted}.log (no tokenID in filename)
 func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
@@ -76,6 +109,10 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	// Clean node name for filesystem (spaces → underscores)
 	safeNode := strings.ReplaceAll(nodeName, " ", "_")
 
+	// Station folder: all slots of a station are nested under one folder.
+	// e.g. AP01, AP01_m2, AP01_m3 → all under AP01m/
+	stationName := extractStationName(nodeName)
+
 	var fileName string
 	if strings.ToUpper(tokenType) == "LOG" {
 		fileName = fmt.Sprintf("%s_%s%s", safeNode, ipFmt, ext)
@@ -83,13 +120,14 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 		fileName = fmt.Sprintf("%s_%s_%s%s", safeNode, ipFmt, tokenID, ext)
 	}
 
-	return filepath.Join(lw.logRoot, typeDir, safeNode, fileName)
+	return filepath.Join(lw.logRoot, typeDir, stationName, fileName)
 }
 
 // nodeDir returns the directory path for a node's logs, creating it if needed.
+// Directory: {logRoot}/{tokenType}/{stationName}/
 func (lw *LogWriter) nodeDir(nodeName, tokenType string) (string, error) {
-	safeNode := strings.ReplaceAll(nodeName, " ", "_")
-	dir := filepath.Join(lw.logRoot, strings.ToUpper(tokenType), safeNode)
+	stationName := extractStationName(nodeName)
+	dir := filepath.Join(lw.logRoot, strings.ToUpper(tokenType), stationName)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("logwriter: create dir %s: %w", dir, err)
 	}
@@ -176,12 +214,12 @@ func (lw *LogWriter) ReadLog(nodeName, tokenType, tokenID, ipAddress string) (st
 // ListLogs lists all log files for a node across all token types.
 // Returns a slice of LogEntry sorted by file name.
 func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
-	safeNode := strings.ReplaceAll(nodeName, " ", "_")
+	stationName := extractStationName(nodeName)
 	result := make([]LogEntry, 0)
 
 	// Check all token type directories
 	for _, tokenType := range []string{"FBC", "RPC", "LOG", "LIS"} {
-		dir := filepath.Join(lw.logRoot, tokenType, safeNode)
+		dir := filepath.Join(lw.logRoot, tokenType, stationName)
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue // Directory doesn't exist, skip

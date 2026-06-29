@@ -12,19 +12,19 @@ func TestWriteAndReadLog(t *testing.T) {
 	lw := New(dir)
 
 	// Write output
-	err := lw.WriteOutput("AP01m", "FBC", "162", "FBC agent 162\nPIC 5 6 7 8 sum\n0 AI8 BI8")
+	err := lw.WriteOutput("AP01", "FBC", "162", "FBC agent 162\nPIC 5 6 7 8 sum\n0 AI8 BI8")
 	if err != nil {
 		t.Fatalf("WriteOutput failed: %v", err)
 	}
 
-	// Verify file exists
-	path := filepath.Join(dir, "AP01m", "fbc_162.log")
+	// Verify file exists — station-based nesting: FBC/AP01m/AP01_unknown-ip_162.fbc
+	path := filepath.Join(dir, "FBC", "AP01m", "AP01_unknown-ip_162.fbc")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected log file to exist: %v", err)
 	}
 
 	// Read back
-	content, err := lw.ReadLog("AP01m", "FBC", "162", "")
+	content, err := lw.ReadLog("AP01", "FBC", "162", "")
 	if err != nil {
 		t.Fatalf("ReadLog failed: %v", err)
 	}
@@ -59,12 +59,13 @@ func TestListLogs(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
 
-	// Create multiple log files
-	lw.WriteOutput("AP01m", "FBC", "162", "fbc data 162")
-	lw.WriteOutput("AP01m", "FBC", "163", "fbc data 163")
-	lw.WriteOutput("AP01m", "RPC", "363", "rpc data 363")
+	// Create multiple log files — all under station folder AP01m
+	lw.WriteOutput("AP01", "FBC", "162", "fbc data 162")
+	lw.WriteOutput("AP01_m2", "FBC", "163", "fbc data 163")
+	lw.WriteOutput("AP01", "RPC", "363", "rpc data 363")
 
-	entries, err := lw.ListLogs("AP01m")
+	// ListLogs for any member of the station should find all files in the station folder
+	entries, err := lw.ListLogs("AP01")
 	if err != nil {
 		t.Fatalf("ListLogs failed: %v", err)
 	}
@@ -72,11 +73,8 @@ func TestListLogs(t *testing.T) {
 		t.Fatalf("expected 3 log files, got %d", len(entries))
 	}
 
-	// Verify all are .log files
+	// Verify all have non-zero size
 	for _, e := range entries {
-		if !strings.HasSuffix(e.FileName, ".log") {
-			t.Errorf("expected .log extension, got %s", e.FileName)
-		}
 		if e.Size <= 0 {
 			t.Errorf("expected non-zero size for %s, got %d", e.FileName, e.Size)
 		}
@@ -119,9 +117,13 @@ func TestClearLog(t *testing.T) {
 	lw := New(dir)
 
 	lw.WriteOutput("AP01", "FBC", "100", "some data")
-	path := filepath.Join(dir, "AP01", "fbc_100.log")
+	// Station-based path: FBC/AP01m/AP01_unknown-ip_100.fbc
+	path := filepath.Join(dir, "FBC", "AP01m", "AP01_unknown-ip_100.fbc")
 
-	info, _ := os.Stat(path)
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("expected file to exist: %v", err)
+	}
 	if info.Size() == 0 {
 		t.Fatal("expected non-zero size before clear")
 	}
@@ -130,7 +132,10 @@ func TestClearLog(t *testing.T) {
 		t.Fatalf("ClearLog failed: %v", err)
 	}
 
-	info, _ = os.Stat(path)
+	info, err = os.Stat(path)
+	if err != nil {
+		t.Fatalf("expected file to still exist after clear: %v", err)
+	}
 	if info.Size() != 0 {
 		t.Errorf("expected zero size after clear, got %d", info.Size())
 	}

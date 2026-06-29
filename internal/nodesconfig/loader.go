@@ -119,7 +119,10 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 
 // BuildFileTree builds a tree that includes actual log files from the log root
 // directory, matching the Python app's behavior where the tree shows:
-//   node → FBC/RPC/LOG sections → individual files (with filenames)
+//   station → FBC/RPC/LOG sections → individual files (with filenames)
+//
+// All slots of a station are grouped under a single station node.
+// e.g. AP01m → FBC → AP01_...161.fbc, AP01_m2_...162.fbc, AP01_m3_...163.fbc
 //
 // This is the tree the frontend Commander uses for context menus and double-click.
 // If logRoot is empty or doesn't exist, falls back to the token-only tree.
@@ -140,12 +143,23 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 
 	groupOrder := []string{"FBC", "RPC", "LOG", "LIS"}
 
+	// Group configs by station name, preserving discovery order
+	stationOrder := make([]string, 0)
+	stationConfigs := make(map[string][]types.NodeConfig)
 	for _, cfg := range configs {
-		nodeChild := types.TreeNode{
-			Name:     cfg.Name,
+		station := extractStationName(cfg.Name)
+		if _, exists := stationConfigs[station]; !exists {
+			stationOrder = append(stationOrder, station)
+		}
+		stationConfigs[station] = append(stationConfigs[station], cfg)
+	}
+
+	for _, stationName := range stationOrder {
+		memberCfgs := stationConfigs[stationName]
+
+		stationNode := types.TreeNode{
+			Name:     stationName,
 			Type:     "node",
-			IP:       cfg.IPAddress,
-			Status:   "idle",
 			Children: make([]types.TreeNode, 0),
 		}
 
@@ -157,25 +171,26 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				Children:   make([]types.TreeNode, 0),
 			}
 
-			// Scan for files of this type for this node
-			// FBC dir: {logRoot}/FBC/{nodeName}/
-			// RPC dir: {logRoot}/RPC/{nodeName}/
-			// LOG dir: {logRoot}/LOG/  (flat, filenames start with nodeName)
-			// LIS dir: {logRoot}/LIS/{nodeName}/
+			// Scan for files of this type for all member nodes of this station
+			// FBC dir: {logRoot}/FBC/{stationName}/
+			// RPC dir: {logRoot}/RPC/{stationName}/
+			// LOG dir: {logRoot}/LOG/  (flat, filenames start with any member node name)
+			// LIS dir: {logRoot}/LIS/{stationName}/
 			var scanDir string
-
 			if gType == "LOG" {
 				scanDir = filepath.Join(logRoot, "LOG")
 			} else {
-				scanDir = filepath.Join(logRoot, gType, cfg.Name)
+				scanDir = filepath.Join(logRoot, gType, stationName)
 			}
 
 			entries, err := os.ReadDir(scanDir)
 			if err != nil {
-				// Dir doesn't exist — add tokens from config as placeholder
-				sectionNode.Children = addTokensFromConfig(cfg, gType)
+				// Dir doesn't exist — add tokens from all member configs as placeholders
+				for _, cfg := range memberCfgs {
+					sectionNode.Children = append(sectionNode.Children, addTokensFromConfig(cfg, gType)...)
+				}
 				if len(sectionNode.Children) > 0 {
-					nodeChild.Children = append(nodeChild.Children, sectionNode)
+					stationNode.Children = append(stationNode.Children, sectionNode)
 				}
 				continue
 			}
@@ -194,10 +209,20 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 					continue
 				}
 
-				// For LOG, filter by node name prefix
-				if gType == "LOG" && !strings.HasPrefix(entry.Name(), cfg.Name+"_") &&
-					!strings.HasPrefix(entry.Name(), cfg.Name) {
-					continue
+				// For LOG, filter by any member node name prefix
+				if gType == "LOG" {
+					matched := false
+					for _, cfg := range memberCfgs {
+						nodeNameUnderscore := strings.ReplaceAll(cfg.Name, " ", "_")
+						if strings.HasPrefix(entry.Name(), nodeNameUnderscore+"_") ||
+							strings.HasPrefix(entry.Name(), nodeNameUnderscore) {
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						continue
+					}
 				}
 
 				fullPath := filepath.Join(scanDir, entry.Name())
@@ -214,12 +239,17 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				}
 
 				// Extract token_id from filename for context menu commands
-				// FBC: {node}_{ip}_{token}.fbc → token is last part before .fbc
-				// RPC: {node}_{ip}_{token}.rpc → token is last part before .rpc
-				// LOG: {node}_{ip}.log → no token
-				tokID := extractTokenID(entry.Name(), cfg.Name, gType)
-				if tokID != "" {
-					fileNode.TokenID = tokID
+				// Find which member node this file belongs to for token extraction
+				for _, cfg := range memberCfgs {
+					nodeNameUnderscore := strings.ReplaceAll(cfg.Name, " ", "_")
+					if strings.HasPrefix(entry.Name(), nodeNameUnderscore+"_") ||
+						strings.HasPrefix(entry.Name(), nodeNameUnderscore) {
+						tokID := extractTokenID(entry.Name(), nodeNameUnderscore, gType)
+						if tokID != "" {
+							fileNode.TokenID = tokID
+						}
+						break
+					}
 				}
 
 				sectionNode.Children = append(sectionNode.Children, fileNode)
@@ -230,17 +260,19 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				return sectionNode.Children[i].Name < sectionNode.Children[j].Name
 			})
 
-			// If no files found, add tokens from config as placeholders
+			// If no files found, add tokens from all member configs as placeholders
 			if len(sectionNode.Children) == 0 {
-				sectionNode.Children = addTokensFromConfig(cfg, gType)
+				for _, cfg := range memberCfgs {
+					sectionNode.Children = append(sectionNode.Children, addTokensFromConfig(cfg, gType)...)
+				}
 			}
 
 			if len(sectionNode.Children) > 0 {
-				nodeChild.Children = append(nodeChild.Children, sectionNode)
+				stationNode.Children = append(stationNode.Children, sectionNode)
 			}
 		}
 
-		root.Children = append(root.Children, nodeChild)
+		root.Children = append(root.Children, stationNode)
 	}
 
 	return root
@@ -309,4 +341,37 @@ func extractTokenID(filename, nodeName, sectionType string) string {
 		return parts[len(parts)-1]
 	}
 	return base
+}
+
+// extractStationName derives the station folder name from a node name.
+// All slots of a station are nested under one station folder:
+//
+//	"AP01" → "AP01m", "AP01 Main" → "AP01m", "AP01_m2" → "AP01m"
+//	"AP02 Reserve" → "AP02r", "AP02_r2" → "AP02r"
+//	"AL01" → "AL01" (LIS, no suffix), "A1OA OPS" → "A1OA" (OPS, no suffix)
+func extractStationName(nodeName string) string {
+	// LIS nodes (AL prefix) and OPS nodes don't get m/r suffix
+	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
+		base := nodeName
+		if idx := strings.Index(base, " "); idx >= 0 {
+			base = base[:idx]
+		}
+		return base
+	}
+
+	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
+
+	// Strip suffixes to get base name
+	base := nodeName
+	if idx := strings.Index(base, " "); idx >= 0 {
+		base = base[:idx]
+	}
+	if idx := strings.Index(base, "_"); idx >= 0 {
+		base = base[:idx]
+	}
+
+	if isReserve {
+		return base + "r"
+	}
+	return base + "m"
 }
