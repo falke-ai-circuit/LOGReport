@@ -143,6 +143,11 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		}
 
 		// Process Slot-format nodes (TITLE=/PROGRAM= sections)
+		// The filename stem (e.g. "161" from "161.sys") is the hardware address / token ID
+		// used in DIA commands like "print from fbc io structure 1610000".
+		// This matches the Python file_utils.py parse_sys_file behavior where
+		// the filename stem is used as the token when there are no :e:hw: entries.
+		sysFileToken := strings.TrimSuffix(filepath.Base(sysPath), filepath.Ext(sysPath))
 		for _, sfn := range result.Nodes {
 			lid := sfn.LID
 			if lid == "" {
@@ -170,16 +175,18 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 			}
 			for _, tt := range tokenTypes {
 				alreadyExists := false
-				safeLID := strings.ReplaceAll(lid, " ", "_")
+				// Use the filename stem (hardware address) as the token ID, not the LID.
+				// e.g. "161" from "161.sys" → DIA command "print from fbc io structure 1610000"
+				tokenID := sysFileToken
 				for _, existing := range node.Tokens {
-					if existing.TokenType == tt && existing.TokenID == safeLID {
+					if existing.TokenType == tt && existing.TokenID == tokenID {
 						alreadyExists = true
 						break
 					}
 				}
 				if !alreadyExists {
 					node.Tokens = append(node.Tokens, types.Token{
-						TokenID:   safeLID,
+						TokenID:   tokenID,
 						TokenType: tt,
 						Protocol:  "telnet",
 					})
@@ -295,7 +302,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}
 			for i := 1; i <= 6; i++ {
-				fileName := fmt.Sprintf("%s_%s_exe%d_5irb_5orb.lis", nodeName, ipFormatted, i)
+				fileName := fmt.Sprintf("%s_%s_exe%d_irb_orb.lis", nodeName, ipFormatted, i)
 				filePath := filepath.Join(lisDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
