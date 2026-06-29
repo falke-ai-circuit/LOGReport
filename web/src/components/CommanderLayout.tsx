@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText, Upload, Plus, Trash2, Save, Box, ChevronDown } from 'lucide-react';
 import NodeTree from './NodeTree';
@@ -46,7 +45,7 @@ export default function CommanderLayout() {
   const [activeTab, setActiveTab] = useState<Tab>('telnet');
   const [selectedNode, setSelectedNode] = useState<TreeNodeData | null>(null);
   const [, setSelectedToken] = useState<TreeNodeData | null>(null);
-  const [setCurrentToken] = useState('');
+  const [currentToken, setCurrentToken] = useState('');
   const [currentTokenType, setCurrentTokenType] = useState('');
   const [currentNodeName, setCurrentNodeName] = useState('');
   const [pendingCommand, setPendingCommand] = useState<string | null>(null);
@@ -1196,12 +1195,6 @@ function NodesTabContent({ projectId, projectName, onNodesSaved }: NodesTabConte
     LIS: '#ec4899',
     FTP: '#8b5cf6',
   };
-
-  function getTokenTypes(node: NodeConfig): string[] {
-    const types = new Set<string>();
-    node.tokens.forEach((t) => types.add(t.token_type));
-    return Array.from(types);
-  }
 
   return (
     <div style={{ height: '100%', overflow: 'auto', backgroundColor: 'var(--bg-primary)' }}>
