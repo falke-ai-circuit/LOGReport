@@ -1174,3 +1174,110 @@ func (s *Server) handleSysFileParseDir(w http.ResponseWriter, r *http.Request) {
 		"dir":     dir,
 	})
 }
+
+// handleSysFileScan auto-scans a BU directory for .sys files, parses them,
+// and returns the configs with optional filtering. The frontend can display
+// the configs for review/filtering before saving to nodes.json.
+//
+// GET /api/v1/sysfiles/scan?dir={path}&include_fbc={bool}&include_rpc={bool}&include_log={bool}&include_lis={bool}&exclude_nodes={comma-separated}
+//
+// Query params:
+//   dir          — directory to scan (required)
+//   include_fbc  — include FBC tokens (default true)
+//   include_rpc  — include RPC tokens (default true)
+//   include_log  — include LOG tokens (default true)
+//   include_lis  — include LIS tokens (default false)
+//   exclude_nodes — comma-separated node names to exclude
+func (s *Server) handleSysFileScan(w http.ResponseWriter, r *http.Request) {
+	dir := r.URL.Query().Get("dir")
+	if dir == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "dir query parameter is required")
+		return
+	}
+
+	configs, err := sysloader.LoadSysFiles(dir)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to parse sys files: %v", err))
+		return
+	}
+
+	// Parse filter parameters
+	includeFBC := r.URL.Query().Get("include_fbc") != "false"
+	includeRPC := r.URL.Query().Get("include_rpc") != "false"
+	includeLOG := r.URL.Query().Get("include_log") != "false"
+	includeLIS := r.URL.Query().Get("include_lis") == "true"
+	excludeNodesStr := r.URL.Query().Get("exclude_nodes")
+	excludeNodes := make(map[string]bool)
+	if excludeNodesStr != "" {
+		for _, n := range strings.Split(excludeNodesStr, ",") {
+			excludeNodes[strings.TrimSpace(n)] = true
+		}
+	}
+
+	// Apply filters
+	filtered := make([]types.NodeConfig, 0, len(configs))
+	for _, cfg := range configs {
+		// Skip excluded nodes
+		if excludeNodes[cfg.Name] {
+			continue
+		}
+
+		// Filter tokens by type
+		var filteredTokens []types.Token
+		for _, tok := range cfg.Tokens {
+			switch string(tok.TokenType) {
+			case "FBC":
+				if includeFBC {
+					filteredTokens = append(filteredTokens, tok)
+				}
+			case "RPC":
+				if includeRPC {
+					filteredTokens = append(filteredTokens, tok)
+				}
+			case "LOG":
+				if includeLOG {
+					filteredTokens = append(filteredTokens, tok)
+				}
+			case "LIS":
+				if includeLIS {
+					filteredTokens = append(filteredTokens, tok)
+				}
+			default:
+				// Include unknown types by default
+				filteredTokens = append(filteredTokens, tok)
+			}
+		}
+		cfg.Tokens = filteredTokens
+
+		// Only include nodes that have at least one token after filtering
+		if len(cfg.Tokens) > 0 {
+			filtered = append(filtered, cfg)
+		}
+	}
+
+	// Also list subdirectories and .sys files found
+	sysFiles := make([]string, 0)
+	if entries, err := os.ReadDir(dir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".sys") {
+				sysFiles = append(sysFiles, entry.Name())
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs":      filtered,
+		"count":        len(filtered),
+		"total_before_filter": len(configs),
+		"dir":          dir,
+		"sys_files":    sysFiles,
+		"filters": map[string]interface{}{
+			"include_fbc":  includeFBC,
+			"include_rpc":  includeRPC,
+			"include_log":  includeLOG,
+			"include_lis":  includeLIS,
+			"exclude_nodes": strings.Split(excludeNodesStr, ","),
+		},
+	})
+}

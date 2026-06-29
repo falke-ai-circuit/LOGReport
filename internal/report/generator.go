@@ -195,9 +195,12 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 	return report, nil
 }
 
-// generateDOCXFromLogs creates a simplified DOCX report from log file entries.
-// It builds a document with a title, file summary table, and per-file key-value
-// tables using the same raw Office Open XML approach as docx.go.
+// generateDOCXFromLogs creates a DOCX report matching the Python generator format:
+// - Title page with Table of Contents listing all nodes
+// - Node headings (Arial, bold) sorted alphabetically
+// - File subheadings within each node, ordered .fbc → .rpc → .log → .lis
+// - Body content in Courier New, wrapped to 80 chars
+// - Page breaks after each node section
 func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, reportID string) (string, error) {
 	filePath := outputPath(reportID, ".docx")
 
@@ -226,69 +229,99 @@ func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, repor
 </Relationships>`
 	writeZipEntry(zw, "word/_rels/document.xml.rels", docRels)
 
-	// word/document.xml — title + summary table + per-file contents
+	// Build document XML
 	var sb strings.Builder
 	sb.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`)
 	sb.WriteString(`<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">`)
 	sb.WriteString(`<w:body>`)
 
-	// Title
-	titleText := "LOGReport — Log File Report"
+	// ─── Title ───────────────────────────────────────────────────
+	titleText := "Log Report - Node Overview"
 	if cfg.Title != "" {
 		titleText = cfg.Title
 	}
-	sb.WriteString(paragraph(titleText, true, 48))
-	sb.WriteString(paragraph("", false, 0))
+	sb.WriteString(docxParagraph(titleText, docxFontArial, true, 28)) // 14pt = 28 half-points
+	sb.WriteString(docxParagraph("", "", false, 0))
 
 	// Metadata
 	if cfg.LogRoot != "" {
-		sb.WriteString(paragraph(boldText("Log Root: ")+cfg.LogRoot, false, 0))
+		sb.WriteString(docxParagraph(boldText("Log Root: ")+xmlEscape(cfg.LogRoot), docxFontCourierNew, false, 0))
 	}
-	sb.WriteString(paragraph(boldText("Generated: ")+time.Now().UTC().Format("2006-01-02 15:04:05 UTC"), false, 0))
-	sb.WriteString(paragraph("", false, 0))
+	sb.WriteString(docxParagraph(boldText("Generated: ")+time.Now().UTC().Format("2006-01-02 15:04:05 UTC"), docxFontCourierNew, false, 0))
+	sb.WriteString(docxParagraph("", "", false, 0))
 
-	// File summary table
-	if len(scanEntries) > 0 {
-		sb.WriteString(paragraph("File Summary", true, 28))
-		var rows [][]string
-		for _, e := range scanEntries {
-			rows = append(rows, []string{
-				e.FileName,
-				e.FileType,
-				e.NodeName,
-				fmt.Sprintf("%d", e.KeyValueCount),
-				fmt.Sprintf("%d", e.Size),
-			})
-		}
-		sb.WriteString(buildTable([]string{"File Name", "Type", "Node", "Entries", "Size (bytes)"}, rows))
-		sb.WriteString(paragraph("", false, 0))
+	// ─── Table of Contents ───────────────────────────────────────
+	sb.WriteString(docxParagraph("Table of Contents", docxFontArial, true, 24)) // 12pt
+	sb.WriteString(docxParagraph("", "", false, 0))
+
+	nodes, byNode := nodeGroups(scanEntries)
+	for _, node := range nodes {
+		sb.WriteString(docxParagraph("Node: "+node, docxFontArial, true, 22)) // 11pt
 	}
 
-	// Per-file key-value contents
-	for _, e := range scanEntries {
-		if e.Parsed == nil {
-			continue
-		}
-		sb.WriteString(paragraph(fmt.Sprintf("%s [%s]", e.FileName, e.FileType), true, 28))
-		if e.Parsed.Header != "" {
-			sb.WriteString(paragraph(e.Parsed.Header, false, 0))
-		}
-		if len(e.Parsed.KeyValues) > 0 {
-			var kvRows [][]string
-			for _, kv := range e.Parsed.KeyValues {
-				kvRows = append(kvRows, []string{kv.Key, kv.Value})
+	// Page break after TOC
+	sb.WriteString(docxPageBreak())
+
+	// ─── Node Chapters ───────────────────────────────────────────
+	for _, node := range nodes {
+		// Node heading (Arial, bold, 16pt = 32 half-points)
+		sb.WriteString(docxParagraph("Node: "+node, docxFontArial, true, 32))
+		sb.WriteString(docxParagraph("", "", false, 0))
+
+		// Files for this node (already sorted by type)
+		for _, e := range byNode[node] {
+			if e.Parsed == nil {
+				continue
 			}
-			sb.WriteString(buildTable([]string{"Key", "Value"}, kvRows))
-		} else if len(e.Parsed.Lines) > 0 {
-			for _, line := range e.Parsed.Lines {
-				sb.WriteString(paragraph(line, false, 0))
+
+			// File subheading (Arial, bold, 11pt = 22 half-points)
+			sb.WriteString(docxParagraph(
+				fmt.Sprintf("%s File: %s", strings.ToUpper(e.FileType), e.FileName),
+				docxFontArial, true, 22))
+			sb.WriteString(docxParagraph("", "", false, 0))
+
+			// Body content — Courier New 10pt (20 half-points), wrapped to 80 chars
+			if e.Parsed.Header != "" {
+				for _, line := range wrapLine(e.Parsed.Header, 80) {
+					sb.WriteString(docxParagraph(xmlEscape(line), docxFontCourierNew, false, 20))
+				}
 			}
+
+			if len(e.Parsed.KeyValues) > 0 {
+				for _, kv := range e.Parsed.KeyValues {
+					line := fmt.Sprintf("%s = %s", kv.Key, kv.Value)
+					for _, wl := range wrapLine(line, 80) {
+						sb.WriteString(docxParagraph(xmlEscape(wl), docxFontCourierNew, false, 20))
+					}
+				}
+			}
+
+			if len(e.Parsed.Lines) > 0 && len(e.Parsed.KeyValues) == 0 {
+				wrapped := wrapLines(e.Parsed.Lines, 80)
+				for _, line := range wrapped {
+					sb.WriteString(docxParagraph(xmlEscape(line), docxFontCourierNew, false, 20))
+				}
+			} else if len(e.Parsed.Lines) > 0 {
+				for _, line := range e.Parsed.Lines {
+					if strings.Contains(line, "=") {
+						continue
+					}
+					for _, wl := range wrapLine(line, 80) {
+						sb.WriteString(docxParagraph(xmlEscape(wl), docxFontCourierNew, false, 20))
+					}
+				}
+			}
+
+			sb.WriteString(docxParagraph("", "", false, 0))
 		}
-		sb.WriteString(paragraph("", false, 0))
+
+		// Page break after each node section
+		sb.WriteString(docxPageBreak())
 	}
 
+	// Empty state
 	if len(scanEntries) == 0 {
-		sb.WriteString(paragraph("(No log files found in the specified directory.)", false, 0))
+		sb.WriteString(docxParagraph("(No log files found in the specified directory.)", docxFontCourierNew, false, 20))
 	}
 
 	sb.WriteString(`</w:body></w:document>`)
@@ -303,6 +336,39 @@ func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, repor
 	}
 
 	return filePath, nil
+}
+
+// docxFont identifiers for the enhanced DOCX generator.
+const (
+	docxFontArial      = "Arial"
+	docxFontCourierNew = "Courier New"
+)
+
+// docxParagraph returns a w:p element with specified font, bold, and size.
+// sz is in half-points (0 = default).
+func docxParagraph(text, font string, bold bool, sz int) string {
+	if text == "" {
+		return `<w:p><w:r><w:t xml:space="preserve"> </w:t></w:r></w:p>`
+	}
+
+	rPr := `<w:rPr>`
+	if bold {
+		rPr += `<w:b/><w:bCs/>`
+	}
+	if font != "" {
+		rPr += fmt.Sprintf(`<w:rFonts w:ascii="%s" w:hAnsi="%s" w:cs="%s"/>`, font, font, font)
+	}
+	if sz > 0 {
+		rPr += fmt.Sprintf(`<w:sz w:val="%d"/><w:szCs w:val="%d"/>`, sz, sz)
+	}
+	rPr += `</w:rPr>`
+
+	return fmt.Sprintf(`<w:p><w:r>%s<w:t xml:space="preserve">%s</w:t></w:r></w:p>`, rPr, xmlEscape(text))
+}
+
+// docxPageBreak returns a w:p element containing a page break.
+func docxPageBreak() string {
+	return `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`
 }
 
 // outputPath builds the full output file path for a report.

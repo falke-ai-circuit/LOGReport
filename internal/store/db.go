@@ -62,6 +62,10 @@ func (s *Store) Migrate() error {
 	}
 
 	if version >= currentSchemaVersion {
+		// Still ensure post-v1 tables exist (idempotent)
+		if err := s.EnsureProjectsTable(); err != nil {
+			return fmt.Errorf("store: ensure projects table: %w", err)
+		}
 		return nil
 	}
 
@@ -71,6 +75,11 @@ func (s *Store) Migrate() error {
 			return fmt.Errorf("store: migrate v1: %w", err)
 		}
 		version = 1
+	}
+
+	// Ensure projects table exists (added post-v1, idempotent)
+	if err := s.EnsureProjectsTable(); err != nil {
+		return fmt.Errorf("store: ensure projects table: %w", err)
 	}
 
 	// Set final version

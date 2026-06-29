@@ -198,6 +198,16 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Sys file loading and folder structure creation
 	mux.HandleFunc("POST /api/v1/sysfiles/load", s.handleLoadSysFiles)
 	mux.HandleFunc("GET /api/v1/sysfiles/parse", s.handleSysFileParseDir)
+	mux.HandleFunc("GET /api/v1/sysfiles/scan", s.handleSysFileScan)
+
+	// ─── Project management endpoints ──────────────────────────────
+
+	mux.HandleFunc("POST /api/v1/projects", s.createProjectHandler)
+	mux.HandleFunc("GET /api/v1/projects", s.listProjectsHandler)
+	mux.HandleFunc("GET /api/v1/projects/{id}", s.getProjectHandler)
+	mux.HandleFunc("PUT /api/v1/projects/{id}", s.updateProjectHandler)
+	mux.HandleFunc("DELETE /api/v1/projects/{id}", s.deleteProjectHandler)
+	mux.HandleFunc("POST /api/v1/projects/{id}/report", s.generateProjectReportHandler)
 }
 
 // NewTestServer creates a Server suitable for testing with an in-memory SQLite DB.
