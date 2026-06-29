@@ -44,6 +44,8 @@ func main() {
 	defer st.Close()
 
 	// Create the BsTool client
+	// When --communication-line is set, use TCP transport by default (not subprocess).
+	// This allows the frontend to call BsTool errlog without specifying tcp_host.
 	var bstoolOpts []bstool.Option
 	if cfg.BsToolPath != "" {
 		bstoolOpts = append(bstoolOpts, bstool.WithPath(cfg.BsToolPath))
@@ -53,6 +55,16 @@ func main() {
 		if cfg.CommunicationLine != "" {
 			bstoolOpts = append(bstoolOpts, bstool.WithCommunicationLine(cfg.CommunicationLine))
 		}
+	}
+	// When communication-line is set, configure a TCP transport as the default.
+	// This enables the frontend WebSocket and REST endpoints to use TCP automatically
+	// without the frontend needing to send tcp_host in the request.
+	if cfg.CommunicationLine != "" {
+		tcpTransport := bstool.NewTCPTransport(
+			bstool.WithTCPHost(cfg.CommunicationLine),
+			bstool.WithTCPPort(bstool.DefaultTCPPort),
+		)
+		bstoolOpts = append(bstoolOpts, bstool.WithTCPTransport(tcpTransport))
 	}
 	bstoolClient := bstool.NewClient(bstoolOpts...)
 

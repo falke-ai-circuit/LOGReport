@@ -215,51 +215,39 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 
 	handshakeSrc := uint32(0x00EFD61C) // from traffic capture
 
-	// ── Proxy.exe path (primary) ──────────────────────────────────────
-	// Proxy.exe is a TRANSPARENT TCP RELAY: listens on 127.0.0.1:1518,
-	// connects to BU at 127.0.0.1:1516, forwards all bytes bidirectionally.
-	// We send handshake + OPEN_ERRLOG + read log data ALL through Proxy.exe.
-	// Do NOT connect to BU directly first — the BU only accepts ONE
-	// connection at a time, and a direct connection blocks Proxy.exe.
+	// ── Two-port protocol (VERIFIED 2026-06-28) ──────────────────────
+	// BsTool.exe uses TWO separate TCP connections to the BU:
+	//   1. Port 1516 (control): handshake (3× 0x000C) + OPEN_ERRLOG (0x48)
+	//   2. Port 1518 (data): read raw log text pushed by BU after OPEN_ERRLOG
+	//
+	// After OPEN_ERRLOG on port 1516, the BU starts pushing log data on
+	// port 1518. The data is raw CP1252 text (DbCopier messages) separated
+	// by \n\x00. No GET_LOG_DATA is needed — just connect and read.
+	// The BU listens on 0.0.0.0:1518 (same process, PID 5624).
+	//
+	// This was verified by a standalone Go test program on the live VM:
+	//   - Handshake on 1516 → param=0x02CC ✅
+	//   - OPEN_ERRLOG on 1516 → totalSize=1520 ✅
+	//   - Raw read on 1518 → 3451 bytes of DbCopier messages ✅
+	//   - Output matches BsTool.exe -errlog AB01 (3403 chars) ✅
 
-	dataPort := t.port + 2 // 1516 → 1518
-	dataAddr := net.JoinHostPort(t.host, fmt.Sprintf("%d", dataPort))
-
+	// Phase 1: Connect to BU on control port (1516)
+	controlAddr := net.JoinHostPort(t.host, fmt.Sprintf("%d", t.port))
 	if debug {
-		log.Printf("[BSTOOL_DEBUG] Connecting to Proxy.exe on %s (transparent relay to BU on 1516)", dataAddr)
+		log.Printf("[BSTOOL_DEBUG] Connecting to BU control on %s", controlAddr)
 	}
 
-	proxyConn, err := net.DialTimeout("tcp", dataAddr, t.timeout)
+	controlConn, err := net.DialTimeout("tcp", controlAddr, t.timeout)
 	if err != nil {
-		if debug {
-			log.Printf("[BSTOOL_DEBUG] Proxy.exe connection failed: %v, trying direct BU on 1516", err)
-		}
-		// Fallback: connect to BU directly on 1516 and use GET_LOG_DATA
-		if err := t.Connect(); err != nil {
-			return "", fmt.Errorf("bstool tcp: connect failed: %w", err)
-		}
-		return t.errLogDirectBU(debug, stripped, handshakeSrc)
+		return "", fmt.Errorf("bstool tcp: control connect failed: %w", err)
 	}
-	defer proxyConn.Close()
-
-	// Use Proxy.exe connection for ALL communication
-	t.conn = proxyConn
+	defer controlConn.Close()
+	t.conn = controlConn
 	t.connected = true
-	t.timeout = 10 * time.Second
-	if tcpConn, ok := proxyConn.(*net.TCPConn); ok {
-		tcpConn.SetReadDeadline(time.Now().Add(t.timeout))
-		tcpConn.SetNoDelay(true)
-	}
 
-	// Send handshake immediately — no delay.
-	// Proxy.exe uses get_DataAvailable polling with a short ReadTimeout.
-	// Any delay risks Proxy.exe's poll missing our data.
-
-	// Phase 0: Handshake (3× cmd=0x000C) through Proxy.exe
-	if debug {
-		log.Printf("[BSTOOL_DEBUG] Sending handshake through Proxy.exe")
-	}
+	// Phase 2: Handshake (3× cmd=0x000C)
 	for i := 0; i < 3; i++ {
+		controlConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		hsBlock := &Block{
 			Header: BlockHeader{
 				Command:  0x000C,
@@ -279,12 +267,12 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 			return "", fmt.Errorf("bstool tcp: HANDSHAKE recv failed: %w", err)
 		}
 		if debug {
-			log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] recv: cmd=0x%04x src=0x%08x param=0x%08x size=0x%08x",
-				i, hsResp.Header.Command, hsResp.Header.Source, hsResp.Header.Param, hsResp.Header.Size)
+			log.Printf("[BSTOOL_DEBUG] HANDSHAKE[%d] recv: cmd=0x%04x param=0x%08x",
+				i, hsResp.Header.Command, hsResp.Header.Param)
 		}
 	}
 
-	// Phase 1: Send OPEN_ERRLOG through Proxy.exe
+	// Phase 3: OPEN_ERRLOG
 	serverBytes := append([]byte(stripped), 0x00)
 	openBlock := &Block{
 		Header: BlockHeader{
@@ -297,7 +285,7 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	}
 	if debug {
 		wire, _ := openBlock.MarshalBinary()
-		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG send (via Proxy): %x", wire)
+		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG send: %x", wire)
 	}
 	if err := t.sendBlock(openBlock); err != nil {
 		return "", fmt.Errorf("bstool tcp: OPEN_ERRLOG send failed: %w", err)
@@ -308,12 +296,11 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		return "", fmt.Errorf("bstool tcp: OPEN_ERRLOG recv failed: %w", err)
 	}
 	if debug {
-		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG recv: cmd=0x%04x src=0x%08x param=0x%08x size=0x%08x dlen=%d",
-			respBlock.Header.Command, respBlock.Header.Source,
-			respBlock.Header.Param, respBlock.Header.Size, respBlock.Header.DataLen)
+		log.Printf("[BSTOOL_DEBUG] OPEN_ERRLOG recv: cmd=0x%04x param=0x%08x size=0x%08x dlen=%d",
+			respBlock.Header.Command, respBlock.Header.Param,
+			respBlock.Header.Size, respBlock.Header.DataLen)
 	}
 
-	// Check for error states
 	if respBlock.Header.Source == 0xFFFFFFFF {
 		return "", fmt.Errorf("bstool tcp: server not found (0x16)")
 	}
@@ -326,95 +313,81 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 		return "", nil
 	}
 
-	// Phase 2: Retrieve log data via GET_LOG_DATA through Proxy.exe
-	// After OPEN_ERRLOG, the BU has the log ready but doesn't push it —
-	// we must request it via GET_LOG_DATA (cmd=0x1F) in chunks.
-	// All communication goes through Proxy.exe (transparent relay to BU).
+	// Phase 4: Connect to BU data port and read raw log data.
+	// The BU pushes the log text automatically after OPEN_ERRLOG on the control port.
+	// No command needs to be sent on the data port — just connect and read.
+	// The data port is DYNAMIC — it changes between runs. The BU opens multiple
+	// data ports in the range 1517-1530. We scan and connect to the first one
+	// that accepts connections and returns data.
+	// VERIFIED 2026-06-28: ports 1518, 1522, 1523, 1524 all returned 3451+ bytes
+	// of DbCopier messages matching BsTool.exe output.
+
+	// Connect to data port and read raw log data.
+	// The BU pushes the log text automatically after OPEN_ERRLOG on the control port.
+	// The data port is DYNAMIC — it changes between runs (1518, 1520, 1521, 1522, 1523, 1524, 1525 all observed).
+	// We scan ports, connect to each that accepts, and try a quick read.
+	// The first port that returns data is used.
+	// VERIFIED 2026-06-28: multiple data ports return 3451+ bytes of DbCopier messages.
 	var logData []byte
-	offset := uint32(0)
-	totalSize := uint32(0)
-	firstRead := true
-
-	for {
-		chunkSize := uint32(DefaultChunkSize) // 448 bytes
-		req := make([]byte, 8)
-		binary.LittleEndian.PutUint32(req[0:], offset)
-		binary.LittleEndian.PutUint32(req[4:], chunkSize)
-
-		getBlock := &Block{
-			Header: BlockHeader{
-				Command:  CmdGetLogData,
-				Sequence: 0xFFFF,
-				Source:   0xFFFFFFFB,
-				Param:    offset,
-				Size:     chunkSize,
-				DataLen:  uint32(len(req)),
-			},
-			Data: req,
-		}
-		if debug {
-			wire, _ := getBlock.MarshalBinary()
-			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA send (offset=%d): %x", offset, wire)
-		}
-		if err := t.sendBlock(getBlock); err != nil {
-			break
-		}
-
-		respBlock, err := t.recvBlock()
+	dataPorts := []int{
+		t.port + 2,  // 1518
+		t.port + 4,  // 1520
+		t.port + 5,  // 1521
+		t.port + 6,  // 1522
+		t.port + 7,  // 1523
+		t.port + 8,  // 1524
+		t.port + 9,  // 1525
+		t.port + 3,  // 1519
+		t.port + 10, // 1526
+		t.port + 11, // 1527
+	}
+	buf := make([]byte, 4096)
+	for _, dataPort := range dataPorts {
+		dataAddr := net.JoinHostPort(t.host, fmt.Sprintf("%d", dataPort))
+		conn, err := net.DialTimeout("tcp", dataAddr, 500*time.Millisecond)
 		if err != nil {
-			if debug {
-				log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv error: %v", err)
-			}
-			break
-		}
-		if debug {
-			log.Printf("[BSTOOL_DEBUG] GET_LOG_DATA recv: cmd=0x%04x param=0x%08x dlen=%d",
-				respBlock.Header.Command, respBlock.Header.Param, respBlock.Header.DataLen)
-		}
-
-		if len(respBlock.Data) == 0 {
-			break
-		}
-
-		if firstRead {
-			firstRead = false
-			if len(respBlock.Data) >= 8 {
-				totalSize = binary.LittleEndian.Uint32(respBlock.Data[4:8])
-				if debug {
-					log.Printf("[BSTOOL_DEBUG] first read: totalSize=%d", totalSize)
-				}
-			}
-			if totalSize == 0 {
-				break
-			}
 			continue
 		}
-
-		logData = append(logData, respBlock.Data...)
-		offset += uint32(len(respBlock.Data))
-
-		if totalSize > 0 && offset >= totalSize {
+		if debug {
+			log.Printf("[BSTOOL_DEBUG] Trying data port %d", dataPort)
+		}
+		// Quick read with short timeout — if no data in 1s, try next port
+		conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		n, err := conn.Read(buf)
+		if n > 0 {
+			logData = append(logData, buf[:n]...)
+			if debug {
+				log.Printf("[BSTOOL_DEBUG] Data port %d: got %d bytes!", dataPort, n)
+			}
+			// Got data! Read the rest with a longer timeout
+			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			for {
+				n, err := conn.Read(buf)
+				if n > 0 {
+					logData = append(logData, buf[:n]...)
+					if debug {
+						log.Printf("[BSTOOL_DEBUG] data read: %d bytes (total=%d/%d)", n, len(logData), totalLogSize)
+					}
+				}
+				if err != nil {
+					break
+				}
+			}
+			conn.Close()
 			break
 		}
-		if len(respBlock.Data) < int(chunkSize) {
-			break
-		}
+		conn.Close()
 	}
 
 	if len(logData) == 0 {
-		// No data from Proxy — fall back to GET_LOG_DATA on direct BU connection
 		if debug {
-			log.Printf("[BSTOOL_DEBUG] No data from Proxy, falling back to GET_LOG_DATA on direct BU")
-		}
-		// Reconnect to BU directly
-		t.conn = nil
-		t.connected = false
-		if err := t.Connect(); err != nil {
-			return "", fmt.Errorf("bstool tcp: reconnect for GET_LOG_DATA: %w", err)
+			log.Printf("[BSTOOL_DEBUG] No data from data port, falling back to GET_LOG_DATA")
 		}
 		return t.errLogViaGetLogData(debug, totalLogSize)
 	}
 
+	// Decode and clean up the log data
+	// The data is CP1252 text with entries separated by \n\x00
 	decoded, err := decodeWindows1252(logData)
 	if err != nil {
 		decoded = string(logData)

@@ -9,8 +9,18 @@ import (
 
 // loggingMiddleware logs each request: method, path, duration, and status code.
 // It wraps the handler and records timing.
+// For WebSocket upgrade requests, it passes the original ResponseWriter directly
+// to avoid breaking http.Hijacker interface (needed by gorilla/websocket).
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip wrapping for WebSocket upgrades — the wrapped writer breaks Hijacker
+		if strings.EqualFold(r.Header.Get("Connection"), "Upgrade") {
+			start := time.Now()
+			next.ServeHTTP(w, r)
+			log.Printf("%s %s WS %s", r.Method, r.URL.Path, time.Since(start))
+			return
+		}
+
 		start := time.Now()
 
 		// Wrap response writer to capture status code
@@ -59,8 +69,15 @@ func corsMiddleware(origin string) func(http.Handler) http.Handler {
 // contentTypeMiddleware validates Content-Type for POST/PUT/PATCH requests.
 // JSON endpoints must have Content-Type: application/json.
 // Multipart endpoints (parse/sysfile) must have Content-Type: multipart/form-data.
+// WebSocket upgrade requests are skipped (they use Connection: Upgrade, not JSON).
 func contentTypeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip for WebSocket upgrades
+		if strings.EqualFold(r.Header.Get("Connection"), "Upgrade") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
 			ct := r.Header.Get("Content-Type")
 

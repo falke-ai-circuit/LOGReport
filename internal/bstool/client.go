@@ -200,12 +200,9 @@ func (c *Client) ErrLog(ctx context.Context, serverName string, opts ...ErrLogOp
 		defer cancel()
 
 		start := time.Now()
-		// Ensure connection
-		if !c.tcp.IsConnected() {
-			if err := c.tcp.Connect(); err != nil {
-				return nil, fmt.Errorf("bstool tcp connect: %w", err)
-			}
-		}
+		// ErrLog() handles its own connections (two-port protocol:
+		// control port 1516 + data port 1518). No need to call Connect()
+		// here — ErrLog() dials both connections internally.
 
 		// Use a goroutine so we can respect context cancellation
 		type tcpResult struct {

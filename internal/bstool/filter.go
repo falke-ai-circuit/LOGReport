@@ -47,8 +47,11 @@ func filterStatusMessages(raw string) string {
 }
 
 // splitMessages splits filtered output into individual log messages.
-// Empty lines are removed.
+// Empty lines are removed. Null bytes (used as entry separators by the BU)
+// are stripped before splitting.
 func splitMessages(filtered string) []string {
+	// Remove null bytes — the BU separates log entries with \n\x00
+	filtered = strings.ReplaceAll(filtered, "\x00", "")
 	if filtered == "" {
 		return []string{}
 	}
