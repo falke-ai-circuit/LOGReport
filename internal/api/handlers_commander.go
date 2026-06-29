@@ -1393,11 +1393,11 @@ func (s *Server) handleSysFileScan(w http.ResponseWriter, r *http.Request) {
 
 // ─── Scan Nodes Handler (DIA "print structure") ──────────────────────
 
-// handleScanNodes connects to DIA, sends "print structure", parses VME
-// token/slot layout, probes each token, and returns NodeConfig[].
+// handleScanNodes connects to DIA, sends "systemtest node_list" to generate
+// a complete node listing with hw-address, token, IP, OS, slots and program names.
+// Falls back to "print structure" + token probing if node_list fails.
 // POST /api/v1/sysfiles/scan-nodes
 func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
-	// Step 1: Connect to DIA at 127.0.0.1:1234
 	host := "127.0.0.1"
 	port := 1234
 
@@ -1422,172 +1422,256 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		sessionID = sess.ID
 	}
 
-	// Step 2: Send "print structure" command
+	// Step 1: Enter system mode
 	_ = s.telnetSM.ClearOutput(sessionID)
-	if err := s.telnetSM.SendCommand(sessionID, "print structure"); err != nil {
-		writeError(w, http.StatusBadGateway, "command_failed",
-			fmt.Sprintf("print structure failed: %v", err))
-		return
-	}
-	structureOutput := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+	_ = s.telnetSM.SendCommand(sessionID, "systemmode")
+	_ = waitForOutput(s.telnetSM, sessionID, 5*time.Second, 1*time.Second)
 
-	// Step 3: Parse the structure output to extract token numbers and slot types
-	type slotInfo struct {
-		tokenNum int
-		slotType string // "CPU" or "FBC"
-	}
-	var slots []slotInfo
+	// Step 2: Try systemtest node_list to generate nodelist file
+	// DIA writes the file relative to its own working directory, not LOGReport's.
+	// We'll search multiple locations in Step 3.
 
-	lines := strings.Split(structureOutput, "\n")
+	_ = s.telnetSM.ClearOutput(sessionID)
+	_ = s.telnetSM.SendCommand(sessionID, "systemtest node_list nodelist.txt")
+	_ = waitForOutput(s.telnetSM, sessionID, 5*time.Second, 2*time.Second)
+
+	// Step 3: Read the generated nodelist.txt
+	// DIA writes the file relative to its own working directory, not LOGReport's.
+	// Search multiple possible locations.
+	var nodeListContent string
+	searchPaths := []string{
+		filepath.Join(os.TempDir(), "nodelist.txt"),
+		"C:\\dna\\CA\\dia\\nodelist.txt",
+		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
+		"nodelist.txt", // current working directory
+	}
+	for _, p := range searchPaths {
+		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
+			nodeListContent = string(data)
+			break
+		}
+	}
+
+	var configs []types.NodeConfig
+	var structureRaw string
+
+	if nodeListContent != "" {
+		// ─── Parse nodelist.txt format ───────────────────────────
+		// Format: hw_address,token,ip,os,slot:type:name:extra,...
+		// Example: 30,1,127.0.0.1,win,1:CPU:AB01:10,2:CPU:AP01:0,...,16:NCU
+		configs = parseNodeList(nodeListContent)
+
+		// Also get print structure for the structure_raw field
+		_ = s.telnetSM.ClearOutput(sessionID)
+		_ = s.telnetSM.SendCommand(sessionID, "print structure")
+		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+	} else {
+		// ─── Fallback: print structure + token probing ────────────
+		_ = s.telnetSM.ClearOutput(sessionID)
+		_ = s.telnetSM.SendCommand(sessionID, "print structure")
+		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		configs = scanFromStructure(s, sessionID, structureRaw)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs":        configs,
+		"count":          len(configs),
+		"structure_raw":  structureRaw,
+		"nodelist_raw":   nodeListContent,
+		"method":         "systemtest_node_list",
+	})
+}
+
+// parseNodeList parses nodelist.txt content into NodeConfig array.
+// Format: hw_address,token,ip,os,slot:type:name:extra,slot:type:name:extra,...
+func parseNodeList(content string) []types.NodeConfig {
+	lines := strings.Split(strings.TrimSpace(content), "\n")
+	var configs []types.NodeConfig
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		// Look for lines with CPU or FBC type indicators
-		// Format: "1 20 CPU CPU CPU CPU CPU CPU CPU CPU NCU"
-		// or similar VME structure lines
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.Split(line, ",")
+		if len(parts) < 5 {
+			continue
+		}
+
+		hwAddr := strings.TrimSpace(parts[0])
+		token := strings.TrimSpace(parts[1])
+		ip := strings.TrimSpace(parts[2])
+		_ = hwAddr
+		_ = token
+
+		// Parse slot entries (parts[4:])
+		var stationName string
+		var fbcTokens []string
+		hasCPU := false
+		hasNCU := false
+
+		for _, slotEntry := range parts[4:] {
+			fields := strings.Split(strings.TrimSpace(slotEntry), ":")
+			if len(fields) < 2 {
+				continue
+			}
+			slotNum := strings.TrimSpace(fields[0])
+			slotType := strings.ToUpper(strings.TrimSpace(fields[1]))
+			slotName := ""
+			if len(fields) >= 3 {
+				slotName = strings.TrimSpace(fields[2])
+			}
+
+			switch slotType {
+			case "CPU":
+				if stationName == "" && slotName != "" {
+					stationName = slotName
+				}
+				if slotName != "" {
+					stationName = slotName
+				}
+				hasCPU = true
+			case "FBC":
+				// FBC slot — token = hw_addr prefix + slot number
+				// e.g. hw_addr=0x30, slot=2 → token = 0x32 (hex)
+				fbcTokens = append(fbcTokens, slotNum)
+			case "NCU":
+				hasNCU = true
+			case "BPU":
+				// BPU is a CPU variant
+				if stationName == "" && slotName != "" {
+					stationName = slotName
+				}
+				hasCPU = true
+			}
+		}
+
+		// Skip NCU-only nodes (infrastructure, not process stations)
+		if !hasCPU && hasNCU {
+			continue
+		}
+		if stationName == "" {
+			stationName = fmt.Sprintf("NODE_%s", token)
+		}
+
+		// Build tokens for this node
+		var tokens []types.Token
+
+		// CPU slot → LOG-only token
+		if hasCPU {
+			tokens = append(tokens, types.Token{
+				TokenID:   hwAddr,
+				TokenType: types.TokenLOG,
+				Protocol:  "telnet",
+			})
+		}
+
+		// FBC slots → FBC + RPC paired tokens
+		for _, fbcSlot := range fbcTokens {
+			// Token = hw_addr + slot offset
+			// e.g. hw_addr=0x30, slot=2 → 0x32
+			fbcToken := computeFBCToken(hwAddr, fbcSlot)
+			tokens = append(tokens, types.Token{
+				TokenID:   fbcToken,
+				TokenType: types.TokenFBC,
+				Protocol:  "telnet",
+			})
+			tokens = append(tokens, types.Token{
+				TokenID:   fbcToken,
+				TokenType: types.TokenRPC,
+				Protocol:  "telnet",
+			})
+		}
+
+		if len(tokens) > 0 {
+			configs = append(configs, types.NodeConfig{
+				Name:      stationName,
+				IPAddress: ip,
+				Tokens:    tokens,
+			})
+		}
+	}
+
+	return configs
+}
+
+// computeFBCToken computes the FBC token from hw_address and slot number.
+// Token format: hex(hw_addr_value + slot_number)
+// e.g. hw_addr=0x30, slot=2 → 0x32 → "32"
+func computeFBCToken(hwAddr string, slotNum string) string {
+	hwVal, err := strconv.ParseInt(hwAddr, 16, 32)
+	if err != nil {
+		return hwAddr
+	}
+	slotVal, err := strconv.ParseInt(slotNum, 10, 32)
+	if err != nil {
+		return hwAddr
+	}
+	token := hwVal + slotVal
+	return fmt.Sprintf("%x", token)
+}
+
+// scanFromStructure is the fallback: parse print structure output and probe tokens
+func scanFromStructure(s *Server, sessionID string, structureOutput string) []types.NodeConfig {
+	lines := strings.Split(structureOutput, "\n")
+
+	type slotEntry struct {
+		token   int
+		slotNum int
+		slotType string
+	}
+	var slots []slotEntry
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
 			continue
 		}
-		// Check if this line has slot type info (CPU or FBC in fields)
-		for i, field := range fields {
-			upperField := strings.ToUpper(field)
+		// Look for data lines: "1 20 CPU CPU CPU ... NCU"
+		// First field = token (hex), second = VME addr (hex), rest = slot types
+		tokenNum, err := strconv.ParseInt(fields[0], 16, 32)
+		if err != nil {
+			continue
+		}
+		for i := 2; i < len(fields); i++ {
+			upperField := strings.ToUpper(fields[i])
 			if upperField == "CPU" || upperField == "FBC" || upperField == "NCU" {
-				// The token number is the first field (hex)
-				if i > 0 {
-					tokenNum, err := strconv.ParseInt(fields[0], 16, 32)
-					if err == nil {
-						slots = append(slots, slotInfo{
-							tokenNum: int(tokenNum),
-							slotType: upperField,
-						})
-					}
-				}
-				break
+				slots = append(slots, slotEntry{
+					token:    int(tokenNum),
+					slotNum:  i - 1, // slot 1 = first after VME addr
+					slotType: upperField,
+				})
 			}
 		}
 	}
 
-	// Also try to parse the "token VME 1 2 3 4 ..." header line
-	// to get the list of all token numbers
-	var allTokens []int
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.Contains(strings.ToUpper(line), "TOKEN") && strings.Contains(strings.ToUpper(line), "VME") {
-			fields := strings.Fields(line)
-			for _, f := range fields {
-				if n, err := strconv.ParseInt(f, 16, 32); err == nil && n > 0 {
-					allTokens = append(allTokens, int(n))
-				}
-			}
-		}
-	}
-
-	// If we didn't find tokens from the structure, try line-by-line
-	if len(allTokens) == 0 && len(slots) > 0 {
-		for _, s := range slots {
-			allTokens = append(allTokens, s.tokenNum)
-		}
-	}
-
-	// Step 4: Build slot type map from the structure line
-	slotTypeMap := make(map[int]string) // tokenNum -> "CPU" or "FBC"
-	for _, slot := range slots {
-		if slot.slotType == "CPU" {
-			slotTypeMap[slot.tokenNum] = "CPU"
-		} else if slot.slotType == "FBC" {
-			slotTypeMap[slot.tokenNum] = "FBC"
-		}
-	}
-
-	// Step 5: For each token, probe with "print from fbc io structure TOKEN0000"
-	type detectedNode struct {
-		tokenNum int
-		active   bool
-		slotType string
-	}
-	var detectedNodes []detectedNode
-
-	for _, tokenNum := range allTokens {
-		// Determine slot type - if unknown, assume FBC for probing
-		slotType := slotTypeMap[tokenNum]
-		if slotType == "" {
-			slotType = "FBC" // default: probe as FBC
-		}
-
-		// Skip NCU tokens
-		if slotType == "NCU" {
-			continue
-		}
-
-		// Build probe command: TOKEN*16 = TOKEN*16 in hex format
-		// e.g. token 0x161 -> command "print from fbc io structure 1610000"
-		probeCmd := fmt.Sprintf("print from fbc io structure %x0000", tokenNum)
-
-		_ = s.telnetSM.ClearOutput(sessionID)
-		if err := s.telnetSM.SendCommand(sessionID, probeCmd); err != nil {
-			// Token not active or error - skip
-			continue
-		}
-		probeOutput := waitForOutput(s.telnetSM, sessionID, 5*time.Second, 1*time.Second)
-
-		// Active if output has content and doesn't contain error/no response
-		active := probeOutput != "" && !strings.Contains(strings.ToLower(probeOutput), "no such") &&
-			!strings.Contains(strings.ToLower(probeOutput), "not found") &&
-			!strings.Contains(strings.ToLower(probeOutput), "error")
-
-		detectedNodes = append(detectedNodes, detectedNode{
-			tokenNum: tokenNum,
-			active:   active,
-			slotType:  slotType,
-		})
-	}
-
-	// Step 6: Build NodeConfig array from detected nodes
-	// Group tokens by station. CPU slots get LOG-only, FBC slots get FBC+RPC.
+	// Group by station: CPU starts new station, FBC belongs to current station
 	type stationTokens struct {
-		cpuToken   int
-		fbcTokens  []int
+		name      string
+		cpuToken  int
+		fbcTokens []int
 	}
-	stationMap := make(map[string]*stationTokens)
-	stationOrder := make([]string, 0)
+	var stations []*stationTokens
 
-	// Assign tokens to stations. Each station has one CPU token and multiple FBC tokens.
-	// We'll group by proximity: the first CPU token starts a new station,
-	// subsequent FBC tokens belong to that station until the next CPU token.
-	var currentStation string
-	for i, dn := range detectedNodes {
-		if dn.slotType == "CPU" {
-			// Start a new station
-			currentStation = fmt.Sprintf("NODE_%d", i+1)
-			st := &stationTokens{cpuToken: dn.tokenNum}
-			stationMap[currentStation] = st
-			stationOrder = append(stationOrder, currentStation)
-		} else if currentStation != "" {
-			// Add FBC token to current station
-			stationMap[currentStation].fbcTokens = append(stationMap[currentStation].fbcTokens, dn.tokenNum)
+	for _, sl := range slots {
+		if sl.slotType == "NCU" {
+			continue
+		}
+		if sl.slotType == "CPU" {
+			stations = append(stations, &stationTokens{
+				name:     fmt.Sprintf("NODE_%d", len(stations)+1),
+				cpuToken: sl.token,
+			})
+		} else if sl.slotType == "FBC" && len(stations) > 0 {
+			stations[len(stations)-1].fbcTokens = append(stations[len(stations)-1].fbcTokens, sl.token)
 		}
 	}
 
-	// If no stations detected from structure, create one per token
-	if len(stationOrder) == 0 {
-		for i, dn := range detectedNodes {
-			stName := fmt.Sprintf("NODE_%d", i+1)
-			if dn.slotType == "CPU" {
-				stationMap[stName] = &stationTokens{cpuToken: dn.tokenNum}
-			} else {
-				stationMap[stName] = &stationTokens{fbcTokens: []int{dn.tokenNum}}
-			}
-			stationOrder = append(stationOrder, stName)
-		}
-	}
-
-	// Build NodeConfig array
-	configs := make([]types.NodeConfig, 0, len(stationOrder))
-	for _, stName := range stationOrder {
-		st := stationMap[stName]
+	var configs []types.NodeConfig
+	for _, st := range stations {
 		var tokens []types.Token
-
-		// CPU slot gets LOG token
 		if st.cpuToken > 0 {
 			tokens = append(tokens, types.Token{
 				TokenID:   fmt.Sprintf("%x", st.cpuToken),
@@ -1595,8 +1679,6 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 				Protocol:  "telnet",
 			})
 		}
-
-		// FBC slots get FBC + RPC paired tokens
 		for _, fbcToken := range st.fbcTokens {
 			tokens = append(tokens, types.Token{
 				TokenID:   fmt.Sprintf("%x", fbcToken),
@@ -1609,21 +1691,13 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 				Protocol:  "telnet",
 			})
 		}
-
 		if len(tokens) > 0 {
 			configs = append(configs, types.NodeConfig{
-				Name:      stName,
-				IPAddress: "",
-				Tokens:    tokens,
+				Name:   st.name,
+				Tokens: tokens,
 			})
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"configs":       configs,
-		"count":          len(configs),
-		"structure_raw":  structureOutput,
-		"tokens_detected": len(allTokens),
-		"nodes_detected":  len(detectedNodes),
-	})
+	return configs
 }
