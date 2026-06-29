@@ -333,6 +333,26 @@ export default function ReportDetail() {
             </>
           )}
 
+          {/* PDF preview — inline viewer */}
+          {report.format === 'pdf' && (
+            <div style={{ width: '100%' }}>
+              <iframe
+                src={`/api/v1/reports/${encodeURIComponent(report.report_id)}`}
+                style={{
+                  width: '100%',
+                  height: '600px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '6px',
+                  backgroundColor: 'var(--bg-secondary)',
+                }}
+                title="PDF Preview"
+              />
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                If the PDF doesn't display inline, click Download to open in a new tab.
+              </p>
+            </div>
+          )}
+
           {/* DOCX preview — download link */}
           {isDocx && (
             <div style={{ textAlign: 'center', padding: '24px' }}>

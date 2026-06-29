@@ -6,7 +6,6 @@ import NodeBrowser from './components/NodeBrowser';
 import NodeDetail from './components/NodeDetail';
 import ReportList from './components/ReportList';
 import ReportDetail from './components/ReportDetail';
-import SysFileUpload from './components/SysFileUpload';
 import CommanderLayout from './components/CommanderLayout';
 import Dashboard from './components/Dashboard';
 
@@ -64,7 +63,6 @@ export default function App() {
               <Route path="/nodes/:addr" element={<NodeDetail />} />
               <Route path="/reports" element={<ReportList />} />
               <Route path="/reports/:id" element={<ReportDetail />} />
-              <Route path="/sysfile" element={<SysFileUpload />} />
               <Route path="/commander" element={<CommanderLayout />} />
               <Route path="*" element={<NotFound />} />
             </Route>

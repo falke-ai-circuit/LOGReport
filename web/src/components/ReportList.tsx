@@ -21,6 +21,7 @@ const STATUS_LABELS: Record<string, string> = {
 const FORMAT_ICONS: Record<string, React.ReactNode> = {
   json: <FileJson size={14} />,
   docx: <FileArchive size={14} />,
+  pdf: <FileText size={14} />,
 };
 
 export default function ReportList() {

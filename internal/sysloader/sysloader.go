@@ -112,12 +112,14 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 			}
 
 			// Extract token ID from the hardware address
-			// The hardware address in :e:hw: lines is a hex string (e.g. "a1", "0162")
-			// Convert to decimal token ID
-			tokenID := extractTokenID(entry.Description, lid)
+			// The hardware address in :e:hw: lines is a hex string (e.g. "222", "1a1")
+			// This is the actual token ID used in DIA commands:
+			//   "print from fbc io structure 2220000"
+			//   "print from fbc rupi counters 2220000"
+			tokenID := entry.HWAddr
 			if tokenID == "" {
-				// Use the LID itself as a fallback token ID
-				tokenID = lid
+				// Fallback: use LID with spaces → underscores
+				tokenID = strings.ReplaceAll(lid, " ", "_")
 			}
 
 			// Add tokens for each token type this node supports
@@ -193,41 +195,6 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 	}
 
 	return configs, nil
-}
-
-// extractTokenID extracts a token ID from a sys file entry description.
-// The description field from ParseSysEntryLine contains the config or comment
-// from the :e:hw: line. If it looks like a hex number, convert to decimal.
-// Otherwise, return the LID as a fallback.
-// Spaces in the token ID are replaced with underscores for filesystem safety.
-func extractTokenID(description, lid string) string {
-	// The description may contain a config like "pxe:*" or a comment.
-	// In the :e:hw: format, the hardware address (first capture group)
-	// is the token ID, but ParseSysEntryLine doesn't expose it directly.
-	// We use the LID as the token ID — this matches the Python behavior
-	// where node_id is used as the primary identifier.
-	if description == "" {
-		return strings.ReplaceAll(lid, " ", "_")
-	}
-	// If description is purely numeric/hex, use it
-	cleaned := strings.TrimSpace(description)
-	if isHexNumeric(cleaned) {
-		return cleaned
-	}
-	return strings.ReplaceAll(lid, " ", "_")
-}
-
-// isHexNumeric checks if a string is a valid hex number.
-func isHexNumeric(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-			return false
-		}
-	}
-	return true
 }
 
 // CreateFolderStructure creates the FBC/RPC/LOG/LIS directory tree with

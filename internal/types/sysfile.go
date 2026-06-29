@@ -2,8 +2,11 @@ package types
 
 // SysFileEntry represents a single parsed entry from a _sys configuration file.
 // Format: ":e:hw:<hex_address>   <LID>   <config_file>"
+// The HWAddr is the hardware address (hex) which serves as the token ID
+// for FBC/RPC commands (e.g. "222" → "print from fbc io structure 2220000").
 type SysFileEntry struct {
-	LID         string `json:"lid"`
+	HWAddr      string `json:"hw_addr"`      // Hardware address (hex, e.g. "222", "1a1") — this IS the token ID
+	LID         string `json:"lid"`         // Logical ID (node name, e.g. "AP07_m2")
 	NodeType    string `json:"node_type"`
 	Description string `json:"description"`
 }

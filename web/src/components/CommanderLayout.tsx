@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText } from 'lucide-react';
+import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText, Upload } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
@@ -31,6 +31,14 @@ export default function CommanderLayout() {
   const [logRootInput, setLogRootInput] = useState('');
   const [logRootLoading, setLogRootLoading] = useState(false);
   const [logRootError, setLogRootError] = useState<string | null>(null);
+
+  // Sys file scan state
+  const [showSysScan, setShowSysScan] = useState(false);
+  const [sysDir, setSysDir] = useState(localStorage.getItem('sysDir') || '');
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ count: number; totalBefore: number; configs: unknown[] } | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [includeLIS, setIncludeLIS] = useState(false);
 
   // File viewer state
   const [fileContent, setFileContent] = useState<string>('');
@@ -133,13 +141,15 @@ export default function CommanderLayout() {
         }
         case 'fbc_print': {
           // Execute single FBC command via telnet, show output in terminal
+          // Uses the full DIA command: "print from fbc io structure {token}0000"
+          const cmd = `print from fbc io structure ${tokenId}0000`;
           setActiveTab('telnet');
-          setTerminalLog(prev => [...prev, `> fis ${tokenId}0000`]);
+          setTerminalLog(prev => [...prev, `> ${cmd}`]);
           try {
             const res = await fetch('/api/v1/telnet/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: `fis ${tokenId}0000` }),
+              body: JSON.stringify({ command: cmd }),
             });
             const data = await res.json();
             if (data.output) {
@@ -151,13 +161,15 @@ export default function CommanderLayout() {
           break;
         }
         case 'rpc_print': {
+          // Execute single RPC command: "print from fbc rupi counters {token}0000"
+          const cmd = `print from fbc rupi counters ${tokenId}0000`;
           setActiveTab('telnet');
-          setTerminalLog(prev => [...prev, `> rc ${tokenId}0000`]);
+          setTerminalLog(prev => [...prev, `> ${cmd}`]);
           try {
             const res = await fetch('/api/v1/telnet/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: `rc ${tokenId}0000` }),
+              body: JSON.stringify({ command: cmd }),
             });
             const data = await res.json();
             if (data.output) {
@@ -169,13 +181,15 @@ export default function CommanderLayout() {
           break;
         }
         case 'rpc_clear': {
+          // Clear RPC counters: "clear fbc rupi counters {token}0000"
+          const cmd = `clear fbc rupi counters ${tokenId}0000`;
           setActiveTab('telnet');
-          setTerminalLog(prev => [...prev, `> rcl ${tokenId}0000`]);
+          setTerminalLog(prev => [...prev, `> ${cmd}`]);
           try {
             const res = await fetch('/api/v1/telnet/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: `rcl ${tokenId}0000` }),
+              body: JSON.stringify({ command: cmd }),
             });
             const data = await res.json();
             if (data.output) {
@@ -236,6 +250,55 @@ export default function CommanderLayout() {
       setLogRootLoading(false);
     }
   }, [logRootInput]);
+
+  // ─── Sys file scan + ingest ────────────────────────────────────
+
+  const handleSysScan = useCallback(async () => {
+    if (!sysDir) {
+      setScanError('Directory is required');
+      return;
+    }
+    setScanning(true);
+    setScanError(null);
+    setScanResult(null);
+    try {
+      const lisParam = includeLIS ? '&include_lis=true' : '';
+      const res = await fetch(`/api/v1/sysfiles/scan?dir=${encodeURIComponent(sysDir)}${lisParam}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Scan failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setScanResult({ count: data.count, totalBefore: data.total_before_filter, configs: data.configs });
+      localStorage.setItem('sysDir', sysDir);
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Scan failed');
+    } finally {
+      setScanning(false);
+    }
+  }, [sysDir, includeLIS]);
+
+  const handleSaveNodes = useCallback(async () => {
+    if (!scanResult?.configs) return;
+    try {
+      const res = await fetch('/api/v1/nodesconfig', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scanResult.configs),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Save failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      // Refresh tree by reloading
+      setShowSysScan(false);
+      setScanResult(null);
+      // Trigger tree reload via key change
+      window.location.reload();
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Save failed');
+    }
+  }, [scanResult]);
 
   // ─── Tab bar ────────────────────────────────────────────────────
 
@@ -341,6 +404,15 @@ export default function CommanderLayout() {
         <button
           className="btn btn-ghost"
           style={{ fontSize: '12px', padding: '4px 8px' }}
+          onClick={() => setShowSysScan(!showSysScan)}
+          title="Scan .sys files from BU directory and ingest nodes"
+        >
+          <Upload size={14} />
+          Ingest Nodes
+        </button>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px' }}
           onClick={() => setShowConfigDialog(true)}
           title="Configure nodes and tokens"
         >
@@ -348,6 +420,81 @@ export default function CommanderLayout() {
           Config
         </button>
       </div>
+
+      {/* Sys file scan panel */}
+      {showSysScan && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            backgroundColor: 'var(--bg-secondary)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Upload size={14} color="var(--accent)" />
+            <span style={{ fontSize: '12px', fontWeight: 600 }}>Scan .sys files from BU directory</span>
+            <div style={{ flex: 1 }} />
+            <input
+              type="text"
+              value={sysDir}
+              onChange={(e) => setSysDir(e.target.value)}
+              placeholder="C:\dna\CA\bu or path to _SYS directory"
+              style={{
+                fontSize: '12px',
+                padding: '4px 8px',
+                width: '300px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '4px',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSysScan(); }}
+            />
+            <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <input
+                type="checkbox"
+                checked={includeLIS}
+                onChange={(e) => setIncludeLIS(e.target.checked)}
+              />
+              Include LIS
+            </label>
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '12px', padding: '4px 12px' }}
+              onClick={handleSysScan}
+              disabled={scanning}
+            >
+              {scanning ? <Loader2 size={12} className="spin" /> : 'Scan'}
+            </button>
+            {scanResult && (
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: '12px', padding: '4px 12px', backgroundColor: 'var(--success)' }}
+                onClick={handleSaveNodes}
+              >
+                Save to nodes.json ({scanResult.count} nodes)
+              </button>
+            )}
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '12px', padding: '4px 8px' }}
+              onClick={() => { setShowSysScan(false); setScanResult(null); setScanError(null); }}
+            >
+              Cancel
+            </button>
+          </div>
+          {scanError && (
+            <div style={{ fontSize: '11px', color: 'var(--error)', marginTop: '8px' }}>{scanError}</div>
+          )}
+          {scanResult && (
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+              Found {scanResult.count} nodes (before filtering: {scanResult.totalBefore}).
+              Review and click "Save to nodes.json" to apply.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main split panel */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

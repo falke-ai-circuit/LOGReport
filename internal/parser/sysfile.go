@@ -239,7 +239,11 @@ func parseSysEntryLine(line string, lineNum int) *types.SysFileEntry {
 		description = config
 	}
 
+	// HWAddr is the hardware address from regex group 1 (e.g. "222", "1a1")
+	hwAddr := m[1]
+
 	return &types.SysFileEntry{
+		HWAddr:      hwAddr,
 		LID:         lid,
 		NodeType:    nodeType,
 		Description: description,
