@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText, Upload, Plus, Trash2, Save, Box, ChevronDown } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
@@ -139,13 +139,38 @@ export default function CommanderLayout() {
   // ─── Double-click file → open content in log viewer ─────────
 
   const handleDoubleClickFile = useCallback(async (node: TreeNodeData) => {
-    if (!node.file_path) return;
+    // For file-type nodes, use file_path directly
+    // For token-type nodes, construct path from log_root + filename
+    let filePath = node.file_path || '';
+    let fileName = node.file_name || node.name;
+
+    if (!filePath && node.type === 'token' && node.file_name) {
+      // Build path from log root + station + type + filename
+      const logRoot = localStorage.getItem('logRoot') || '';
+      if (logRoot) {
+        // Find station name from parent context - walk up via section_type
+        // The node.name is the full filename, we need station/type/filename
+        const sectionType = node.section_type || '';
+        // Extract station from filename (first part before _)
+        const parts = fileName.split('_');
+        const station = parts[0] || '';
+        filePath = `${logRoot}/${station}/${sectionType}/${fileName}`;
+      }
+    }
+
+    if (!filePath) {
+      setFileContent('No file path available. Set a log root directory first.');
+      setActiveTab('logviewer');
+      setFileViewName(fileName);
+      return;
+    }
+
     setFileLoading(true);
-    setFileViewName(node.file_name || node.name);
-    setFileViewPath(node.file_path);
+    setFileViewName(fileName);
+    setFileViewPath(filePath);
     setActiveTab('logviewer');
     try {
-      const res = await fetch(`/api/v1/logs/content?path=${encodeURIComponent(node.file_path)}`);
+      const res = await fetch(`/api/v1/logs/content?path=${encodeURIComponent(filePath)}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({ message: 'Failed' }));
         setFileContent(`Error: ${data.message || res.statusText}`);
@@ -164,8 +189,17 @@ export default function CommanderLayout() {
 
   const handleContextAction = useCallback(
     async (action: string, node: TreeNodeData) => {
-      const nodeName = node.name || currentNodeName;
+      // Extract station name from filename if node is a token/file
+      // Filename pattern: AP01m_192-168-0-11_162.fbc -> station = AP01m
+      let nodeName = node.name || currentNodeName;
       const tokenId = node.token_id || '';
+      if (node.type === 'token' || node.type === 'file') {
+        const fileName = node.file_name || node.name;
+        const parts = fileName.split('_');
+        if (parts.length >= 2) {
+          nodeName = parts[0]; // Station name (AP01m, AP02r, etc.)
+        }
+      }
 
       switch (action) {
         case 'print_all': {
@@ -221,7 +255,7 @@ export default function CommanderLayout() {
             const res = await fetch('/api/v1/telnet/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: tokenId, ip_address: node.ip || '' }),
+              body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: tokenId, ip_address: (node.name || '').split('_')[1]?.replace(/-/g, '.') || '' }),
             });
             const data = await res.json();
             if (data.output) {
@@ -240,7 +274,7 @@ export default function CommanderLayout() {
             const res = await fetch('/api/v1/telnet/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId, ip_address: node.ip || '' }),
+              body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId, ip_address: (node.name || '').split('_')[1]?.replace(/-/g, '.') || '' }),
             });
             const data = await res.json();
             if (data.output) {
@@ -259,7 +293,7 @@ export default function CommanderLayout() {
             const res = await fetch('/api/v1/telnet/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId, ip_address: node.ip || '' }),
+              body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId, ip_address: (node.name || '').split('_')[1]?.replace(/-/g, '.') || '' }),
             });
             const data = await res.json();
             if (data.output) {
@@ -837,6 +871,31 @@ function NodesTabContent({ projectId, projectName, onNodesSaved }: NodesTabConte
   const [editNodes, setEditNodes] = useState<NodeConfig[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Open nodes.json file via file picker
+  function handleOpenNodesFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = (ev.target?.result as string) || '';
+        const configs = JSON.parse(text);
+        if (Array.isArray(configs)) {
+          setNodes(configs);
+          setSaveMsg('Loaded ' + configs.length + ' nodes from ' + file.name);
+          setTimeout(() => setSaveMsg(null), 5000);
+        } else {
+          setSaveMsg('Error: File is not a valid nodes.json array');
+        }
+      } catch (err) {
+        setSaveMsg('Error parsing file: ' + (err instanceof Error ? err.message : String(err)));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
 
   // Sys file import state
   const [importDir, setImportDir] = useState(localStorage.getItem('sysDir') || '');
@@ -1270,6 +1329,22 @@ function NodesTabContent({ projectId, projectName, onNodesSaved }: NodesTabConte
         </div>
 
         <div style={{ flex: 1 }} />
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".json"
+          onChange={handleOpenNodesFile}
+          style={{ display: 'none' }}
+        />
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px' }}
+          onClick={() => fileInputRef.current?.click()}
+          title="Open existing nodes.json file"
+        >
+          <FolderOpen size={14} />
+          Open File
+        </button>
         <button
           className="btn btn-ghost"
           style={{ fontSize: '12px', padding: '4px 8px' }}

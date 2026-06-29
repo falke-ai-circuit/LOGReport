@@ -49,9 +49,6 @@ func SaveToFile(path string, configs []types.NodeConfig) error {
 }
 
 // extractStationName derives the station folder name from a node name.
-// "AP01" -> "AP01m", "AP01 Main" -> "AP01m", "AP01_m2" -> "AP01m"
-// "AP02 Reserve" -> "AP02r", "AP02_r2" -> "AP02r"
-// "AL01" -> "AL01" (LIS, no suffix), "A1OA OPS" -> "A1OA" (OPS, no suffix)
 func extractStationName(nodeName string) string {
 	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
 		base := nodeName
@@ -60,9 +57,7 @@ func extractStationName(nodeName string) string {
 		}
 		return base
 	}
-
 	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
-
 	base := nodeName
 	if idx := strings.Index(base, " "); idx >= 0 {
 		base = base[:idx]
@@ -70,19 +65,49 @@ func extractStationName(nodeName string) string {
 	if idx := strings.Index(base, "_"); idx >= 0 {
 		base = base[:idx]
 	}
-
 	if isReserve {
 		return base + "r"
 	}
 	return base + "m"
 }
 
+// formatIP replaces dots with hyphens.
+func formatIP(ip string) string {
+	if ip == "" {
+		return "unknown-ip"
+	}
+	return strings.ReplaceAll(ip, ".", "-")
+}
+
+// fileExtension returns the file extension for a token type.
+func fileExtension(tokenType string) string {
+	switch strings.ToUpper(tokenType) {
+	case "FBC":
+		return ".fbc"
+	case "RPC":
+		return ".rpc"
+	case "LIS":
+		return ".lis"
+	default:
+		return ".log"
+	}
+}
+
+// buildFileName creates the expected filename for a token in a station.
+// Pattern: {stationName}_{ipFormatted}_{tokenID}.{ext}
+// For LOG: {stationName}_{ipFormatted}.log (no tokenID)
+func buildFileName(stationName, ip, tokenType, tokenID string) string {
+	ext := fileExtension(tokenType)
+	ipFmt := formatIP(ip)
+	if strings.ToUpper(tokenType) == "LOG" {
+		return fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
+	}
+	return fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
+}
+
 // BuildTree converts a flat NodeConfig list into a hierarchical tree
 // grouped by station: root -> station -> type groups (FBC/RPC/LOG/LIS) -> token leaves.
-//
-// All slots of a station (AP01, AP01_m2, AP01_m3) are grouped under
-// a single station node (AP01m), with FBC/RPC/LOG subfolders containing
-// all slot tokens of that type.
+// Token leaves show the full expected filename (e.g. AP01m_192-168-0-11_162.fbc).
 func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 	root := &types.TreeNode{
 		Name:     "Root",
@@ -92,7 +117,6 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 
 	groupOrder := []string{"FBC", "RPC", "LOG", "LIS", "FTP"}
 
-	// Group configs by station name, preserving discovery order
 	stationOrder := make([]string, 0)
 	stationConfigs := make(map[string][]types.NodeConfig)
 	stationIPs := make(map[string]string)
@@ -109,16 +133,16 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 
 	for _, stationName := range stationOrder {
 		memberCfgs := stationConfigs[stationName]
+		stationIP := stationIPs[stationName]
 
 		stationNode := types.TreeNode{
 			Name:     stationName,
 			Type:     "node",
-			IP:       stationIPs[stationName],
+			IP:       stationIP,
 			Status:   "idle",
 			Children: make([]types.TreeNode, 0),
 		}
 
-		// Collect all tokens from all member configs, grouped by type
 		groups := make(map[string][]types.Token)
 		for _, cfg := range memberCfgs {
 			for _, tok := range cfg.Tokens {
@@ -126,13 +150,11 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 			}
 		}
 
-		// Add groups in canonical order
 		for _, gType := range groupOrder {
 			tokens, ok := groups[gType]
 			if !ok {
 				continue
 			}
-			// Sort tokens by token_id
 			sort.Slice(tokens, func(i, j int) bool {
 				return tokens[i].TokenID < tokens[j].TokenID
 			})
@@ -144,13 +166,15 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 				Children:    make([]types.TreeNode, 0),
 			}
 			for _, tok := range tokens {
+				fileName := buildFileName(stationName, stationIP, gType, tok.TokenID)
 				groupNode.Children = append(groupNode.Children, types.TreeNode{
-					Name:        tok.TokenID,
+					Name:        fileName,
 					Type:        "token",
 					TokenID:     tok.TokenID,
 					Port:        tok.Port,
 					Protocol:    tok.Protocol,
 					SectionType: gType,
+					FileName:    fileName,
 				})
 			}
 			stationNode.Children = append(stationNode.Children, groupNode)
@@ -163,8 +187,7 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 }
 
 // BuildFileTree builds a tree from actual log files on disk.
-// Structure: root -> station -> FBC/RPC/LOG/LIS -> files
-// Directory layout: {logRoot}/{stationName}/{type}/{stationName}_{ip}_{token}.{ext}
+// Structure: root -> station -> FBC/RPC/LOG/LIS -> files (with full filenames)
 func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 	if logRoot == "" {
 		return BuildTree(configs)
@@ -181,7 +204,6 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 
 	groupOrder := []string{"FBC", "RPC", "LOG", "LIS"}
 
-	// Group configs by station name
 	stationOrder := make([]string, 0)
 	stationConfigs := make(map[string][]types.NodeConfig)
 	stationIPs := make(map[string]string)
@@ -198,11 +220,12 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 
 	for _, stationName := range stationOrder {
 		memberCfgs := stationConfigs[stationName]
+		stationIP := stationIPs[stationName]
 
 		stationNode := types.TreeNode{
 			Name:     stationName,
 			Type:     "node",
-			IP:       stationIPs[stationName],
+			IP:       stationIP,
 			Children: make([]types.TreeNode, 0),
 		}
 
@@ -214,13 +237,23 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				Children:    make([]types.TreeNode, 0),
 			}
 
-			// Scan for files: {logRoot}/{stationName}/{gType}/
 			scanDir := filepath.Join(logRoot, stationName, gType)
 			entries, err := os.ReadDir(scanDir)
 			if err != nil {
-				// Dir doesn't exist -- add tokens from configs as placeholders
+				// Dir doesn't exist -- add token nodes with filenames from config
 				for _, cfg := range memberCfgs {
-					sectionNode.Children = append(sectionNode.Children, addTokensFromConfig(cfg, gType)...)
+					for _, tok := range cfg.Tokens {
+						if strings.EqualFold(string(tok.TokenType), gType) {
+							fileName := buildFileName(stationName, stationIP, gType, tok.TokenID)
+							sectionNode.Children = append(sectionNode.Children, types.TreeNode{
+								Name:        fileName,
+								Type:        "token",
+								TokenID:     tok.TokenID,
+								SectionType: gType,
+								FileName:    fileName,
+							})
+						}
+					}
 				}
 				if len(sectionNode.Children) > 0 {
 					stationNode.Children = append(stationNode.Children, sectionNode)
@@ -228,10 +261,7 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				continue
 			}
 
-			ext := "." + strings.ToLower(gType)
-			if gType == "LOG" {
-				ext = ".log"
-			}
+			ext := fileExtension(gType)
 
 			for _, entry := range entries {
 				if entry.IsDir() {
@@ -245,6 +275,7 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				fullPath := filepath.Join(scanDir, entry.Name())
 				lineCount := countLines(fullPath)
 
+				tokID := extractTokenIDFromName(entry.Name(), gType)
 				fileNode := types.TreeNode{
 					Name:        entry.Name(),
 					Type:        "file",
@@ -254,9 +285,6 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 					LineCount:   lineCount,
 					Status:      fileStatus(lineCount),
 				}
-
-				// Extract token_id from filename for context menu commands
-				tokID := extractTokenIDFromName(entry.Name(), gType)
 				if tokID != "" {
 					fileNode.TokenID = tokID
 				}
@@ -270,7 +298,18 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 
 			if len(sectionNode.Children) == 0 {
 				for _, cfg := range memberCfgs {
-					sectionNode.Children = append(sectionNode.Children, addTokensFromConfig(cfg, gType)...)
+					for _, tok := range cfg.Tokens {
+						if strings.EqualFold(string(tok.TokenType), gType) {
+							fileName := buildFileName(stationName, stationIP, gType, tok.TokenID)
+							sectionNode.Children = append(sectionNode.Children, types.TreeNode{
+								Name:        fileName,
+								Type:        "token",
+								TokenID:     tok.TokenID,
+								SectionType: gType,
+								FileName:    fileName,
+							})
+						}
+					}
 				}
 			}
 
@@ -283,24 +322,6 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 	}
 
 	return root
-}
-
-// addTokensFromConfig creates token-type child nodes from the config tokens.
-func addTokensFromConfig(cfg types.NodeConfig, gType string) []types.TreeNode {
-	children := make([]types.TreeNode, 0)
-	for _, tok := range cfg.Tokens {
-		if strings.EqualFold(string(tok.TokenType), gType) {
-			children = append(children, types.TreeNode{
-				Name:        tok.TokenID,
-				Type:        "token",
-				TokenID:     tok.TokenID,
-				Port:        tok.Port,
-				Protocol:    tok.Protocol,
-				SectionType: gType,
-			})
-		}
-	}
-	return children
 }
 
 // countLines returns the number of lines in a file.
@@ -333,8 +354,6 @@ func fileStatus(lineCount int) string {
 }
 
 // extractTokenIDFromName extracts the token ID from a filename.
-// Pattern: {stationName}_{ip}_{token}.{ext} -> token
-// For LOG (no token): {stationName}_{ip}.log -> ""
 func extractTokenIDFromName(filename, sectionType string) string {
 	base := strings.TrimSuffix(filename, filepath.Ext(filename))
 	if sectionType == "LOG" {

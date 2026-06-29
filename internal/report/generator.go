@@ -18,7 +18,7 @@ import (
 )
 
 // DefaultOutputDir is the default directory for generated reports.
-const DefaultOutputDir = "/tmp/logreport-reports"
+var DefaultOutputDir = filepath.Join(os.TempDir(), "logreport-reports")
 
 // GenerateReport loads node and IO point data from the store, generates
 // a report in the specified format, and returns a Report record with
