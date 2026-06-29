@@ -853,13 +853,37 @@ function NodesTabContent({ projectId, projectName, onNodesSaved }: NodesTabConte
 
   // ─── Station grouping helpers ────────────────────────────────────
   function getStationName(name: string): string {
-    const match = name.match(/^(.+?)(?:_m\d+)?$/);
-    return match ? match[1] : name;
+    // Extract base station name and append m (main) or r (reserve)
+    // AP01 → AP01m, AP01 Main → AP01m, AP01_m2 → AP01m
+    // AP02 Reserve → AP02r, AP02_r2 → AP02r
+    // AL01 → AL01, A1OA OPS → A1OA (no m/r for non-PCS)
+    
+    // Strip _mN or _rN suffix
+    let base = name.replace(/_m\d+$/, '').replace(/_r\d+$/, '');
+    // Strip " Main" or " Reserve" suffix
+    base = base.replace(/\s+Main$/, '').replace(/\s+Reserve$/, '');
+    
+    // Check if it's a reserve node
+    const isReserve = /_r\d+$/.test(name) || /\s+Reserve$/.test(name) || /Reserve/.test(name);
+    // Check if it's a PCS node (AP prefix)
+    const isPCS = /^AP/.test(base);
+    // Check if it's LIS (AL prefix) or OPS — no m/r suffix
+    const isLIS = /^AL/.test(base);
+    const isOPS = /OPS/.test(base);
+    
+    if (isPCS) {
+      return isReserve ? base + 'r' : base + 'm';
+    }
+    return base; // LIS, OPS — no m/r suffix
   }
 
   function getSlotNumber(name: string): number {
-    const match = name.match(/_m(\d+)$/);
-    return match ? parseInt(match[1], 10) : 1;
+    // Slot 1 = base (CPU), Slot 2 = _m2 or _r2, etc.
+    const mMatch = name.match(/_m(\d+)$/);
+    if (mMatch) return parseInt(mMatch[1], 10);
+    const rMatch = name.match(/_r(\d+)$/);
+    if (rMatch) return parseInt(rMatch[1], 10);
+    return 1; // Base node = slot 1
   }
 
   interface StationGroup {
