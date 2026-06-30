@@ -103,9 +103,6 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// Update server log root
-	s.SetLogRoot(logRoot)
-
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"created_dirs":  createdDirs,
 		"created_files": createdFiles,

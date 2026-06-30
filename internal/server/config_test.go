@@ -61,8 +61,8 @@ func TestParseFlagsCustomDefaults(t *testing.T) {
 	if cfg.Port != 8642 {
 		t.Errorf("default Port: expected 8642, got %d", cfg.Port)
 	}
-	if cfg.DBPath != "logreport.db" {
-		t.Errorf("default DBPath: expected logreport.db, got %q", cfg.DBPath)
+	if cfg.DBPath != "logreport-data" {
+		t.Errorf("default DBPath: expected logreport-data, got %q", cfg.DBPath)
 	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("default LogLevel: expected info, got %q", cfg.LogLevel)
@@ -147,8 +147,8 @@ func TestParseFlagsPartialCustom(t *testing.T) {
 		t.Errorf("CORSOrigin: expected *, got %q", cfg.CORSOrigin)
 	}
 	// These should still be defaults
-	if cfg.DBPath != "logreport.db" {
-		t.Errorf("DBPath: expected default logreport.db, got %q", cfg.DBPath)
+	if cfg.DBPath != "logreport-data" {
+		t.Errorf("DBPath: expected default logreport-data, got %q", cfg.DBPath)
 	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("LogLevel: expected default info, got %q", cfg.LogLevel)

@@ -104,20 +104,6 @@ export default function CommanderLayout() {
     }
   }, []);
 
-  // Auto-set log root on page load
-  useEffect(() => {
-    const logRoot = localStorage.getItem('logRoot');
-    if (!logRoot) {
-      fetch('/api/v1/logs/setroot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: 'C:\\temp\\logreport-output' }),
-      }).then(() => {
-        localStorage.setItem('logRoot', 'C:\\temp\\logreport-output');
-      }).catch(() => {});
-    }
-  }, []);
-
   useEffect(() => {
     async function fetchProjects() {
       setProjectsLoading(true);

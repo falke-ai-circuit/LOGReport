@@ -42,7 +42,7 @@ export default function TelnetTerminal({
   const [host, setHost] = useState(() => localStorage.getItem('telnetHost') || '');
   const [port, setPort] = useState(() => {
     const stored = localStorage.getItem('telnetPort');
-    return stored ? parseInt(stored, 10) : 23;
+    return stored ? parseInt(stored, 10) : 1234;
   });
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -340,7 +340,7 @@ export default function TelnetTerminal({
           type="number"
           placeholder="Port"
           value={port}
-          onChange={(e) => setPort(Number(e.target.value) || 23)}
+          onChange={(e) => setPort(Number(e.target.value) || 1234)}
           disabled={connected}
           style={{
             width: '70px',

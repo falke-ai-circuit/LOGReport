@@ -122,8 +122,9 @@ func (s *Server) registerStaticFiles(mux *http.ServeMux) {
 
 // registerRoutes sets up all 11 API endpoints on the given mux.
 func (s *Server) registerRoutes(mux *http.ServeMux) {
-	// 1. Health
+	// 1. Health (also registered at /api/v1/health for frontend compatibility)
 	mux.HandleFunc("GET /health", s.healthHandler)
+	mux.HandleFunc("GET /api/v1/health", s.healthHandler)
 
 	// 2. Connect
 	mux.HandleFunc("POST /api/v1/connect", s.connectHandler)

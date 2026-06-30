@@ -152,10 +152,11 @@ func TestBuildTree(t *testing.T) {
 	if len(fbcGroup.Children) != 2 {
 		t.Fatalf("expected 2 FBC tokens, got %d", len(fbcGroup.Children))
 	}
-	// First token
+	// First token — BuildTree now uses full filenames as token node names
 	tok162 := fbcGroup.Children[0]
-	if tok162.Name != "162" {
-		t.Errorf("expected token 162, got %s", tok162.Name)
+	expectedName := "AP01m_192-168-1-101_162.fbc"
+	if tok162.Name != expectedName {
+		t.Errorf("expected token name %s, got %s", expectedName, tok162.Name)
 	}
 	if tok162.Type != "token" {
 		t.Errorf("expected token type, got %s", tok162.Type)

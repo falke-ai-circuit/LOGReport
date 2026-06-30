@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,8 +30,8 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 		return nil, fmt.Errorf("report: unsupported format %q", cfg.Format)
 	}
 
-	// PDF/DOCX with log_root: generate from log files (no SQLite data needed)
-	if (cfg.Format == types.FormatPDF || cfg.Format == types.FormatDOCX) && cfg.LogRoot != "" {
+	// PDF/DOCX/JSON with log_root: generate from log files (no SQLite data needed)
+	if (cfg.Format == types.FormatPDF || cfg.Format == types.FormatDOCX || cfg.Format == types.FormatJSON) && cfg.LogRoot != "" {
 		return generateFromLogs(cfg, s)
 	}
 
@@ -160,6 +161,8 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 		filePath, err = generateDOCXFromLogs(cfg, scanEntries, reportID)
 	case types.FormatPDF:
 		filePath, err = generatePDF(reportID, cfg.LogRoot, scanEntries)
+	case types.FormatJSON:
+		filePath, err = generateJSONFromLogs(cfg, scanEntries, reportID)
 	default:
 		return nil, fmt.Errorf("report: unsupported log-root format %q", cfg.Format)
 	}
@@ -429,4 +432,28 @@ func ioPointsToScanEntries(node *types.Node, ioPoints []types.IOPoint) []ScanEnt
 	}
 
 	return entries
+}
+
+// generateJSONFromLogs creates a JSON report from scanned log file entries.
+func generateJSONFromLogs(cfg types.ReportConfig, entries []ScanEntry, reportID string) (string, error) {
+	report := map[string]interface{}{
+		"report_id":   reportID,
+		"generated_at": time.Now().UTC().Format(time.RFC3339),
+		"log_root":    cfg.LogRoot,
+		"node":        cfg.NodeAddress,
+		"file_count":  len(entries),
+		"files":       entries,
+	}
+
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("report: marshal JSON: %w", err)
+	}
+
+	filePath := filepath.Join(DefaultOutputDir, reportID+".json")
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return "", fmt.Errorf("report: write JSON: %w", err)
+	}
+
+	return filePath, nil
 }

@@ -14,10 +14,8 @@ logreport.db-shm
 logreport.db-wal
 logreport-bin
 logreport_v30_linux
-
-# Build output (embedded into binary)
-web/dist-new/
-web/dist-new-flat/
 internal/api/:memory:/
 test/e2e/logs/
 test/integration/logreport-data/
+web/dist-new-flat/
+logreport.db

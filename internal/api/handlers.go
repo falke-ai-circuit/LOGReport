@@ -210,6 +210,10 @@ func (s *Server) StartTime() time.Time {
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	h := server.GetHealth(true, s.startTime)
+	// Override node_count with nodesconfig count (actual configured nodes, not SQLite scan nodes)
+	if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+		h.NodeCount = len(configs)
+	}
 	writeJSON(w, http.StatusOK, h)
 }
 

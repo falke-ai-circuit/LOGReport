@@ -11,8 +11,8 @@ func TestParseFlagsDefaults(t *testing.T) {
 	if cfg.Port != 8642 {
 		t.Errorf("default Port: got %d, want 8642", cfg.Port)
 	}
-	if cfg.DBPath != "logreport.db" {
-		t.Errorf("default DBPath: got %q, want logreport.db", cfg.DBPath)
+	if cfg.DBPath != "logreport-data" {
+		t.Errorf("default DBPath: got %q, want logreport-data", cfg.DBPath)
 	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("default LogLevel: got %q, want info", cfg.LogLevel)
