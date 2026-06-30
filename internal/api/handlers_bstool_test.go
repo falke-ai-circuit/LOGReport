@@ -186,7 +186,7 @@ func TestBsToolErrLogHandler_ResponseStructure(t *testing.T) {
 // TestBsToolErrLogHandler_WithCustomClient verifies the handler uses the injected bstool client.
 func TestBsToolErrLogHandler_WithCustomClient(t *testing.T) {
 	// Create a server with a custom bstool client
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

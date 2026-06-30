@@ -16,8 +16,9 @@ import (
 // Regex patterns mirroring Python fbc_parser_service.py:42-46.
 var (
 	// headerPattern matches "PIC  5  6  7  8  sum" or "IBC  0  1  2  3  sum".
+	// Case-insensitive: real Valmet DNA output may use lowercase "pic" (see rpc.go:83).
 	// Python: r'\s*(PIC|IBC)\s+(.+?)\s*sum\s*$'
-	headerPattern = regexp.MustCompile(`^\s*(PIC|IBC)\s+(.+?)\s*sum\s*$`)
+	headerPattern = regexp.MustCompile(`(?i)^\s*(PIC|IBC)\s+(.+?)\s*sum\s*$`)
 
 	// rowPattern matches a data row: position, I/O units string, sum.
 	// Python: r'^\s*(\d+)\s(.+)\s(\d+)\s*$'
@@ -273,7 +274,7 @@ func ParseFBCHeaderType(output string) types.HeaderType {
 	for _, line := range lines {
 		m := headerPattern.FindStringSubmatch(line)
 		if m != nil {
-			return types.HeaderType(m[1])
+			return types.HeaderType(strings.ToUpper(m[1])) // canonical uppercase
 		}
 	}
 	return ""

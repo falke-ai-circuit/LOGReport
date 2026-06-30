@@ -72,9 +72,9 @@ func main() {
 	srv := api.NewServer(st, cfg, assets.FS, bstoolClient)
 
 	// Verify embedded assets are populated (guard against empty //go:embed)
-	// If web/dist/ wasn't built before go build, the binary serves 404 for all GUI routes.
-	// Check inside web/dist, not the root — embed.FS root contains the "web" dir.
-	entries, _ := assets.FS.ReadDir("web/dist")
+	// If web/dist-new-flat/ wasn't built before go build, the binary serves 404 for all GUI routes.
+	// Check inside web/dist-new-flat, not the root — embed.FS root contains the "web" dir.
+	entries, _ := assets.FS.ReadDir("web/dist-new-flat")
 	if len(entries) == 0 {
 		fmt.Fprintln(os.Stderr, "ERROR: Embedded web UI is empty — run 'make build' to build frontend before compiling.")
 		fmt.Fprintln(os.Stderr, "       GUI routes will return 404 until rebuilt.")
@@ -98,6 +98,9 @@ func printBanner(port int, dbPath string) {
 	// Fixed 48-char inner width for clean alignment
 	w := 48
 	pad := func(s string) string {
+		if len(s) >= w {
+			return s[:w] // truncate if too long
+		}
 		return s + strings.Repeat(" ", w-len(s))
 	}
 
@@ -126,7 +129,7 @@ Usage:
 
 Flags:
   --port int          HTTP server port (default 8642)
-  --db-path string    SQLite database path (default "logreport.db")
+  --db-path string    Data directory path (default "logreport-data")
   --log-level string  Log level: debug, info, warn, error (default "info")
   --cors-origin       Allowed CORS origin (default "" = no CORS)
   --bstool-path       Path to BsTool.exe (auto-detect if empty)

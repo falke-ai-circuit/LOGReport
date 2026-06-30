@@ -34,14 +34,21 @@ func (s *Server) Start() error {
 		handler = corsMiddleware(s.config.CORSOrigin)(handler)
 	}
 	handler = contentTypeMiddleware(handler)
+	handler = recoveryMiddleware(handler)
 
 	httpServer := &http.Server{
-		Addr:    s.config.Addr(),
-		Handler: handler,
+		Addr:         s.config.Addr(),
+		Handler:      handler,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 120 * time.Second, // long enough for scan-nodes (worst case ~90s)
+		IdleTimeout:  120 * time.Second,
 	}
 
 	log.Printf("LOGReport API server starting on %s", s.config.Addr())
 	log.Printf("Database: %s", s.config.DBPath)
+
+	// Load settings from settings.json
+	s.initSettings()
 
 	// Start graceful shutdown listener in background
 	go server.GracefulShutdown(httpServer, 30*time.Second)
@@ -64,8 +71,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // API routes are registered first and take priority.
 // SPA fallback: any non-API, non-static-file path serves index.html.
 func (s *Server) registerStaticFiles(mux *http.ServeMux) {
-	// Strip the "web/dist" prefix from embedded filesystem
-	distFS, err := fs.Sub(s.embedFS, "web/dist")
+	// Strip the "web/dist-new-flat" prefix from embedded filesystem
+	distFS, err := fs.Sub(s.embedFS, "web/dist-new-flat")
 	if err != nil {
 		log.Printf("WARNING: embedded web/dist not available: %v", err)
 		return
@@ -215,19 +222,32 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Project-scoped nodes config
 	mux.HandleFunc("GET /api/v1/projects/{id}/nodes", s.handleGetProjectNodes)
 	mux.HandleFunc("POST /api/v1/projects/{id}/nodes", s.handleSaveProjectNodes)
+
+	// Settings
+	mux.HandleFunc("GET /api/v1/settings", s.handleGetSettings)
+	mux.HandleFunc("POST /api/v1/settings", s.handleSaveSettings)
+
+	// Create log structure
+	mux.HandleFunc("POST /api/v1/nodesconfig/create-structure", s.handleCreateLogStructure)
+
+	// Erase/empty a log file
+	mux.HandleFunc("POST /api/v1/logs/erase", s.handleEraseLogFile)
+
+	// Delete a log file from disk
+	mux.HandleFunc("POST /api/v1/logs/delete", s.handleDeleteLogFile)
 }
 
-// NewTestServer creates a Server suitable for testing with an in-memory SQLite DB.
+// NewTestServer creates a Server suitable for testing with a temp JSON store.
 func NewTestServer() (*Server, *store.Store, error) {
-	// Use in-memory database for tests
-	st, err := store.Open(":memory:")
+	// Use temp directory for tests (empty string = temp dir)
+	st, err := store.Open("")
 	if err != nil {
 		return nil, nil, fmt.Errorf("test server: open store: %w", err)
 	}
 
 	cfg := &server.Config{
 		Port:       0, // random port
-		DBPath:     ":memory:",
+		DBPath:     "",
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}

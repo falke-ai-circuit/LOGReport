@@ -76,6 +76,7 @@ export default function NodesPage() {
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ count: number; configs: NodeConfig[]; structure?: string } | null>(null);
+  const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
 
   // Scan Nodes: connect to DIA, parse structure, probe tokens
   const handleScanNodes = useCallback(async () => {
@@ -146,7 +147,14 @@ export default function NodesPage() {
 
   const handleSelectToken = useCallback((token: TreeNodeData) => {
     setSelectedToken(token);
-  }, []);
+    // Build file key for bidirectional highlighting
+    if (token.type === 'file' || token.type === 'token') {
+      const sectionType = token.section_type || '';
+      const fileName = token.file_name || token.name;
+      // Station name comes from the parent node — but we only have currentNodeName
+      setSelectedFileKey(`${currentNodeName}:${sectionType}:${fileName}`);
+    }
+  }, [currentNodeName]);
 
   const handleDoubleClickFile = useCallback(async (node: TreeNodeData) => {
     let filePath = node.file_path || '';
@@ -198,6 +206,26 @@ export default function NodesPage() {
     }
   }, [currentNodeName]);
 
+  const handleCreateStructure = useCallback(async () => {
+    const logRoot = localStorage.getItem('logRoot') || '';
+    try {
+      const res = await fetch('/api/v1/nodesconfig/create-structure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ log_root: logRoot }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setTerminalLog(prev => [...prev, `[Structure created: ${data.created_dirs} dirs, ${data.created_files} files at ${data.log_root}]`]);
+      setTreeReloadKey((k) => k + 1);
+    } catch (err) {
+      setTerminalLog(prev => [...prev, 'Error creating structure: ' + (err instanceof Error ? err.message : String(err))]);
+    }
+  }, []);
+
   const handleContextAction = useCallback(async (action: string, node: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
     const tokenId = node.token_id || '';
@@ -244,12 +272,15 @@ export default function NodesPage() {
         handleDoubleClickFile(node);
         break;
       case 'bstool_errlog': {
-        const cmd = 'errlog ' + nodeName;
-        setTerminalLog(prev => [...prev, '> BsTool errlog ' + nodeName]);
+        // Strip m/r suffix for BsTool server name (DIA uses AP01, not AP01m)
+        const bstoolName = nodeName.replace(/[mr]$/, '');
+        const cmd = 'errlog ' + bstoolName;
+        setTerminalLog(prev => [...prev, '> BsTool errlog ' + bstoolName]);
         try {
-          const res = await fetch('/api/v1/bstool/errlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ server_name: nodeName }) });
+          const res = await fetch('/api/v1/bstool/errlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ server_name: bstoolName }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          if (data.messages) setTerminalLog(prev => [...prev, ...data.messages]);
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
@@ -272,6 +303,43 @@ export default function NodesPage() {
       }
       case 'clear_logs': {
         setTerminalLog(prev => [...prev, '> Clear logs not yet implemented for ' + nodeName]);
+        break;
+      }
+      case 'erase_file': {
+        const filePath = node.file_path || '';
+        const tokenId = node.token_id || '';
+        const sectionType = node.section_type || '';
+        setTerminalLog(prev => [...prev, '> Erasing file: ' + (node.file_name || node.name)]);
+        try {
+          const body = filePath ? { path: filePath } : { node_name: nodeName, token_type: sectionType, token_id: tokenId };
+          const res = await fetch('/api/v1/logs/erase', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          if (data.erased) {
+            setTerminalLog(prev => [...prev, '[File erased: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Erase failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'delete_file': {
+        const filePath = node.file_path || '';
+        const tokenId = node.token_id || '';
+        const sectionType = node.section_type || '';
+        if (!window.confirm('Delete file: ' + (node.file_name || node.name) + '?\nThis removes the file from disk entirely.')) break;
+        setTerminalLog(prev => [...prev, '> Deleting file: ' + (node.file_name || node.name)]);
+        try {
+          const body = filePath ? { path: filePath } : { node_name: nodeName, token_type: sectionType, token_id: tokenId };
+          const res = await fetch('/api/v1/logs/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          if (data.deleted) {
+            setTerminalLog(prev => [...prev, '[File deleted: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Delete failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
       default:
@@ -325,7 +393,7 @@ export default function NodesPage() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} />
+          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} context="nodes" />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -425,11 +493,17 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
     // AP01 → AP01m, AP01 Main → AP01m, AP01_m2 → AP01m
     // AP02 Reserve → AP02r, AP02_r2 → AP02r
     // AL01 → AL01, A1OA OPS → A1OA (no m/r for non-PCS)
+    // AP01m → AP01m (already has m suffix, don't double it)
     
-    // Strip _mN or _rN suffix
+    // Strip _mN or _rN suffix (e.g. _m2, _r3)
     let base = name.replace(/_m\d+$/, '').replace(/_r\d+$/, '');
     // Strip " Main" or " Reserve" suffix
     base = base.replace(/\s+Main$/, '').replace(/\s+Reserve$/, '');
+    
+    // If name already ends with 'm' or 'r' (e.g. AP01m, AP02r), it's already a station name
+    if (/^[A-Z]+.*[mr]$/.test(base)) {
+      return base;
+    }
     
     // Check if it's a reserve node
     const isReserve = /_r\d+$/.test(name) || /\s+Reserve$/.test(name) || /Reserve/.test(name);
@@ -521,11 +595,15 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
 
   // ─── Fetch nodes for active project ────────────────────────────
   const fetchNodes = useCallback(async () => {
+    if (!projectId) {
+      setNodes([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const pidParam = projectId ? `?project_id=${projectId}` : '';
-      const res = await fetch(`/api/v1/nodesconfig${pidParam}`);
+      const res = await fetch(`/api/v1/nodesconfig?project_id=${projectId}`);
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -766,26 +844,7 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
 
   return (
     <div style={{ height: '100%', overflow: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      {/* Active project name banner (Issue 3) */}
-      {projectName && (
-        <div
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'var(--accent-dim)',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <Box size={16} color="var(--accent)" />
-          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>
-            {projectName}
-          </span>
-        </div>
-      )}
-
-      {/* Toolbar */}
+      {/* Toolbar — horizontal buttons, no project banner, no Node Browser label */}
       <div
         style={{
           display: 'flex',
@@ -797,47 +856,6 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
           flexWrap: 'wrap',
         }}
       >
-        <Box size={16} color="var(--accent)" />
-        <span style={{ fontSize: '13px', fontWeight: 600 }}>
-          Node Browser
-          {projectId ? '' : ' (no project selected)'}
-        </span>
-
-        {/* Load from project dropdown (Issue 5) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Load from project:</span>
-          <select
-            value={loadProjectId}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === '') { setLoadProjectId(''); return; }
-              const id = Number(val);
-              if (id !== projectId) {
-                handleLoadFromProject(id);
-              }
-            }}
-            style={{
-              fontSize: '11px',
-              padding: '3px 8px',
-              backgroundColor: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-sans)',
-              maxWidth: '200px',
-            }}
-            title="Load nodes from another project into the editor (without saving)"
-          >
-            <option value="">— Select —</option>
-            {allProjects.filter((p) => p.id !== projectId).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.project_number} — {p.ship_name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ flex: 1 }} />
         <input
           type="file"
           ref={fileInputRef}
@@ -1079,7 +1097,10 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
                           const newStationName = e.target.value;
                           const updated = editNodes.map((n) => {
                             const slotNum = getSlotNumber(n.name);
-                            return { ...n, name: slotNum === 1 ? newStationName : `${newStationName}_m${slotNum}` };
+                            if (slotNum === 1) return { ...n, name: newStationName };
+                            // Strip existing m/r suffix before appending slot suffix
+                            const base = newStationName.replace(/[mr]$/, '');
+                            return { ...n, name: `${base}_m${slotNum}` };
                           });
                           setEditNodes(updated);
                         }}

@@ -208,7 +208,7 @@ type e2eServer struct {
 func startE2EServer(t *testing.T) *e2eServer {
 	t.Helper()
 
-	dbPath := filepath.Join(os.TempDir(), fmt.Sprintf("logreport-e2e-%d.db", time.Now().UnixNano()))
+	dbPath := filepath.Join(os.TempDir(), fmt.Sprintf("logreport-e2e-%d", time.Now().UnixNano()))
 	st, err := store.Open(dbPath)
 	if err != nil {
 		t.Fatalf("open store: %v", err)

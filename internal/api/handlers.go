@@ -12,12 +12,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
+	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
+	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
 	"github.com/falke-ai-circuit/LOGReport/internal/report"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
@@ -206,7 +209,7 @@ func (s *Server) StartTime() time.Time {
 // ─── Handler 1: GET /health ─────────────────────────────────────
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
-	h := server.GetHealth(s.store.DB(), s.startTime)
+	h := server.GetHealth(true, s.startTime)
 	writeJSON(w, http.StatusOK, h)
 }
 
@@ -1088,6 +1091,20 @@ func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
 		opts = append(opts, bstool.WithMask(req.Mask))
 	}
 
+	// Use settings for BsTool TCP connection if not overridden
+	if req.TCPHost == "" {
+		if !globalSettings.loaded {
+			s.initSettings()
+		}
+		st := getSettings()
+		if st.BsToolHost != "" {
+			req.TCPHost = st.BsToolHost
+		}
+		if req.TCPPort == 0 && st.BsToolPort > 0 {
+			req.TCPPort = st.BsToolPort
+		}
+	}
+
 	// 5. Execute
 	// If tcp_host is specified, use a one-shot TCP transport for this request.
 	// Otherwise, use the default client (subprocess, SSH, or pre-configured TCP).
@@ -1112,14 +1129,66 @@ func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6. Respond
+	// 6. Write output to log file (LOG type)
+	fileWritten := false
+	var filePathStr string
+	if result != nil && len(result.Messages) > 0 {
+		// Build output string from messages
+		var sb strings.Builder
+		for _, msg := range result.Messages {
+			sb.WriteString(msg)
+			sb.WriteString("\n")
+		}
+		output := sb.String()
+
+		// Look up IP from nodes.json
+		ipAddress := ""
+		if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+			for _, c := range configs {
+				if c.Name == req.ServerName || extractStationNameFromConfig(c.Name) == req.ServerName {
+					ipAddress = c.IPAddress
+					break
+				}
+			}
+		}
+
+		// Auto-set log root
+		lr := s.logRoot()
+		if lr == "" || lr == "logs" {
+			if !globalSettings.loaded {
+				s.initSettings()
+			}
+			st := getSettings()
+			if st.LogRoot != "" {
+				lr = st.LogRoot
+			} else if runtime.GOOS == "windows" {
+				lr = "C:\\temp\\logreport-output"
+			} else {
+				lr = "/tmp/logreport-output"
+			}
+			s.SetLogRoot(lr)
+			os.MkdirAll(lr, 0755)
+		}
+
+		lw := logwriter.New(lr)
+		if err := lw.WriteOutputWithIP(req.ServerName, "LOG", "", output, ipAddress); err != nil {
+			log.Printf("bstool/errlog: failed to write log for %s: %v", req.ServerName, err)
+		} else {
+			fileWritten = true
+			filePathStr = lw.LogPath(req.ServerName, "LOG", "", ipAddress)
+		}
+	}
+
+	// 7. Respond
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"server_name": result.ServerName,
-		"messages":    result.Messages,
-		"count":       len(result.Messages),
-		"duration_ms": result.Duration.Milliseconds(),
-		"exit_code":   result.ExitCode,
-		"timed_out":   result.TimedOut,
+		"server_name":   result.ServerName,
+		"messages":      result.Messages,
+		"count":         len(result.Messages),
+		"duration_ms":   result.Duration.Milliseconds(),
+		"exit_code":     result.ExitCode,
+		"timed_out":     result.TimedOut,
+		"file_written":  fileWritten,
+		"file_path":     filePathStr,
 	})
 }
 

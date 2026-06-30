@@ -9,6 +9,7 @@ import ReportList from './components/ReportList';
 import ReportDetail from './components/ReportDetail';
 import CommanderLayout from './components/CommanderLayout';
 import Dashboard from './components/Dashboard';
+import SettingsPage from './components/SettingsPage';
 
 function NotFound() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="/reports" element={<ReportList />} />
               <Route path="/reports/:id" element={<ReportDetail />} />
               <Route path="/commander" element={<CommanderLayout />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

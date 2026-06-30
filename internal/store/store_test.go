@@ -10,57 +10,48 @@ import (
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
 
-// openTestStore creates a temporary SQLite database for testing.
+// openTestStore creates a temporary JSON store for testing.
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
-	path := fmt.Sprintf("/tmp/logreport-test-%d.db", time.Now().UnixNano())
+	path := fmt.Sprintf("/tmp/logreport-test-%d", time.Now().UnixNano())
 	s, err := Open(path)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		s.Close()
-		os.Remove(path)
+		os.RemoveAll(path)
 	})
 	return s
 }
 
-// TestOpenMigrate verifies that Open creates the database and runs migrations,
-// resulting in all expected tables.
+// TestOpenAndMigrate verifies that Open creates the store and Migrate works.
 func TestOpenMigrate(t *testing.T) {
 	s := openTestStore(t)
 
-	// Verify tables exist by querying sqlite_master
-	rows, err := s.db.Query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+	// Verify the store is functional by saving and retrieving a node
+	n := &types.Node{
+		Address: "10.0.0.1",
+		Name:    "TestNode",
+		Type:    types.ACN,
+		Status:  types.StatusConnected,
+		Port:    23,
+	}
+	if err := s.SaveNode(n); err != nil {
+		t.Fatalf("SaveNode: %v", err)
+	}
+
+	got, err := s.GetNode("10.0.0.1")
 	if err != nil {
-		t.Fatalf("query sqlite_master: %v", err)
+		t.Fatalf("GetNode: %v", err)
 	}
-	defer rows.Close()
-
-	tables := make(map[string]bool)
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("scan table name: %v", err)
-		}
-		tables[name] = true
+	if got.Name != "TestNode" {
+		t.Errorf("Name: got %q, want TestNode", got.Name)
 	}
 
-	expected := []string{"io_points", "nodes", "reports", "templates"}
-	for _, tbl := range expected {
-		if !tables[tbl] {
-			t.Errorf("expected table %q not found", tbl)
-		}
-	}
-
-	// Verify user_version is set
-	var version int
-	err = s.db.QueryRow("PRAGMA user_version").Scan(&version)
-	if err != nil {
-		t.Fatalf("PRAGMA user_version: %v", err)
-	}
-	if version != currentSchemaVersion {
-		t.Errorf("user_version = %d, want %d", version, currentSchemaVersion)
+	// Migrate should be a no-op and idempotent
+	if err := s.Migrate(); err != nil {
+		t.Fatalf("Migrate: %v", err)
 	}
 }
 
@@ -335,19 +326,13 @@ func TestConcurrentWrites(t *testing.T) {
 	}
 }
 
-// TestSchemaMigration verifies that user_version increments properly
-// and re-running Migrate is idempotent.
+// TestSchemaMigration verifies that Migrate is idempotent (no-op for JSON store).
 func TestSchemaMigration(t *testing.T) {
 	s := openTestStore(t)
 
-	// First migration should set version to 1
-	var version int
-	err := s.db.QueryRow("PRAGMA user_version").Scan(&version)
-	if err != nil {
-		t.Fatalf("PRAGMA user_version: %v", err)
-	}
-	if version != 1 {
-		t.Errorf("initial user_version = %d, want 1", version)
+	// Migrate should be a no-op and idempotent
+	if err := s.Migrate(); err != nil {
+		t.Fatalf("first Migrate: %v", err)
 	}
 
 	// Re-run Migrate — should be idempotent
@@ -355,22 +340,16 @@ func TestSchemaMigration(t *testing.T) {
 		t.Fatalf("second Migrate: %v", err)
 	}
 
-	err = s.db.QueryRow("PRAGMA user_version").Scan(&version)
-	if err != nil {
-		t.Fatalf("PRAGMA user_version after second migrate: %v", err)
+	// Store should still be functional
+	n := &types.Node{
+		Address: "10.0.0.1",
+		Name:    "MigrateTest",
+		Type:    types.ACN,
+		Status:  types.StatusConnected,
+		Port:    23,
 	}
-	if version != 1 {
-		t.Errorf("user_version after second migrate = %d, want 1", version)
-	}
-
-	// Tables should still exist
-	var count int
-	err = s.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='nodes'").Scan(&count)
-	if err != nil {
-		t.Fatalf("check nodes table: %v", err)
-	}
-	if count != 1 {
-		t.Error("nodes table missing after second migrate")
+	if err := s.SaveNode(n); err != nil {
+		t.Fatalf("SaveNode after migrate: %v", err)
 	}
 }
 
@@ -539,11 +518,11 @@ func TestSaveIOPointsReplaces(t *testing.T) {
 		t.Fatalf("SaveIOPoints old: %v", err)
 	}
 
-	new := []types.IOPoint{
+	newPoints := []types.IOPoint{
 		{NodeAddress: "10.0.0.1", ModulePosition: 2, ChannelPosition: 1, ChannelType: types.DI16, ModuleType: types.ModuleFBC},
 		{NodeAddress: "10.0.0.1", ModulePosition: 2, ChannelPosition: 2, ChannelType: types.DI16, ModuleType: types.ModuleFBC},
 	}
-	if err := s.SaveIOPoints("10.0.0.1", new); err != nil {
+	if err := s.SaveIOPoints("10.0.0.1", newPoints); err != nil {
 		t.Fatalf("SaveIOPoints new: %v", err)
 	}
 

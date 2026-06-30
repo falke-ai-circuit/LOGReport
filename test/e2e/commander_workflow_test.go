@@ -154,14 +154,14 @@ func (m *commanderMockDNA) rpcOutput() string {
 // ─── Test Setup ───────────────────────────────────────────────────
 
 func setupCommanderTestServer(t *testing.T) (*httptest.Server, *commanderMockDNA) {
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
 
 	cfg := &server.Config{
 		Port:       0,
-		DBPath:     ":memory:",
+		DBPath:     "",
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}

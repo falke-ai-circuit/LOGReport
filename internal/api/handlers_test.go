@@ -26,7 +26,7 @@ import (
 func setupTest(t *testing.T) (*Server, *store.Store, func()) {
 	t.Helper()
 
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("failed to open in-memory store: %v", err)
 	}
@@ -744,23 +744,23 @@ func TestScanHandlerValidation(t *testing.T) {
 
 // ─── Test: health handler with degraded DB ──────────────────────
 
+// TestHealthHandlerDegraded verifies the health handler returns ok status.
+// Note: With the JSON store, there is no DB connection to close — the health
+// handler always reports "connected" since the store is always available.
 func TestHealthHandlerDegraded(t *testing.T) {
-	// Create a server with a store, then close the DB to simulate degradation
-	st, err := store.Open(":memory:")
+	// Create a server with a store
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("failed to open store: %v", err)
 	}
 
 	cfg := &server.Config{
 		Port:       0,
-		DBPath:     ":memory:",
+		DBPath:     "",
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}
 	srv := NewServer(st, cfg, embed.FS{}, bstool.NewClient())
-
-	// Close DB to trigger degraded status
-	st.Close()
 
 	mux := srv.NewTestMux()
 	rec := doRequest(mux, "GET", "/health", nil, nil)
@@ -769,11 +769,12 @@ func TestHealthHandlerDegraded(t *testing.T) {
 		t.Errorf("expected 200, got %d", rec.Code)
 	}
 	result := parseJSONResponse(rec)
-	if result["status"] != "degraded" {
-		t.Errorf("expected status 'degraded', got %v", result["status"])
+	// JSON store is always "connected" — no DB to close
+	if result["status"] != "ok" {
+		t.Errorf("expected status 'ok', got %v", result["status"])
 	}
-	if result["db_status"] == "connected" {
-		t.Error("expected db_status not 'connected' after DB close")
+	if result["db_status"] != "connected" {
+		t.Errorf("expected db_status 'connected', got %v", result["db_status"])
 	}
 }
 

@@ -1,33 +1,23 @@
 package store
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
 
 // SaveReport inserts or replaces a report record.
 func (s *Store) SaveReport(r *types.Report) error {
-	query := `
-	INSERT OR REPLACE INTO reports
-		(id, node_address, format, template, title, author, status, file_path, created_at, completed_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-	_, err := s.db.Exec(query,
-		r.ID,
-		r.NodeAddress,
-		string(r.Format),
-		r.Template,
-		r.Title,
-		r.Author,
-		string(r.Status),
-		r.FilePath,
-		r.CreatedAt,
-		r.CompletedAt,
-	)
-	if err != nil {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Store a copy
+	cpy := *r
+	s.reports[r.ID] = &cpy
+
+	if err := s.persistReports(); err != nil {
 		return fmt.Errorf("store: save report %s: %w", r.ID, err)
 	}
 	return nil
@@ -35,147 +25,75 @@ func (s *Store) SaveReport(r *types.Report) error {
 
 // GetReport retrieves a report by its ID. Returns an error if not found.
 func (s *Store) GetReport(id string) (*types.Report, error) {
-	query := `
-	SELECT id, node_address, format, template, title, author, status, file_path, created_at, completed_at
-	FROM reports WHERE id = ?
-	`
-	row := s.db.QueryRow(query, id)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	r := &types.Report{}
-	var formatStr, statusStr string
-	var template, title, author, filePath, completedAt sql.NullString
-
-	err := row.Scan(
-		&r.ID,
-		&r.NodeAddress,
-		&formatStr,
-		&template,
-		&title,
-		&author,
-		&statusStr,
-		&filePath,
-		&r.CreatedAt,
-		&completedAt,
-	)
-	if err == sql.ErrNoRows {
+	r, ok := s.reports[id]
+	if !ok {
 		return nil, fmt.Errorf("store: report %s not found", id)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("store: get report %s: %w", id, err)
-	}
 
-	r.Format = types.ReportFormat(formatStr)
-	r.Status = types.ReportStatus(statusStr)
-	if template.Valid {
-		r.Template = template.String
-	}
-	if title.Valid {
-		r.Title = title.String
-	}
-	if author.Valid {
-		r.Author = author.String
-	}
-	if filePath.Valid {
-		r.FilePath = filePath.String
-	}
-	if completedAt.Valid {
-		r.CompletedAt = completedAt.String
-	}
-
-	return r, nil
+	cpy := *r
+	return &cpy, nil
 }
 
-// ListReports returns all reports. Returns an empty slice (not nil) when none exist.
+// ListReports returns all reports sorted by created_at descending.
+// Returns an empty slice (not nil) when none exist.
 func (s *Store) ListReports() ([]*types.Report, error) {
-	query := `
-	SELECT id, node_address, format, template, title, author, status, file_path, created_at, completed_at
-	FROM reports ORDER BY created_at DESC
-	`
-	rows, err := s.db.Query(query)
-	if err != nil {
-		return nil, fmt.Errorf("store: list reports: %w", err)
-	}
-	defer rows.Close()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	reports := make([]*types.Report, 0)
-	for rows.Next() {
-		r := &types.Report{}
-		var formatStr, statusStr string
-		var template, title, author, filePath, completedAt sql.NullString
-
-		err := rows.Scan(
-			&r.ID,
-			&r.NodeAddress,
-			&formatStr,
-			&template,
-			&title,
-			&author,
-			&statusStr,
-			&filePath,
-			&r.CreatedAt,
-			&completedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("store: scan report: %w", err)
-		}
-
-		r.Format = types.ReportFormat(formatStr)
-		r.Status = types.ReportStatus(statusStr)
-		if template.Valid {
-			r.Template = template.String
-		}
-		if title.Valid {
-			r.Title = title.String
-		}
-		if author.Valid {
-			r.Author = author.String
-		}
-		if filePath.Valid {
-			r.FilePath = filePath.String
-		}
-		if completedAt.Valid {
-			r.CompletedAt = completedAt.String
-		}
-
-		reports = append(reports, r)
+	reports := make([]*types.Report, 0, len(s.reports))
+	for _, r := range s.reports {
+		cpy := *r
+		reports = append(reports, &cpy)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("store: rows iteration: %w", err)
-	}
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].CreatedAt > reports[j].CreatedAt
+	})
 
 	return reports, nil
 }
 
 // DeleteReport removes a report by ID. No error if it doesn't exist.
 func (s *Store) DeleteReport(id string) error {
-	_, err := s.db.Exec("DELETE FROM reports WHERE id = ?", id)
-	if err != nil {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.reports, id)
+
+	if err := s.persistReports(); err != nil {
 		return fmt.Errorf("store: delete report %s: %w", id, err)
 	}
 	return nil
 }
 
-// ListReportsByProject returns all reports for a given project ID.
+// ListReportsByProject returns all reports for a given project ID,
+// sorted by created_at descending.
 func (s *Store) ListReportsByProject(projectID int64) []*types.Report {
-	rows, err := s.db.Query(`SELECT id, node_address, format, template, title, author, status, file_path, created_at, completed_at FROM reports WHERE project_id = ? ORDER BY created_at DESC`, projectID)
-	if err != nil {
-		log.Printf("store: ListReportsByProject query error: %v", err)
-		return []*types.Report{}
-	}
-	defer rows.Close()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var reports []*types.Report
-	for rows.Next() {
-		r := &types.Report{}
-		err := rows.Scan(&r.ID, &r.NodeAddress, &r.Format, &r.Template, &r.Title, &r.Author, &r.Status, &r.FilePath, &r.CreatedAt, &r.CompletedAt)
-		if err != nil {
-			log.Printf("store: ListReportsByProject scan error: %v", err)
-			continue
+	for _, r := range s.reports {
+		if r.ProjectID == projectID {
+			cpy := *r
+			reports = append(reports, &cpy)
 		}
-		reports = append(reports, r)
 	}
+
 	if reports == nil {
 		reports = []*types.Report{}
 	}
+
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].CreatedAt > reports[j].CreatedAt
+	})
+
+	if len(reports) == 0 {
+		log.Printf("store: ListReportsByProject: no reports for project %d", projectID)
+	}
+
 	return reports
 }

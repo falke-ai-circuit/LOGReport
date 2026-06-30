@@ -446,7 +446,7 @@ func TestReportToAPIWithFile(t *testing.T) {
 
 // TestNewServer verifies NewServer initializes correctly.
 func TestNewServer(t *testing.T) {
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

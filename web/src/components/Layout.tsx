@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Server, FileText, LayoutDashboard, Terminal } from 'lucide-react';
+import { Server, FileText, LayoutDashboard, Terminal, Settings } from 'lucide-react';
 
 export default function Layout() {
   const tabStyle = (isActive: boolean): React.CSSProperties => ({
@@ -58,14 +58,19 @@ export default function Layout() {
           Nodes
         </NavLink>
 
+        <NavLink to="/commander" style={({ isActive }) => tabStyle(isActive)}>
+          <Terminal size={14} />
+          Commander
+        </NavLink>
+
         <NavLink to="/reports" style={({ isActive }) => tabStyle(isActive)}>
           <FileText size={14} />
           Reports
         </NavLink>
 
-        <NavLink to="/commander" style={({ isActive }) => tabStyle(isActive)}>
-          <Terminal size={14} />
-          Commander
+        <NavLink to="/settings" style={({ isActive }) => tabStyle(isActive)}>
+          <Settings size={14} />
+          Settings
         </NavLink>
       </nav>
 

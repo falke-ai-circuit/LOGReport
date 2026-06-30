@@ -29,7 +29,7 @@ import (
 // TestSPAFallbackWithEmptyEmbedFS verifies that registerStaticFiles handles
 // an empty embed.FS gracefully (logs warning, does not register "/" handler).
 func TestSPAFallbackWithEmptyEmbedFS(t *testing.T) {
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestConnectHandlerWithMockTCP(t *testing.T) {
 
 // TestStartMethod verifies that Start() begins listening and serving HTTP.
 func TestStartMethod(t *testing.T) {
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

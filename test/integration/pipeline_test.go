@@ -169,7 +169,7 @@ type integrationServer struct {
 func startIntegrationServerFile(t *testing.T) *integrationServer {
 	t.Helper()
 
-	dbPath := filepath.Join(os.TempDir(), fmt.Sprintf("logreport-integration-%d.db", time.Now().UnixNano()))
+	dbPath := filepath.Join(os.TempDir(), fmt.Sprintf("logreport-integration-%d", time.Now().UnixNano()))
 	st, err := store.Open(dbPath)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
@@ -240,11 +240,11 @@ func startIntegrationServerFile(t *testing.T) *integrationServer {
 }
 
 // startIntegrationServer creates and starts a LOGReport HTTP server on a random port
-// using an in-memory SQLite database.
+// using a temp JSON store.
 func startIntegrationServer(t *testing.T) *integrationServer {
 	t.Helper()
 
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
@@ -258,7 +258,7 @@ func startIntegrationServer(t *testing.T) *integrationServer {
 
 	cfg := &server.Config{
 		Port:       0, // random port
-		DBPath:     ":memory:",
+		DBPath:     "",
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}
@@ -949,7 +949,7 @@ func TestConcurrentAPICalls(t *testing.T) {
 
 // TestGracefulShutdown verifies the server stops cleanly when shut down.
 func TestGracefulShutdown(t *testing.T) {
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
@@ -957,7 +957,7 @@ func TestGracefulShutdown(t *testing.T) {
 
 	cfg := &server.Config{
 		Port:       0,
-		DBPath:     ":memory:",
+		DBPath:     "",
 		LogLevel:   "debug",
 		CORSOrigin: "*",
 	}

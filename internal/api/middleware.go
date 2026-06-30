@@ -66,6 +66,23 @@ func corsMiddleware(origin string) func(http.Handler) http.Handler {
 	}
 }
 
+// recoveryMiddleware catches panics from handlers and returns a 500 JSON error
+// instead of crashing the process. This is critical for scan-nodes and other
+// handlers that perform telnet I/O which can panic on nil pointers.
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("PANIC: %s %s: %v", r.Method, r.URL.Path, err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{
+					"error": "internal_panic",
+				})
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
 // contentTypeMiddleware validates Content-Type for POST/PUT/PATCH requests.
 // JSON endpoints must have Content-Type: application/json.
 // Multipart endpoints (parse/sysfile) must have Content-Type: multipart/form-data.

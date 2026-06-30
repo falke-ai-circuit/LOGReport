@@ -50,32 +50,30 @@ func formatIP(ip string) string {
 }
 
 // extractStationName derives the station folder name from a node name.
-// "AP01" -> "AP01m", "AP01 Main" -> "AP01m", "AP01_m2" -> "AP01m"
-// "AP02 Reserve" -> "AP02r", "AP02_r2" -> "AP02r"
-// "AL01" -> "AL01" (LIS, no suffix), "A1OA OPS" -> "A1OA" (OPS, no suffix)
+// Only PCS nodes (AP prefix) get m/r suffix. BU (AB), DIA (AD), ALP (A1A1), OPS (A1O1, B1O1) don't.
 func extractStationName(nodeName string) string {
-	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
-		base := nodeName
-		if idx := strings.Index(base, " "); idx >= 0 {
-			base = base[:idx]
-		}
-		return base
-	}
-
-	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
-
+	// Strip _mN or _rN suffix
 	base := nodeName
-	if idx := strings.Index(base, " "); idx >= 0 {
-		base = base[:idx]
-	}
 	if idx := strings.Index(base, "_"); idx >= 0 {
 		base = base[:idx]
 	}
-
-	if isReserve {
-		return base + "r"
+	if idx := strings.Index(base, " "); idx >= 0 {
+		base = base[:idx]
 	}
-	return base + "m"
+	// If base already ends with 'm' or 'r', it's already a station name
+	if strings.HasSuffix(base, "m") || strings.HasSuffix(base, "r") {
+		return base
+	}
+	// Only PCS (AP prefix) nodes get m/r suffix
+	if strings.HasPrefix(base, "AP") {
+		isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
+		if isReserve {
+			return base + "r"
+		}
+		return base + "m"
+	}
+	// AL, AB, AD, A1*, B1* — no m/r suffix
+	return base
 }
 
 // fileExtension returns the file extension for a token type.

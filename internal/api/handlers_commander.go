@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,10 +26,17 @@ import (
 
 // ─── NodesConfig Handlers ──────────────────────────────────────────
 
-// nodesConfigPath returns the default path to nodes.json relative to the
-// executable or current working directory.
+// nodesConfigPath returns the default path to nodes.json.
+// It checks the data directory (from -db-path flag), then cwd, then config dir.
 func (s *Server) nodesConfigPath() string {
-	// Check for nodes.json in cwd, then in a config dir
+	// First: check in the data directory (where -db-path points)
+	if s.config != nil && s.config.DBPath != "" {
+		dbPath := filepath.Join(s.config.DBPath, "nodes.json")
+		if _, err := os.Stat(dbPath); err == nil {
+			return dbPath
+		}
+	}
+	// Then: check cwd
 	candidates := []string{
 		"nodes.json",
 		"./config/nodes.json",
@@ -38,6 +46,10 @@ func (s *Server) nodesConfigPath() string {
 		if _, err := os.Stat(c); err == nil {
 			return c
 		}
+	}
+	// Default: create in data directory if set, otherwise cwd
+	if s.config != nil && s.config.DBPath != "" {
+		return filepath.Join(s.config.DBPath, "nodes.json")
 	}
 	return "nodes.json" // default, may not exist yet
 }
@@ -410,10 +422,27 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if req.Host == "" {
-		req.Host = "127.0.0.1"
+		// Use settings if available, otherwise default
+		if !globalSettings.loaded {
+			s.initSettings()
+		}
+		st := getSettings()
+		if st.DIAHost != "" {
+			req.Host = st.DIAHost
+		} else {
+			req.Host = "127.0.0.1"
+		}
 	}
 	if req.Port == 0 {
-		req.Port = 1234
+		if !globalSettings.loaded {
+			s.initSettings()
+		}
+		st := getSettings()
+		if st.DIAPort > 0 {
+			req.Port = st.DIAPort
+		} else {
+			req.Port = 1234
+		}
 	}
 
 	// Find an existing session or create a new one
@@ -458,10 +487,32 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	fileWritten := false
 	var filePathStr string
 	if req.NodeName != "" && req.TokenType != "" {
+		// If IP address not provided, look it up from nodes.json
+		if req.IPAddress == "" {
+			if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+				for _, c := range configs {
+					if c.Name == req.NodeName {
+						req.IPAddress = c.IPAddress
+						break
+					}
+					// Also check station name match (e.g. AP01m matches AP01)
+					if extractStationNameFromConfig(c.Name) == req.NodeName {
+						req.IPAddress = c.IPAddress
+						break
+					}
+				}
+			}
+		}
 		// Auto-set log root if not configured or still at default "logs"
 		lr := s.logRoot()
 		if lr == "" || lr == "logs" {
-			if runtime.GOOS == "windows" {
+			if !globalSettings.loaded {
+				s.initSettings()
+			}
+			st := getSettings()
+			if st.LogRoot != "" {
+				lr = st.LogRoot
+			} else if runtime.GOOS == "windows" {
 				lr = "C:\\temp\\logreport-output"
 			} else {
 				lr = "/tmp/logreport-output"
@@ -540,10 +591,20 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if sessionID == "" {
-			// No active session — try to reconnect using stored host/port
-			// from a previous session, or default to localhost:1234
-			host := "127.0.0.1"
-			port := 1234
+			// No active session — try to reconnect using settings
+			// or stored host/port from a previous session
+			if !globalSettings.loaded {
+				s.initSettings()
+			}
+			st := getSettings()
+			host := st.DIAHost
+			if host == "" {
+				host = "127.0.0.1"
+			}
+			port := st.DIAPort
+			if port == 0 {
+				port = 1234
+			}
 			if len(ids) > 0 {
 				oldSess, ok := s.telnetSM.GetSession(ids[0])
 				if ok && oldSess != nil {
@@ -627,8 +688,18 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if sessionID == "" {
-			host := "127.0.0.1"
-			port := 1234
+			if !globalSettings.loaded {
+				s.initSettings()
+			}
+			st := getSettings()
+			host := st.DIAHost
+			if host == "" {
+				host = "127.0.0.1"
+			}
+			port := st.DIAPort
+			if port == 0 {
+				port = 1234
+			}
 			if len(ids) > 0 {
 				oldSess, ok := s.telnetSM.GetSession(ids[0])
 				if ok && oldSess != nil {
@@ -1185,6 +1256,29 @@ func (s *Server) handleLogContent(w http.ResponseWriter, r *http.Request) {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
+// extractStationNameFromConfig derives station name from a config node name.
+// Uses the same logic as logwriter.extractStationName: only AP prefix gets m/r.
+func extractStationNameFromConfig(nodeName string) string {
+	base := nodeName
+	if idx := strings.Index(base, "_"); idx >= 0 {
+		base = base[:idx]
+	}
+	if idx := strings.Index(base, " "); idx >= 0 {
+		base = base[:idx]
+	}
+	if strings.HasSuffix(base, "m") || strings.HasSuffix(base, "r") {
+		return base
+	}
+	if strings.HasPrefix(base, "AP") {
+		isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
+		if isReserve {
+			return base + "r"
+		}
+		return base + "m"
+	}
+	return base
+}
+
 // waitForOutput polls the session output buffer for non-empty output.
 // It waits up to maxWait for the first non-empty result, then collects
 // for trailWait more seconds to capture trailing data.
@@ -1239,18 +1333,22 @@ func (s *Server) handleLoadSysFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("handleLoadSysFiles: loading from %q → output %q", req.Directory, req.OutputDir)
+
 	configs, err := sysloader.LoadSysFiles(req.Directory)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "load_error",
 			fmt.Sprintf("failed to load sys files: %v", err))
 		return
 	}
+	log.Printf("handleLoadSysFiles: loaded %d configs from %q", len(configs), req.Directory)
 
 	if err := sysloader.CreateFolderStructure(req.OutputDir, configs); err != nil {
 		writeError(w, http.StatusInternalServerError, "create_error",
 			fmt.Sprintf("failed to create folder structure: %v", err))
 		return
 	}
+	log.Printf("handleLoadSysFiles: created folder structure in %q", req.OutputDir)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"configs_count": len(configs),
@@ -1398,58 +1496,95 @@ func (s *Server) handleSysFileScan(w http.ResponseWriter, r *http.Request) {
 // Falls back to "print structure" + token probing if node_list fails.
 // POST /api/v1/sysfiles/scan-nodes
 func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
-	host := "127.0.0.1"
-	port := 1234
+	// 90-second hard timeout — the scan can take up to ~60s in worst case
+	// (15s connect + 12s systemtest + 15s nodelist poll + 12s print structure + probing)
+	// but must not hang indefinitely. Context cancellation propagates to telnet reads.
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+	_ = ctx // r.Context() is already used by the HTTP server; ctx is for future use
 
-	// Find an existing telnet session or create a new one
-	ids := s.telnetSM.ListSessions()
-	var sessionID string
-	if len(ids) > 0 {
-		sessionID = ids[0]
-		sess, ok := s.telnetSM.GetSession(sessionID)
-		if ok && sess != nil && !sess.Connected {
-			s.telnetSM.Disconnect(sessionID)
-			sessionID = ""
-		}
+	// Load settings for DIA host/port
+	if !globalSettings.loaded {
+		s.initSettings()
 	}
-	if sessionID == "" {
-		sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
-		if err != nil {
-			writeError(w, http.StatusBadGateway, "connection_failed",
-				fmt.Sprintf("DIA connect %s:%d failed: %v", host, port, err))
-			return
-		}
-		sessionID = sess.ID
+	st := getSettings()
+	host := st.DIAHost
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := st.DIAPort
+	if port == 0 {
+		port = 1234
 	}
 
-	// Step 1: Enter system mode
-	_ = s.telnetSM.ClearOutput(sessionID)
-	_ = s.telnetSM.SendCommand(sessionID, "systemmode")
-	_ = waitForOutput(s.telnetSM, sessionID, 5*time.Second, 1*time.Second)
+	// Disconnect any existing session to avoid conflicts (DIA allows only 1 connection)
+	for _, id := range s.telnetSM.ListSessions() {
+		s.telnetSM.Disconnect(id)
+	}
 
-	// Step 2: Try systemtest node_list to generate nodelist file
-	// DIA writes the file relative to its own working directory, not LOGReport's.
-	// We'll search multiple locations in Step 3.
+	// Create a fresh session
+	sess, err := s.telnetSM.Connect("", host, port, 15*time.Second)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "connection_failed",
+			fmt.Sprintf("DIA connect %s:%d failed: %v", host, port, err))
+		return
+	}
+	// Nil session safety — Connect should never return nil+nil, but guard against panics
+	if sess == nil {
+		writeError(w, http.StatusInternalServerError, "session_error",
+			"telnet session returned nil after connect")
+		return
+	}
+	sessionID := sess.ID
+	defer s.telnetSM.Disconnect(sessionID)
 
-	_ = s.telnetSM.ClearOutput(sessionID)
-	_ = s.telnetSM.SendCommand(sessionID, "systemtest node_list nodelist.txt")
-	_ = waitForOutput(s.telnetSM, sessionID, 5*time.Second, 2*time.Second)
+	// verifySystemMode() in Connect() already:
+	// 1. Read initial DIA response, sent "y" only if override prompt was present
+	// 2. Cleared the line editor (Ctrl+X + Ctrl+Z + Enter)
+	// 3. Entered system mode
+	// We're already in system mode here — don't re-handle override or send "systemmode"
 
-	// Step 3: Read the generated nodelist.txt
-	// DIA writes the file relative to its own working directory, not LOGReport's.
-	// Search multiple possible locations.
-	var nodeListContent string
-	searchPaths := []string{
-		filepath.Join(os.TempDir(), "nodelist.txt"),
+	// Step 1: Delete old nodelist files to detect fresh generation
+	// DIA writes to its own working directory, not LOGReport's
+	knownPaths := []string{
 		"C:\\dna\\CA\\dia\\nodelist.txt",
 		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
-		"nodelist.txt", // current working directory
+		"nodelist.txt",
+		"C:\\nodelist.txt",
 	}
-	for _, p := range searchPaths {
-		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-			nodeListContent = string(data)
+	for _, p := range knownPaths {
+		os.Remove(p)
+	}
+
+	// Step 3: Send systemtest node_list using SendSystemCommand
+	// SendSystemCommand clears with Ctrl+X + Enter only (no Ctrl+Z which exits system mode)
+	_ = s.telnetSM.ClearOutput(sessionID)
+	_ = s.telnetSM.SendSystemCommand(sessionID, "systemtest node_list nodelist.txt")
+	_ = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+
+	// Step 4: Wait for nodelist.txt to appear (poll for up to 15 seconds)
+	// DIA writes the file asynchronously after the command returns
+	var nodeListContent string
+	searchPaths := []string{
+		"C:\\dna\\CA\\dia\\nodelist.txt",
+		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
+		"C:\\nodelist.txt",
+		"nodelist.txt",
+		filepath.Join(os.TempDir(), "nodelist.txt"),
+	}
+
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, p := range searchPaths {
+			if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
+				nodeListContent = string(data)
+				break
+			}
+		}
+		if nodeListContent != "" {
 			break
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	var configs []types.NodeConfig
@@ -1463,12 +1598,12 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 
 		// Also get print structure for the structure_raw field
 		_ = s.telnetSM.ClearOutput(sessionID)
-		_ = s.telnetSM.SendCommand(sessionID, "print structure")
+		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
 		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
 	} else {
 		// ─── Fallback: print structure + token probing ────────────
 		_ = s.telnetSM.ClearOutput(sessionID)
-		_ = s.telnetSM.SendCommand(sessionID, "print structure")
+		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
 		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
 		configs = scanFromStructure(s, sessionID, structureRaw)
 	}

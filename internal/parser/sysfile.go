@@ -72,13 +72,17 @@ func ParseSysFile(path string) (*SysFileResult, error) {
 	}
 	defer f.Close()
 
-	return parseSysFileScanner(bufio.NewScanner(f))
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB max line — handles binary .sys files
+	return parseSysFileScanner(scanner)
 }
 
 // ParseSysFileString parses .sys file content from a string.
 // Useful for testing with inline fixtures.
 func ParseSysFileString(content string) *SysFileResult {
-	result, _ := parseSysFileScanner(bufio.NewScanner(strings.NewReader(content)))
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB max line — consistent with ParseSysFile
+	result, _ := parseSysFileScanner(scanner)
 	return result
 }
 

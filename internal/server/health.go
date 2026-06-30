@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 )
@@ -15,31 +14,20 @@ type Health struct {
 	NodeCount int    `json:"node_count"`
 }
 
-// GetHealth builds a Health struct from the database connection and start time.
-func GetHealth(db *sql.DB, startTime time.Time) Health {
+// GetHealth builds a Health struct from the database connection status and start time.
+// dbConnected is true when the store is operational.
+func GetHealth(dbConnected bool, startTime time.Time) Health {
 	h := Health{
 		Status:  "ok",
 		Version: "1.0.0",
 		Uptime:  formatUptime(time.Since(startTime)),
 	}
 
-	// Check DB status
-	if db == nil {
+	if dbConnected {
+		h.DBStatus = "connected"
+	} else {
 		h.DBStatus = "disconnected"
 		h.Status = "degraded"
-	} else if err := db.Ping(); err != nil {
-		h.DBStatus = fmt.Sprintf("error: %v", err)
-		h.Status = "degraded"
-	} else {
-		h.DBStatus = "connected"
-	}
-
-	// Count nodes
-	if db != nil {
-		var count int
-		if err := db.QueryRow("SELECT COUNT(*) FROM nodes").Scan(&count); err == nil {
-			h.NodeCount = count
-		}
 	}
 
 	return h

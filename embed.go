@@ -6,5 +6,5 @@ import "embed"
 
 // FS contains the embedded web/dist/ directory (production React build).
 //
-//go:embed web/dist-new/* web/dist-new/assets/*
+//go:embed all:web/dist-new-flat
 var FS embed.FS

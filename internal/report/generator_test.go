@@ -14,10 +14,10 @@ import (
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
 
-// openTestStore creates a temporary SQLite database for testing.
+// openTestStore creates a temporary JSON store for testing.
 func openTestStore(t *testing.T) *store.Store {
 	t.Helper()
-	path := fmt.Sprintf("/tmp/logreport-test-%d.db", time.Now().UnixNano())
+	path := fmt.Sprintf("/tmp/logreport-test-%d", time.Now().UnixNano())
 	s, err := store.Open(path)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

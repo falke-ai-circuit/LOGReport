@@ -320,7 +320,7 @@ func TestBsToolErrLogHandlerServerNameWithSuffix(t *testing.T) {
 // setupTestStore creates just a store for tests that need custom server construction.
 func setupTestStore(t *testing.T) *store.Store {
 	t.Helper()
-	st, err := store.Open(":memory:")
+	st, err := store.Open("")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

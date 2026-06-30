@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Server,
@@ -14,6 +13,7 @@ import {
   Trash2,
   ScanLine,
   RefreshCw,
+  FolderPlus,
 } from 'lucide-react';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 
@@ -24,7 +24,20 @@ export interface NodeTreeProps {
   onDoubleClickFile: (node: TreeNodeData) => void;
   onQueueStatusChange?: (status: QueueStatusResponse | null) => void;
   projectId?: number | null;
+  selectedFileKey?: string | null; // "stationName:sectionType:fileName" for bidirectional highlight
+  onCreateStructure?: () => void; // callback to create log folder structure
+  context?: 'nodes' | 'commander'; // controls which menu items are available
 }
+
+// Command status colors for file nodes during queue execution
+const CMD_STATUS_COLORS: Record<string, string> = {
+  pending: 'var(--text-muted)',
+  running: 'var(--accent)',
+  completed: 'var(--success)',
+  done: 'var(--success)',
+  failed: 'var(--error)',
+  error: 'var(--error)',
+};
 
 const STATUS_COLORS: Record<string, string> = {
   idle: 'var(--text-muted)',
@@ -35,11 +48,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 // File color by line count: red (empty), yellow (<10), green (>=10)
+// Also checks status field from backend (error=red, warning=yellow, idle=green)
 function fileColor(node: TreeNodeData): string {
-  if (node.line_count === undefined) return 'var(--text-muted)';
-  if (node.line_count === 0) return 'var(--error)';
-  if (node.line_count && node.line_count < 10) return '#f59e0b';
-  return 'var(--success)';
+  if (node.line_count === 0 || node.status === 'error') return 'var(--error)';
+  if (node.line_count && node.line_count < 10 || node.status === 'warning') return '#f59e0b';
+  if (node.line_count && node.line_count >= 10 || node.status === 'idle') return 'var(--success)';
+  return 'var(--text-muted)';
 }
 
 export default function NodeTree({
@@ -49,6 +63,9 @@ export default function NodeTree({
   onDoubleClickFile,
   onQueueStatusChange,
   projectId,
+  selectedFileKey,
+  onCreateStructure,
+  context = 'commander',
 }: NodeTreeProps) {
   const [tree, setTree] = useState<TreeNodeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,13 +82,18 @@ export default function NodeTree({
 
   // Fetch tree (now includes log_root + project_id to get project-scoped tree)
   const fetchTree = useCallback(async () => {
+    if (!projectId) {
+      setTree(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const logRoot = localStorage.getItem('logRoot') || '';
       const params: string[] = [];
       if (logRoot) params.push(`log_root=${encodeURIComponent(logRoot)}`);
-      if (projectId) params.push(`project_id=${projectId}`);
+      params.push(`project_id=${projectId}`);
       const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
       const url = `/api/v1/nodesconfig/tree${queryStr}`;
       const res = await fetch(url);
@@ -207,11 +229,18 @@ export default function NodeTree({
       const sectionType = node.section_type || '';
       const tokenId = node.token_id || '';
 
+      // Commander: "Erase File Content" (empty the file, keep it)
+      // Nodes: "Delete File" (remove from disk entirely)
+      const fileActionItem = context === 'nodes'
+        ? { icon: <Trash2 size={14} />, label: 'Delete File', action: 'delete_file' }
+        : { icon: <Trash2 size={14} />, label: 'Erase File Content', action: 'erase_file' };
+
       if (sectionType === 'FBC') {
         return [
           { icon: <Play size={14} />, label: `Print FieldBus Structure (Token ${tokenId})`, action: 'fbc_print' },
           { icon: <ScanLine size={14} />, label: `Scan FieldBus Structure (Token ${tokenId})`, action: 'fbc_scan' },
           { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+          fileActionItem,
         ];
       }
       if (sectionType === 'RPC') {
@@ -220,53 +249,30 @@ export default function NodeTree({
           { icon: <Play size={14} />, label: `Clear Rupi counters '${tokenId}'`, action: 'rpc_clear' },
           { icon: <ScanLine size={14} />, label: `Scan FieldBus Structure (Token ${tokenId})`, action: 'rpc_scan' },
           { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+          fileActionItem,
         ];
       }
       if (sectionType === 'LOG') {
         return [
           { icon: <Server size={14} />, label: 'Run BsTool on this file', action: 'bstool_errlog' },
           { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+          fileActionItem,
         ];
       }
       // LIS or unknown
       return [
         { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+        fileActionItem,
       ];
     }
 
-    // TOKEN type (placeholder when no files exist yet)
-    if (node.type === 'token') {
-      const sectionType = node.section_type || parentNode?.section_type || '';
-      const tokenId = node.token_id || node.name;
-
-      if (sectionType === 'FBC') {
-        return [
-          { icon: <Play size={14} />, label: `Print FieldBus Structure (Token ${tokenId})`, action: 'fbc_print' },
-          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-        ];
-      }
-      if (sectionType === 'RPC') {
-        return [
-          { icon: <Play size={14} />, label: `Print Rupi counters Token '${tokenId}'`, action: 'rpc_print' },
-          { icon: <Play size={14} />, label: `Clear Rupi counters '${tokenId}'`, action: 'rpc_clear' },
-          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-        ];
-      }
-      if (sectionType === 'LOG') {
-        return [
-          { icon: <Server size={14} />, label: 'Run BsTool on this file', action: 'bstool_errlog' },
-          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-        ];
-      }
-    }
+    // NOTE: 'token' type is handled together with 'file' above (line 229).
+    // The standalone token block that was here was unreachable dead code — removed.
 
     return [];
   }
 
   // ─── Render ────────────────────────────────────────────────────
-
-  const queueActive =
-    queueStatus && (queueStatus.state === 'running' || queueStatus.state === 'paused');
 
   const menuItems = contextMenu ? getContextmenuItems(contextMenu.node, contextMenu.parentNode) : [];
 
@@ -296,11 +302,20 @@ export default function NodeTree({
           onClick={fetchTree}
           title="Reload node tree from nodes.json + log files"
         >
-          Load Nodes
+          <RefreshCw size={11} style={{ display: 'inline', marginRight: '4px' }} />
+          Refresh
         </button>
-
-
-
+        {onCreateStructure && (
+          <button
+            className="btn btn-primary"
+            style={{ fontSize: '11px', padding: '4px 8px' }}
+            onClick={onCreateStructure}
+            title="Create folder and file structure at log root"
+          >
+            <FolderPlus size={11} style={{ display: 'inline', marginRight: '4px' }} />
+            Create Structure
+          </button>
+        )}
       </div>
 
 
@@ -345,6 +360,9 @@ export default function NodeTree({
                   onSelectToken={onSelectToken}
                   onContextMenu={handleContextMenu}
                   onDoubleClickFile={onDoubleClickFile}
+                  activeCommand={queueStatus?.commands?.[queueStatus.current] || null}
+                  completedCommands={queueStatus?.commands ? new Set(queueStatus.commands.slice(0, queueStatus.current).map((c) => `${c.node_name}:${c.token_id}:${c.type}`)) : undefined}
+                  selectedFileKey={selectedFileKey}
                 />
               ))
             ) : (
@@ -356,9 +374,19 @@ export default function NodeTree({
                   fontSize: '12px',
                 }}
               >
-                No nodes configured.
-                <br />
-                Load nodes.json to see the tree.
+                {projectId ? (
+                  <>
+                    No nodes configured.
+                    <br />
+                    Load nodes from BU directory or scan via debugger.
+                  </>
+                ) : (
+                  <>
+                    Select a project to view nodes.
+                    <br />
+                    Create a project from the Dashboard.
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -407,6 +435,9 @@ interface TreeBranchProps {
   onContextMenu: (e: React.MouseEvent, node: TreeNodeData, parentNode?: TreeNodeData) => void;
   onDoubleClickFile: (node: TreeNodeData) => void;
   parentNode?: TreeNodeData;
+  activeCommand?: { node_name: string; token_id: string; type: string; status: string } | null;
+  completedCommands?: Set<string>; // Set of "node_name:token_id:type" for completed commands
+  selectedFileKey?: string | null; // "stationName:sectionType:fileName" for bidirectional highlight
 }
 
 function TreeBranch({
@@ -419,6 +450,9 @@ function TreeBranch({
   onContextMenu,
   onDoubleClickFile,
   parentNode,
+  activeCommand,
+  completedCommands,
+  selectedFileKey,
 }: TreeBranchProps) {
   const isExpanded = expandedNodes.has(node.name);
   const hasChildren = node.children && node.children.length > 0;
@@ -445,8 +479,46 @@ function TreeBranch({
     }
   }
 
-  // Color for file nodes based on line count
-  const nodeColor = (node.type === 'file' || node.type === 'token') ? fileColor(node) : statusColor;
+  // Color for file nodes based on line count or command status
+  let nodeColor = (node.type === 'file' || node.type === 'token') ? fileColor(node) : statusColor;
+  let isActive = false;
+  let isSelected = false;
+
+  // Check if this file/token matches the selected file (bidirectional highlight)
+  if (selectedFileKey && (node.type === 'file' || node.type === 'token')) {
+    const stationName = parentNode?.name || '';
+    const sectionType = node.section_type || parentNode?.section_type || '';
+    const fileName = node.file_name || node.name;
+    const fileKey = `${stationName}:${sectionType}:${fileName}`;
+    if (fileKey === selectedFileKey) {
+      isSelected = true;
+    }
+  }
+  // Also highlight node-level if selectedFileKey station matches
+  if (selectedFileKey && node.type === 'node') {
+    const station = selectedFileKey.split(':')[0];
+    if (node.name === station) {
+      isSelected = true;
+    }
+  }
+
+  // Check if this file/token matches the active command
+  if (activeCommand && (node.type === 'file' || node.type === 'token')) {
+    const cmdKey = `${activeCommand.node_name}:${activeCommand.token_id}:${activeCommand.type}`;
+    const nodeMatch = node.token_id === activeCommand.token_id && parentNode?.name?.includes(activeCommand.node_name);
+    if (nodeMatch) {
+      nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
+      if (activeCommand.status === 'running') {
+        isActive = true;
+      }
+    }
+    // Check completed commands
+    if (completedCommands && completedCommands.has(cmdKey)) {
+      if (nodeMatch) {
+        nodeColor = 'var(--success)';
+      }
+    }
+  }
 
   return (
     <div>
@@ -462,12 +534,15 @@ function TreeBranch({
           cursor: 'pointer',
           borderRadius: '4px',
           transition: 'background-color 0.1s ease',
+          backgroundColor: isSelected ? 'rgba(99,102,241,0.15)' : isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
+          fontWeight: isActive || isSelected ? 600 : undefined,
+          borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-elevated)';
+          if (!isSelected && !isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-elevated)';
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+          if (!isSelected && !isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
         }}
       >
         {/* Expand icon */}
@@ -545,6 +620,9 @@ function TreeBranch({
               onContextMenu={onContextMenu}
               onDoubleClickFile={onDoubleClickFile}
               parentNode={node}
+              activeCommand={activeCommand}
+              completedCommands={completedCommands}
+              selectedFileKey={selectedFileKey}
             />
           ))}
         </div>

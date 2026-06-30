@@ -11,28 +11,36 @@ import (
 // ─── Edge Case Tests ─────────────────────────────────────────────
 
 // TestEdgeCaseSaveIOPointsNonExistentNode verifies that saving IO points
-// for a node that doesn't exist triggers a FK constraint violation.
+// for a node that doesn't exist works (JSON store has no FK constraints).
 func TestEdgeCaseSaveIOPointsNonExistentNode(t *testing.T) {
 	s := openTestStore(t)
 
-	// Do NOT create the node — attempt to save IO points for a non-existent address.
+	// JSON store does not enforce FK constraints — saving IO points
+	// for a non-existent node should succeed.
 	points := []types.IOPoint{
 		{NodeAddress: "nonexistent.address", ModulePosition: 1, ChannelPosition: 1, ChannelType: types.AI8, ModuleType: types.ModuleFBC},
 	}
 
 	err := s.SaveIOPoints("nonexistent.address", points)
-	if err == nil {
-		t.Fatal("SaveIOPoints for non-existent node: expected FK constraint error, got nil")
+	if err != nil {
+		t.Fatalf("SaveIOPoints for non-existent node: unexpected error: %v", err)
 	}
-	t.Logf("Got expected FK error: %v", err)
+
+	// Verify the points were saved
+	got, err := s.GetIOPoints("nonexistent.address")
+	if err != nil {
+		t.Fatalf("GetIOPoints: %v", err)
+	}
+	if len(got) != 1 {
+		t.Errorf("expected 1 point, got %d", len(got))
+	}
 }
 
 // TestEdgeCaseOpenBadPath verifies that Open returns an error when the
-// path is in a directory that doesn't exist (unwritable).
+// path is in a directory that cannot be created.
 func TestEdgeCaseOpenBadPath(t *testing.T) {
-	// Use a path inside a non-existent directory — SQLite cannot create
-	// the parent directory, so this should fail.
-	badPath := filepath.Join("/nonexistent-dir-xyz", "test.db")
+	// Use a path inside a non-existent directory under /dev/null (cannot create dirs there)
+	badPath := filepath.Join("/dev/null", "subdir", "data")
 
 	_, err := Open(badPath)
 	if err == nil {
@@ -42,7 +50,7 @@ func TestEdgeCaseOpenBadPath(t *testing.T) {
 }
 
 // TestEdgeCaseOpenReadOnlyDir verifies that Open returns an error when
-// the target directory is read-only (cannot create the database file).
+// the target directory is read-only (cannot create files).
 func TestEdgeCaseOpenReadOnlyDir(t *testing.T) {
 	// Create a read-only directory
 	roDir, err := os.MkdirTemp("", "logreport-readonly-*")
@@ -58,7 +66,8 @@ func TestEdgeCaseOpenReadOnlyDir(t *testing.T) {
 		t.Fatalf("Chmod read-only: %v", err)
 	}
 
-	dbPath := filepath.Join(roDir, "test.db")
+	// Open with a sub-path inside the read-only dir — MkdirAll should fail
+	dbPath := filepath.Join(roDir, "subdir")
 	_, err = Open(dbPath)
 	if err == nil {
 		t.Fatal("Open in read-only dir: expected error, got nil")
@@ -67,7 +76,7 @@ func TestEdgeCaseOpenReadOnlyDir(t *testing.T) {
 }
 
 // TestEdgeCaseSaveDeleteSaveCycle verifies that a SaveNode → DeleteNode →
-// SaveNode cycle with the same address works correctly (INSERT OR REPLACE).
+// SaveNode cycle with the same address works correctly.
 func TestEdgeCaseSaveDeleteSaveCycle(t *testing.T) {
 	s := openTestStore(t)
 
@@ -103,7 +112,7 @@ func TestEdgeCaseSaveDeleteSaveCycle(t *testing.T) {
 		t.Fatal("GetNode after delete: expected error, got nil")
 	}
 
-	// Step 3: Save node again with same address — should succeed (INSERT OR REPLACE)
+	// Step 3: Save node again with same address — should succeed
 	n2 := &types.Node{
 		Address: addr,
 		Name:    "SecondVersion",
@@ -164,17 +173,16 @@ func TestEdgeCaseGetIOPointsNonExistentNode(t *testing.T) {
 }
 
 // TestEdgeCaseCloseTwice verifies that calling Close() twice on a Store
-// does not panic. The second call should return an error (or nil) but
-// must not crash the process.
+// does not panic. The second call should not crash the process.
 func TestEdgeCaseCloseTwice(t *testing.T) {
 	// Create a store without using openTestStore (which auto-closes on cleanup)
-	path := "/tmp/logreport-edge-close-test.db"
+	path := "/tmp/logreport-edge-close-test"
 	s, err := Open(path)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
-		os.Remove(path)
+		os.RemoveAll(path)
 	})
 
 	// First close — should succeed
@@ -183,12 +191,10 @@ func TestEdgeCaseCloseTwice(t *testing.T) {
 	}
 
 	// Second close — should NOT panic.
-	// It may return an error (sql.DB.Close on already-closed connection),
-	// but the test passes as long as it doesn't panic.
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("Second Close panicked: %v", r)
 		}
 	}()
-	_ = s.Close() // intentionally ignore error — some drivers return error, some return nil
+	_ = s.Close() // intentionally ignore error
 }

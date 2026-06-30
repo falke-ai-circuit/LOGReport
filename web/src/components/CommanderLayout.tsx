@@ -88,6 +88,21 @@ export default function CommanderLayout() {
   });
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
+
+  // Auto-set log root on page load
+  useEffect(() => {
+    const logRoot = localStorage.getItem('logRoot');
+    if (!logRoot) {
+      fetch('/api/v1/logs/setroot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'C:\\temp\\logreport-output' }),
+      }).then(() => {
+        localStorage.setItem('logRoot', 'C:\\temp\\logreport-output');
+      }).catch(() => {});
+    }
+  }, []);
 
   // Auto-set log root on page load
   useEffect(() => {
@@ -138,7 +153,13 @@ export default function CommanderLayout() {
     setSelectedToken(token);
     setCurrentToken(token.token_id || '');
     setCurrentTokenType(token.section_type || 'FBC');
-  }, []);
+    // Build file key for bidirectional highlighting
+    if (token.type === 'file' || token.type === 'token') {
+      const sectionType = token.section_type || '';
+      const fileName = token.file_name || token.name;
+      setSelectedFileKey(`${currentNodeName}:${sectionType}:${fileName}`);
+    }
+  }, [currentNodeName]);
 
   const handleDoubleClickFile = useCallback(async (node: TreeNodeData) => {
     let filePath = node.file_path || '';
@@ -263,6 +284,25 @@ export default function CommanderLayout() {
         break;
       case 'clear_logs':
         break;
+      case 'erase_file': {
+        const filePath = node.file_path || '';
+        const tokenId = node.token_id || '';
+        const sectionType = node.section_type || '';
+        setActiveTab('logviewer');
+        setTerminalLog(prev => [...prev, '> Erasing file: ' + (node.file_name || node.name)]);
+        try {
+          const body = filePath ? { path: filePath } : { node_name: nodeName, token_type: sectionType, token_id: tokenId };
+          const res = await fetch('/api/v1/logs/erase', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          if (data.erased) {
+            setTerminalLog(prev => [...prev, '[File erased: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Erase failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
     }
   }, [currentNodeName, handleDoubleClickFile]);
 
@@ -311,7 +351,7 @@ export default function CommanderLayout() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} />
+          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '2px', padding: '0 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>

@@ -1,179 +1,213 @@
-// Package store provides SQLite persistence for LOGReport data.
-// It manages nodes, IO points, reports, and templates with schema
-// versioning via PRAGMA user_version.
+// Package store provides JSON file-based persistence for LOGReport data.
+// It manages nodes, IO points, reports, projects, and templates using
+// JSON files with atomic writes (write to temp file, then rename).
 package store
 
 import (
-	"database/sql"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
 
-	_ "modernc.org/sqlite"
+	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
 
-// Store wraps a SQLite database connection and provides CRUD operations
-// for nodes, IO points, reports, and templates.
+// Store wraps in-memory maps backed by JSON files and provides CRUD
+// operations for nodes, IO points, reports, projects, and templates.
 type Store struct {
-	db *sql.DB
+	dataDir   string
+	isTemp    bool // true when using a temp directory (for tests)
+	mu        sync.RWMutex
+	nodes     map[string]*types.Node
+	ioPoints  map[string][]types.IOPoint // keyed by node address
+	reports   map[string]*types.Report
+	templates map[string]*types.Template
+	projects  map[int64]*types.Project
+	meta      metaFile
 }
 
-// Open opens a SQLite database at the given path, runs migrations,
-// and returns a ready-to-use Store.
+// metaFile holds the auto-incrementing project ID counter.
+type metaFile struct {
+	NextProjectID int64 `json:"next_project_id"`
+}
+
+// Open creates or opens a data directory at the given path, loads existing
+// JSON files, and returns a ready-to-use Store.
+//
+// If path is ":memory:" or "" (used by tests), a temporary directory is
+// created and will be cleaned up on Close().
 func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=foreign_keys(on)")
-	if err != nil {
-		return nil, fmt.Errorf("store: open %s: %w", path, err)
+	var dataDir string
+	var isTemp bool
+
+	if path == "" || path == ":memory:" {
+		// Use a temp directory for tests
+		tmpDir, err := os.MkdirTemp("", "logreport-json-*")
+		if err != nil {
+			return nil, fmt.Errorf("store: create temp dir: %w", err)
+		}
+		dataDir = tmpDir
+		isTemp = true
+	} else {
+		// Resolve to absolute path so the data dir is consistent
+		// regardless of the current working directory.
+		absDir, err := filepath.Abs(path)
+		if err != nil {
+			absDir = path
+		}
+		dataDir = absDir
+		if err := os.MkdirAll(dataDir, 0o755); err != nil {
+			return nil, fmt.Errorf("store: create data dir %s: %w", dataDir, err)
+		}
 	}
 
-	// Verify connection
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("store: ping %s: %w", path, err)
+	s := &Store{
+		dataDir:   dataDir,
+		isTemp:    isTemp,
+		nodes:     make(map[string]*types.Node),
+		ioPoints:  make(map[string][]types.IOPoint),
+		reports:   make(map[string]*types.Report),
+		templates: make(map[string]*types.Template),
+		projects:  make(map[int64]*types.Project),
+		meta:      metaFile{NextProjectID: 1},
 	}
 
-	s := &Store{db: db}
-	if err := s.Migrate(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("store: migrate: %w", err)
+	// Load existing data from disk
+	if err := s.loadAll(); err != nil {
+		if isTemp {
+			os.RemoveAll(dataDir)
+		}
+		return nil, fmt.Errorf("store: load data: %w", err)
 	}
 
 	return s, nil
 }
 
-// Close closes the underlying database connection.
+// Close closes the store. If using a temp directory, it cleans up.
 func (s *Store) Close() error {
-	return s.db.Close()
+	if s.isTemp && s.dataDir != "" {
+		return os.RemoveAll(s.dataDir)
+	}
+	return nil
 }
 
-// DB returns the underlying *sql.DB for advanced operations.
-func (s *Store) DB() *sql.DB {
-	return s.db
-}
-
-// currentSchemaVersion is the latest schema version this code expects.
-const currentSchemaVersion = 1
-
-// Migrate runs schema migrations. It uses PRAGMA user_version to track
-// the current schema version and applies migrations incrementally.
+// Migrate is a no-op for the JSON store — no schema migrations needed.
 func (s *Store) Migrate() error {
-	var version int
-	err := s.db.QueryRow("PRAGMA user_version").Scan(&version)
+	return nil
+}
+
+// ─── internal: file paths ────────────────────────────────────────
+
+func (s *Store) filePath(name string) string {
+	return filepath.Join(s.dataDir, name)
+}
+
+func (s *Store) nodesPath() string     { return s.filePath("dia_nodes.json") }
+func (s *Store) ioPointsPath() string  { return s.filePath("iopoints.json") }
+func (s *Store) reportsPath() string   { return s.filePath("reports.json") }
+func (s *Store) templatesPath() string { return s.filePath("templates.json") }
+func (s *Store) projectsPath() string  { return s.filePath("projects.json") }
+func (s *Store) metaPath() string      { return s.filePath("meta.json") }
+
+// ─── internal: atomic file write ─────────────────────────────────
+
+// writeJSONFile writes data as pretty-printed JSON to a temp file, then
+// renames it to the target path. This provides atomic writes.
+func writeJSONFile(path string, v interface{}) error {
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		return fmt.Errorf("store: read user_version: %w", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 
-	if version >= currentSchemaVersion {
-		// Still ensure post-v1 tables exist (idempotent)
-		if err := s.EnsureProjectsTable(); err != nil {
-			return fmt.Errorf("store: ensure projects table: %w", err)
-		}
-		if err := s.ensureReportColumns(); err != nil {
-			return fmt.Errorf("store: ensure report columns: %w", err)
-		}
-		return nil
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
+		return fmt.Errorf("write temp file: %w", err)
 	}
 
-	// Migration 0 → 1: initial schema
-	if version < 1 {
-		if err := s.migrateV1(); err != nil {
-			return fmt.Errorf("store: migrate v1: %w", err)
-		}
-		version = 1
-	}
-
-	// Ensure projects table exists (added post-v1, idempotent)
-	if err := s.EnsureProjectsTable(); err != nil {
-		return fmt.Errorf("store: ensure projects table: %w", err)
-	}
-	s.ensureReportColumns()
-
-	// Set final version
-	_, err = s.db.Exec(fmt.Sprintf("PRAGMA user_version = %d", version))
-	if err != nil {
-		return fmt.Errorf("store: set user_version: %w", err)
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("rename temp file: %w", err)
 	}
 
 	return nil
 }
 
-// migrateV1 creates the initial schema tables.
-func (s *Store) migrateV1() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS nodes (
-		address TEXT PRIMARY KEY,
-		name TEXT NOT NULL,
-		type TEXT NOT NULL,
-		status TEXT NOT NULL DEFAULT 'unknown',
-		token_id TEXT,
-		port INTEGER DEFAULT 23,
-		username TEXT,
-		password TEXT,
-		last_seen TEXT
-	);
+// ─── internal: load all data from disk ───────────────────────────
 
-	CREATE TABLE IF NOT EXISTS io_points (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		node_address TEXT NOT NULL REFERENCES nodes(address) ON DELETE CASCADE,
-		module_position INTEGER,
-		channel_position INTEGER,
-		channel_type TEXT,
-		module_type TEXT,
-		counter_name TEXT,
-		counter_value INTEGER
-	);
-
-	CREATE TABLE IF NOT EXISTS reports (
-		id TEXT PRIMARY KEY,
-		node_address TEXT NOT NULL,
-		format TEXT NOT NULL,
-		template TEXT,
-		title TEXT,
-		author TEXT,
-		status TEXT NOT NULL DEFAULT 'pending',
-		file_path TEXT,
-		created_at TEXT NOT NULL,
-		completed_at TEXT
-	);
-
-	CREATE TABLE IF NOT EXISTS templates (
-		name TEXT PRIMARY KEY,
-		format TEXT NOT NULL,
-		content TEXT NOT NULL
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_io_points_node ON io_points(node_address);
-	CREATE INDEX IF NOT EXISTS idx_reports_node ON reports(node_address);
-	CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
-	`
-
-	_, err := s.db.Exec(schema)
-	return err
-}
-
-// ensureReportColumns idempotently adds report_type and project_id columns to the reports table.
-func (s *Store) ensureReportColumns() error {
-	cols, err := s.db.Query("PRAGMA table_info(reports)")
-	if err != nil {
+func (s *Store) loadAll() error {
+	if err := s.loadJSON(s.nodesPath(), &s.nodes); err != nil {
 		return err
 	}
-	defer cols.Close()
-	hasReportType := false
-	hasProjectID := false
-	for cols.Next() {
-		var cid int
-		var name, ctype string
-		var notnull, pk int
-		var dflt sql.NullString
-		cols.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk)
-		if name == "report_type" { hasReportType = true }
-		if name == "project_id" { hasProjectID = true }
+	if err := s.loadJSON(s.ioPointsPath(), &s.ioPoints); err != nil {
+		return err
 	}
-	if !hasReportType {
-		_, err = s.db.Exec("ALTER TABLE reports ADD COLUMN report_type TEXT DEFAULT ''")
-		if err != nil { return err }
+	if err := s.loadJSON(s.reportsPath(), &s.reports); err != nil {
+		return err
 	}
-	if !hasProjectID {
-		_, err = s.db.Exec("ALTER TABLE reports ADD COLUMN project_id INTEGER DEFAULT 0")
-		if err != nil { return err }
+	if err := s.loadJSON(s.templatesPath(), &s.templates); err != nil {
+		return err
+	}
+	if err := s.loadJSON(s.projectsPath(), &s.projects); err != nil {
+		return err
+	}
+	if err := s.loadJSON(s.metaPath(), &s.meta); err != nil {
+		return err
+	}
+	// Ensure meta has a valid counter
+	if s.meta.NextProjectID < 1 {
+		s.meta.NextProjectID = 1
 	}
 	return nil
+}
+
+// loadJSON reads a JSON file into v. If the file doesn't exist, it silently
+// skips (leaving v as-is, which should be pre-initialized).
+func (s *Store) loadJSON(path string, v interface{}) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // file doesn't exist yet — that's fine
+		}
+		return fmt.Errorf("read %s: %w", filepath.Base(path), err)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("unmarshal %s: %w", filepath.Base(path), err)
+	}
+	return nil
+}
+
+// ─── internal: persist helpers (must be called with write lock held) ──
+
+func (s *Store) persistNodes() error {
+	return writeJSONFile(s.nodesPath(), s.nodes)
+}
+
+func (s *Store) persistIOPoints() error {
+	return writeJSONFile(s.ioPointsPath(), s.ioPoints)
+}
+
+func (s *Store) persistReports() error {
+	return writeJSONFile(s.reportsPath(), s.reports)
+}
+
+func (s *Store) persistTemplates() error {
+	return writeJSONFile(s.templatesPath(), s.templates)
+}
+
+func (s *Store) persistProjects() error {
+	return writeJSONFile(s.projectsPath(), s.projects)
+}
+
+func (s *Store) persistMeta() error {
+	return writeJSONFile(s.metaPath(), s.meta)
+}
+
+// nowISO returns the current time as an ISO 8601 string.
+func nowISO() string {
+	return time.Now().Format("2006-01-02T15:04:05Z07:00")
 }

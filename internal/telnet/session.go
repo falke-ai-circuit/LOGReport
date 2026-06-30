@@ -99,17 +99,30 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 		return
 	}
 
-	// Step 1: Send "yes" to handle potential conflict prompt
-	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
-	conn.Write([]byte("yes\r\n"))
-	time.Sleep(1 * time.Second)
-
-	// Drain any response (with IAC stripping)
-	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	drainBuf := make([]byte, 4096)
-	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
+
+	// Step 1: Read initial response to check for override prompt
+	// DIA may show "Active connection exists / Do you want to override?"
+	// or just a normal prompt
+	time.Sleep(1 * time.Second)
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, _ := conn.Read(drainBuf)
+	if n > 0 {
 		cleaned := sess.Client.stripIAC(drainBuf[:n])
-		filtered := FilterOutput(string(cleaned))
+		initialResp := string(cleaned)
+		// Check if override prompt is present
+		if strings.Contains(strings.ToLower(initialResp), "override") ||
+			strings.Contains(initialResp, "y(es)/n(o)") {
+			// Send "y" to override
+			conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+			conn.Write([]byte("y\r\n"))
+			time.Sleep(2 * time.Second)
+			// Drain override response
+			conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+			conn.Read(drainBuf)
+		}
+		// Send initial response to output channel
+		filtered := FilterOutput(initialResp)
 		if filtered != "" {
 			select {
 			case sess.Output <- filtered:
@@ -133,17 +146,17 @@ func (sm *SessionManager) verifySystemMode(sess *Session) {
 	// Send Enter to submit empty line and get fresh prompt
 	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	conn.Write([]byte("\r\n"))
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	conn.Read(drainBuf)
 
 	// Step 3: Send "systemmode" to switch to system mode
 	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	conn.Write([]byte("systemmode\r\n"))
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// Drain systemmode response
-	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	if n, err := conn.Read(drainBuf); n > 0 && err == nil {
 		cleaned := sess.Client.stripIAC(drainBuf[:n])
 		filtered := FilterOutput(string(cleaned))
@@ -386,6 +399,80 @@ func (sm *SessionManager) ListSessions() []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// SendSystemCommand sends a command in DIA system mode.
+// It clears the DIA line editor with Ctrl+X + Enter (NOT Ctrl+Z which exits system mode),
+// then sends the command. The response is stored in the session output buffer.
+func (sm *SessionManager) SendSystemCommand(sessionID, cmd string) error {
+	sm.mu.RLock()
+	sess, ok := sm.sessions[sessionID]
+	sm.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("session %s not found", sessionID)
+	}
+
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+
+	if !sess.Connected || sess.Client.conn == nil {
+		return fmt.Errorf("session %s not connected", sessionID)
+	}
+
+	conn := sess.Client.conn
+
+	// Step 1: Drain pending data
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	drainBuf := make([]byte, 4096)
+	conn.Read(drainBuf)
+
+	// Step 2: Clear line editor with Ctrl+X only (NOT Ctrl+Z — that exits system mode)
+	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	conn.Write([]byte{0x18}) // Ctrl+X — cancel current input
+	time.Sleep(100 * time.Millisecond)
+
+	// Drain Ctrl+X response
+	conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	conn.Read(drainBuf)
+
+	// Step 3: Send Enter to get a fresh prompt (without exiting system mode)
+	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	conn.Write([]byte("\r\n"))
+	time.Sleep(300 * time.Millisecond)
+
+	// Drain the Enter response (prompt)
+	conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	conn.Read(drainBuf)
+
+	// Step 4: Send the actual command
+	if err := sess.Client.SendCommand(cmd); err != nil {
+		return err
+	}
+
+	// Read the response
+	timeout := 10 * time.Second
+	if sess.Client.timeout > 0 {
+		timeout = sess.Client.timeout
+	}
+	response, readErr := sess.Client.ReadUntilPromptContextWithTimeout(timeout)
+	filtered := FilterOutput(response)
+
+	if readErr != nil && filtered == "" {
+		return fmt.Errorf("telnet read: %w", readErr)
+	}
+
+	// Store result
+	sess.outputBuffer.Reset()
+	sess.outputBuffer.WriteString(filtered)
+
+	if filtered != "" {
+		select {
+		case sess.Output <- filtered:
+		default:
+		}
+	}
+
+	return nil
 }
 
 // SessionCount returns the number of active sessions.
