@@ -538,6 +538,18 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
+	// Sanitize token_id: if it looks like a filename (contains both _ and .),
+	// extract just the token number part (last _-separated segment without extension)
+	if req.TokenID != "" {
+		if strings.Contains(req.TokenID, "_") && strings.Contains(req.TokenID, ".") {
+			base := strings.TrimSuffix(req.TokenID, filepath.Ext(req.TokenID))
+			parts := strings.Split(base, "_")
+			if len(parts) > 0 {
+				req.TokenID = parts[len(parts)-1]
+			}
+		}
+	}
+
 	// Find an existing session or create a new one
 	ids := s.telnetSM.ListSessions()
 	var sessionID string

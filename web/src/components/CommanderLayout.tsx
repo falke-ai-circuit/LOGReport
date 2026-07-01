@@ -171,11 +171,15 @@ export default function CommanderLayout() {
           .catch(err => console.error('rpc batch error:', err));
         break;
       case 'fbc_print': {
-        const cmd = 'print from fbc io structure ' + tokenId + '0000';
+        // Sanitize tokenId: if it looks like a filename, extract just the number
+        const cleanTokenId = tokenId.includes('_') && tokenId.includes('.') 
+          ? tokenId.replace(/\.[^.]+$/, '').split('_').pop() || tokenId
+          : tokenId;
+        const cmd = 'print from fbc io structure ' + cleanTokenId + '0000';
         setActiveTab('telnet');
         setTerminalLog(prev => [...prev, '> ' + cmd]);
         try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: tokenId }) });
+          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: cleanTokenId }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
           setTreeReloadKey((k) => k + 1);
@@ -183,11 +187,15 @@ export default function CommanderLayout() {
         break;
       }
       case 'rpc_print': {
-        const cmd = 'print from fbc rupi counters ' + tokenId + '0000';
+        // Sanitize tokenId: if it looks like a filename, extract just the number
+        const cleanTokenId = tokenId.includes('_') && tokenId.includes('.') 
+          ? tokenId.replace(/\.[^.]+$/, '').split('_').pop() || tokenId
+          : tokenId;
+        const cmd = 'print from fbc rupi counters ' + cleanTokenId + '0000';
         setActiveTab('telnet');
         setTerminalLog(prev => [...prev, '> ' + cmd]);
         try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
+          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: cleanTokenId }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
           setTreeReloadKey((k) => k + 1);
@@ -195,11 +203,15 @@ export default function CommanderLayout() {
         break;
       }
       case 'rpc_clear': {
-        const cmd = 'clear fbc rupi counters ' + tokenId + '0000';
+        // Sanitize tokenId: if it looks like a filename, extract just the number
+        const cleanTokenId = tokenId.includes('_') && tokenId.includes('.') 
+          ? tokenId.replace(/\.[^.]+$/, '').split('_').pop() || tokenId
+          : tokenId;
+        const cmd = 'clear fbc rupi counters ' + cleanTokenId + '0000';
         setActiveTab('telnet');
         setTerminalLog(prev => [...prev, '> ' + cmd]);
         try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
+          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: cleanTokenId }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
           setTreeReloadKey((k) => k + 1);
