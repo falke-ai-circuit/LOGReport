@@ -221,8 +221,16 @@ export default function NodeTree({
   // ─── Build context menu items based on node type ──────────────
 
   function getContextmenuItems(node: TreeNodeData, parentNode?: TreeNodeData) {
-    // NODE type: "Execute All Print Commands for {node}"
+    // NODE type: station folder
     if (node.type === 'node') {
+      // Nodes mode: folder structure creation commands
+      if (context === 'nodes') {
+        return [
+          { icon: <FolderPlus size={14} />, label: `Create New Folder under ${node.name}`, action: 'create_folder' },
+          { icon: <FileText size={14} />, label: `Create New File under ${node.name}`, action: 'create_file' },
+        ];
+      }
+      // Commander mode: print commands
       return [
         { icon: <Printer size={14} />, label: `Execute All Print Commands for ${node.name}`, action: 'print_all' },
         { icon: <Printer size={14} />, label: `Print All FBC Tokens for ${node.name}`, action: 'fbc_print_all' },
@@ -231,10 +239,18 @@ export default function NodeTree({
       ];
     }
 
-    // GROUP/SECTION type (FBC/RPC/LOG): different actions per section
+    // GROUP/SECTION type (FBC/RPC/LOG)
     if (node.type === 'group') {
       const sectionType = node.section_type || node.name;
       const nodeName = parentNode?.name || '';
+      // Nodes mode: folder/file creation commands
+      if (context === 'nodes') {
+        return [
+          { icon: <FileText size={14} />, label: `Create New File in ${sectionType}`, action: 'create_file_in_group' },
+          { icon: <FolderPlus size={14} />, label: `Create New Subfolder`, action: 'create_folder' },
+        ];
+      }
+      // Commander mode: print commands
       if (sectionType === 'LOG') {
         return [
           { icon: <Server size={14} />, label: `Print All LOG Tokens for ${nodeName}`, action: 'bstool_errlog' },
@@ -297,25 +313,8 @@ export default function NodeTree({
       return fileMgmtItems;
     }
 
-    // GROUP/SECTION type in nodes mode: create new file/folder here
-    if (node.type === 'group' && context === 'nodes') {
-      const sectionType = node.section_type || node.name;
-      return [
-        { icon: <FileText size={14} />, label: `Create New File in ${sectionType}`, action: 'create_file_in_group' },
-        { icon: <FolderPlus size={14} />, label: `Create New Subfolder`, action: 'create_folder' },
-      ];
-    }
-
-    // NODE type in nodes mode: create file/folder
-    if (node.type === 'node' && context === 'nodes') {
-      return [
-        { icon: <FolderPlus size={14} />, label: `Create New Folder under ${node.name}`, action: 'create_folder' },
-        { icon: <FileText size={14} />, label: `Create New File under ${node.name}`, action: 'create_file' },
-      ];
-    }
-
-    // NOTE: 'token' type is handled together with 'file' above (line 229).
-    // The standalone token block that was here was unreachable dead code — removed.
+    // NOTE: 'token' type is handled together with 'file' above.
+    // 'node' and 'group' types are handled at the top with context checks.
 
     return [];
   }
