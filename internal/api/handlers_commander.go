@@ -592,7 +592,21 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 
 		if sessionID == "" {
 			// No active session — try to reconnect using settings
-			// or stored host/port from a previous session
+			// or stored host/port from a previous session.
+			// F8 fix: create a context that cancels when cancelCh closes,
+			// so DialContext aborts immediately on Cancel/Pause even if
+			// the host is unreachable (Dial would otherwise block 10s).
+			cancelCh := s.commandQueue.CancelCh()
+			ctx, cancel := context.WithCancel(context.Background())
+			if cancelCh != nil {
+				go func() {
+					select {
+					case <-cancelCh:
+						cancel()
+					case <-ctx.Done():
+					}
+				}()
+			}
 			if !globalSettings.loaded {
 				s.initSettings()
 			}
@@ -612,8 +626,13 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 					port = oldSess.Port
 				}
 			}
-			sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+			sess, err := s.telnetSM.ConnectContext(ctx, "", host, port, 10*time.Second)
+			cancel() // release context resources after connect completes
 			if err != nil {
+				// Check if the error was due to cancellation
+				if ctx.Err() != nil {
+					return "", fmt.Errorf("cancelled during connect")
+				}
 				return "", fmt.Errorf("reconnect failed: %w", err)
 			}
 			sessionID = sess.ID
@@ -688,6 +707,18 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if sessionID == "" {
+			// F8 fix: context-aware connect so Cancel/Pause aborts Dial immediately
+			cancelCh := s.commandQueue.CancelCh()
+			ctx, cancel := context.WithCancel(context.Background())
+			if cancelCh != nil {
+				go func() {
+					select {
+					case <-cancelCh:
+						cancel()
+					case <-ctx.Done():
+					}
+				}()
+			}
 			if !globalSettings.loaded {
 				s.initSettings()
 			}
@@ -707,8 +738,12 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 					port = oldSess.Port
 				}
 			}
-			sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+			sess, err := s.telnetSM.ConnectContext(ctx, "", host, port, 10*time.Second)
+			cancel()
 			if err != nil {
+				if ctx.Err() != nil {
+					return "", fmt.Errorf("cancelled during connect")
+				}
 				return "", fmt.Errorf("reconnect failed: %w", err)
 			}
 			sessionID = sess.ID
