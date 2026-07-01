@@ -78,6 +78,31 @@ func (s *Server) nodesConfigPathForProject(projectID string) string {
 	return filepath.Join(p.LogRoot, "_LOG", "nodes.json")
 }
 
+// resolveLogRoot returns the effective log root for file writing.
+// Priority: server's logRootDir (set via /logs/setroot by frontend) →
+// settings LogRoot → default temp dir. This ensures the queue executor
+// writes files to the project's _LOG/ structure even if /logs/setroot
+// hasn't been called yet.
+func (s *Server) resolveLogRoot() string {
+	lr := s.logRoot()
+	if lr != "" && lr != "logs" {
+		return lr
+	}
+	// Fall back to settings
+	if !globalSettings.loaded {
+		s.initSettings()
+	}
+	st := getSettings()
+	if st.LogRoot != "" {
+		return st.LogRoot
+	}
+	// Last resort: temp dir
+	if runtime.GOOS == "windows" {
+		return "C:\\temp\\logreport-output"
+	}
+	return "/tmp/logreport-output"
+}
+
 // nodesConfigPathForLogRoot returns the path to nodes.json for a given log root.
 func (s *Server) nodesConfigPathForLogRoot(logRoot string) string {
 	if logRoot == "" {
@@ -523,7 +548,15 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	if req.NodeName != "" && req.TokenType != "" {
 		// If IP address not provided, look it up from nodes.json
 		if req.IPAddress == "" {
-			if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+			// Try project-scoped path first if we can resolve it from settings/logroot
+			configPath := s.nodesConfigPath()
+			if lr := s.resolveLogRoot(); lr != "" {
+				projectPath := s.nodesConfigPathForLogRoot(lr)
+				if _, err := os.Stat(projectPath); err == nil {
+					configPath = projectPath
+				}
+			}
+			if configs, err := nodesconfig.LoadFromFile(configPath); err == nil {
 				for _, c := range configs {
 					if c.Name == req.NodeName {
 						req.IPAddress = c.IPAddress
@@ -537,23 +570,9 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 				}
 			}
 		}
-		// Auto-set log root if not configured or still at default "logs"
-		lr := s.logRoot()
-		if lr == "" || lr == "logs" {
-			if !globalSettings.loaded {
-				s.initSettings()
-			}
-			st := getSettings()
-			if st.LogRoot != "" {
-				lr = st.LogRoot
-			} else if runtime.GOOS == "windows" {
-				lr = "C:\\temp\\logreport-output"
-			} else {
-				lr = "/tmp/logreport-output"
-			}
-			s.SetLogRoot(lr)
-			os.MkdirAll(lr, 0755)
-		}
+		// Use resolveLogRoot for file writing (project-aware)
+		lr := s.resolveLogRoot()
+		_ = os.MkdirAll(lr, 0755)
 		lw := logwriter.New(lr)
 		if err := lw.WriteOutputWithIP(req.NodeName, req.TokenType, req.TokenID, output, req.IPAddress); err != nil {
 			log.Printf("telnet/execute: failed to write log for %s/%s: %v", req.NodeName, req.TokenID, err)
@@ -690,7 +709,10 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
 		// 4. Write output to structured log files
-		lw := logwriter.New(s.logRoot())
+		// Resolve log root: use server's logRoot if it's been set via /logs/setroot,
+		// otherwise fall back to settings or default. The frontend calls /logs/setroot
+		// when a project is selected, so s.logRoot() should be the project's log_root.
+		lw := logwriter.New(s.resolveLogRoot())
 		tokenType := string(cmd.Type)
 		if tokenType == "" {
 			tokenType = "raw"
@@ -793,7 +815,7 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		}
 		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
-		lw := logwriter.New(s.logRoot())
+		lw := logwriter.New(s.resolveLogRoot())
 		tokenType := string(cmd.Type)
 		if tokenType == "" {
 			tokenType = "raw"
@@ -851,7 +873,7 @@ func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		// If no body, load from project-scoped nodes file
-		path := s.nodesConfigPath()
+		path := s.nodesConfigPathForProject(req.ProjectID)
 		configs, loadErr := nodesconfig.LoadFromFile(path)
 		if loadErr != nil {
 			writeError(w, http.StatusBadRequest, "validation_error",
@@ -902,11 +924,15 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load configs from project-scoped nodes file
-	path := s.nodesConfigPath()
-	// Check for project_id in URL query
+	// Check for project_id in URL query first, then try resolving from logroot
 	projectID := r.URL.Query().Get("project_id")
+	var path string
 	if projectID != "" {
 		path = s.nodesConfigPathForProject(projectID)
+	} else {
+		// Fall back to resolving from log root
+		lr := s.resolveLogRoot()
+		path = s.nodesConfigPathForLogRoot(lr)
 	}
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
@@ -1079,6 +1105,95 @@ func (s *Server) handleSetLogRoot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"log_root": req.Path,
 		"set":      true,
+	})
+}
+
+// handleBrowseDir lists subdirectories of a given path (for file explorer dialog).
+// GET /api/v1/browse?path=C:\dna\CA\bu
+// If path is empty, lists available drive letters (Windows) or root dirs (Linux).
+// Returns only directories (not files) to keep the response small.
+func (s *Server) handleBrowseDir(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+
+	type dirEntry struct {
+		Name string `json:"name"`
+		Path string `json:"path"`
+		Type string `json:"type"` // "dir" or "drive"
+	}
+
+	entries := make([]dirEntry, 0)
+
+	if path == "" {
+		// List drives (Windows) or root (Linux)
+		if runtime.GOOS == "windows" {
+			for c := 'C'; c <= 'Z'; c++ {
+				drive := string(c) + ":\\"
+				if _, err := os.Stat(drive); err == nil {
+					entries = append(entries, dirEntry{
+						Name: string(c) + ":",
+						Path: drive,
+						Type: "drive",
+					})
+				}
+			}
+		} else {
+			rootEntries, err := os.ReadDir("/")
+			if err == nil {
+				for _, e := range rootEntries {
+					if e.IsDir() {
+						entries = append(entries, dirEntry{
+							Name: e.Name(),
+							Path: "/" + e.Name(),
+							Type: "dir",
+						})
+					}
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"path":    path,
+			"entries": entries,
+			"parent":  "",
+		})
+		return
+	}
+
+	// Normalize path — remove trailing slash except for root
+	path = strings.TrimSuffix(path, "\\")
+	path = strings.TrimSuffix(path, "/")
+	if path == "" {
+		path = "/"
+	}
+
+	// List subdirectories
+	dirEntries, err := os.ReadDir(path)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "browse_error",
+			fmt.Sprintf("cannot read directory %s: %v", path, err))
+		return
+	}
+
+	for _, e := range dirEntries {
+		if e.IsDir() {
+			fullPath := filepath.Join(path, e.Name())
+			entries = append(entries, dirEntry{
+				Name: e.Name(),
+				Path: fullPath,
+				Type: "dir",
+			})
+		}
+	}
+
+	// Compute parent path
+	parent := filepath.Dir(path)
+	if parent == path {
+		parent = "" // at root
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"path":    path,
+		"entries": entries,
+		"parent":  parent,
 	})
 }
 

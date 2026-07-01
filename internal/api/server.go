@@ -246,6 +246,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Create a new folder (directory) on disk
 	mux.HandleFunc("POST /api/v1/logs/create-folder", s.handleCreateFolder)
+	mux.HandleFunc("GET /api/v1/browse", s.handleBrowseDir)
 }
 
 // NewTestServer creates a Server suitable for testing with a temp JSON store.

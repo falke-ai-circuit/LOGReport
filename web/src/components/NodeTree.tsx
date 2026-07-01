@@ -150,7 +150,11 @@ export default function NodeTree({
     fetchTree();
   }, [fetchTree]);
 
-  // Poll queue status
+  // Track previous queue state to detect transitions (e.g. running → done)
+  const prevQueueStateRef = useRef<string | null>(null);
+
+  // Poll queue status — always poll at 1s when queue has commands,
+  // so color changes and pulse markers update in real time.
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -161,22 +165,36 @@ export default function NodeTree({
         const data: QueueStatusResponse = await res.json();
         setQueueStatus(data);
         onQueueStatusChange?.(data);
+
+        // Detect transition to 'done' → reload tree to pick up new files
+        const prevState = prevQueueStateRef.current;
+        if (prevState === 'running' && data.state === 'done') {
+          // Queue just finished — reload tree to show new file colors
+          setTimeout(() => fetchTree(), 500);
+        }
+        // Also reload on transition from running → idle (cancel)
+        if (prevState === 'running' && data.state === 'idle') {
+          setTimeout(() => fetchTree(), 500);
+        }
+        prevQueueStateRef.current = data.state;
       } catch {
         // ignore
       }
     }
 
-    if (queueStatus && (queueStatus.state === 'running' || queueStatus.state === 'paused')) {
+    // Always poll if there are commands in the queue or queue is active
+    const hasActivity = queueStatus && (queueStatus.total > 0 || queueStatus.state === 'running' || queueStatus.state === 'paused');
+    if (hasActivity) {
       interval = setInterval(pollStatus, 1000);
-    } else {
-      pollStatus();
     }
+    // Also do an initial poll on mount
+    pollStatus();
 
     return () => {
       if (interval) clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queueStatus?.state]);
+  }, [queueStatus?.state, queueStatus?.total]);
 
   // Close context menu on outside click
   useEffect(() => {
@@ -561,14 +579,20 @@ function TreeBranch({
   // Check if this file/token matches the active command
   if (activeCommand && (node.type === 'file' || node.type === 'token')) {
     const cmdKey = `${activeCommand.node_name}:${activeCommand.token_id}:${activeCommand.type}`;
-    const nodeMatch = node.token_id === activeCommand.token_id && parentNode?.name?.includes(activeCommand.node_name);
+    // Match by token_id AND station name. The queue's node_name is the config
+    // name (e.g. "AP01m"), parentNode is the station folder (also "AP01m").
+    // Use exact match or startsWith for cases where config name has slot suffix.
+    const stationMatch = parentNode?.name === activeCommand.node_name ||
+      parentNode?.name?.startsWith(activeCommand.node_name) ||
+      activeCommand.node_name.startsWith(parentNode?.name || '');
+    const nodeMatch = node.token_id === activeCommand.token_id && stationMatch;
     if (nodeMatch) {
       nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
       if (activeCommand.status === 'running') {
         isActive = true;
       }
     }
-    // Check completed commands
+    // Check completed commands — green for done files
     if (completedCommands && completedCommands.has(cmdKey)) {
       if (nodeMatch) {
         nodeColor = 'var(--success)';

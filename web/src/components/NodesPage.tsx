@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Server, Loader2, Box, Upload, Plus, Trash2, Save, FolderOpen, FileText, ScanLine, RefreshCw, FolderPlus } from 'lucide-react';
 import NodeTree from './NodeTree';
 import CommandQueueBar from './CommandQueueBar';
+import DirBrowser from './DirBrowser';
 import { useActiveProject } from '../hooks/useActiveProject';
 import type { TreeNodeData, QueueStatusResponse, NodeConfig } from '../types/api';
 
@@ -458,6 +459,7 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
   const [selectedImports, setSelectedImports] = useState<Set<number>>(new Set());
   const [singleSysPath, setSingleSysPath] = useState('');
   const [showImport, setShowImport] = useState(false);
+  const [showDirBrowser, setShowDirBrowser] = useState(false);
 
   // Load from project state
   const [allProjects, setAllProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
@@ -897,11 +899,20 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
             <Upload size={14} color="var(--accent)" />
             <span style={{ fontSize: '12px', fontWeight: 600 }}>Scan BU Directory for .sys files</span>
             <div style={{ flex: 1 }} />
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setShowDirBrowser(true)}
+              title="Browse for directory"
+            >
+              <FolderOpen size={14} />
+              Browse
+            </button>
             <input
               type="text"
               value={importDir}
               onChange={(e) => setImportDir(e.target.value)}
-              placeholder="C:\dna\CA\bu or path to _SYS directory"
+              placeholder="C:\dna\CA\bu or click Browse"
               style={{
                 fontSize: '12px',
                 padding: '4px 8px',
@@ -1281,6 +1292,14 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
           </div>
         )}
       </div>
+      <DirBrowser
+        open={showDirBrowser}
+        onSelect={(path) => setImportDir(path)}
+        onClose={() => setShowDirBrowser(false)}
+        title="Select BU Directory"
+        initialPath={importDir || 'C:\\dna\\CA\\bu'}
+        selectLabel="Select Directory"
+      />
     </div>
   );
 }
