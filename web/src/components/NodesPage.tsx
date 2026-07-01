@@ -1248,38 +1248,41 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
                         <div
                           key={slot.index}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
                             padding: '4px 0',
                             borderBottom: '1px solid var(--border)',
                             fontSize: '12px',
                             fontFamily: 'var(--font-mono)',
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', minWidth: '48px' }}>
-                            Slot {slot.slotNumber}
-                          </span>
-                          <span style={{ color: 'var(--text-secondary)' }}>
-                            {slot.node.name}
-                          </span>
-                          {/* Token IDs */}
-                          {slot.node.tokens.map((t, ti) => (
-                            <span key={ti} style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-                              <span style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                padding: '1px 6px',
-                                borderRadius: '8px',
-                                backgroundColor: (TOKEN_COLORS[t.token_type] || '#666') + '22',
-                                color: TOKEN_COLORS[t.token_type] || '#666',
-                                border: `1px solid ${TOKEN_COLORS[t.token_type] || '#666'}44`,
-                              }}>
-                                {t.token_type}
-                              </span>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.token_id}>{t.token_id}</span>
+                          {/* Slot header row: Slot N + node name */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', minWidth: '48px' }}>
+                              Slot {slot.slotNumber}
                             </span>
-                          ))}
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                              {slot.node.name}
+                            </span>
+                          </div>
+                          {/* Token badges stacked vertically below */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '3px', paddingLeft: '54px' }}>
+                            {slot.node.tokens.map((t, ti) => (
+                              <span key={ti} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '8px',
+                                  backgroundColor: (TOKEN_COLORS[t.token_type] || '#666') + '22',
+                                  color: TOKEN_COLORS[t.token_type] || '#666',
+                                  border: `1px solid ${TOKEN_COLORS[t.token_type] || '#666'}44`,
+                                  flexShrink: 0,
+                                }}>
+                                  {t.token_type}
+                                </span>
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.token_id}>{t.token_id}</span>
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
