@@ -17,9 +17,9 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
     }
   }, [externalStatus]);
 
+  // Always poll at 1s — bar is lightweight and should work independently
+  // of whether external status is provided or not
   useEffect(() => {
-    if (externalStatus !== undefined) return; // external mode
-
     let interval: ReturnType<typeof setInterval> | null = null;
 
     async function pollStatus() {
@@ -33,14 +33,13 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
       }
     }
 
-    // Always poll at 1s — bar is lightweight
     interval = setInterval(pollStatus, 1000);
     pollStatus();
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [externalStatus]);
+  }, []); // always poll, independent of external status
 
   async function handleAction(action: 'start' | 'pause' | 'resume' | 'cancel') {
     setActionLoading(true);

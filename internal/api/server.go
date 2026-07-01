@@ -237,6 +237,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Delete a log file from disk
 	mux.HandleFunc("POST /api/v1/logs/delete", s.handleDeleteLogFile)
+
+	// Create a new log file (empty) on disk
+	mux.HandleFunc("POST /api/v1/logs/create", s.handleCreateLogFile)
+
+	// Move/rename a log file to a different subfolder
+	mux.HandleFunc("POST /api/v1/logs/move", s.handleMoveLogFile)
 }
 
 // NewTestServer creates a Server suitable for testing with a temp JSON store.

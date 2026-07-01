@@ -49,21 +49,26 @@ const STATUS_COLORS: Record<string, string> = {
   warning: '#f59e0b',
 };
 
-// File color by line count: red (empty), yellow (<10), green (>=10)
-// Also checks status field from backend (error=red, warning=yellow, idle=green)
-// In "nodes" colorMode: token type (not on disk) = red, file type (on disk) = yellow/green by content
-function fileColor(node: TreeNodeData, colorMode?: string): string {
-  // In nodes mode: token = expected file not yet on disk = red
-  if (colorMode === 'nodes' && node.type === 'token') {
-    return 'var(--error)'; // red — file doesn't exist on disk
+// File color based purely on file existence on disk:
+// - green: file exists and has content (line_count > 0)
+// - yellow: file exists but empty (line_count === 0)
+// - red: file doesn't exist on disk (token type = expected but not created yet)
+// In "nodes" colorMode: token = expected file not on disk = red
+// In "commander" colorMode: file = content-based, token = expected but not on disk = red
+function fileColor(node: TreeNodeData, _colorMode?: string): string {
+  // Token type = expected file that may or may not exist on disk
+  if (node.type === 'token') {
+    return 'var(--error)'; // red — file doesn't exist on disk yet
   }
-  if (node.line_count === 0 || node.status === 'error') {
-    // In nodes mode, a file that IS on disk but empty = yellow (exists but no content)
-    if (colorMode === 'nodes' && node.type === 'file') return '#f59e0b'; // yellow
-    return 'var(--error)'; // red — empty (commander mode)
+  // File type = actually on disk, color by content
+  if (node.type === 'file') {
+    if (node.line_count === undefined || node.line_count === null) {
+      return 'var(--text-muted)'; // gray — unknown status
+    }
+    if (node.line_count === 0) return '#f59e0b'; // yellow — exists but empty
+    if (node.line_count < 10) return '#f59e0b'; // yellow — low content
+    return 'var(--success)'; // green — has content
   }
-  if (node.line_count && node.line_count < 10 || node.status === 'warning') return '#f59e0b';
-  if (node.line_count && node.line_count >= 10 || node.status === 'idle') return 'var(--success)';
   return 'var(--text-muted)';
 }
 
@@ -241,18 +246,22 @@ export default function NodeTree({
       const sectionType = node.section_type || '';
       const tokenId = node.token_id || '';
 
-      // Commander: "Erase File Content" (empty the file, keep it)
-      // Nodes: "Delete File" (remove from disk entirely)
-      const fileActionItem = context === 'nodes'
-        ? { icon: <Trash2 size={14} />, label: 'Delete File', action: 'delete_file' }
-        : { icon: <Trash2 size={14} />, label: 'Erase File Content', action: 'erase_file' };
+      // Common file management items (both modes)
+      const fileMgmtItems = context === 'nodes' ? [
+        { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+        { icon: <Trash2 size={14} />, label: 'Delete File', action: 'delete_file' },
+        { icon: <FolderPlus size={14} />, label: 'Create File Here', action: 'create_file' },
+        { icon: <FolderOpen size={14} />, label: 'Move to Subfolder...', action: 'move_file' },
+      ] : [
+        { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+        { icon: <Trash2 size={14} />, label: 'Erase File Content', action: 'erase_file' },
+      ];
 
       if (sectionType === 'FBC') {
         return [
           { icon: <Play size={14} />, label: `Print FieldBus Structure (Token ${tokenId})`, action: 'fbc_print' },
           { icon: <ScanLine size={14} />, label: `Scan FieldBus Structure (Token ${tokenId})`, action: 'fbc_scan' },
-          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-          fileActionItem,
+          ...fileMgmtItems,
         ];
       }
       if (sectionType === 'RPC') {
@@ -260,22 +269,17 @@ export default function NodeTree({
           { icon: <Play size={14} />, label: `Print Rupi counters Token '${tokenId}'`, action: 'rpc_print' },
           { icon: <Play size={14} />, label: `Clear Rupi counters '${tokenId}'`, action: 'rpc_clear' },
           { icon: <ScanLine size={14} />, label: `Scan FieldBus Structure (Token ${tokenId})`, action: 'rpc_scan' },
-          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-          fileActionItem,
+          ...fileMgmtItems,
         ];
       }
       if (sectionType === 'LOG') {
         return [
           { icon: <Server size={14} />, label: 'Run BsTool on this file', action: 'bstool_errlog' },
-          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-          fileActionItem,
+          ...fileMgmtItems,
         ];
       }
       // LIS or unknown
-      return [
-        { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-        fileActionItem,
-      ];
+      return fileMgmtItems;
     }
 
     // NOTE: 'token' type is handled together with 'file' above (line 229).

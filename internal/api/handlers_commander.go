@@ -807,13 +807,16 @@ func (s *Server) handleQueueStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleQueueBatch generates "Print All Nodes" batch commands.
 // POST /api/v1/commandqueue/batch
+// Body: {"configs": [...], "session_id": "...", "project_id": 5}
+// If configs is empty, loads from nodes_{project_id}.json (or nodes.json if no project_id).
 func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Configs   []types.NodeConfig `json:"configs"`
 		SessionID string             `json:"session_id"`
+		ProjectID string             `json:"project_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// If no body, load from nodes.json
+		// If no body, load from project-scoped nodes file
 		path := s.nodesConfigPath()
 		configs, loadErr := nodesconfig.LoadFromFile(path)
 		if loadErr != nil {
@@ -825,8 +828,8 @@ func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(req.Configs) == 0 {
-		// Try loading from file
-		path := s.nodesConfigPath()
+		// Try loading from project-scoped file
+		path := s.nodesConfigPathForProject(req.ProjectID)
 		configs, _ := nodesconfig.LoadFromFile(path)
 		req.Configs = configs
 	}
@@ -864,8 +867,13 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load configs from nodes.json
+	// Load configs from project-scoped nodes file
 	path := s.nodesConfigPath()
+	// Check for project_id in URL query
+	projectID := r.URL.Query().Get("project_id")
+	if projectID != "" {
+		path = s.nodesConfigPathForProject(projectID)
+	}
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "load_error",

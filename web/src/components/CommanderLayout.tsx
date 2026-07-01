@@ -156,17 +156,17 @@ export default function CommanderLayout() {
     }
     switch (action) {
       case 'print_all':
-        fetch('/api/v1/commandqueue/batch-node', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName }) })
+        fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName }) })
           .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('batch error:', err));
         break;
       case 'fbc_print_all':
-        fetch('/api/v1/commandqueue/batch-node', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'FBC' }) })
+        fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'FBC' }) })
           .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('fbc batch error:', err));
         break;
       case 'rpc_print_all':
-        fetch('/api/v1/commandqueue/batch-node', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }) })
+        fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }) })
           .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('rpc batch error:', err));
         break;
@@ -239,22 +239,24 @@ export default function CommanderLayout() {
         break;
       }
     }
-  }, [currentNodeName, handleDoubleClickFile]);
+  }, [currentNodeName, handleDoubleClickFile, activeProjectId]);
 
   // Print All Logs — batch ALL nodes (FBC + RPC + LOG) and start execution
   const handlePrintAll = useCallback(async () => {
     setPrinting(true);
     try {
-      // Batch all nodes (no token_type filter = all types)
+      // Batch all nodes from the active project
       const batchRes = await fetch('/api/v1/commandqueue/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ project_id: activeProjectId ? String(activeProjectId) : '' }),
       });
       if (!batchRes.ok) {
         const data = await batchRes.json().catch(() => ({ message: 'Batch failed' }));
         throw new Error(data.message || `HTTP ${batchRes.status}`);
       }
+      const batchData = await batchRes.json();
+      setTerminalLog(prev => [...prev, `[Queue: ${batchData.total} commands queued]`]);
       // Start execution
       await fetch('/api/v1/commandqueue/start', {
         method: 'POST',
@@ -266,7 +268,7 @@ export default function CommanderLayout() {
     } finally {
       setPrinting(false);
     }
-  }, []);
+  }, [activeProjectId]);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'telnet', label: 'Telnet', icon: <Terminal size={14} /> },

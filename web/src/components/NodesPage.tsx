@@ -287,6 +287,45 @@ export default function NodesPage() {
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
+      case 'create_file': {
+        const filePath = node.file_path || '';
+        const sectionType = node.section_type || '';
+        const tokenId = node.token_id || '';
+        setTerminalLog(prev => [...prev, '> Creating file: ' + (node.file_name || node.name)]);
+        try {
+          const body = filePath ? { path: filePath } : { node_name: nodeName, token_type: sectionType, token_id: tokenId, ip_address: node.ip || '' };
+          const res = await fetch('/api/v1/logs/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          if (data.created) {
+            setTerminalLog(prev => [...prev, '[File created: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Create failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'move_file': {
+        const filePath = node.file_path || '';
+        if (!filePath) {
+          setTerminalLog(prev => [...prev, 'Error: No file path available for move']);
+          break;
+        }
+        const targetSubfolder = window.prompt('Move to subfolder (FBC, RPC, LOG, etc.):', node.section_type || '');
+        if (!targetSubfolder) break;
+        setTerminalLog(prev => [...prev, '> Moving file to ' + targetSubfolder + '/']);
+        try {
+          const res = await fetch('/api/v1/logs/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source_path: filePath, target_subfolder: targetSubfolder }) });
+          const data = await res.json();
+          if (data.moved) {
+            setTerminalLog(prev => [...prev, '[File moved: ' + data.source_path + ' → ' + data.target_path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Move failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
       default:
         break;
     }
