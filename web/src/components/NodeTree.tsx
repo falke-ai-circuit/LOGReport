@@ -113,6 +113,10 @@ export default function NodeTree({
       const params: string[] = [];
       if (logRoot) params.push(`log_root=${encodeURIComponent(logRoot)}`);
       params.push(`project_id=${projectId}`);
+      // Commander mode: hide missing files (only show what's on disk)
+      if (context === 'commander') {
+        params.push('hide_missing=true');
+      }
       const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
       const url = `/api/v1/nodesconfig/tree${queryStr}`;
       const res = await fetch(url);
@@ -140,7 +144,7 @@ export default function NodeTree({
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, context]);
 
   useEffect(() => {
     fetchTree();

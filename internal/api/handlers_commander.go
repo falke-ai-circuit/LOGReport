@@ -175,9 +175,12 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 		logRoot = s.logRoot()
 	}
 
+	// hide_missing=true: Commander mode — only show files that exist on disk
+	hideMissing := r.URL.Query().Get("hide_missing") == "true"
+
 	var tree *types.TreeNode
 	if logRoot != "" {
-		tree = nodesconfig.BuildFileTree(configs, logRoot)
+		tree = nodesconfig.BuildFileTree(configs, logRoot, hideMissing)
 	} else {
 		tree = nodesconfig.BuildTree(configs)
 	}
