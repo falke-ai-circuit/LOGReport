@@ -1265,7 +1265,7 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
                           </span>
                           {/* Token IDs */}
                           {slot.node.tokens.map((t, ti) => (
-                            <span key={ti} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <span key={ti} style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
                               <span style={{
                                 fontSize: '10px',
                                 fontWeight: 700,
@@ -1277,7 +1277,7 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
                               }}>
                                 {t.token_type}
                               </span>
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.token_id}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.token_id}>{t.token_id}</span>
                             </span>
                           ))}
                         </div>
