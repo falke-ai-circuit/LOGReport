@@ -71,8 +71,8 @@ func (e *apiError) Error() string { return e.message }
 // empty files at the given log root, based on the saved nodes.json configuration.
 // Returns counts of created dirs/files and the list of created file paths.
 func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, stationCount int, createdPaths []string, err error) {
-	// Load nodes from nodes.json
-	path := s.nodesConfigPath()
+	// Load nodes from nodes.json inside {logRoot}/_LOG/
+	path := s.nodesConfigPathForLogRoot(logRoot)
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
 		return 0, 0, 0, nil, &apiError{

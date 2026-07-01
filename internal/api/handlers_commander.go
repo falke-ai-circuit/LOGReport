@@ -54,14 +54,36 @@ func (s *Server) nodesConfigPath() string {
 	return "nodes.json" // default, may not exist yet
 }
 
-// nodesConfigPathForProject returns the path to the nodes config file,
-// scoped to a project if projectID is non-empty.
-// If projectID is empty, falls back to the default nodesConfigPath().
+// nodesConfigPathForProject returns the path to nodes.json for a project.
+// If projectID is non-empty, looks up the project's log_root from the store
+// and returns {logRoot}/_LOG/nodes.json — the nodes config lives alongside
+// the log files inside the project's _LOG subfolder.
+// If projectID is empty or the project/log_root is not found, falls back
+// to the default nodesConfigPath().
 func (s *Server) nodesConfigPathForProject(projectID string) string {
 	if projectID == "" {
 		return s.nodesConfigPath()
 	}
-	return fmt.Sprintf("nodes_%s.json", projectID)
+	// Try to look up the project's log_root from the store
+	id, err := strconv.ParseInt(projectID, 10, 64)
+	if err != nil {
+		return s.nodesConfigPath()
+	}
+	p, err := s.store.GetProject(id)
+	if err != nil || p == nil || p.LogRoot == "" {
+		// Fall back to old-style nodes_{id}.json for backward compat
+		return fmt.Sprintf("nodes_%s.json", projectID)
+	}
+	// nodes.json lives inside {logRoot}/_LOG/
+	return filepath.Join(p.LogRoot, "_LOG", "nodes.json")
+}
+
+// nodesConfigPathForLogRoot returns the path to nodes.json for a given log root.
+func (s *Server) nodesConfigPathForLogRoot(logRoot string) string {
+	if logRoot == "" {
+		return s.nodesConfigPath()
+	}
+	return filepath.Join(logRoot, "_LOG", "nodes.json")
 }
 
 // handleGetNodesConfig loads and returns nodes.json as NodeConfig[].
@@ -103,6 +125,13 @@ func (s *Server) handleSaveNodesConfig(w http.ResponseWriter, r *http.Request) {
 
 	projectID := r.URL.Query().Get("project_id")
 	path := s.nodesConfigPathForProject(projectID)
+	// Ensure parent directory exists (especially for {logRoot}/_LOG/nodes.json)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_error",
+			fmt.Sprintf("failed to create directory %s: %v", dir, err))
+		return
+	}
 	if err := nodesconfig.SaveToFile(path, configs); err != nil {
 		writeError(w, http.StatusInternalServerError, "save_error",
 			fmt.Sprintf("failed to save nodes.json: %v", err))
@@ -147,7 +176,9 @@ func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/nodesconfig/tree
 // If ?log_root= is provided, includes actual log files in the tree.
 func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request) {
-	path := s.nodesConfigPath()
+	// Use project-scoped path if project_id is provided
+	projectID := r.URL.Query().Get("project_id")
+	path := s.nodesConfigPathForProject(projectID)
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
