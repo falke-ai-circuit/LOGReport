@@ -75,15 +75,21 @@ func ScanFiles(dir string) ([]FileEntry, error) {
 		}
 
 		// Derive station name from path: {logRoot}/{station}/{type}/{file}
+		// or {logRoot}/_LOG/{station}/{type}/{file}
 		relPath, _ := filepath.Rel(dir, path)
 		pathParts := strings.Split(filepath.ToSlash(relPath), "/")
 		stationName := ""
 		if len(pathParts) >= 3 {
-			stationName = pathParts[0]
+			// Check if first component is _LOG (standard structure)
+			if strings.EqualFold(pathParts[0], "_LOG") && len(pathParts) >= 4 {
+				stationName = pathParts[1]
+			} else {
+				stationName = pathParts[0]
+			}
 		}
 
-		// NodeName from filename (strip extension)
-		nodeName := strings.TrimSuffix(d.Name(), ext)
+		// NodeName: use station name for matching, not the full filename
+		nodeName := stationName
 
 		result = append(result, FileEntry{
 			FileName:    d.Name(),

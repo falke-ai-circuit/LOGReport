@@ -811,8 +811,23 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// PDF/DOCX with log_root: skip scan data check, generate from log files
-	if (format == types.FormatPDF || format == types.FormatDOCX) && req.LogRoot != "" {
+	// Resolve log_root from project if not explicitly provided
+	if req.LogRoot == "" && req.ProjectID > 0 {
+		if p, err := s.store.GetProject(req.ProjectID); err == nil && p != nil && p.LogRoot != "" {
+			req.LogRoot = p.LogRoot
+		}
+	}
+
+	// Also check server's logRootDir (set via /logs/setroot by frontend)
+	if req.LogRoot == "" {
+		lr := s.logRoot()
+		if lr != "" && lr != "logs" {
+			req.LogRoot = lr
+		}
+	}
+
+	// PDF/DOCX/JSON with log_root: skip scan data check, generate from log files
+	if (format == types.FormatPDF || format == types.FormatDOCX || format == types.FormatJSON) && req.LogRoot != "" {
 		// Use "*" as default node address for log-root reports
 		addresses := req.NodeAddresses
 		if len(addresses) == 0 {

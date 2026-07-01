@@ -248,6 +248,8 @@ export default function ReportList() {
             <ReportConfig
               onSuccess={handleGenerated}
               onCancel={() => setShowConfig(false)}
+              projectId={activeProjectId || undefined}
+              logRoot={activeProject?.log_root}
             />
           </div>
         </div>

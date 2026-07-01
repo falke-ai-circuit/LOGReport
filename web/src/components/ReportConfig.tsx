@@ -5,9 +5,11 @@ import type { ApiNode, NodeListResponse, ApiReport } from '../types/api';
 interface ReportConfigProps {
   onSuccess: (reportId: string) => void;
   onCancel: () => void;
+  projectId?: number;
+  logRoot?: string;
 }
 
-export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps) {
+export default function ReportConfig({ onSuccess, onCancel, projectId: propProjectId, logRoot: propLogRoot }: ReportConfigProps) {
   // Node list for dropdown
   const [nodes, setNodes] = useState<ApiNode[]>([]);
   const [nodesLoading, setNodesLoading] = useState(true);
@@ -19,10 +21,10 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
   const [template, setTemplate] = useState('');
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
-  const [logRoot, setLogRoot] = useState('');
+  const [logRoot, setLogRoot] = useState(propLogRoot || '');
 
   // Project + report type
-  const [projectId, setProjectId] = useState<number | ''>('');
+  const [projectId, setProjectId] = useState<number | ''>(propProjectId || '');
   const [reportType, setReportType] = useState<'survey' | 'drydock'>('survey');
   const [projects, setProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
 
@@ -33,7 +35,7 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Fetch nodes for dropdown
+  // Fetch nodes for dropdown — try SQLite first, then nodes.json
   useEffect(() => {
     let cancelled = false;
 
@@ -41,14 +43,29 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
       setNodesLoading(true);
       setNodesError(null);
       try {
+        // Try SQLite nodes first
         const res = await fetch('/api/v1/nodes');
-        if (!res.ok) {
-          const text = await res.text().catch(() => 'Unknown error');
-          throw new Error(`HTTP ${res.status}: ${text}`);
+        if (res.ok) {
+          const data: NodeListResponse = await res.json();
+          if (!cancelled && data.nodes && data.nodes.length > 0) {
+            setNodes(data.nodes);
+            setNodesLoading(false);
+            return;
+          }
         }
-        const data: NodeListResponse = await res.json();
-        if (!cancelled) {
-          setNodes(data.nodes ?? []);
+        // Fallback: fetch from nodesconfig (nodes.json) for the active project
+        const configUrl = projectId ? `/api/v1/nodesconfig?project_id=${projectId}` : '/api/v1/nodesconfig';
+        const cfgRes = await fetch(configUrl);
+        if (!cancelled && cfgRes.ok) {
+          const cfgData = await cfgRes.json();
+          const configs = cfgData.configs || [];
+          // Convert node configs to ApiNode format
+          const apiNodes: ApiNode[] = configs.map((c: { name: string; ip_address: string }) => ({
+            address: c.name,
+            ip_address: c.ip_address,
+            name: c.name,
+          }));
+          if (!cancelled) setNodes(apiNodes);
         }
       } catch (err) {
         if (!cancelled) {
@@ -61,7 +78,8 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
 
     fetchNodes();
     return () => { cancelled = true; };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   // Fetch projects for dropdown
   useEffect(() => {
@@ -251,9 +269,10 @@ export default function ReportConfig({ onSuccess, onCancel }: ReportConfigProps)
               }}
             >
               <option value="">Select a node...</option>
+              <option value="*">All Nodes (combined report)</option>
               {nodes.map((n) => (
                 <option key={n.address} value={n.address}>
-                  {n.name} ({n.address}:{n.port})
+                  {n.name} ({n.address}{n.port ? ':' + n.port : ''})
                 </option>
               ))}
             </select>

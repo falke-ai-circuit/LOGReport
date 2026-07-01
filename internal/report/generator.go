@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -196,7 +197,8 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 	}
 
 	if err := s.SaveReport(report); err != nil {
-		return nil, fmt.Errorf("report: save report: %w", err)
+		// Log but don't fail — the report file was generated successfully
+		log.Printf("report: save report to store failed (non-fatal): %v", err)
 	}
 
 	return report, nil
