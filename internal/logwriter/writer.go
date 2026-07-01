@@ -91,7 +91,7 @@ func fileExtension(tokenType string) string {
 }
 
 // logPath returns the full path for a specific log file.
-// Directory: {logRoot}/{stationName}/{tokenType}/
+// Directory: {logRoot}/_LOG/{stationName}/{tokenType}/
 // Filename: {stationName}_{ipFormatted}_{tokenID}.{ext}
 // For LOG type: {stationName}_{ipFormatted}.log (no tokenID in filename)
 func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
@@ -107,14 +107,14 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 		fileName = fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
 	}
 
-	return filepath.Join(lw.logRoot, stationName, typeDir, fileName)
+	return filepath.Join(lw.logRoot, "_LOG", stationName, typeDir, fileName)
 }
 
 // nodeDir returns the directory path for a node's logs, creating it if needed.
-// Directory: {logRoot}/{stationName}/{tokenType}/
+// Directory: {logRoot}/_LOG/{stationName}/{tokenType}/
 func (lw *LogWriter) nodeDir(nodeName, tokenType string) (string, error) {
 	stationName := extractStationName(nodeName)
-	dir := filepath.Join(lw.logRoot, stationName, strings.ToUpper(tokenType))
+	dir := filepath.Join(lw.logRoot, "_LOG", stationName, strings.ToUpper(tokenType))
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("logwriter: create dir %s: %w", dir, err)
 	}
@@ -207,12 +207,12 @@ func (lw *LogWriter) ListFiles(tokenType string) ([]LogEntry, error) {
 
 
 // ListLogs returns all log files for a given node (by station name).
-// It scans {logRoot}/{stationName}/*/ for all files.
+// It scans {logRoot}/_LOG/{stationName}/*/ for all files.
 func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
 	stationName := extractStationName(nodeName)
 	entries := make([]LogEntry, 0)
 
-	stationDir := filepath.Join(lw.logRoot, stationName)
+	stationDir := filepath.Join(lw.logRoot, "_LOG", stationName)
 	typeEntries, err := os.ReadDir(stationDir)
 	if err != nil {
 		return entries, nil

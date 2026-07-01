@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Loader2, AlertTriangle, FileJson, FileArchive, X } from 'lucide-react';
+import { FileText, Plus, Loader2, AlertTriangle, FileJson, FileArchive, X, Trash2, RefreshCw } from 'lucide-react';
+import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 import type { ApiReport, ReportListResponse } from '../types/api';
 import ReportConfig from './ReportConfig';
 
@@ -25,16 +26,11 @@ const FORMAT_ICONS: Record<string, React.ReactNode> = {
   pdf: <FileText size={14} />,
 };
 
-interface Project {
-  id: number;
-  project_number: string;
-  ship_name: string;
-  log_root: string;
-  status: string;
-}
-
 export default function ReportList() {
-  // navigate removed
+  const { activeProjectId } = useActiveProject();
+  const { projects } = useProjects();
+  const navigate = useNavigate();
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
 
   // Report list state
   const [reports, setReports] = useState<ApiReport[]>([]);
@@ -50,24 +46,48 @@ export default function ReportList() {
   // Config modal
   const [showConfig, setShowConfig] = useState(false);
 
-  // Project filter
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filterProjectId, setFilterProjectId] = useState<number | 'all'>('all');
+  // Right-click context menu
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; report: ApiReport } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Fetch projects for filter
+  // Close context menu on outside click
   useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const res = await fetch('/api/v1/projects');
-        if (!res.ok) return;
-        const data = await res.json();
-        setProjects(data.projects || []);
-      } catch {
-        // ignore
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
       }
     }
-    fetchProjects();
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  async function handleDeleteReport(reportId: string) {
+    if (!window.confirm('Delete this report? The file will be removed from disk.')) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/v1/reports/${encodeURIComponent(reportId)}`, { method: 'DELETE' });
+      // Refresh list
+      const res = await fetch('/api/v1/reports');
+      if (res.ok) {
+        const data: ReportListResponse = await res.json();
+        setAllReports(data.reports ?? []);
+        setReports(data.reports ?? []);
+        if (selectedReport?.report_id === reportId) {
+          setSelectedReport(null);
+        }
+      }
+    } catch { /* ignore */ } finally {
+      setDeleting(false);
+      setContextMenu(null);
+    }
+  }
+
+  function handleRegenerateReport(report: ApiReport) {
+    // Open the config modal pre-filled with the report's parameters
+    setShowConfig(true);
+    setContextMenu(null);
+  }
 
   // Fetch reports
   useEffect(() => {
@@ -104,16 +124,16 @@ export default function ReportList() {
     return () => { cancelled = true; };
   }, []);
 
-  // Apply project filter
+  // Filter reports by active project
   useEffect(() => {
-    if (filterProjectId === 'all') {
-      setReports(allReports);
+    if (!activeProjectId) {
+      setReports([]);
     } else {
-      // Filter by project_id if available
-      const filtered = allReports.filter(r => (r as any).project_id === filterProjectId || !(r as any).project_id);
+      // Filter by project_id if available, otherwise show all (legacy reports may not have project_id)
+      const filtered = allReports.filter(r => (r as any).project_id === activeProjectId || !(r as any).project_id);
       setReports(filtered.length > 0 ? filtered : allReports);
     }
-  }, [filterProjectId, allReports]);
+  }, [activeProjectId, allReports]);
 
   // Load preview when selected report changes
   useEffect(() => {
@@ -157,7 +177,7 @@ export default function ReportList() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header with project filter */}
+      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -171,32 +191,39 @@ export default function ReportList() {
       >
         <FileText size={20} color="var(--accent)" />
         <h1 style={{ fontSize: '16px', fontWeight: 700 }}>Reports</h1>
+        {activeProject ? (
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }}>
+            {activeProject.project_number} — {activeProject.ship_name}
+          </span>
+        ) : (
+          <span style={{ fontSize: '11px', color: 'var(--warning)', marginLeft: '4px' }}>
+            No project selected
+          </span>
+        )}
         <div style={{ flex: 1 }} />
-        <select
-          value={filterProjectId}
-          onChange={(e) => setFilterProjectId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          style={{
-            fontSize: '12px',
-            padding: '4px 10px',
-            backgroundColor: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            color: 'var(--text-primary)',
-            fontFamily: 'var(--font-sans)',
-          }}
+        <button
+          className="btn btn-primary"
+          style={{ fontSize: '12px', padding: '4px 12px' }}
+          onClick={() => setShowConfig(true)}
+          disabled={!activeProjectId}
         >
-          <option value="all">All Projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.project_number} — {p.ship_name}
-            </option>
-          ))}
-        </select>
-        <button className="btn btn-primary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => setShowConfig(true)}>
           <Plus size={14} />
           Generate New Report
         </button>
       </div>
+
+      {/* No project state */}
+      {!activeProjectId && !loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '48px', textAlign: 'center' }}>
+          <FileText size={48} color="var(--text-muted)" style={{ marginBottom: '16px' }} />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
+            No project selected. Select a project from the Dashboard to view and generate reports.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/')}>
+            Go to Dashboard
+          </button>
+        </div>
+      )}
 
       {/* Config modal */}
       {showConfig && (
@@ -287,6 +314,7 @@ export default function ReportList() {
                 <div
                   key={report.report_id}
                   onClick={() => handleReportClick(report)}
+                  onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, report }); }}
                   style={{
                     cursor: 'pointer',
                     padding: '10px 12px',
@@ -399,6 +427,42 @@ export default function ReportList() {
                 Select a report from the sidebar to preview.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Context menu for report cards */}
+      {contextMenu && (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            padding: '4px',
+            zIndex: 1000,
+            minWidth: '180px',
+          }}
+        >
+          <div
+            onClick={() => handleRegenerateReport(contextMenu.report)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '12px', color: 'var(--text-primary)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-secondary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+          >
+            <RefreshCw size={14} /> Regenerate Report
+          </div>
+          <div
+            onClick={() => handleDeleteReport(contextMenu.report.report_id)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '12px', color: 'var(--error)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-secondary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+          >
+            {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Delete Report
           </div>
         </div>
       )}

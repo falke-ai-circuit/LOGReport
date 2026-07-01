@@ -18,6 +18,7 @@ type Settings struct {
 	BsToolHost        string `json:"bstool_host"`
 	BsToolPort        int    `json:"bstool_port"`
 	LogRoot           string `json:"log_root"`
+	LogRootName       string `json:"logroot_name"`
 	BsToolPath        string `json:"bstool_path"`
 	CommunicationLine string `json:"communication_line"`
 	OutputDir         string `json:"output_dir"`
@@ -26,12 +27,13 @@ type Settings struct {
 // defaultSettings returns platform-appropriate defaults.
 func defaultSettings() Settings {
 	return Settings{
-		DIAHost:    "127.0.0.1",
-		DIAPort:    1234,
-		BsToolHost: "127.0.0.1",
-		BsToolPort: 1516,
-		LogRoot:    "",
-		OutputDir:  "",
+		DIAHost:     "127.0.0.1",
+		DIAPort:     1234,
+		BsToolHost:  "127.0.0.1",
+		BsToolPort:  1516,
+		LogRoot:     "",
+		LogRootName: "_LOG",
+		OutputDir:   "",
 	}
 }
 
@@ -89,6 +91,15 @@ func (s *Server) initSettings() {
 	}
 	if st.BsToolPort == 0 {
 		st.BsToolPort = def.BsToolPort
+	}
+	if st.LogRootName == "" {
+		st.LogRootName = def.LogRootName
+	}
+	if st.BsToolPath == "" {
+		st.BsToolPath = def.BsToolPath
+	}
+	if st.CommunicationLine == "" {
+		st.CommunicationLine = def.CommunicationLine
 	}
 
 	globalSettings.settings = st
@@ -159,6 +170,15 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.BsToolPort == 0 {
 		req.BsToolPort = def.BsToolPort
+	}
+	if req.LogRootName == "" {
+		req.LogRootName = def.LogRootName
+	}
+	if req.BsToolPath == "" {
+		req.BsToolPath = def.BsToolPath
+	}
+	if req.CommunicationLine == "" {
+		req.CommunicationLine = def.CommunicationLine
 	}
 
 	// Apply log_root immediately

@@ -220,6 +220,7 @@ func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, repor
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
 </Types>`
 	writeZipEntry(zw, "[Content_Types].xml", contentTypes)
 
@@ -230,9 +231,10 @@ func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, repor
 </Relationships>`
 	writeZipEntry(zw, "_rels/.rels", rels)
 
-	// word/_rels/document.xml.rels
+	// word/_rels/document.xml.rels — link to styles.xml
 	docRels := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`
 	writeZipEntry(zw, "word/_rels/document.xml.rels", docRels)
 
@@ -258,21 +260,28 @@ func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, repor
 	sb.WriteString(docxParagraph("", "", false, 0))
 
 	// ─── Table of Contents ───────────────────────────────────────
-	sb.WriteString(docxParagraph("Table of Contents", docxFontArial, true, 24)) // 12pt
+	// Use Word TOC field — auto-generates clickable TOC when opened in Word
+	sb.WriteString(`<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">Table of Contents</w:t></w:r></w:p>`)
+	// TOC field — Word auto-generates from Heading1 styles on open
+	sb.WriteString(`<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r>`)
+	sb.WriteString(`<w:r><w:instrText xml:space="preserve"> TOC \o "1-1" \h \z </instrText></w:r>`)
+	sb.WriteString(`<w:r><w:fldChar w:fldCharType="separate"/></w:r>`)
+	sb.WriteString(`<w:r><w:t xml:space="preserve">Right-click and select "Update Field" to generate the table of contents.</w:t></w:r>`)
+	sb.WriteString(`<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>`)
 	sb.WriteString(docxParagraph("", "", false, 0))
 
 	nodes, byNode := nodeGroups(scanEntries)
-	for _, node := range nodes {
-		sb.WriteString(docxParagraph("Node: "+node, docxFontArial, true, 22)) // 11pt
-	}
 
 	// Page break after TOC
 	sb.WriteString(docxPageBreak())
 
 	// ─── Node Chapters ───────────────────────────────────────────
-	for _, node := range nodes {
-		// Node heading (Arial, bold, 16pt = 32 half-points)
-		sb.WriteString(docxParagraph("Node: "+node, docxFontArial, true, 32))
+	for i, node := range nodes {
+		// Node heading with Word Heading1 style + bookmark for TOC navigation
+		bookmarkID := fmt.Sprintf("node_%d", i)
+		sb.WriteString(`<w:bookmarkStart w:id="` + fmt.Sprintf("%d", i) + `" w:name="` + bookmarkID + `"/>`)
+		sb.WriteString(`<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">Node: ` + xmlEscape(node) + `</w:t></w:r></w:p>`)
+		sb.WriteString(`<w:bookmarkEnd w:id="` + fmt.Sprintf("%d", i) + `"/>`)
 		sb.WriteString(docxParagraph("", "", false, 0))
 
 		// Files for this node (already sorted by type)
@@ -333,6 +342,38 @@ func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, repor
 
 	sb.WriteString(`</w:body></w:document>`)
 	writeZipEntry(zw, "word/document.xml", sb.String())
+
+	// word/styles.xml — define Heading1 style for TOC navigation
+	stylesXML := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr>
+      <w:keepNext/>
+      <w:spacing w:before="240" w:after="60"/>
+      <w:outlineLvl w:val="0"/>
+    </w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+      <w:b/>
+      <w:bCs/>
+      <w:sz w:val="32"/>
+      <w:szCs w:val="32"/>
+      <w:color w:val="4A148C"/>
+    </w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr>
+    <w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+  </w:style>
+</w:styles>`
+	writeZipEntry(zw, "word/styles.xml", stylesXML)
+
+	// Update content types to include styles.xml
+	// (already written above, but we need to add the styles override)
 
 	if err := zw.Close(); err != nil {
 		return "", fmt.Errorf("docx: close zip: %w", err)

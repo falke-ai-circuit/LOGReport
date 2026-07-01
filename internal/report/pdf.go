@@ -152,11 +152,18 @@ func generatePDF(reportID, logRoot string, scanEntries []ScanEntry) (string, err
 	pdf.SetTextColor(0, 0, 0)
 	pdf.Ln(4)
 
-	// TOC entries — one per node
+	// TOC entries — one per node, with clickable internal links
+	// First pass: create link placeholders for each node
+	tocLinks := make(map[string]int)
+	for _, node := range nodes {
+		tocLinks[node] = pdf.AddLink()
+	}
+
 	for _, node := range nodes {
 		pdf.SetFont("Helvetica", "B", 12)
 		pdf.SetTextColor(subR, subG, subB)
-		pdf.Cell(0, 7, fmt.Sprintf("Node: %s", node))
+		link := tocLinks[node]
+		pdf.CellFormat(0, 7, fmt.Sprintf("Node: %s", node), "", 1, "L", false, link, "")
 		pdf.Ln(7)
 	}
 	pdf.SetTextColor(0, 0, 0)
@@ -164,6 +171,9 @@ func generatePDF(reportID, logRoot string, scanEntries []ScanEntry) (string, err
 	// ─── Node Chapters ───────────────────────────────────────────
 	for _, node := range nodes {
 		pdf.AddPage()
+
+		// Set the link target to this page
+		pdf.SetLink(tocLinks[node], -1, pdf.PageNo())
 
 		// Node chapter heading
 		pdf.SetFont("Helvetica", "B", 16)

@@ -45,6 +45,13 @@ func (s *Server) createProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-create _LOG/{station}/{type}/ folder structure if the project has a log_root
+	if created.LogRoot != "" {
+		if _, _, _, _, structErr := s.createLogStructure(created.LogRoot); structErr != nil {
+			log.Printf("create-project: auto-create structure at %s: %v", created.LogRoot, structErr)
+		}
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"project": created,
 	})

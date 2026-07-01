@@ -1052,6 +1052,34 @@ func (s *Server) getReportHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, reportToAPI(rpt))
 }
 
+// deleteReportHandler deletes a report by ID and removes its file from disk.
+// DELETE /api/v1/reports/{id}
+func (s *Server) deleteReportHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "report id is required")
+		return
+	}
+
+	// Get report to find the file path
+	rpt, err := s.store.GetReport(id)
+	if err != nil {
+		// Already gone — return success
+		writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": true, "id": id})
+		return
+	}
+
+	// Remove the file from disk
+	if rpt.FilePath != "" {
+		os.Remove(rpt.FilePath) // best-effort
+	}
+
+	// Remove from store
+	s.store.DeleteReport(id)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": true, "id": id})
+}
+
 // ─── Handler 12: POST /api/v1/bstool/errlog ─────────────────────
 
 // bstoolErrLogRequest is the JSON request body for the bstool errlog endpoint.

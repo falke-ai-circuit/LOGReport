@@ -192,7 +192,9 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 
 // BuildFileTree builds a tree from actual log files on disk.
 // Structure: root -> station -> FBC/RPC/LOG/LIS -> files (with full filenames)
-func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
+// If hideMissing is true, only files that actually exist on disk are shown —
+// no "token" placeholder nodes for expected-but-missing files (used by Commander).
+func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool) *types.TreeNode {
 	if logRoot == "" {
 		return BuildTree(configs)
 	}
@@ -241,10 +243,20 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				Children:    make([]types.TreeNode, 0),
 			}
 
-			scanDir := filepath.Join(logRoot, stationName, gType)
+			// Scan dir: {logRoot}/{_LOG}/{station}/{type}/ (case-insensitive)
+			// Try lowercase first, then uppercase for backward compat
+			scanDir := filepath.Join(logRoot, "_LOG", stationName, strings.ToLower(gType))
 			entries, err := os.ReadDir(scanDir)
 			if err != nil {
-				// Dir doesn't exist -- add token nodes with filenames from config
+				// Try old uppercase path (backward compat)
+				scanDir = filepath.Join(logRoot, stationName, gType)
+				entries, err = os.ReadDir(scanDir)
+			}
+			if err != nil {
+				// Dir doesn't exist -- add token nodes with filenames from config (unless hideMissing)
+				if hideMissing {
+					continue
+				}
 				for _, cfg := range memberCfgs {
 					for _, tok := range cfg.Tokens {
 						if strings.EqualFold(string(tok.TokenType), gType) {
@@ -271,10 +283,10 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				if entry.IsDir() {
 					continue
 				}
-				entryExt := strings.ToLower(filepath.Ext(entry.Name()))
-				if entryExt != ext {
-					continue
-				}
+				// Don't filter by extension — show ALL files in the subfolder.
+				// Users may move files between subfolders (e.g. FBC file into RPC folder)
+				// and those files should still be visible and selectable.
+				_ = ext // keep for potential future use
 
 				fullPath := filepath.Join(scanDir, entry.Name())
 				lineCount := countLines(fullPath)
@@ -300,7 +312,7 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				return sectionNode.Children[i].Name < sectionNode.Children[j].Name
 			})
 
-			if len(sectionNode.Children) == 0 {
+			if len(sectionNode.Children) == 0 && !hideMissing {
 				for _, cfg := range memberCfgs {
 					for _, tok := range cfg.Tokens {
 						if strings.EqualFold(string(tok.TokenType), gType) {
@@ -321,6 +333,9 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				stationNode.Children = append(stationNode.Children, sectionNode)
 			}
 		}
+
+		// Compute aggregate station status from all file/token grandchildren
+		stationNode.Status = aggregateStationStatus(stationNode.Children)
 
 		root.Children = append(root.Children, stationNode)
 	}
@@ -368,4 +383,27 @@ func extractTokenIDFromName(filename, sectionType string) string {
 		return parts[len(parts)-1]
 	}
 	return base
+}
+
+// aggregateStationStatus computes a station node's Status from its children.
+// Station children are group nodes (FBC/RPC/LOG/LIS); their children are
+// file/token nodes with Status fields set by fileStatus().
+// Rules: any descendant "error" → "error", any descendant "warning" → "warning",
+// otherwise "idle".
+func aggregateStationStatus(groupNodes []types.TreeNode) string {
+	hasWarning := false
+	for _, group := range groupNodes {
+		for _, leaf := range group.Children {
+			switch leaf.Status {
+			case "error":
+				return "error"
+			case "warning":
+				hasWarning = true
+			}
+		}
+	}
+	if hasWarning {
+		return "warning"
+	}
+	return "idle"
 }

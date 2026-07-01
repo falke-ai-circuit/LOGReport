@@ -1,6 +1,7 @@
 package telnet
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -57,11 +58,20 @@ func generateSessionID() string {
 //  2. Send Ctrl+Z (0x1a) to clear terminal
 //  3. Send "systemmode\r\n" to switch to system mode
 func (sm *SessionManager) Connect(sessionID, host string, port int, timeout time.Duration) (*Session, error) {
+	return sm.ConnectContext(context.Background(), sessionID, host, port, timeout)
+}
+
+// ConnectContext creates a new persistent telnet session with a context-aware
+// dial. If ctx is cancelled (e.g. queue Cancel/Pause closes cancelCh), the
+// Dial aborts immediately instead of blocking for the full timeout.
+// This is critical for F8: Cancel must work even when the host is unreachable
+// and Dial is the blocking call.
+func (sm *SessionManager) ConnectContext(ctx context.Context, sessionID, host string, port int, timeout time.Duration) (*Session, error) {
 	if sessionID == "" {
 		sessionID = generateSessionID()
 	}
 
-	client, err := Dial(host, port, timeout)
+	client, err := DialContext(ctx, host, port, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("session connect %s:%d: %w", host, port, err)
 	}

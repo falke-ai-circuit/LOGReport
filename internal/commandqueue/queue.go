@@ -70,6 +70,7 @@ type Queue struct {
 	onOutput  func(QueuedCommand) // callback for output streaming
 	onStatus  func(QueuedCommand) // callback for status changes
 	cmdCh     chan struct{}       // signals for pause/resume/cancel
+	cancelCh  chan struct{}       // closed to abort the current in-flight command
 }
 
 // NewQueue creates a new command queue with optional output and status callbacks.
@@ -121,6 +122,7 @@ func (q *Queue) Start(executor func(QueuedCommand) (string, error)) error {
 	q.state = QueueRunning
 	q.cancelled = false
 	q.paused = false
+	q.cancelCh = make(chan struct{})
 	q.mu.Unlock()
 
 	for {
@@ -181,11 +183,30 @@ func (q *Queue) Start(executor func(QueuedCommand) (string, error)) error {
 	}
 }
 
+// CancelCh returns the current cancel channel. Returns nil if the queue
+// is not running. The channel is closed when Pause or Cancel is called,
+// allowing in-flight executors to abort immediately.
+func (q *Queue) CancelCh() chan struct{} {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.cancelCh
+}
+
 // Pause pauses execution after the current command completes.
+// If a command is currently executing, the cancel channel is closed to
+// abort it immediately rather than waiting for the command timeout.
 func (q *Queue) Pause() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.paused = true
+	if q.cancelCh != nil {
+		select {
+		case <-q.cancelCh:
+			// already closed
+		default:
+			close(q.cancelCh)
+		}
+	}
 }
 
 // Resume resumes execution from the paused position.
@@ -198,10 +219,20 @@ func (q *Queue) Resume() {
 }
 
 // Cancel cancels all pending commands.
+// If a command is currently executing, the cancel channel is closed to
+// abort it immediately rather than waiting for the command timeout.
 func (q *Queue) Cancel() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.cancelled = true
+	if q.cancelCh != nil {
+		select {
+		case <-q.cancelCh:
+			// already closed
+		default:
+			close(q.cancelCh)
+		}
+	}
 }
 
 // Status returns the current queue state.
@@ -228,6 +259,7 @@ func (q *Queue) Reset() {
 	q.current = 0
 	q.paused = false
 	q.cancelled = false
+	q.cancelCh = nil
 	q.state = QueueIdle
 }
 

@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2 } from 'lucide-react';
-
-interface Project {
-  id: number;
-  project_number: string;
-  ship_name: string;
-  log_root: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import { useNavigate } from 'react-router-dom';
+import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings } from 'lucide-react';
+import { useActiveProject, type Project } from '../hooks/useActiveProject';
 
 interface ProjectsResponse {
   projects: Project[];
@@ -32,6 +24,12 @@ export default function Dashboard() {
   const [newProject, setNewProject] = useState({ project_number: '', ship_name: '', log_root: '' });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { activeProjectId, selectProject } = useActiveProject();
+  const navigate = useNavigate();
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editLogRoot, setEditLogRoot] = useState('');
+  const [editMoving, setEditMoving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -86,11 +84,10 @@ export default function Dashboard() {
       const created = await res.json().catch(() => null);
       setShowCreate(false);
       setNewProject({ project_number: '', ship_name: '', log_root: '' });
-      fetchProjects();
-      // If the API returns the created project id, link to Commander with that project
+      await fetchProjects();
+      // Set the new project as active globally (and set its log_root)
       if (created && created.id) {
-        localStorage.setItem('activeProjectId', String(created.id));
-        window.location.href = `/commander?project_id=${created.id}`;
+        selectProject(created.id, created.log_root || newProject.log_root || '');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -114,6 +111,44 @@ export default function Dashboard() {
       fetchProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete project');
+    }
+  }
+
+  function handleEditProject(project: Project) {
+    setEditingProject(project);
+    setEditLogRoot(project.log_root || '');
+    setEditError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingProject) return;
+    setEditMoving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/v1/projects/${editingProject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_number: editingProject.project_number,
+          ship_name: editingProject.ship_name,
+          log_root: editLogRoot,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Update failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      // If log_root changed and project is active, update the active log root
+      if (data.project && data.project.log_root && data.project.id === activeProjectId) {
+        selectProject(data.project.id, data.project.log_root);
+      }
+      setEditingProject(null);
+      fetchProjects();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update project');
+    } finally {
+      setEditMoving(false);
     }
   }
 
@@ -244,7 +279,14 @@ export default function Dashboard() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {projects.map((p) => (
-              <ProjectCard key={p.id} project={p} onDelete={() => handleDeleteProject(p.id, `${p.project_number} — ${p.ship_name}`)} />
+              <ProjectCard
+                key={p.id}
+                project={p}
+                isActive={p.id === activeProjectId}
+                onSelect={() => { selectProject(p.id, p.log_root || ''); navigate('/nodes'); }}
+                onDelete={() => handleDeleteProject(p.id, `${p.project_number} — ${p.ship_name}`)}
+                onEdit={() => handleEditProject(p)}
+              />
             ))}
           </div>
         )}
@@ -258,7 +300,7 @@ export default function Dashboard() {
             icon={<FolderPlus size={18} />}
             label="Ingest Sys Files"
             description="Scan BU directory and load nodes"
-            href="/sysfile"
+            href="/nodes"
           />
           <QuickAction
             icon={<Server size={18} />}
@@ -274,11 +316,67 @@ export default function Dashboard() {
           />
         </div>
       </div>
+      {/* Edit Project Dialog */}
+      {editingProject && (
+        <div
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setEditingProject(null); }}
+        >
+          <div style={{ width: '500px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+              <Settings size={16} color="var(--accent)" />
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>Edit Project: {editingProject.project_number} — {editingProject.ship_name}</span>
+              <button className="btn btn-ghost" style={{ fontSize: '14px', padding: '2px 8px', marginLeft: 'auto' }} onClick={() => setEditingProject(null)}>✕</button>
+            </div>
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Project Number</label>
+                <input
+                  type="text"
+                  value={editingProject.project_number}
+                  readOnly
+                  style={{ ...inputStyle, width: '100%', opacity: 0.6 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Ship Name</label>
+                <input
+                  type="text"
+                  value={editingProject.ship_name}
+                  readOnly
+                  style={{ ...inputStyle, width: '100%', opacity: 0.6 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Log Root <span style={{ color: 'var(--accent)' }}>(change to move files)</span></label>
+                <input
+                  type="text"
+                  value={editLogRoot}
+                  onChange={(e) => setEditLogRoot(e.target.value)}
+                  placeholder="C:\dna\CA\bu"
+                  style={{ ...inputStyle, width: '100%' }}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Current: {editingProject.log_root || '(none)'}
+                  {editLogRoot !== editingProject.log_root && editLogRoot && (
+                    <span style={{ color: '#f59e0b', marginLeft: '8px' }}>⚠ Files will need to be moved manually or via Create Structure</span>
+                  )}
+                </div>
+              </div>
+              {editError && <div style={{ fontSize: '11px', color: 'var(--error)' }}>{editError}</div>}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderTop: '1px solid var(--border)', justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 16px' }} onClick={() => setEditingProject(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 16px' }} onClick={handleSaveEdit} disabled={editMoving}>
+                {editMoving ? <Loader2 size={14} className="spin" /> : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ─── Sub-components ───────────────────────────────────────────────
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color: string }) {
   return (
@@ -303,7 +401,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
-function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => void }) {
+function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: { project: Project; isActive: boolean; onSelect: () => void; onDelete: () => void; onEdit: () => void }) {
   return (
     <div
       style={{
@@ -311,36 +409,53 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
         alignItems: 'center',
         gap: '12px',
         padding: '12px 16px',
-        backgroundColor: 'var(--bg-secondary)',
+        backgroundColor: isActive ? 'rgba(99,102,241,0.08)' : 'var(--bg-secondary)',
         borderRadius: '8px',
-        border: '1px solid var(--border)',
+        border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
         transition: 'border-color 0.15s ease',
+        cursor: 'pointer',
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+      onClick={onSelect}
+      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
+      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
     >
-      <Ship size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
+      {isActive ? <CheckCircle size={18} color="var(--accent)" style={{ flexShrink: 0 }} /> : <Ship size={18} color="var(--accent)" style={{ flexShrink: 0 }} />}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '14px', fontWeight: 600 }}>
           {project.project_number} — {project.ship_name}
+          {isActive && <span style={{ fontSize: '10px', color: 'var(--accent)', marginLeft: '8px' }}>ACTIVE</span>}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
           {project.log_root || 'No log root set'} · {project.status} · {new Date(project.created_at).toLocaleDateString()}
         </div>
       </div>
-      <a
-        href={`/commander?project_id=${project.id}`}
+      <span
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
           fontSize: '12px',
           color: 'var(--accent)',
-          textDecoration: 'none',
         }}
       >
         Open <ArrowRight size={14} />
-      </a>
+      </span>
+      <button
+        className="btn btn-ghost"
+        style={{
+          fontSize: '12px',
+          padding: '4px 8px',
+          color: 'var(--text-secondary)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        title="Edit project (change log root, move files)"
+      >
+        <Settings size={14} />
+        Edit
+      </button>
       <button
         className="btn btn-ghost"
         style={{
@@ -351,7 +466,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
           alignItems: 'center',
           gap: '4px',
         }}
-        onClick={onDelete}
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
         title="Delete this project"
       >
         <Trash2 size={14} />

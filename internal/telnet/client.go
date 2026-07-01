@@ -69,6 +69,25 @@ func Dial(host string, port int, timeout time.Duration) (*Client, error) {
 	}, nil
 }
 
+// DialContext opens a TCP connection using a context-aware dialer.
+// If ctx is cancelled (e.g. queue cancel), the dial aborts immediately
+// instead of blocking for the full timeout — this is critical for
+// Pause/Cancel to work when the target host is unreachable.
+func DialContext(ctx context.Context, host string, port int, timeout time.Duration) (*Client, error) {
+	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+
+	dialer := net.Dialer{Timeout: timeout}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("telnet dial %s: %w", addr, err)
+	}
+
+	return &Client{
+		conn:    conn,
+		timeout: timeout,
+	}, nil
+}
+
 // Close terminates the telnet connection.
 func (c *Client) Close() error {
 	if c.conn == nil {
