@@ -43,25 +43,63 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Load nodes from nodes.json
-	path := s.nodesConfigPath()
-	configs, err := nodesconfig.LoadFromFile(path)
+	createdDirs, createdFiles, stationCount, createdPaths, err := s.createLogStructure(logRoot)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "load_error",
-			fmt.Sprintf("failed to load nodes.json: %v", err))
+		writeError(w, err.(*apiError).code, err.(*apiError).label, err.(*apiError).message)
 		return
 	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"created_dirs":  createdDirs,
+		"created_files": createdFiles,
+		"log_root":      logRoot,
+		"station_count": stationCount,
+		"paths":         createdPaths,
+	})
+}
+
+// apiError is a simple error type carrying an HTTP status code, label, and message.
+type apiError struct {
+	code    int
+	label   string
+	message string
+}
+
+func (e *apiError) Error() string { return e.message }
+
+// createLogStructure creates the _LOG/{station}/{type}/ folder structure and
+// empty files at the given log root, based on the saved nodes.json configuration.
+// Returns counts of created dirs/files and the list of created file paths.
+func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, stationCount int, createdPaths []string, err error) {
+	// Load nodes from nodes.json inside {logRoot}/_LOG/
+	path := s.nodesConfigPathForLogRoot(logRoot)
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil {
+		return 0, 0, 0, nil, &apiError{
+			code:    http.StatusInternalServerError,
+			label:   "load_error",
+			message: fmt.Sprintf("failed to load nodes.json: %v", err),
+		}
+	}
 	if len(configs) == 0 {
-		writeError(w, http.StatusBadRequest, "no_nodes",
-			"no nodes configured. Save nodes first.")
-		return
+		return 0, 0, 0, nil, &apiError{
+			code:    http.StatusBadRequest,
+			label:   "no_nodes",
+			message: "no nodes configured. Save nodes first.",
+		}
+	}
+
+	// Determine log root folder name (default: _LOG, configurable in Settings)
+	logRootName := "_LOG"
+	if !globalSettings.loaded {
+		s.initSettings()
+	}
+	st := getSettings()
+	if st.LogRootName != "" {
+		logRootName = st.LogRootName
 	}
 
 	// Create folder structure and empty files
-	createdDirs := 0
-	createdFiles := 0
-	var createdPaths []string
-
 	for _, cfg := range configs {
 		stationName := extractStationNameFromConfig(cfg.Name)
 		ip := cfg.IPAddress
@@ -74,10 +112,10 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		}
 
 		for tokenType, tokens := range tokenTypes {
-			// Create directory: {logRoot}/{station}/{tokenType}/
-			dir := filepath.Join(logRoot, stationName, tokenType)
-			if err := os.MkdirAll(dir, 0755); err != nil {
-				log.Printf("create-structure: mkdir %s: %v", dir, err)
+			// Create directory: {logRoot}/{_LOG}/{station}/{tokenType}/
+			dir := filepath.Join(logRoot, logRootName, stationName, strings.ToLower(tokenType))
+			if mkErr := os.MkdirAll(dir, 0755); mkErr != nil {
+				log.Printf("create-structure: mkdir %s: %v", dir, mkErr)
 				continue
 			}
 			createdDirs++
@@ -86,15 +124,14 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 			for _, tok := range tokens {
 				fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
 				filePath := filepath.Join(dir, fileName)
-
 				// Only create if file doesn't exist (don't overwrite existing files)
-				if _, err := os.Stat(filePath); err == nil {
+				if _, statErr := os.Stat(filePath); statErr == nil {
 					// File already exists — skip
 					continue
 				}
 
-				if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
-					log.Printf("create-structure: write %s: %v", filePath, err)
+				if wErr := os.WriteFile(filePath, []byte{}, 0644); wErr != nil {
+					log.Printf("create-structure: write %s: %v", filePath, wErr)
 					continue
 				}
 				createdFiles++
@@ -103,13 +140,7 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"created_dirs":  createdDirs,
-		"created_files": createdFiles,
-		"log_root":      logRoot,
-		"station_count": len(configs),
-		"paths":         createdPaths,
-	})
+	return createdDirs, createdFiles, len(configs), createdPaths, nil
 }
 
 // buildLogFileName creates the expected filename for a log file.
@@ -248,6 +279,9 @@ func (s *Server) handleDeleteLogFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Try to clear read-only attribute before deleting (Windows may set it)
+	_ = os.Chmod(filePath, 0666)
+
 	if err := os.Remove(filePath); err != nil {
 		writeError(w, http.StatusInternalServerError, "delete_error",
 			fmt.Sprintf("failed to delete file: %v", err))
@@ -257,5 +291,184 @@ func (s *Server) handleDeleteLogFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"deleted": true,
 		"path":    filePath,
+	})
+}
+
+// handleCreateLogFile creates a new empty log file on disk.
+// POST /api/v1/logs/create
+// Body: {"path": "C:\	emp\\...\\file.fbc"} or
+//       {"node_name": "AP01m", "token_type": "FBC", "token_id": "22", "ip_address": "192.168.0.11"}
+func (s *Server) handleCreateLogFile(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path      string `json:"path"`
+		NodeName  string `json:"node_name"`
+		TokenType string `json:"token_type"`
+		TokenID   string `json:"token_id"`
+		IPAddress string `json:"ip_address"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+
+	filePath := req.Path
+	if filePath == "" && req.NodeName != "" {
+		if req.IPAddress == "" {
+			if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+				for _, c := range configs {
+					if c.Name == req.NodeName || extractStationNameFromConfig(c.Name) == req.NodeName {
+						req.IPAddress = c.IPAddress
+						break
+					}
+				}
+			}
+		}
+		lw := logwriter.New(s.logRoot())
+		filePath = lw.LogPath(req.NodeName, req.TokenType, req.TokenID, req.IPAddress)
+	}
+
+	if filePath == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "path or node_name+token_type is required")
+		return
+	}
+
+	// Check if file already exists
+	if _, err := os.Stat(filePath); err == nil {
+		writeError(w, http.StatusConflict, "already_exists", fmt.Sprintf("file already exists: %s", filePath))
+		return
+	}
+
+	// Create parent directories
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "create_error",
+			fmt.Sprintf("failed to create directory: %v", err))
+		return
+	}
+
+	// Create empty file
+	f, err := os.Create(filePath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "create_error",
+			fmt.Sprintf("failed to create file: %v", err))
+		return
+	}
+	f.Close()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"created": true,
+		"path":    filePath,
+	})
+}
+
+// handleMoveLogFile moves a log file to a different subfolder.
+// POST /api/v1/logs/move
+// Body: {"source_path": "...", "target_path": "..."} or
+//       {"source_path": "...", "target_subfolder": "FBC"} (moves within same station)
+func (s *Server) handleMoveLogFile(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SourcePath      string `json:"source_path"`
+		TargetPath      string `json:"target_path"`
+		TargetSubfolder string `json:"target_subfolder"` // e.g. "FBC", "RPC", "LOG"
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+
+	if req.SourcePath == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "source_path is required")
+		return
+	}
+
+	if _, err := os.Stat(req.SourcePath); err != nil {
+		writeError(w, http.StatusNotFound, "not_found", fmt.Sprintf("source file not found: %s", req.SourcePath))
+		return
+	}
+
+	// Determine target path
+	targetPath := req.TargetPath
+	if targetPath == "" && req.TargetSubfolder != "" {
+		// Move within same station to a different subfolder
+		dir := filepath.Dir(filepath.Dir(req.SourcePath)) // go up from type folder
+		fileName := filepath.Base(req.SourcePath)
+		targetPath = filepath.Join(dir, strings.ToLower(req.TargetSubfolder), fileName)
+	}
+
+	if targetPath == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "target_path or target_subfolder is required")
+		return
+	}
+
+	// Don't overwrite existing files
+	if _, err := os.Stat(targetPath); err == nil {
+		writeError(w, http.StatusConflict, "already_exists", fmt.Sprintf("target file already exists: %s", targetPath))
+		return
+	}
+
+	// Create target directory if needed
+	targetDir := filepath.Dir(targetPath)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "move_error",
+			fmt.Sprintf("failed to create target directory: %v", err))
+		return
+	}
+
+	// Move the file
+	if err := os.Rename(req.SourcePath, targetPath); err != nil {
+		// os.Rename may fail across volumes/drives — fall back to copy+delete
+		data, readErr := os.ReadFile(req.SourcePath)
+		if readErr != nil {
+			writeError(w, http.StatusInternalServerError, "move_error",
+				fmt.Sprintf("failed to read source file: %v", readErr))
+			return
+		}
+		if writeErr := os.WriteFile(targetPath, data, 0644); writeErr != nil {
+			writeError(w, http.StatusInternalServerError, "move_error",
+				fmt.Sprintf("failed to write target file: %v", writeErr))
+			return
+		}
+		os.Remove(req.SourcePath)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"moved":       true,
+		"source_path": req.SourcePath,
+		"target_path": targetPath,
+	})
+}
+
+// handleCreateFolder creates a new directory on disk.
+// POST /api/v1/logs/create-folder
+// Body: {"path": "C:\	emp\\...\\newfolder"}
+func (s *Server) handleCreateFolder(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+
+	if req.Path == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "path is required")
+		return
+	}
+
+	// Check if already exists
+	if _, err := os.Stat(req.Path); err == nil {
+		writeError(w, http.StatusConflict, "already_exists", fmt.Sprintf("folder already exists: %s", req.Path))
+		return
+	}
+
+	if err := os.MkdirAll(req.Path, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "create_error",
+			fmt.Sprintf("failed to create folder: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"created": true,
+		"path":    req.Path,
 	})
 }

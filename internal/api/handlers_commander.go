@@ -54,14 +54,61 @@ func (s *Server) nodesConfigPath() string {
 	return "nodes.json" // default, may not exist yet
 }
 
-// nodesConfigPathForProject returns the path to the nodes config file,
-// scoped to a project if projectID is non-empty.
-// If projectID is empty, falls back to the default nodesConfigPath().
+// nodesConfigPathForProject returns the path to nodes.json for a project.
+// If projectID is non-empty, looks up the project's log_root from the store
+// and returns {logRoot}/_LOG/nodes.json — the nodes config lives alongside
+// the log files inside the project's _LOG subfolder.
+// If projectID is empty or the project/log_root is not found, falls back
+// to the default nodesConfigPath().
 func (s *Server) nodesConfigPathForProject(projectID string) string {
 	if projectID == "" {
 		return s.nodesConfigPath()
 	}
-	return fmt.Sprintf("nodes_%s.json", projectID)
+	// Try to look up the project's log_root from the store
+	id, err := strconv.ParseInt(projectID, 10, 64)
+	if err != nil {
+		return s.nodesConfigPath()
+	}
+	p, err := s.store.GetProject(id)
+	if err != nil || p == nil || p.LogRoot == "" {
+		// Fall back to old-style nodes_{id}.json for backward compat
+		return fmt.Sprintf("nodes_%s.json", projectID)
+	}
+	// nodes.json lives inside {logRoot}/_LOG/
+	return filepath.Join(p.LogRoot, "_LOG", "nodes.json")
+}
+
+// resolveLogRoot returns the effective log root for file writing.
+// Priority: server's logRootDir (set via /logs/setroot by frontend) →
+// settings LogRoot → default temp dir. This ensures the queue executor
+// writes files to the project's _LOG/ structure even if /logs/setroot
+// hasn't been called yet.
+func (s *Server) resolveLogRoot() string {
+	lr := s.logRoot()
+	if lr != "" && lr != "logs" {
+		return lr
+	}
+	// Fall back to settings
+	if !globalSettings.loaded {
+		s.initSettings()
+	}
+	st := getSettings()
+	if st.LogRoot != "" {
+		return st.LogRoot
+	}
+	// Last resort: temp dir
+	if runtime.GOOS == "windows" {
+		return "C:\\temp\\logreport-output"
+	}
+	return "/tmp/logreport-output"
+}
+
+// nodesConfigPathForLogRoot returns the path to nodes.json for a given log root.
+func (s *Server) nodesConfigPathForLogRoot(logRoot string) string {
+	if logRoot == "" {
+		return s.nodesConfigPath()
+	}
+	return filepath.Join(logRoot, "_LOG", "nodes.json")
 }
 
 // handleGetNodesConfig loads and returns nodes.json as NodeConfig[].
@@ -103,6 +150,32 @@ func (s *Server) handleSaveNodesConfig(w http.ResponseWriter, r *http.Request) {
 
 	projectID := r.URL.Query().Get("project_id")
 	path := s.nodesConfigPathForProject(projectID)
+	// Ensure parent directory exists (especially for {logRoot}/_LOG/nodes.json)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_error",
+			fmt.Sprintf("failed to create directory %s: %v", dir, err))
+		return
+	}
+	// Sanitize token_ids: if a token_id looks like a filename (contains both
+	// "_" and "."), extract just the token number from it. This prevents
+	// doubled filenames like "AP01m_192-168-0-11_22.fbc.fbc" when command
+	// output is written with the filename as token_id.
+	for i := range configs {
+		for j := range configs[i].Tokens {
+			tid := configs[i].Tokens[j].TokenID
+			if strings.Contains(tid, "_") && strings.Contains(tid, ".") {
+				// Extract last segment after "_" and strip extension
+				parts := strings.Split(tid, "_")
+				last := parts[len(parts)-1]
+				last = strings.TrimSuffix(last, filepath.Ext(last))
+				if last != "" {
+					configs[i].Tokens[j].TokenID = last
+				}
+			}
+		}
+	}
+
 	if err := nodesconfig.SaveToFile(path, configs); err != nil {
 		writeError(w, http.StatusInternalServerError, "save_error",
 			fmt.Sprintf("failed to save nodes.json: %v", err))
@@ -147,7 +220,9 @@ func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/nodesconfig/tree
 // If ?log_root= is provided, includes actual log files in the tree.
 func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request) {
-	path := s.nodesConfigPath()
+	// Use project-scoped path if project_id is provided
+	projectID := r.URL.Query().Get("project_id")
+	path := s.nodesConfigPathForProject(projectID)
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -175,9 +250,12 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 		logRoot = s.logRoot()
 	}
 
+	// hide_missing=true: Commander mode — only show files that exist on disk
+	hideMissing := r.URL.Query().Get("hide_missing") == "true"
+
 	var tree *types.TreeNode
 	if logRoot != "" {
-		tree = nodesconfig.BuildFileTree(configs, logRoot)
+		tree = nodesconfig.BuildFileTree(configs, logRoot, hideMissing)
 	} else {
 		tree = nodesconfig.BuildTree(configs)
 	}
@@ -481,7 +559,7 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Wait for output
-	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 
 	// Write output to log file if node info is provided (from context menu)
 	fileWritten := false
@@ -489,7 +567,15 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	if req.NodeName != "" && req.TokenType != "" {
 		// If IP address not provided, look it up from nodes.json
 		if req.IPAddress == "" {
-			if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+			// Try project-scoped path first if we can resolve it from settings/logroot
+			configPath := s.nodesConfigPath()
+			if lr := s.resolveLogRoot(); lr != "" {
+				projectPath := s.nodesConfigPathForLogRoot(lr)
+				if _, err := os.Stat(projectPath); err == nil {
+					configPath = projectPath
+				}
+			}
+			if configs, err := nodesconfig.LoadFromFile(configPath); err == nil {
 				for _, c := range configs {
 					if c.Name == req.NodeName {
 						req.IPAddress = c.IPAddress
@@ -503,23 +589,9 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 				}
 			}
 		}
-		// Auto-set log root if not configured or still at default "logs"
-		lr := s.logRoot()
-		if lr == "" || lr == "logs" {
-			if !globalSettings.loaded {
-				s.initSettings()
-			}
-			st := getSettings()
-			if st.LogRoot != "" {
-				lr = st.LogRoot
-			} else if runtime.GOOS == "windows" {
-				lr = "C:\\temp\\logreport-output"
-			} else {
-				lr = "/tmp/logreport-output"
-			}
-			s.SetLogRoot(lr)
-			os.MkdirAll(lr, 0755)
-		}
+		// Use resolveLogRoot for file writing (project-aware)
+		lr := s.resolveLogRoot()
+		_ = os.MkdirAll(lr, 0755)
 		lw := logwriter.New(lr)
 		if err := lw.WriteOutputWithIP(req.NodeName, req.TokenType, req.TokenID, output, req.IPAddress); err != nil {
 			log.Printf("telnet/execute: failed to write log for %s/%s: %v", req.NodeName, req.TokenID, err)
@@ -592,7 +664,21 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 
 		if sessionID == "" {
 			// No active session — try to reconnect using settings
-			// or stored host/port from a previous session
+			// or stored host/port from a previous session.
+			// F8 fix: create a context that cancels when cancelCh closes,
+			// so DialContext aborts immediately on Cancel/Pause even if
+			// the host is unreachable (Dial would otherwise block 10s).
+			cancelCh := s.commandQueue.CancelCh()
+			ctx, cancel := context.WithCancel(context.Background())
+			if cancelCh != nil {
+				go func() {
+					select {
+					case <-cancelCh:
+						cancel()
+					case <-ctx.Done():
+					}
+				}()
+			}
 			if !globalSettings.loaded {
 				s.initSettings()
 			}
@@ -612,8 +698,13 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 					port = oldSess.Port
 				}
 			}
-			sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+			sess, err := s.telnetSM.ConnectContext(ctx, "", host, port, 10*time.Second)
+			cancel() // release context resources after connect completes
 			if err != nil {
+				// Check if the error was due to cancellation
+				if ctx.Err() != nil {
+					return "", fmt.Errorf("cancelled during connect")
+				}
 				return "", fmt.Errorf("reconnect failed: %w", err)
 			}
 			sessionID = sess.ID
@@ -634,10 +725,13 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 
 		// 3. Wait for output: poll GetOutput, wait up to 10 seconds for
 		// non-empty output, then collect for 2 more seconds for trailing data
-		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
 		// 4. Write output to structured log files
-		lw := logwriter.New(s.logRoot())
+		// Resolve log root: use server's logRoot if it's been set via /logs/setroot,
+		// otherwise fall back to settings or default. The frontend calls /logs/setroot
+		// when a project is selected, so s.logRoot() should be the project's log_root.
+		lw := logwriter.New(s.resolveLogRoot())
 		tokenType := string(cmd.Type)
 		if tokenType == "" {
 			tokenType = "raw"
@@ -688,6 +782,18 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if sessionID == "" {
+			// F8 fix: context-aware connect so Cancel/Pause aborts Dial immediately
+			cancelCh := s.commandQueue.CancelCh()
+			ctx, cancel := context.WithCancel(context.Background())
+			if cancelCh != nil {
+				go func() {
+					select {
+					case <-cancelCh:
+						cancel()
+					case <-ctx.Done():
+					}
+				}()
+			}
 			if !globalSettings.loaded {
 				s.initSettings()
 			}
@@ -707,8 +813,12 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 					port = oldSess.Port
 				}
 			}
-			sess, err := s.telnetSM.Connect("", host, port, 10*time.Second)
+			sess, err := s.telnetSM.ConnectContext(ctx, "", host, port, 10*time.Second)
+			cancel()
 			if err != nil {
+				if ctx.Err() != nil {
+					return "", fmt.Errorf("cancelled during connect")
+				}
 				return "", fmt.Errorf("reconnect failed: %w", err)
 			}
 			sessionID = sess.ID
@@ -722,9 +832,9 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 			}
 			return "", err
 		}
-		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
-		lw := logwriter.New(s.logRoot())
+		lw := logwriter.New(s.resolveLogRoot())
 		tokenType := string(cmd.Type)
 		if tokenType == "" {
 			tokenType = "raw"
@@ -772,14 +882,17 @@ func (s *Server) handleQueueStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleQueueBatch generates "Print All Nodes" batch commands.
 // POST /api/v1/commandqueue/batch
+// Body: {"configs": [...], "session_id": "...", "project_id": 5}
+// If configs is empty, loads from nodes_{project_id}.json (or nodes.json if no project_id).
 func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Configs   []types.NodeConfig `json:"configs"`
 		SessionID string             `json:"session_id"`
+		ProjectID string             `json:"project_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// If no body, load from nodes.json
-		path := s.nodesConfigPath()
+		// If no body, load from project-scoped nodes file
+		path := s.nodesConfigPathForProject(req.ProjectID)
 		configs, loadErr := nodesconfig.LoadFromFile(path)
 		if loadErr != nil {
 			writeError(w, http.StatusBadRequest, "validation_error",
@@ -790,8 +903,8 @@ func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(req.Configs) == 0 {
-		// Try loading from file
-		path := s.nodesConfigPath()
+		// Try loading from project-scoped file
+		path := s.nodesConfigPathForProject(req.ProjectID)
 		configs, _ := nodesconfig.LoadFromFile(path)
 		req.Configs = configs
 	}
@@ -829,8 +942,17 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load configs from nodes.json
-	path := s.nodesConfigPath()
+	// Load configs from project-scoped nodes file
+	// Check for project_id in URL query first, then try resolving from logroot
+	projectID := r.URL.Query().Get("project_id")
+	var path string
+	if projectID != "" {
+		path = s.nodesConfigPathForProject(projectID)
+	} else {
+		// Fall back to resolving from log root
+		lr := s.resolveLogRoot()
+		path = s.nodesConfigPathForLogRoot(lr)
+	}
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "load_error",
@@ -1002,6 +1124,95 @@ func (s *Server) handleSetLogRoot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"log_root": req.Path,
 		"set":      true,
+	})
+}
+
+// handleBrowseDir lists subdirectories of a given path (for file explorer dialog).
+// GET /api/v1/browse?path=C:\dna\CA\bu
+// If path is empty, lists available drive letters (Windows) or root dirs (Linux).
+// Returns only directories (not files) to keep the response small.
+func (s *Server) handleBrowseDir(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+
+	type dirEntry struct {
+		Name string `json:"name"`
+		Path string `json:"path"`
+		Type string `json:"type"` // "dir" or "drive"
+	}
+
+	entries := make([]dirEntry, 0)
+
+	if path == "" {
+		// List drives (Windows) or root (Linux)
+		if runtime.GOOS == "windows" {
+			for c := 'C'; c <= 'Z'; c++ {
+				drive := string(c) + ":\\"
+				if _, err := os.Stat(drive); err == nil {
+					entries = append(entries, dirEntry{
+						Name: string(c) + ":",
+						Path: drive,
+						Type: "drive",
+					})
+				}
+			}
+		} else {
+			rootEntries, err := os.ReadDir("/")
+			if err == nil {
+				for _, e := range rootEntries {
+					if e.IsDir() {
+						entries = append(entries, dirEntry{
+							Name: e.Name(),
+							Path: "/" + e.Name(),
+							Type: "dir",
+						})
+					}
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"path":    path,
+			"entries": entries,
+			"parent":  "",
+		})
+		return
+	}
+
+	// Normalize path — remove trailing slash except for root
+	path = strings.TrimSuffix(path, "\\")
+	path = strings.TrimSuffix(path, "/")
+	if path == "" {
+		path = "/"
+	}
+
+	// List subdirectories
+	dirEntries, err := os.ReadDir(path)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "browse_error",
+			fmt.Sprintf("cannot read directory %s: %v", path, err))
+		return
+	}
+
+	for _, e := range dirEntries {
+		if e.IsDir() {
+			fullPath := filepath.Join(path, e.Name())
+			entries = append(entries, dirEntry{
+				Name: e.Name(),
+				Path: fullPath,
+				Type: "dir",
+			})
+		}
+	}
+
+	// Compute parent path
+	parent := filepath.Dir(path)
+	if parent == path {
+		parent = "" // at root
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"path":    path,
+		"entries": entries,
+		"parent":  parent,
 	})
 }
 
@@ -1282,13 +1493,23 @@ func extractStationNameFromConfig(nodeName string) string {
 // waitForOutput polls the session output buffer for non-empty output.
 // It waits up to maxWait for the first non-empty result, then collects
 // for trailWait more seconds to capture trailing data.
-func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWait time.Duration) string {
+// If cancelCh is non-nil and closed, it returns immediately with whatever
+// output has been collected so far (used by Pause/Cancel to abort fast).
+func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWait time.Duration, cancelCh chan struct{}) string {
 	deadline := time.Now().Add(maxWait)
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
 	// Phase 1: Wait for non-empty output
 	for time.Now().Before(deadline) {
+		select {
+		case <-cancelCh:
+			// Cancelled — return whatever we have
+			out, _ := sm.GetOutput(sessionID)
+			return out
+		default:
+		}
+
 		out, err := sm.GetOutput(sessionID)
 		if err != nil {
 			return ""
@@ -1302,7 +1523,14 @@ func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWa
 			}
 			return out
 		}
-		<-ticker.C
+
+		select {
+		case <-ticker.C:
+		case <-cancelCh:
+			// Cancelled during wait — return whatever we have
+			out, _ := sm.GetOutput(sessionID)
+			return out
+		}
 	}
 
 	// Timeout: return whatever we have (may be empty)
@@ -1560,7 +1788,7 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	// SendSystemCommand clears with Ctrl+X + Enter only (no Ctrl+Z which exits system mode)
 	_ = s.telnetSM.ClearOutput(sessionID)
 	_ = s.telnetSM.SendSystemCommand(sessionID, "systemtest node_list nodelist.txt")
-	_ = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+	_ = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 
 	// Step 4: Wait for nodelist.txt to appear (poll for up to 15 seconds)
 	// DIA writes the file asynchronously after the command returns
@@ -1599,12 +1827,12 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		// Also get print structure for the structure_raw field
 		_ = s.telnetSM.ClearOutput(sessionID)
 		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 	} else {
 		// ─── Fallback: print structure + token probing ────────────
 		_ = s.telnetSM.ClearOutput(sessionID)
 		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 		configs = scanFromStructure(s, sessionID, structureRaw)
 	}
 

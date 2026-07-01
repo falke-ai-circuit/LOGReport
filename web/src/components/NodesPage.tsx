@@ -1,31 +1,12 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Server, Loader2, ChevronDown, Box, Upload, Plus, Trash2, Save, FolderOpen, FileText, ScanLine } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Server, Loader2, Box, Upload, Plus, Trash2, Save, FolderOpen, FileText, ScanLine, RefreshCw, FolderPlus } from 'lucide-react';
 import NodeTree from './NodeTree';
 import CommandQueueBar from './CommandQueueBar';
+import DirBrowser from './DirBrowser';
+import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 import type { TreeNodeData, QueueStatusResponse, NodeConfig } from '../types/api';
-
-interface Project {
-  id: number;
-  project_number: string;
-  ship_name: string;
-  log_root: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-function getProjectIdFromURL(): number | null {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const val = params.get('project_id');
-    if (val) {
-      const n = parseInt(val, 10);
-      if (!isNaN(n) && n > 0) return n;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
 
 function ColorizedLog({ content }: { content: string }) {
   const lines = content.split('\n');
@@ -54,6 +35,10 @@ function ColorizedLog({ content }: { content: string }) {
 }
 
 export default function NodesPage() {
+  const { activeProjectId, activeLogRoot } = useActiveProject();
+  const { projects } = useProjects();
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+  const navigate = useNavigate();
   const [showFileModal, setShowFileModal] = useState(false);
   const [, setSelectedNode] = useState<TreeNodeData | null>(null);
   const [, setSelectedToken] = useState<TreeNodeData | null>(null);
@@ -65,15 +50,6 @@ export default function NodesPage() {
   const [fileViewPath, setFileViewPath] = useState<string>('');
   const [fileLoading, setFileLoading] = useState(false);
   const [terminalLog, setTerminalLog] = useState<string[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
-    const fromURL = getProjectIdFromURL();
-    if (fromURL) { localStorage.setItem('activeProjectId', String(fromURL)); return fromURL; }
-    const stored = localStorage.getItem('activeProjectId');
-    return stored ? parseInt(stored, 10) : null;
-  });
-  const [projectsLoading, setProjectsLoading] = useState(false);
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ count: number; configs: NodeConfig[]; structure?: string } | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
@@ -100,45 +76,17 @@ export default function NodesPage() {
     }
   }, []);
 
-  // Auto-set log root on page load so file paths resolve correctly
+  // Auto-set log root from shared hook (only if not already set by project selection)
   useEffect(() => {
-    const logRoot = localStorage.getItem('logRoot');
-    if (!logRoot) {
+    if (activeLogRoot) {
+      // Ensure backend knows about the log root
       fetch('/api/v1/logs/setroot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: 'C:\\temp\\logreport-output' }),
-      }).then(() => {
-        localStorage.setItem('logRoot', 'C:\\temp\\logreport-output');
+        body: JSON.stringify({ path: activeLogRoot }),
       }).catch(() => {});
     }
-  }, []);
-
-  useEffect(() => {
-    async function fetchProjects() {
-      setProjectsLoading(true);
-      try {
-        const res = await fetch('/api/v1/projects');
-        if (!res.ok) return;
-        const data = await res.json();
-        setProjects(data.projects || []);
-        if (!activeProjectId && data.projects && data.projects.length > 0) {
-          setActiveProjectId(data.projects[0].id);
-          localStorage.setItem('activeProjectId', String(data.projects[0].id));
-        }
-      } catch {} finally { setProjectsLoading(false); }
-    }
-    fetchProjects();
-  }, []);
-
-  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
-
-  function handleSelectProject(id: number) {
-    setActiveProjectId(id);
-    localStorage.setItem('activeProjectId', String(id));
-    setShowProjectDropdown(false);
-    setTreeReloadKey((k) => k + 1);
-  }
+  }, [activeLogRoot]);
 
   const handleSelectNode = useCallback((node: TreeNodeData) => {
     setSelectedNode(node);
@@ -160,7 +108,7 @@ export default function NodesPage() {
     let filePath = node.file_path || '';
     let fileName = node.file_name || node.name;
     if (!filePath && (node.type === 'token' || node.type === 'file') && node.file_name) {
-      const logRoot = localStorage.getItem('logRoot') || '';
+      const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
       if (logRoot) {
         const sectionType = node.section_type || '';
         const parts = fileName.split('_');
@@ -169,7 +117,7 @@ export default function NodesPage() {
       }
     }
     if (!filePath && node.type === 'token') {
-      const logRoot = localStorage.getItem('logRoot') || '';
+      const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
       if (logRoot && node.token_id) {
         const sectionType = node.section_type || 'FBC';
         const station = currentNodeName || '';
@@ -204,10 +152,10 @@ export default function NodesPage() {
     } finally {
       setFileLoading(false);
     }
-  }, [currentNodeName]);
+  }, [currentNodeName, activeLogRoot]);
 
   const handleCreateStructure = useCallback(async () => {
-    const logRoot = localStorage.getItem('logRoot') || '';
+    const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
     try {
       const res = await fetch('/api/v1/nodesconfig/create-structure', {
         method: 'POST',
@@ -224,9 +172,22 @@ export default function NodesPage() {
     } catch (err) {
       setTerminalLog(prev => [...prev, 'Error creating structure: ' + (err instanceof Error ? err.message : String(err))]);
     }
+  }, [activeLogRoot]);
+
+  const handleFileMove = useCallback(async (sourcePath: string, targetPath: string) => {
+    setTerminalLog(prev => [...prev, '> Moving file: ' + sourcePath + ' → ' + targetPath]);
+    try {
+      const res = await fetch('/api/v1/logs/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source_path: sourcePath, target_path: targetPath }) });
+      const data = await res.json();
+      if (data.moved) {
+        setTerminalLog(prev => [...prev, '[File moved: ' + data.source_path + ' → ' + data.target_path + ']']);
+      } else {
+        setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Move failed')]);
+      }
+    } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
   }, []);
 
-  const handleContextAction = useCallback(async (action: string, node: TreeNodeData) => {
+  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
     const tokenId = node.token_id || '';
     if (node.type === 'token' || node.type === 'file') {
@@ -235,76 +196,9 @@ export default function NodesPage() {
       if (parts.length >= 2) nodeName = parts[0];
     }
     switch (action) {
-      case 'print_all':
-      case 'fbc_print_all':
-      case 'rpc_print_all': {
-        const tokenType = action === 'fbc_print_all' ? 'FBC' : action === 'rpc_print_all' ? 'RPC' : undefined;
-        fetch('/api/v1/commandqueue/batch-node', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: tokenType }) })
-          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
-          .catch(err => console.error('batch error:', err));
-        break;
-      }
-      case 'fbc_print': {
-        const cmd = 'print from fbc io structure ' + tokenId + '0000';
-        setTerminalLog(prev => [...prev, '> ' + cmd]);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: tokenId }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          // Reload tree so file colors update (green=has content, red=empty, yellow=<10 lines)
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
-      case 'rpc_print': {
-        const cmd = 'print from fbc rupi counters ' + tokenId + '0000';
-        setTerminalLog(prev => [...prev, '> ' + cmd]);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          // Reload tree so file colors update
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
       case 'open_file':
         handleDoubleClickFile(node);
         break;
-      case 'bstool_errlog': {
-        // Strip m/r suffix for BsTool server name (DIA uses AP01, not AP01m)
-        const bstoolName = nodeName.replace(/[mr]$/, '');
-        const cmd = 'errlog ' + bstoolName;
-        setTerminalLog(prev => [...prev, '> BsTool errlog ' + bstoolName]);
-        try {
-          const res = await fetch('/api/v1/bstool/errlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ server_name: bstoolName }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          if (data.messages) setTerminalLog(prev => [...prev, ...data.messages]);
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
-      case 'rpc_clear': {
-        const cmd = 'clear from fbc rupi counters ' + tokenId + '0000';
-        setTerminalLog(prev => [...prev, '> ' + cmd]);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
-      case 'fbc_scan':
-      case 'rpc_scan': {
-        setTerminalLog(prev => [...prev, '> Scan not yet implemented for token ' + tokenId]);
-        break;
-      }
-      case 'clear_logs': {
-        setTerminalLog(prev => [...prev, '> Clear logs not yet implemented for ' + nodeName]);
-        break;
-      }
       case 'erase_file': {
         const filePath = node.file_path || '';
         const tokenId = node.token_id || '';
@@ -342,6 +236,92 @@ export default function NodesPage() {
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
+      case 'create_file': {
+        const filePath = node.file_path || '';
+        const sectionType = node.section_type || '';
+        const tokenId = node.token_id || '';
+        setTerminalLog(prev => [...prev, '> Creating file: ' + (node.file_name || node.name)]);
+        try {
+          const body = filePath ? { path: filePath } : { node_name: nodeName, token_type: sectionType, token_id: tokenId, ip_address: node.ip || '' };
+          const res = await fetch('/api/v1/logs/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json();
+          if (data.created) {
+            setTerminalLog(prev => [...prev, '[File created: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Create failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'move_file': {
+        const filePath = node.file_path || '';
+        if (!filePath) {
+          setTerminalLog(prev => [...prev, 'Error: No file path available for move']);
+          break;
+        }
+        const targetSubfolder = window.prompt('Move to subfolder (FBC, RPC, LOG, etc.):', node.section_type || '');
+        if (!targetSubfolder) break;
+        setTerminalLog(prev => [...prev, '> Moving file to ' + targetSubfolder + '/']);
+        try {
+          const res = await fetch('/api/v1/logs/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source_path: filePath, target_subfolder: targetSubfolder }) });
+          const data = await res.json();
+          if (data.moved) {
+            setTerminalLog(prev => [...prev, '[File moved: ' + data.source_path + ' → ' + data.target_path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Move failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'create_folder': {
+        const folderName = window.prompt('Enter folder name:', '');
+        if (!folderName) break;
+        // Build path from node context
+        const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
+        let folderPath = '';
+        if (node.type === 'node') {
+          folderPath = logRoot + '/' + node.name + '/' + folderName;
+        } else if (node.type === 'group') {
+          const stationName = parentNode?.name || nodeName;
+          folderPath = logRoot + '/' + stationName + '/' + folderName;
+        } else {
+          folderPath = logRoot + '/' + folderName;
+        }
+        setTerminalLog(prev => [...prev, '> Creating folder: ' + folderPath]);
+        try {
+          const res = await fetch('/api/v1/logs/create-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: folderPath }) });
+          const data = await res.json();
+          if (data.created) {
+            setTerminalLog(prev => [...prev, '[Folder created: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Create folder failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'create_file_in_group': {
+        const fileName = window.prompt('Enter file name:', '');
+        if (!fileName) break;
+        const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
+        const stationName = parentNode?.name || nodeName;
+        const sectionType = node.section_type || node.name || '';
+        const filePath = logRoot + '/' + stationName + '/' + sectionType.toLowerCase() + '/' + fileName;
+        setTerminalLog(prev => [...prev, '> Creating file: ' + filePath]);
+        try {
+          const res = await fetch('/api/v1/logs/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: filePath }) });
+          const data = await res.json();
+          if (data.created) {
+            setTerminalLog(prev => [...prev, '[File created: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Create file failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
       default:
         break;
     }
@@ -354,36 +334,22 @@ export default function NodesPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
         <Server size={18} color="var(--accent)" />
         <h1 style={{ fontSize: '16px', fontWeight: 700 }}>Nodes</h1>
-        <div style={{ position: 'relative', marginLeft: '8px' }}>
-          <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowProjectDropdown(!showProjectDropdown)} title="Select active project">
-            <Box size={12} />
-            {activeProject ? <span>{activeProject.project_number} — {activeProject.ship_name}</span> : projectsLoading ? <Loader2 size={12} className="spin" /> : <span style={{ color: 'var(--text-muted)' }}>Select Project...</span>}
-            <ChevronDown size={12} />
-          </button>
-          {showProjectDropdown && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '280px', maxHeight: '300px', overflow: 'auto' }}>
-              {projects.length === 0 ? <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>No projects. Create one from the Dashboard.</div> :
-                projects.map((p) => (
-                  <div key={p.id} onClick={() => handleSelectProject(p.id)} style={{ padding: '8px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', backgroundColor: p.id === activeProjectId ? 'rgba(99,102,241,0.1)' : 'transparent' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(99,102,241,0.08)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = p.id === activeProjectId ? 'rgba(99,102,241,0.1)' : 'transparent'; }}>
-                    <Box size={12} color={p.id === activeProjectId ? 'var(--accent)' : 'var(--text-muted)'} />
-                    <div>
-                      <div style={{ fontWeight: p.id === activeProjectId ? 600 : 400 }}>{p.project_number} — {p.ship_name}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{p.status} · {p.log_root || 'no log root'}</div>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          )}
-        </div>
+        {activeProject ? (
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }} title={activeLogRoot || 'No log root set'}>
+            {activeProject.project_number} — {activeProject.ship_name}
+            {activeLogRoot && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '6px', fontFamily: 'var(--font-mono)' }}>({activeLogRoot})</span>}
+          </span>
+        ) : (
+          <span style={{ fontSize: '11px', color: 'var(--warning)', marginLeft: '4px' }}>
+            No project selected — go to Dashboard
+          </span>
+        )}
         <div style={{ flex: 1 }} />
         <button
           className="btn btn-secondary"
           style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
           onClick={handleScanNodes}
-          disabled={scanning}
+          disabled={scanning || !activeProjectId}
           title="Scan DIA for active nodes (print structure)"
         >
           {scanning ? <Loader2 size={12} className="spin" /> : <ScanLine size={12} />}
@@ -391,17 +357,32 @@ export default function NodesPage() {
         </button>
       </div>
 
+      {/* No project state */}
+      {!activeProjectId ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '48px', textAlign: 'center' }}>
+          <Server size={48} color="var(--text-muted)" style={{ marginBottom: '16px' }} />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
+            No project selected. Select a project from the Dashboard to manage nodes.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/')}>
+            Go to Dashboard
+          </button>
+        </div>
+      ) : (
+      <>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} context="nodes" />
+          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <NodesTabContent projectId={activeProjectId} projectName={activeProject ? activeProject.project_number + ' — ' + activeProject.ship_name : null} onNodesSaved={() => setTreeReloadKey((k) => k + 1)} onScanNodes={handleScanNodes} scanning={scanning} scanResult={scanResult} />
+            <NodesTabContent projectId={activeProjectId} onNodesSaved={() => setTreeReloadKey((k) => k + 1)} onScanNodes={handleScanNodes} scanning={scanning} scanResult={scanResult} />
           </div>
         </div>
       </div>
-      {/* File content modal overlay */}
+      </>
+      )}
+      {/* File content modal overlay — always available */}
       {showFileModal && (
         <div
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
@@ -432,14 +413,13 @@ export default function NodesPage() {
 
 interface NodesTabContentProps {
   projectId: number | null;
-  projectName: string | null;
   onNodesSaved: () => void;
   onScanNodes?: () => void;
   scanning?: boolean;
   scanResult?: { count: number; configs: NodeConfig[]; structure?: string } | null;
 }
 
-function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, scanning, scanResult }: NodesTabContentProps) {
+function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanResult }: NodesTabContentProps) {
   // Node config state (NodeConfig[] from nodesconfig API)
   const [nodes, setNodes] = useState<NodeConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -482,6 +462,7 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
   const [selectedImports, setSelectedImports] = useState<Set<number>>(new Set());
   const [singleSysPath, setSingleSysPath] = useState('');
   const [showImport, setShowImport] = useState(false);
+  const [showDirBrowser, setShowDirBrowser] = useState(false);
 
   // Load from project state
   const [allProjects, setAllProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
@@ -921,11 +902,20 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
             <Upload size={14} color="var(--accent)" />
             <span style={{ fontSize: '12px', fontWeight: 600 }}>Scan BU Directory for .sys files</span>
             <div style={{ flex: 1 }} />
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setShowDirBrowser(true)}
+              title="Browse for directory"
+            >
+              <FolderOpen size={14} />
+              Browse
+            </button>
             <input
               type="text"
               value={importDir}
               onChange={(e) => setImportDir(e.target.value)}
-              placeholder="C:\dna\CA\bu or path to _SYS directory"
+              placeholder="C:\dna\CA\bu or click Browse"
               style={{
                 fontSize: '12px',
                 padding: '4px 8px',
@@ -1305,6 +1295,14 @@ function NodesTabContent({ projectId, projectName, onNodesSaved, onScanNodes, sc
           </div>
         )}
       </div>
+      <DirBrowser
+        open={showDirBrowser}
+        onSelect={(path) => setImportDir(path)}
+        onClose={() => setShowDirBrowser(false)}
+        title="Select BU Directory"
+        initialPath={importDir || 'C:\\dna\\CA\\bu'}
+        selectLabel="Select Directory"
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Activity, Server, Database, Cpu } from 'lucide-react';
+import { Activity, Server, Database, Cpu, FolderOpen } from 'lucide-react';
+import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 
 interface HealthStatus {
   status: string;
@@ -13,6 +14,9 @@ export default function StatusBar() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { activeProjectId, activeLogRoot } = useActiveProject();
+  const { projects } = useProjects();
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
 
   useEffect(() => {
     let mounted = true;
@@ -84,6 +88,17 @@ export default function StatusBar() {
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {activeProject ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent)' }} title={activeLogRoot || 'No log root set'}>
+            <FolderOpen size={12} />
+            {activeProject.project_number} — {activeProject.ship_name}
+            {activeLogRoot && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px', fontFamily: 'var(--font-mono)' }}>{activeLogRoot}</span>}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>
+            No project selected
+          </span>
+        )}
         {health && (
           <span>
             Nodes: {health.node_count}
