@@ -24,9 +24,10 @@ export interface NodeTreeProps {
   onDoubleClickFile: (node: TreeNodeData) => void;
   onQueueStatusChange?: (status: QueueStatusResponse | null) => void;
   projectId?: number | null;
-  selectedFileKey?: string | null; // "stationName:sectionType:fileName" for bidirectional highlight
-  onCreateStructure?: () => void; // callback to create log folder structure
-  context?: 'nodes' | 'commander'; // controls which menu items are available
+  selectedFileKey?: string | null;
+  onCreateStructure?: () => void;
+  context?: 'nodes' | 'commander';
+  colorMode?: 'nodes' | 'commander'; // nodes: red=not on disk, commander: content-based
 }
 
 // Command status colors for file nodes during queue execution
@@ -35,8 +36,9 @@ const CMD_STATUS_COLORS: Record<string, string> = {
   running: 'var(--accent)',
   completed: 'var(--success)',
   done: 'var(--success)',
-  failed: 'var(--error)',
-  error: 'var(--error)',
+  failed: '#f97316', // orange — distinct from empty-file red
+  error: '#f97316',  // orange — command error
+  cancelled: '#6b7280', // gray
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -49,8 +51,17 @@ const STATUS_COLORS: Record<string, string> = {
 
 // File color by line count: red (empty), yellow (<10), green (>=10)
 // Also checks status field from backend (error=red, warning=yellow, idle=green)
-function fileColor(node: TreeNodeData): string {
-  if (node.line_count === 0 || node.status === 'error') return 'var(--error)';
+// In "nodes" colorMode: token type (not on disk) = red, file type (on disk) = yellow/green by content
+function fileColor(node: TreeNodeData, colorMode?: string): string {
+  // In nodes mode: token = expected file not yet on disk = red
+  if (colorMode === 'nodes' && node.type === 'token') {
+    return 'var(--error)'; // red — file doesn't exist on disk
+  }
+  if (node.line_count === 0 || node.status === 'error') {
+    // In nodes mode, a file that IS on disk but empty = yellow (exists but no content)
+    if (colorMode === 'nodes' && node.type === 'file') return '#f59e0b'; // yellow
+    return 'var(--error)'; // red — empty (commander mode)
+  }
   if (node.line_count && node.line_count < 10 || node.status === 'warning') return '#f59e0b';
   if (node.line_count && node.line_count >= 10 || node.status === 'idle') return 'var(--success)';
   return 'var(--text-muted)';
@@ -66,6 +77,7 @@ export default function NodeTree({
   selectedFileKey,
   onCreateStructure,
   context = 'commander',
+  colorMode,
 }: NodeTreeProps) {
   const [tree, setTree] = useState<TreeNodeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -363,6 +375,7 @@ export default function NodeTree({
                   activeCommand={queueStatus?.commands?.[queueStatus.current] || null}
                   completedCommands={queueStatus?.commands ? new Set(queueStatus.commands.slice(0, queueStatus.current).map((c) => `${c.node_name}:${c.token_id}:${c.type}`)) : undefined}
                   selectedFileKey={selectedFileKey}
+                  colorMode={colorMode}
                 />
               ))
             ) : (
@@ -436,8 +449,9 @@ interface TreeBranchProps {
   onDoubleClickFile: (node: TreeNodeData) => void;
   parentNode?: TreeNodeData;
   activeCommand?: { node_name: string; token_id: string; type: string; status: string } | null;
-  completedCommands?: Set<string>; // Set of "node_name:token_id:type" for completed commands
-  selectedFileKey?: string | null; // "stationName:sectionType:fileName" for bidirectional highlight
+  completedCommands?: Set<string>;
+  selectedFileKey?: string | null;
+  colorMode?: string;
 }
 
 function TreeBranch({
@@ -453,6 +467,7 @@ function TreeBranch({
   activeCommand,
   completedCommands,
   selectedFileKey,
+  colorMode,
 }: TreeBranchProps) {
   const isExpanded = expandedNodes.has(node.name);
   const hasChildren = node.children && node.children.length > 0;
@@ -480,7 +495,7 @@ function TreeBranch({
   }
 
   // Color for file nodes based on line count or command status
-  let nodeColor = (node.type === 'file' || node.type === 'token') ? fileColor(node) : statusColor;
+  let nodeColor = (node.type === 'file' || node.type === 'token') ? fileColor(node, colorMode) : statusColor;
   let isActive = false;
   let isSelected = false;
 
@@ -519,6 +534,9 @@ function TreeBranch({
       }
     }
   }
+
+  // Pulsing marker for actively executing file
+  const showPulse = isActive;
 
   return (
     <div>
@@ -566,18 +584,50 @@ function TreeBranch({
           )
         )}
         {node.type === 'token' && (
-          <Circle
-            size={8}
-            fill={nodeColor}
-            color={nodeColor}
-            style={{ flexShrink: 0, marginLeft: '3px' }}
-          />
+          <>
+            <Circle
+              size={8}
+              fill={nodeColor}
+              color={nodeColor}
+              style={{ flexShrink: 0, marginLeft: '3px' }}
+            />
+            {showPulse && (
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--accent)',
+                  flexShrink: 0,
+                  marginLeft: '2px',
+                  animation: 'pulse 1s ease-in-out infinite',
+                  boxShadow: '0 0 4px var(--accent)',
+                }}
+              />
+            )}
+          </>
         )}
         {node.type === 'file' && (
           <FileText
             size={12}
             color={nodeColor}
             style={{ flexShrink: 0, marginLeft: '1px' }}
+          />
+        )}
+
+        {/* Pulsing marker for actively executing file */}
+        {showPulse && (
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--accent)',
+              flexShrink: 0,
+              marginLeft: '2px',
+              animation: 'pulse 1s ease-in-out infinite',
+              boxShadow: '0 0 4px var(--accent)',
+            }}
           />
         )}
 
@@ -623,6 +673,7 @@ function TreeBranch({
               activeCommand={activeCommand}
               completedCommands={completedCommands}
               selectedFileKey={selectedFileKey}
+              colorMode={colorMode}
             />
           ))}
         </div>

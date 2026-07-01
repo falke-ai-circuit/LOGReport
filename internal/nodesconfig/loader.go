@@ -241,8 +241,15 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 				Children:    make([]types.TreeNode, 0),
 			}
 
-			scanDir := filepath.Join(logRoot, stationName, gType)
+			// Scan dir: {logRoot}/{_LOG}/{station}/{type}/ (case-insensitive)
+			// Try lowercase first, then uppercase for backward compat
+			scanDir := filepath.Join(logRoot, "_LOG", stationName, strings.ToLower(gType))
 			entries, err := os.ReadDir(scanDir)
+			if err != nil {
+				// Try old uppercase path (backward compat)
+				scanDir = filepath.Join(logRoot, stationName, gType)
+				entries, err = os.ReadDir(scanDir)
+			}
 			if err != nil {
 				// Dir doesn't exist -- add token nodes with filenames from config
 				for _, cfg := range memberCfgs {
@@ -322,6 +329,9 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string) *types.TreeNode {
 			}
 		}
 
+		// Compute aggregate station status from all file/token grandchildren
+		stationNode.Status = aggregateStationStatus(stationNode.Children)
+
 		root.Children = append(root.Children, stationNode)
 	}
 
@@ -368,4 +378,27 @@ func extractTokenIDFromName(filename, sectionType string) string {
 		return parts[len(parts)-1]
 	}
 	return base
+}
+
+// aggregateStationStatus computes a station node's Status from its children.
+// Station children are group nodes (FBC/RPC/LOG/LIS); their children are
+// file/token nodes with Status fields set by fileStatus().
+// Rules: any descendant "error" → "error", any descendant "warning" → "warning",
+// otherwise "idle".
+func aggregateStationStatus(groupNodes []types.TreeNode) string {
+	hasWarning := false
+	for _, group := range groupNodes {
+		for _, leaf := range group.Children {
+			switch leaf.Status {
+			case "error":
+				return "error"
+			case "warning":
+				hasWarning = true
+			}
+		}
+	}
+	if hasWarning {
+		return "warning"
+	}
+	return "idle"
 }

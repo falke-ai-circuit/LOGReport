@@ -155,6 +155,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// 11. Get report
 	mux.HandleFunc("GET /api/v1/reports/{id}", s.getReportHandler)
+	mux.HandleFunc("DELETE /api/v1/reports/{id}", s.deleteReportHandler)
 
 	// 12. BsTool errlog
 	mux.HandleFunc("POST /api/v1/bstool/errlog", s.handleBsToolErrLog)

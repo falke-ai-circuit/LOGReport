@@ -8,6 +8,7 @@ interface SettingsData {
   bstool_host: string;
   bstool_port: number;
   log_root: string;
+  logroot_name: string;
   bstool_path: string;
   communication_line: string;
   output_dir: string;
@@ -175,6 +176,15 @@ export default function SettingsPage() {
             value={settings.log_root}
             onChange={(e) => updateField('log_root', e.target.value)}
             placeholder="C:\\temp\\logreport-output"
+            style={inputStyle}
+          />
+        </FormField>
+        <FormField label="Log Root Folder Name" hint="Name of the wrapper folder inside log root (default: _LOG). Structure: {log_root}/{logroot_name}/{station}/{type}/{file}">
+          <input
+            type="text"
+            value={settings.logroot_name}
+            onChange={(e) => updateField('logroot_name', e.target.value)}
+            placeholder="_LOG"
             style={inputStyle}
           />
         </FormField>

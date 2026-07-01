@@ -481,7 +481,7 @@ func (s *Server) handleExecuteSingleCommand(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Wait for output
-	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+	output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 
 	// Write output to log file if node info is provided (from context menu)
 	fileWritten := false
@@ -634,7 +634,7 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 
 		// 3. Wait for output: poll GetOutput, wait up to 10 seconds for
 		// non-empty output, then collect for 2 more seconds for trailing data
-		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
 		// 4. Write output to structured log files
 		lw := logwriter.New(s.logRoot())
@@ -722,7 +722,7 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 			}
 			return "", err
 		}
-		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
 		lw := logwriter.New(s.logRoot())
 		tokenType := string(cmd.Type)
@@ -1282,13 +1282,23 @@ func extractStationNameFromConfig(nodeName string) string {
 // waitForOutput polls the session output buffer for non-empty output.
 // It waits up to maxWait for the first non-empty result, then collects
 // for trailWait more seconds to capture trailing data.
-func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWait time.Duration) string {
+// If cancelCh is non-nil and closed, it returns immediately with whatever
+// output has been collected so far (used by Pause/Cancel to abort fast).
+func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWait time.Duration, cancelCh chan struct{}) string {
 	deadline := time.Now().Add(maxWait)
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
 	// Phase 1: Wait for non-empty output
 	for time.Now().Before(deadline) {
+		select {
+		case <-cancelCh:
+			// Cancelled — return whatever we have
+			out, _ := sm.GetOutput(sessionID)
+			return out
+		default:
+		}
+
 		out, err := sm.GetOutput(sessionID)
 		if err != nil {
 			return ""
@@ -1302,7 +1312,14 @@ func waitForOutput(sm *telnet.SessionManager, sessionID string, maxWait, trailWa
 			}
 			return out
 		}
-		<-ticker.C
+
+		select {
+		case <-ticker.C:
+		case <-cancelCh:
+			// Cancelled during wait — return whatever we have
+			out, _ := sm.GetOutput(sessionID)
+			return out
+		}
 	}
 
 	// Timeout: return whatever we have (may be empty)
@@ -1560,7 +1577,7 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	// SendSystemCommand clears with Ctrl+X + Enter only (no Ctrl+Z which exits system mode)
 	_ = s.telnetSM.ClearOutput(sessionID)
 	_ = s.telnetSM.SendSystemCommand(sessionID, "systemtest node_list nodelist.txt")
-	_ = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+	_ = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 
 	// Step 4: Wait for nodelist.txt to appear (poll for up to 15 seconds)
 	// DIA writes the file asynchronously after the command returns
@@ -1599,12 +1616,12 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		// Also get print structure for the structure_raw field
 		_ = s.telnetSM.ClearOutput(sessionID)
 		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 	} else {
 		// ─── Fallback: print structure + token probing ────────────
 		_ = s.telnetSM.ClearOutput(sessionID)
 		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second)
+		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
 		configs = scanFromStructure(s, sessionID, structureRaw)
 	}
 

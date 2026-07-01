@@ -43,25 +43,63 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	createdDirs, createdFiles, stationCount, createdPaths, err := s.createLogStructure(logRoot)
+	if err != nil {
+		writeError(w, err.(*apiError).code, err.(*apiError).label, err.(*apiError).message)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"created_dirs":  createdDirs,
+		"created_files": createdFiles,
+		"log_root":      logRoot,
+		"station_count": stationCount,
+		"paths":         createdPaths,
+	})
+}
+
+// apiError is a simple error type carrying an HTTP status code, label, and message.
+type apiError struct {
+	code    int
+	label   string
+	message string
+}
+
+func (e *apiError) Error() string { return e.message }
+
+// createLogStructure creates the _LOG/{station}/{type}/ folder structure and
+// empty files at the given log root, based on the saved nodes.json configuration.
+// Returns counts of created dirs/files and the list of created file paths.
+func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, stationCount int, createdPaths []string, err error) {
 	// Load nodes from nodes.json
 	path := s.nodesConfigPath()
 	configs, err := nodesconfig.LoadFromFile(path)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "load_error",
-			fmt.Sprintf("failed to load nodes.json: %v", err))
-		return
+		return 0, 0, 0, nil, &apiError{
+			code:    http.StatusInternalServerError,
+			label:   "load_error",
+			message: fmt.Sprintf("failed to load nodes.json: %v", err),
+		}
 	}
 	if len(configs) == 0 {
-		writeError(w, http.StatusBadRequest, "no_nodes",
-			"no nodes configured. Save nodes first.")
-		return
+		return 0, 0, 0, nil, &apiError{
+			code:    http.StatusBadRequest,
+			label:   "no_nodes",
+			message: "no nodes configured. Save nodes first.",
+		}
+	}
+
+	// Determine log root folder name (default: _LOG, configurable in Settings)
+	logRootName := "_LOG"
+	if !globalSettings.loaded {
+		s.initSettings()
+	}
+	st := getSettings()
+	if st.LogRootName != "" {
+		logRootName = st.LogRootName
 	}
 
 	// Create folder structure and empty files
-	createdDirs := 0
-	createdFiles := 0
-	var createdPaths []string
-
 	for _, cfg := range configs {
 		stationName := extractStationNameFromConfig(cfg.Name)
 		ip := cfg.IPAddress
@@ -74,10 +112,10 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		}
 
 		for tokenType, tokens := range tokenTypes {
-			// Create directory: {logRoot}/{station}/{tokenType}/
-			dir := filepath.Join(logRoot, stationName, tokenType)
-			if err := os.MkdirAll(dir, 0755); err != nil {
-				log.Printf("create-structure: mkdir %s: %v", dir, err)
+			// Create directory: {logRoot}/{_LOG}/{station}/{tokenType}/
+			dir := filepath.Join(logRoot, logRootName, stationName, strings.ToLower(tokenType))
+			if mkErr := os.MkdirAll(dir, 0755); mkErr != nil {
+				log.Printf("create-structure: mkdir %s: %v", dir, mkErr)
 				continue
 			}
 			createdDirs++
@@ -86,15 +124,14 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 			for _, tok := range tokens {
 				fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
 				filePath := filepath.Join(dir, fileName)
-
 				// Only create if file doesn't exist (don't overwrite existing files)
-				if _, err := os.Stat(filePath); err == nil {
+				if _, statErr := os.Stat(filePath); statErr == nil {
 					// File already exists — skip
 					continue
 				}
 
-				if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
-					log.Printf("create-structure: write %s: %v", filePath, err)
+				if wErr := os.WriteFile(filePath, []byte{}, 0644); wErr != nil {
+					log.Printf("create-structure: write %s: %v", filePath, wErr)
 					continue
 				}
 				createdFiles++
@@ -103,13 +140,7 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"created_dirs":  createdDirs,
-		"created_files": createdFiles,
-		"log_root":      logRoot,
-		"station_count": len(configs),
-		"paths":         createdPaths,
-	})
+	return createdDirs, createdFiles, len(configs), createdPaths, nil
 }
 
 // buildLogFileName creates the expected filename for a log file.

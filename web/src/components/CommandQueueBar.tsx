@@ -114,7 +114,7 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
           ? `Queue: ${status.total} command${status.total !== 1 ? 's' : ''} ready`
           : status.state === 'done'
             ? `Queue complete — ${status.total} command${status.total !== 1 ? 's' : ''}`
-            : `Command ${status.current + 1}/${status.total}: ${cmdLabel}`}
+            : `Command ${status.current + 1}/${status.total}: ${cmdLabel} — ${status.total - status.current - 1} remaining`}
       </span>
 
       {/* Progress bar */}

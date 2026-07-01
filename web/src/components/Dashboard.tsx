@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2 } from 'lucide-react';
-
-interface Project {
-  id: number;
-  project_number: string;
-  ship_name: string;
-  log_root: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import { useNavigate } from 'react-router-dom';
+import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle } from 'lucide-react';
+import { useActiveProject, type Project } from '../hooks/useActiveProject';
 
 interface ProjectsResponse {
   projects: Project[];
@@ -32,6 +24,8 @@ export default function Dashboard() {
   const [newProject, setNewProject] = useState({ project_number: '', ship_name: '', log_root: '' });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { activeProjectId, selectProject } = useActiveProject();
+  const navigate = useNavigate();
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -86,11 +80,10 @@ export default function Dashboard() {
       const created = await res.json().catch(() => null);
       setShowCreate(false);
       setNewProject({ project_number: '', ship_name: '', log_root: '' });
-      fetchProjects();
-      // If the API returns the created project id, link to Commander with that project
+      await fetchProjects();
+      // Set the new project as active globally (and set its log_root)
       if (created && created.id) {
-        localStorage.setItem('activeProjectId', String(created.id));
-        window.location.href = `/commander?project_id=${created.id}`;
+        selectProject(created.id, created.log_root || newProject.log_root || '');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -244,7 +237,13 @@ export default function Dashboard() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {projects.map((p) => (
-              <ProjectCard key={p.id} project={p} onDelete={() => handleDeleteProject(p.id, `${p.project_number} — ${p.ship_name}`)} />
+              <ProjectCard
+                key={p.id}
+                project={p}
+                isActive={p.id === activeProjectId}
+                onSelect={() => { selectProject(p.id, p.log_root || ''); navigate('/nodes'); }}
+                onDelete={() => handleDeleteProject(p.id, `${p.project_number} — ${p.ship_name}`)}
+              />
             ))}
           </div>
         )}
@@ -258,7 +257,7 @@ export default function Dashboard() {
             icon={<FolderPlus size={18} />}
             label="Ingest Sys Files"
             description="Scan BU directory and load nodes"
-            href="/sysfile"
+            href="/nodes"
           />
           <QuickAction
             icon={<Server size={18} />}
@@ -303,7 +302,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
-function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => void }) {
+function ProjectCard({ project, isActive, onSelect, onDelete }: { project: Project; isActive: boolean; onSelect: () => void; onDelete: () => void }) {
   return (
     <div
       style={{
@@ -311,36 +310,37 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
         alignItems: 'center',
         gap: '12px',
         padding: '12px 16px',
-        backgroundColor: 'var(--bg-secondary)',
+        backgroundColor: isActive ? 'rgba(99,102,241,0.08)' : 'var(--bg-secondary)',
         borderRadius: '8px',
-        border: '1px solid var(--border)',
+        border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
         transition: 'border-color 0.15s ease',
+        cursor: 'pointer',
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+      onClick={onSelect}
+      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
+      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
     >
-      <Ship size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
+      {isActive ? <CheckCircle size={18} color="var(--accent)" style={{ flexShrink: 0 }} /> : <Ship size={18} color="var(--accent)" style={{ flexShrink: 0 }} />}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '14px', fontWeight: 600 }}>
           {project.project_number} — {project.ship_name}
+          {isActive && <span style={{ fontSize: '10px', color: 'var(--accent)', marginLeft: '8px' }}>ACTIVE</span>}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
           {project.log_root || 'No log root set'} · {project.status} · {new Date(project.created_at).toLocaleDateString()}
         </div>
       </div>
-      <a
-        href={`/commander?project_id=${project.id}`}
+      <span
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
           fontSize: '12px',
           color: 'var(--accent)',
-          textDecoration: 'none',
         }}
       >
         Open <ArrowRight size={14} />
-      </a>
+      </span>
       <button
         className="btn btn-ghost"
         style={{
@@ -351,7 +351,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
           alignItems: 'center',
           gap: '4px',
         }}
-        onClick={onDelete}
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
         title="Delete this project"
       >
         <Trash2 size={14} />

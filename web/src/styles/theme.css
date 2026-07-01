@@ -126,3 +126,18 @@ code, pre, .mono {
   background: var(--bg-elevated);
   color: var(--text-primary);
 }
+
+/* Spin animation (for loaders) */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation (for actively executing file in tree) */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}

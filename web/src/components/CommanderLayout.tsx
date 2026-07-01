@@ -1,36 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Terminal, Server, ScanLine, Settings, FolderOpen, Loader2, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Terminal, Server, ScanLine, Settings, Loader2, FileText, Folder, Printer } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
 import ScanTab from './ScanTab';
 import CommandQueueBar from './CommandQueueBar';
 import NodeConfigDialog from './NodeConfigDialog';
+import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 
 type Tab = 'telnet' | 'bstool' | 'scan' | 'logviewer';
-
-interface Project {
-  id: number;
-  project_number: string;
-  ship_name: string;
-  log_root: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-function getProjectIdFromURL(): number | null {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const val = params.get('project_id');
-    if (val) {
-      const n = parseInt(val, 10);
-      if (!isNaN(n) && n > 0) return n;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
 
 function stripNodeSuffix(name: string): string {
   return name.replace(/[mr]$/, '');
@@ -63,6 +43,10 @@ function ColorizedLog({ content }: { content: string }) {
 }
 
 export default function CommanderLayout() {
+  const { activeProjectId, activeLogRoot, selectLogRoot } = useActiveProject();
+  const { projects } = useProjects();
+  const navigate = useNavigate();
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const [activeTab, setActiveTab] = useState<Tab>('telnet');
   const [selectedNode, setSelectedNode] = useState<TreeNodeData | null>(null);
   const [, setSelectedToken] = useState<TreeNodeData | null>(null);
@@ -79,56 +63,21 @@ export default function CommanderLayout() {
   const [fileViewPath, setFileViewPath] = useState<string>('');
   const [fileLoading, setFileLoading] = useState(false);
   const [terminalLog, setTerminalLog] = useState<string[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
-    const fromURL = getProjectIdFromURL();
-    if (fromURL) { localStorage.setItem('activeProjectId', String(fromURL)); return fromURL; }
-    const stored = localStorage.getItem('activeProjectId');
-    return stored ? parseInt(stored, 10) : null;
-  });
-  const [projectsLoading, setProjectsLoading] = useState(false);
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
+  const [showLogRootDropdown, setShowLogRootDropdown] = useState(false);
+  const [customLogRoot, setCustomLogRoot] = useState('');
+  const [printing, setPrinting] = useState(false);
 
-  // Auto-set log root on page load
+  // Sync log root to backend when it changes (from shared hook)
   useEffect(() => {
-    const logRoot = localStorage.getItem('logRoot');
-    if (!logRoot) {
+    if (activeLogRoot) {
       fetch('/api/v1/logs/setroot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: 'C:\\temp\\logreport-output' }),
-      }).then(() => {
-        localStorage.setItem('logRoot', 'C:\\temp\\logreport-output');
+        body: JSON.stringify({ path: activeLogRoot }),
       }).catch(() => {});
     }
-  }, []);
-
-  useEffect(() => {
-    async function fetchProjects() {
-      setProjectsLoading(true);
-      try {
-        const res = await fetch('/api/v1/projects');
-        if (!res.ok) return;
-        const data = await res.json();
-        setProjects(data.projects || []);
-        if (!activeProjectId && data.projects && data.projects.length > 0) {
-          setActiveProjectId(data.projects[0].id);
-          localStorage.setItem('activeProjectId', String(data.projects[0].id));
-        }
-      } catch {} finally { setProjectsLoading(false); }
-    }
-    fetchProjects();
-  }, []);
-
-  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
-
-  function handleSelectProject(id: number) {
-    setActiveProjectId(id);
-    localStorage.setItem('activeProjectId', String(id));
-    setShowProjectDropdown(false);
-    setTreeReloadKey((k) => k + 1);
-  }
+  }, [activeLogRoot]);
 
   const handleSelectNode = useCallback((node: TreeNodeData) => {
     setSelectedNode(node);
@@ -151,7 +100,7 @@ export default function CommanderLayout() {
     let filePath = node.file_path || '';
     let fileName = node.file_name || node.name;
     if (!filePath && (node.type === 'token' || node.type === 'file') && node.file_name) {
-      const logRoot = localStorage.getItem('logRoot') || '';
+      const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
       if (logRoot) {
         const sectionType = node.section_type || '';
         const parts = fileName.split('_');
@@ -160,7 +109,7 @@ export default function CommanderLayout() {
       }
     }
     if (!filePath && node.type === 'token') {
-      const logRoot = localStorage.getItem('logRoot') || '';
+      const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
       if (logRoot && node.token_id) {
         const sectionType = node.section_type || 'FBC';
         const station = currentNodeName || '';
@@ -195,7 +144,7 @@ export default function CommanderLayout() {
     } finally {
       setFileLoading(false);
     }
-  }, [currentNodeName]);
+  }, [currentNodeName, activeLogRoot]);
 
   const handleContextAction = useCallback(async (action: string, node: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
@@ -292,6 +241,33 @@ export default function CommanderLayout() {
     }
   }, [currentNodeName, handleDoubleClickFile]);
 
+  // Print All Logs — batch ALL nodes (FBC + RPC + LOG) and start execution
+  const handlePrintAll = useCallback(async () => {
+    setPrinting(true);
+    try {
+      // Batch all nodes (no token_type filter = all types)
+      const batchRes = await fetch('/api/v1/commandqueue/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!batchRes.ok) {
+        const data = await batchRes.json().catch(() => ({ message: 'Batch failed' }));
+        throw new Error(data.message || `HTTP ${batchRes.status}`);
+      }
+      // Start execution
+      await fetch('/api/v1/commandqueue/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+    } catch (err) {
+      setTerminalLog(prev => [...prev, 'Print All Error: ' + (err instanceof Error ? err.message : String(err))]);
+    } finally {
+      setPrinting(false);
+    }
+  }, []);
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'telnet', label: 'Telnet', icon: <Terminal size={14} /> },
     { id: 'bstool', label: 'BsTool', icon: <Server size={14} /> },
@@ -305,36 +281,114 @@ export default function CommanderLayout() {
         <Terminal size={18} color="var(--accent)" />
         <h1 style={{ fontSize: '16px', fontWeight: 700 }}>Commander</h1>
         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Interactive Command Center</span>
+        {/* LogRoot selector — replaces project dropdown */}
         <div style={{ position: 'relative', marginLeft: '8px' }}>
-          <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowProjectDropdown(!showProjectDropdown)} title="Select active project">
-            <FolderOpen size={12} />
-            {activeProject ? <span>{activeProject.project_number} — {activeProject.ship_name}</span> : projectsLoading ? <Loader2 size={12} className="spin" /> : <span style={{ color: 'var(--text-muted)' }}>Select Project...</span>}
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => setShowLogRootDropdown(!showLogRootDropdown)}
+            disabled={!activeProjectId}
+            title="Select or set log root directory"
+          >
+            <Folder size={12} />
+            {activeLogRoot ? (
+              <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeLogRoot}</span>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>{activeProjectId ? 'Set LogRoot...' : 'No project'}</span>
+            )}
             <span style={{ fontSize: '10px' }}>▼</span>
           </button>
-          {showProjectDropdown && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '280px', maxHeight: '300px', overflow: 'auto' }}>
-              {projects.length === 0 ? <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>No projects. Create one from the Dashboard.</div> :
-                projects.map((p) => (
-                  <div key={p.id} onClick={() => handleSelectProject(p.id)} style={{ padding: '8px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', backgroundColor: p.id === activeProjectId ? 'rgba(99,102,241,0.1)' : 'transparent' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(99,102,241,0.08)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = p.id === activeProjectId ? 'rgba(99,102,241,0.1)' : 'transparent'; }}>
-                    <FolderOpen size={12} color={p.id === activeProjectId ? 'var(--accent)' : 'var(--text-muted)'} />
-                    <div>
-                      <div style={{ fontWeight: p.id === activeProjectId ? 600 : 400 }}>{p.project_number} — {p.ship_name}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{p.status} · {p.log_root || 'no log root'}</div>
-                    </div>
+          {showLogRootDropdown && activeProjectId && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '320px', padding: '12px' }}>
+              {/* Current project log root */}
+              {activeProject?.log_root && (
+                <div
+                  style={{ padding: '8px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', marginBottom: '8px', backgroundColor: activeLogRoot === activeProject.log_root ? 'rgba(99,102,241,0.1)' : 'transparent', borderRadius: '4px' }}
+                  onClick={() => { selectLogRoot(activeProject.log_root); setShowLogRootDropdown(false); setTreeReloadKey(k => k + 1); }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(99,102,241,0.08)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = activeLogRoot === activeProject.log_root ? 'rgba(99,102,241,0.1)' : 'transparent'; }}
+                >
+                  <Folder size={12} color={activeLogRoot === activeProject.log_root ? 'var(--accent)' : 'var(--text-muted)'} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Project Default</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{activeProject.log_root}</div>
                   </div>
-                ))
-              }
+                </div>
+              )}
+              {/* Custom log root input */}
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Set custom log root (e.g. for a new structure):</div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  value={customLogRoot}
+                  onChange={(e) => setCustomLogRoot(e.target.value)}
+                  placeholder="C:\temp\custom-logroot"
+                  style={{
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                    flex: 1,
+                    backgroundColor: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && customLogRoot.trim()) {
+                      selectLogRoot(customLogRoot.trim());
+                      setCustomLogRoot('');
+                      setShowLogRootDropdown(false);
+                      setTreeReloadKey(k => k + 1);
+                    }
+                  }}
+                />
+                <button
+                  className="btn btn-primary"
+                  style={{ fontSize: '11px', padding: '4px 10px' }}
+                  onClick={() => {
+                    if (customLogRoot.trim()) {
+                      selectLogRoot(customLogRoot.trim());
+                      setCustomLogRoot('');
+                      setShowLogRootDropdown(false);
+                      setTreeReloadKey(k => k + 1);
+                    }
+                  }}
+                >
+                  Set
+                </button>
+              </div>
             </div>
           )}
         </div>
         <div style={{ flex: 1 }} />
+        <button
+          className="btn btn-primary"
+          style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          onClick={handlePrintAll}
+          disabled={printing}
+          title="Queue and execute all print commands for all nodes"
+        >
+          {printing ? <Loader2 size={12} className="spin" /> : <Printer size={12} />}
+          Print All Logs
+        </button>
         <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => setShowConfigDialog(true)} title="Configure nodes and tokens">
           <Settings size={14} /> Config
         </button>
       </div>
 
+      {/* No project state */}
+      {!activeProjectId ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '48px', textAlign: 'center' }}>
+          <Terminal size={48} color="var(--text-muted)" style={{ marginBottom: '16px' }} />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
+            No project selected. Select a project from the Dashboard to use the Commander.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/')}>
+            Go to Dashboard
+          </button>
+        </div>
+      ) : (
+      <>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
           <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} />
@@ -359,7 +413,7 @@ export default function CommanderLayout() {
               </div>
             )}
             {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => setPendingServerName(null)} currentNodeName={currentNodeName} />}
-            {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={localStorage.getItem('logRoot') || ''} />}
+            {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={activeLogRoot || localStorage.getItem('logRoot') || ''} />}
             {activeTab === 'logviewer' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
@@ -379,6 +433,8 @@ export default function CommanderLayout() {
           </div>
         </div>
       </div>
+      </>
+      )}
       <CommandQueueBar status={queueStatus} />
       <NodeConfigDialog open={showConfigDialog} onClose={() => setShowConfigDialog(false)} />
     </div>
