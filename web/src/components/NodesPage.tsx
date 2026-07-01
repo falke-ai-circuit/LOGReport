@@ -44,6 +44,7 @@ export default function NodesPage() {
   const [, setSelectedToken] = useState<TreeNodeData | null>(null);
   const [currentNodeName, setCurrentNodeName] = useState('');
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
+  const toolbarRef = useRef<{ save: () => void; addNode: () => void; openFile: () => void; toggleImport: () => void; isSaving: () => boolean; getSaveMsg: () => string | null } | null>(null);
   const [treeReloadKey, setTreeReloadKey] = useState(0);
   const [fileContent, setFileContent] = useState<string>('');
   const [fileViewName, setFileViewName] = useState<string>('');
@@ -345,6 +346,47 @@ export default function NodesPage() {
           </span>
         )}
         <div style={{ flex: 1 }} />
+        {activeProjectId && (
+          <>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => toolbarRef.current?.openFile()}
+              title="Open existing nodes.json file"
+            >
+              <FolderOpen size={14} />
+              Open File
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => toolbarRef.current?.toggleImport()}
+              title="Import nodes from .sys files"
+            >
+              <Upload size={14} />
+              Import
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => toolbarRef.current?.addNode()}
+              title="Add a new node manually"
+            >
+              <Plus size={14} />
+              Add Node
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '12px', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => toolbarRef.current?.save()}
+              disabled={toolbarRef.current?.isSaving() || false}
+              title="Save all node changes"
+            >
+              <Save size={14} />
+              Save Changes
+            </button>
+          </>
+        )}
         <button
           className="btn btn-secondary"
           style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -376,7 +418,7 @@ export default function NodesPage() {
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <NodesTabContent projectId={activeProjectId} onNodesSaved={() => setTreeReloadKey((k) => k + 1)} onScanNodes={handleScanNodes} scanning={scanning} scanResult={scanResult} />
+            <NodesTabContent projectId={activeProjectId} onNodesSaved={() => setTreeReloadKey((k) => k + 1)} onScanNodes={handleScanNodes} scanning={scanning} scanResult={scanResult} toolbarRef={toolbarRef} />
           </div>
         </div>
       </div>
@@ -417,9 +459,10 @@ interface NodesTabContentProps {
   onScanNodes?: () => void;
   scanning?: boolean;
   scanResult?: { count: number; configs: NodeConfig[]; structure?: string } | null;
+  toolbarRef?: React.MutableRefObject<{ save: () => void; addNode: () => void; openFile: () => void; toggleImport: () => void; isSaving: () => boolean; getSaveMsg: () => string | null } | null>;
 }
 
-function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanResult }: NodesTabContentProps) {
+function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanResult, toolbarRef }: NodesTabContentProps) {
   // Node config state (NodeConfig[] from nodesconfig API)
   const [nodes, setNodes] = useState<NodeConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -600,6 +643,20 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
   useEffect(() => {
     fetchNodes();
   }, [fetchNodes]);
+
+  // ─── Expose toolbar actions via ref ──────────────────────────────
+  useEffect(() => {
+    if (toolbarRef) {
+      toolbarRef.current = {
+        save: handleSaveAll,
+        addNode: handleAddNode,
+        openFile: () => fileInputRef.current?.click(),
+        toggleImport: () => setShowImport(!showImport),
+        isSaving: () => saving,
+        getSaveMsg: () => saveMsg,
+      };
+    }
+  });
 
   // ─── Save all nodes ─────────────────────────────────────────────
   async function handleSaveAll() {
@@ -825,68 +882,14 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
 
   return (
     <div style={{ height: '100%', overflow: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      {/* Toolbar — horizontal buttons, no project banner, no Node Browser label */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 16px',
-          borderBottom: '1px solid var(--border)',
-          backgroundColor: 'var(--bg-secondary)',
-          flexWrap: 'wrap',
-        }}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept=".json"
-          onChange={handleOpenNodesFile}
-          style={{ display: 'none' }}
-        />
-        <button
-          className="btn btn-ghost"
-          style={{ fontSize: '12px', padding: '4px 8px' }}
-          onClick={() => fileInputRef.current?.click()}
-          title="Open existing nodes.json file"
-        >
-          <FolderOpen size={14} />
-          Open File
-        </button>
-        <button
-          className="btn btn-ghost"
-          style={{ fontSize: '12px', padding: '4px 8px' }}
-          onClick={() => setShowImport(!showImport)}
-          title="Import nodes from .sys files"
-        >
-          <Upload size={14} />
-          Import
-        </button>
-        <button
-          className="btn btn-ghost"
-          style={{ fontSize: '12px', padding: '4px 8px' }}
-          onClick={handleAddNode}
-          title="Add a new node manually"
-        >
-          <Plus size={14} />
-          Add Node
-        </button>
-        <button
-          className="btn btn-primary"
-          style={{ fontSize: '12px', padding: '4px 12px' }}
-          onClick={handleSaveAll}
-          disabled={saving}
-          title="Save all node changes"
-        >
-          {saving ? <Loader2 size={12} className="spin" /> : <Save size={14} />}
-          Save Changes
-        </button>
-        {saveMsg && (
-          <span style={{ fontSize: '11px', color: saveMsg.startsWith('Error') ? 'var(--error)' : 'var(--success)' }}>
-            {saveMsg}
-          </span>
-        )}
-      </div>
+      {/* Hidden file input for Open File button (triggered from header) */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".json"
+        onChange={handleOpenNodesFile}
+        style={{ display: 'none' }}
+      />
 
       {/* Import panel */}
       {showImport && (

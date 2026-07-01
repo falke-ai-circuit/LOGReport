@@ -313,6 +313,21 @@ func (s *Server) handleSaveProjectNodes(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Sanitize token_ids (same as handleSaveNodesConfig)
+	for i := range configs {
+		for j := range configs[i].Tokens {
+			tid := configs[i].Tokens[j].TokenID
+			if strings.Contains(tid, "_") && strings.Contains(tid, ".") {
+				parts := strings.Split(tid, "_")
+				last := parts[len(parts)-1]
+				last = strings.TrimSuffix(last, filepath.Ext(last))
+				if last != "" {
+					configs[i].Tokens[j].TokenID = last
+				}
+			}
+		}
+	}
+
 	path := s.nodesConfigPathForProject(projectID)
 	if err := nodesconfig.SaveToFile(path, configs); err != nil {
 		writeError(w, http.StatusInternalServerError, "save_error",

@@ -52,8 +52,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 // File color based purely on file existence on disk:
 // - green: file exists and has content (line_count > 0)
-// - yellow: file exists but empty (line_count === 0)
 // - red: file doesn't exist on disk (token type = expected but not created yet)
+// - red: file exists but empty (line_count === 0) — structure created but no data collected
+// - yellow: file exists but has very low content (line_count < 10)
+// - green: file exists with content (line_count >= 10)
 // In "nodes" colorMode: token = expected file not on disk = red
 // In "commander" colorMode: file = content-based, token = expected but not on disk = red
 function fileColor(node: TreeNodeData, _colorMode?: string): string {
@@ -66,7 +68,7 @@ function fileColor(node: TreeNodeData, _colorMode?: string): string {
     if (node.line_count === undefined || node.line_count === null) {
       return 'var(--text-muted)'; // gray — unknown status
     }
-    if (node.line_count === 0) return '#f59e0b'; // yellow — exists but empty
+    if (node.line_count === 0) return 'var(--error)'; // red — exists but empty (no data collected)
     if (node.line_count < 10) return '#f59e0b'; // yellow — low content
     return 'var(--success)'; // green — has content
   }

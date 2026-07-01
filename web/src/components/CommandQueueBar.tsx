@@ -79,8 +79,21 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
 
   // Find current command
   const currentCmd = status.commands?.[status.current];
+  // Build a descriptive label showing which file is being worked on
   const cmdLabel = currentCmd
-    ? `${currentCmd.type?.toUpperCase()} Print ${currentCmd.node_name} token ${currentCmd.token_id}`
+    ? (() => {
+        const parts: string[] = [];
+        parts.push(`${currentCmd.type?.toUpperCase()}`);
+        parts.push(currentCmd.node_name || '');
+        if (currentCmd.token_id) parts.push(`token ${currentCmd.token_id}`);
+        // Show the target filename for this command
+        if (currentCmd.node_name && currentCmd.type && currentCmd.token_id) {
+          const ext = currentCmd.type === 'fbc' ? '.fbc' : currentCmd.type === 'rpc' ? '.rpc' : '.log';
+          const stationName = currentCmd.node_name.split('_')[0];
+          parts.push(`→ ${stationName}_${currentCmd.token_id}${ext}`);
+        }
+        return parts.join(' ');
+      })()
     : '';
 
   return (
