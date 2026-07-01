@@ -20,14 +20,15 @@ import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 export interface NodeTreeProps {
   onSelectNode: (node: TreeNodeData) => void;
   onSelectToken: (token: TreeNodeData) => void;
-  onContextAction: (action: string, node: TreeNodeData) => void;
+  onContextAction: (action: string, node: TreeNodeData, parentNode?: TreeNodeData) => void;
   onDoubleClickFile: (node: TreeNodeData) => void;
   onQueueStatusChange?: (status: QueueStatusResponse | null) => void;
   projectId?: number | null;
   selectedFileKey?: string | null;
   onCreateStructure?: () => void;
   context?: 'nodes' | 'commander';
-  colorMode?: 'nodes' | 'commander'; // nodes: red=not on disk, commander: content-based
+  colorMode?: 'nodes' | 'commander';
+  onFileMove?: (sourcePath: string, targetPath: string) => Promise<void>;
 }
 
 // Command status colors for file nodes during queue execution
@@ -83,6 +84,7 @@ export default function NodeTree({
   onCreateStructure,
   context = 'commander',
   colorMode,
+  onFileMove,
 }: NodeTreeProps) {
   const [tree, setTree] = useState<TreeNodeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -207,7 +209,7 @@ export default function NodeTree({
 
   function handleContextAction(action: string) {
     if (contextMenu) {
-      onContextAction(action, contextMenu.node);
+      onContextAction(action, contextMenu.node, contextMenu.parentNode);
       setContextMenu(null);
     }
   }
@@ -246,13 +248,23 @@ export default function NodeTree({
       const sectionType = node.section_type || '';
       const tokenId = node.token_id || '';
 
-      // Common file management items (both modes)
-      const fileMgmtItems = context === 'nodes' ? [
-        { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
-        { icon: <Trash2 size={14} />, label: 'Delete File', action: 'delete_file' },
-        { icon: <FolderPlus size={14} />, label: 'Create File Here', action: 'create_file' },
-        { icon: <FolderOpen size={14} />, label: 'Move to Subfolder...', action: 'move_file' },
-      ] : [
+      // Nodes mode: file management only (no print commands)
+      if (context === 'nodes') {
+        const items = [
+          { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
+          { icon: <Trash2 size={14} />, label: 'Delete File', action: 'delete_file' },
+          { icon: <FolderPlus size={14} />, label: 'Create File Here', action: 'create_file' },
+          { icon: <FolderOpen size={14} />, label: 'Move to Subfolder...', action: 'move_file' },
+        ];
+        // For tokens (not yet on disk), offer Create New File
+        if (node.type === 'token') {
+          items.push({ icon: <FileText size={14} />, label: 'Create New File', action: 'create_file' });
+        }
+        return items;
+      }
+
+      // Commander mode: print commands + erase
+      const fileMgmtItems = [
         { icon: <FileText size={14} />, label: 'Open File Content', action: 'open_file' },
         { icon: <Trash2 size={14} />, label: 'Erase File Content', action: 'erase_file' },
       ];
@@ -278,8 +290,24 @@ export default function NodeTree({
           ...fileMgmtItems,
         ];
       }
-      // LIS or unknown
       return fileMgmtItems;
+    }
+
+    // GROUP/SECTION type in nodes mode: create new file/folder here
+    if (node.type === 'group' && context === 'nodes') {
+      const sectionType = node.section_type || node.name;
+      return [
+        { icon: <FileText size={14} />, label: `Create New File in ${sectionType}`, action: 'create_file_in_group' },
+        { icon: <FolderPlus size={14} />, label: `Create New Subfolder`, action: 'create_folder' },
+      ];
+    }
+
+    // NODE type in nodes mode: create file/folder
+    if (node.type === 'node' && context === 'nodes') {
+      return [
+        { icon: <FolderPlus size={14} />, label: `Create New Folder under ${node.name}`, action: 'create_folder' },
+        { icon: <FileText size={14} />, label: `Create New File under ${node.name}`, action: 'create_file' },
+      ];
     }
 
     // NOTE: 'token' type is handled together with 'file' above (line 229).
@@ -380,6 +408,8 @@ export default function NodeTree({
                   completedCommands={queueStatus?.commands ? new Set(queueStatus.commands.slice(0, queueStatus.current).map((c) => `${c.node_name}:${c.token_id}:${c.type}`)) : undefined}
                   selectedFileKey={selectedFileKey}
                   colorMode={colorMode}
+                  onFileMove={onFileMove}
+                  onReloadTree={fetchTree}
                 />
               ))
             ) : (
@@ -456,6 +486,8 @@ interface TreeBranchProps {
   completedCommands?: Set<string>;
   selectedFileKey?: string | null;
   colorMode?: string;
+  onFileMove?: (sourcePath: string, targetPath: string) => Promise<void>;
+  onReloadTree?: () => void;
 }
 
 function TreeBranch({
@@ -472,6 +504,8 @@ function TreeBranch({
   completedCommands,
   selectedFileKey,
   colorMode,
+  onFileMove,
+  onReloadTree,
 }: TreeBranchProps) {
   const isExpanded = expandedNodes.has(node.name);
   const hasChildren = node.children && node.children.length > 0;
@@ -542,18 +576,91 @@ function TreeBranch({
   // Pulsing marker for actively executing file
   const showPulse = isActive;
 
+  // Drag-and-drop: file nodes are draggable, group/node folders are drop targets
+  const isDraggable = !!(node.type === 'file' || node.type === 'token') && !!node.file_path && !!onFileMove;
+  const isDropTarget = (node.type === 'group' || node.type === 'node') && !!onFileMove;
+
+  function handleDragStart(e: React.DragEvent) {
+    if (isDraggable && node.file_path) {
+      e.dataTransfer.setData('text/plain', node.file_path);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    if (isDropTarget) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(245,166,35,0.15)';
+    }
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (isDropTarget) {
+      (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? 'rgba(99,102,241,0.15)' : 'transparent';
+    }
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    if (isDropTarget) {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? 'rgba(99,102,241,0.15)' : 'transparent';
+      const sourcePath = e.dataTransfer.getData('text/plain');
+      if (!sourcePath || !onFileMove) return;
+      // Build target path: drop on group → move to that subfolder, drop on node → move to station root
+      let targetPath = '';
+      if (node.type === 'group') {
+        // Group = FBC/RPC/LOG subfolder — move file into this subfolder
+        const station = parentNode?.name || '';
+        const subfolder = node.section_type || node.name || '';
+        const fileName = sourcePath.split('/').pop()?.split('\\').pop() || '';
+        if (station && subfolder && fileName) {
+          // Build path using the same log root from source path
+          const sourceParts = sourcePath.replace(/\\/g, '/').split('/');
+          // source: logRoot/station/oldSubfolder/file → target: logRoot/station/newSubfolder/file
+          const logRoot = sourceParts.slice(0, -3).join('/');
+          targetPath = logRoot + '/' + station + '/' + subfolder.toLowerCase() + '/' + fileName;
+        }
+      } else if (node.type === 'node') {
+        // Node = station folder — move file into station root (keep subfolder)
+        const station = node.name;
+        const sourceParts = sourcePath.replace(/\\/g, '/').split('/');
+        const fileName = sourceParts.pop() || '';
+        const oldSubfolder = sourceParts.pop() || '';
+        const logRoot = sourceParts.slice(0, -1).join('/');
+        if (station && oldSubfolder && fileName) {
+          targetPath = logRoot + '/' + station + '/' + oldSubfolder + '/' + fileName;
+        }
+      }
+      if (targetPath && targetPath !== sourcePath) {
+        try {
+          await onFileMove(sourcePath, targetPath);
+          onReloadTree?.();
+        } catch (err) {
+          console.error('drag-drop move failed:', err);
+        }
+      }
+    }
+  }
+
   return (
     <div>
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={(e) => onContextMenu(e, node, parentNode)}
+        draggable={isDraggable}
+        onDragStart={isDraggable ? handleDragStart : undefined}
+        onDragOver={isDropTarget ? handleDragOver : undefined}
+        onDragLeave={isDropTarget ? handleDragLeave : undefined}
+        onDrop={isDropTarget ? handleDrop : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
           padding: '3px 8px 3px ' + indent + 'px',
-          cursor: 'pointer',
+          cursor: isDraggable ? 'grab' : 'pointer',
           borderRadius: '4px',
           transition: 'background-color 0.1s ease',
           backgroundColor: isSelected ? 'rgba(99,102,241,0.15)' : isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
@@ -678,6 +785,8 @@ function TreeBranch({
               completedCommands={completedCommands}
               selectedFileKey={selectedFileKey}
               colorMode={colorMode}
+              onFileMove={onFileMove}
+              onReloadTree={onReloadTree}
             />
           ))}
         </div>

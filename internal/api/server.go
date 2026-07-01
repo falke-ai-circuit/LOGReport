@@ -243,6 +243,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Move/rename a log file to a different subfolder
 	mux.HandleFunc("POST /api/v1/logs/move", s.handleMoveLogFile)
+
+	// Create a new folder (directory) on disk
+	mux.HandleFunc("POST /api/v1/logs/create-folder", s.handleCreateFolder)
 }
 
 // NewTestServer creates a Server suitable for testing with a temp JSON store.

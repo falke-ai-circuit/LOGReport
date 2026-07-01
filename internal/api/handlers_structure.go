@@ -434,3 +434,38 @@ func (s *Server) handleMoveLogFile(w http.ResponseWriter, r *http.Request) {
 		"target_path": targetPath,
 	})
 }
+
+// handleCreateFolder creates a new directory on disk.
+// POST /api/v1/logs/create-folder
+// Body: {"path": "C:\	emp\\...\\newfolder"}
+func (s *Server) handleCreateFolder(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
+		return
+	}
+
+	if req.Path == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "path is required")
+		return
+	}
+
+	// Check if already exists
+	if _, err := os.Stat(req.Path); err == nil {
+		writeError(w, http.StatusConflict, "already_exists", fmt.Sprintf("folder already exists: %s", req.Path))
+		return
+	}
+
+	if err := os.MkdirAll(req.Path, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "create_error",
+			fmt.Sprintf("failed to create folder: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"created": true,
+		"path":    req.Path,
+	})
+}

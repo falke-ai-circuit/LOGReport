@@ -146,7 +146,7 @@ export default function CommanderLayout() {
     }
   }, [currentNodeName, activeLogRoot]);
 
-  const handleContextAction = useCallback(async (action: string, node: TreeNodeData) => {
+  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, _parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
     const tokenId = node.token_id || '';
     if (node.type === 'token' || node.type === 'file') {

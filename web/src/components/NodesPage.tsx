@@ -171,7 +171,20 @@ export default function NodesPage() {
     }
   }, [activeLogRoot]);
 
-  const handleContextAction = useCallback(async (action: string, node: TreeNodeData) => {
+  const handleFileMove = useCallback(async (sourcePath: string, targetPath: string) => {
+    setTerminalLog(prev => [...prev, '> Moving file: ' + sourcePath + ' → ' + targetPath]);
+    try {
+      const res = await fetch('/api/v1/logs/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source_path: sourcePath, target_path: targetPath }) });
+      const data = await res.json();
+      if (data.moved) {
+        setTerminalLog(prev => [...prev, '[File moved: ' + data.source_path + ' → ' + data.target_path + ']']);
+      } else {
+        setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Move failed')]);
+      }
+    } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+  }, []);
+
+  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
     const tokenId = node.token_id || '';
     if (node.type === 'token' || node.type === 'file') {
@@ -180,76 +193,9 @@ export default function NodesPage() {
       if (parts.length >= 2) nodeName = parts[0];
     }
     switch (action) {
-      case 'print_all':
-      case 'fbc_print_all':
-      case 'rpc_print_all': {
-        const tokenType = action === 'fbc_print_all' ? 'FBC' : action === 'rpc_print_all' ? 'RPC' : undefined;
-        fetch('/api/v1/commandqueue/batch-node', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: tokenType }) })
-          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
-          .catch(err => console.error('batch error:', err));
-        break;
-      }
-      case 'fbc_print': {
-        const cmd = 'print from fbc io structure ' + tokenId + '0000';
-        setTerminalLog(prev => [...prev, '> ' + cmd]);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: tokenId }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          // Reload tree so file colors update (green=has content, red=empty, yellow=<10 lines)
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
-      case 'rpc_print': {
-        const cmd = 'print from fbc rupi counters ' + tokenId + '0000';
-        setTerminalLog(prev => [...prev, '> ' + cmd]);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          // Reload tree so file colors update
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
       case 'open_file':
         handleDoubleClickFile(node);
         break;
-      case 'bstool_errlog': {
-        // Strip m/r suffix for BsTool server name (DIA uses AP01, not AP01m)
-        const bstoolName = nodeName.replace(/[mr]$/, '');
-        const cmd = 'errlog ' + bstoolName;
-        setTerminalLog(prev => [...prev, '> BsTool errlog ' + bstoolName]);
-        try {
-          const res = await fetch('/api/v1/bstool/errlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ server_name: bstoolName }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          if (data.messages) setTerminalLog(prev => [...prev, ...data.messages]);
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
-      case 'rpc_clear': {
-        const cmd = 'clear from fbc rupi counters ' + tokenId + '0000';
-        setTerminalLog(prev => [...prev, '> ' + cmd]);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: tokenId }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        break;
-      }
-      case 'fbc_scan':
-      case 'rpc_scan': {
-        setTerminalLog(prev => [...prev, '> Scan not yet implemented for token ' + tokenId]);
-        break;
-      }
-      case 'clear_logs': {
-        setTerminalLog(prev => [...prev, '> Clear logs not yet implemented for ' + nodeName]);
-        break;
-      }
       case 'erase_file': {
         const filePath = node.file_path || '';
         const tokenId = node.token_id || '';
@@ -326,6 +272,53 @@ export default function NodesPage() {
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
+      case 'create_folder': {
+        const folderName = window.prompt('Enter folder name:', '');
+        if (!folderName) break;
+        // Build path from node context
+        const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
+        let folderPath = '';
+        if (node.type === 'node') {
+          folderPath = logRoot + '/' + node.name + '/' + folderName;
+        } else if (node.type === 'group') {
+          const stationName = parentNode?.name || nodeName;
+          folderPath = logRoot + '/' + stationName + '/' + folderName;
+        } else {
+          folderPath = logRoot + '/' + folderName;
+        }
+        setTerminalLog(prev => [...prev, '> Creating folder: ' + folderPath]);
+        try {
+          const res = await fetch('/api/v1/logs/create-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: folderPath }) });
+          const data = await res.json();
+          if (data.created) {
+            setTerminalLog(prev => [...prev, '[Folder created: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Create folder failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'create_file_in_group': {
+        const fileName = window.prompt('Enter file name:', '');
+        if (!fileName) break;
+        const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
+        const stationName = parentNode?.name || nodeName;
+        const sectionType = node.section_type || node.name || '';
+        const filePath = logRoot + '/' + stationName + '/' + sectionType.toLowerCase() + '/' + fileName;
+        setTerminalLog(prev => [...prev, '> Creating file: ' + filePath]);
+        try {
+          const res = await fetch('/api/v1/logs/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: filePath }) });
+          const data = await res.json();
+          if (data.created) {
+            setTerminalLog(prev => [...prev, '[File created: ' + data.path + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Create file failed')]);
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
       default:
         break;
     }
@@ -375,7 +368,7 @@ export default function NodesPage() {
       <>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} context="nodes" colorMode="nodes" />
+          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
