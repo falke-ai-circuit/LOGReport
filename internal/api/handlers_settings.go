@@ -39,7 +39,7 @@ func defaultSettings() Settings {
 		BsToolHost:  "127.0.0.1",
 		BsToolPort:  1516,
 		LogRoot:     "",
-		LogRootName: "_LOG",
+		LogRootName: "",
 		OutputDir:   "",
 		BUDir:       buDir,
 		LISMode:     "rsu", // default: RSU6 via DIA (requires RSU6 hardware)

@@ -324,7 +324,7 @@ export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProp
   // ─── Render ──────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', overflow: 'auto' }}>
       {/* Node subtabs */}
       <div
         style={{

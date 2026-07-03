@@ -398,7 +398,7 @@ export default function NodesPage() {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
         <Server size={18} color="var(--accent)" />
         <h1 style={{ fontSize: '16px', fontWeight: 700 }}>Nodes</h1>
@@ -479,12 +479,12 @@ export default function NodesPage() {
         </div>
       ) : (
       <>
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'auto' }}>
+        <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'auto' }}>
           <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} onDeleteStructure={handleDeleteStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
             <NodesTabContent projectId={activeProjectId} onNodesSaved={() => setTreeReloadKey((k) => k + 1)} onScanNodes={handleScanNodes} scanning={scanning} scanResult={scanResult} toolbarRef={toolbarRef} />
           </div>
         </div>

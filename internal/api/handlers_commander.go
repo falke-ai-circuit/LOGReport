@@ -76,8 +76,8 @@ func (s *Server) nodesConfigPathForProject(projectID string) string {
 		// Fall back to old-style nodes_{id}.json for backward compat
 		return fmt.Sprintf("nodes_%s.json", projectID)
 	}
-	// nodes.json lives inside {logRoot}/_LOG/
-	return filepath.Join(p.LogRoot, "_LOG", "nodes.json")
+	// nodes.json lives inside {logRoot}/
+	return filepath.Join(p.LogRoot, "nodes.json")
 }
 
 // resolveLogRoot returns the effective log root for file writing.
@@ -122,7 +122,34 @@ func (s *Server) nodesConfigPathForLogRoot(logRoot string) string {
 	if logRoot == "" {
 		return s.nodesConfigPath()
 	}
-	return filepath.Join(logRoot, "_LOG", "nodes.json")
+	return filepath.Join(logRoot, "nodes.json")
+}
+
+// matchStationName checks if a node config name belongs to the given station.
+// The tree groups nodes by station name (e.g. "AP01m" = "AP01_main" + "AP01_m2").
+// This replicates the logic from extractStationName in loader.go.
+func matchStationName(configName, stationName string) bool {
+	if configName == stationName {
+		return true
+	}
+	// Extract station name from config name (strip _mN or _rN suffix)
+	base := configName
+	if idx := strings.Index(base, "_"); idx >= 0 {
+		base = base[:idx]
+	}
+	if idx := strings.Index(base, " "); idx >= 0 {
+		base = base[:idx]
+	}
+	// Apply m/r suffix for AP-prefixed nodes (same logic as extractStationName)
+	if strings.HasPrefix(base, "AP") {
+		isReserve := strings.Contains(configName, "Reserve") || strings.Contains(configName, "_r")
+		if isReserve {
+			base = base + "r"
+		} else {
+			base = base + "m"
+		}
+	}
+	return base == stationName
 }
 
 // handleGetNodesConfig loads and returns nodes.json as NodeConfig[].
@@ -918,6 +945,8 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		if err := s.commandQueue.Start(executor); err != nil {
 			log.Printf("commandqueue: start error: %v", err)
 		}
+		// Close cached LisDiag connections after queue completes
+		s.CloseLISDiagConns()
 	}()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1137,9 +1166,10 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Filter to just the requested node
+	// Match by exact name first, then by station name (e.g. "AP01m" matches "AP01_main", "AP01_m2")
 	var filtered []types.NodeConfig
 	for _, c := range configs {
-		if c.Name == req.NodeName {
+		if c.Name == req.NodeName || matchStationName(c.Name, req.NodeName) {
 			// If token_type specified, filter tokens
 			// Exception: "LISDiag" means we want LIS tokens but via LisDiag path
 			filterType := req.TokenType
@@ -1156,7 +1186,6 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 				c.Tokens = filteredTokens
 			}
 			filtered = append(filtered, c)
-			break
 		}
 	}
 
@@ -2437,16 +2466,45 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 		password = "password" // fallback default from .sys config
 	}
 
-	client := lisdiag.NewClient(cmd.IPAddress, port, password)
-	if err := client.Connect(10 * time.Second); err != nil {
-		return "", fmt.Errorf("lisdiag connect %s:%d: %w", cmd.IPAddress, port, err)
+	// Reuse cached LisDiag connection if available (same IP+port+password)
+	connKey := fmt.Sprintf("%s:%d:%s", cmd.IPAddress, port, password)
+	s.lisdiagMu.Lock()
+	cached := s.lisdiagConns[connKey]
+	s.lisdiagMu.Unlock()
+
+	if cached == nil {
+		// Create new connection
+		cached = lisdiag.NewClient(cmd.IPAddress, port, password)
+		if err := cached.Connect(10 * time.Second); err != nil {
+			return "", fmt.Errorf("lisdiag connect %s:%d: %w", cmd.IPAddress, port, err)
+		}
+		s.lisdiagMu.Lock()
+		s.lisdiagConns[connKey] = cached
+		s.lisdiagMu.Unlock()
+		log.Printf("lisdiag: connected to %s:%d (cached)", cmd.IPAddress, port)
 	}
-	defer client.Close()
 
 	// Send the command and capture output
-	output, err := client.SendCommand(cmd.Command, 15*time.Second)
+	output, err := cached.SendCommand(cmd.Command, 15*time.Second)
 	if err != nil {
-		return output, err
+		// Connection might be stale — close cache and retry once
+		s.lisdiagMu.Lock()
+		delete(s.lisdiagConns, connKey)
+		s.lisdiagMu.Unlock()
+		cached.Close()
+
+		// Retry with fresh connection
+		cached = lisdiag.NewClient(cmd.IPAddress, port, password)
+		if err2 := cached.Connect(10 * time.Second); err2 != nil {
+			return output, fmt.Errorf("lisdiag connect %s:%d (retry): %w", cmd.IPAddress, port, err2)
+		}
+		s.lisdiagMu.Lock()
+		s.lisdiagConns[connKey] = cached
+		s.lisdiagMu.Unlock()
+		output, err = cached.SendCommand(cmd.Command, 15*time.Second)
+		if err != nil {
+			return output, err
+		}
 	}
 
 	// Write output to .lis log file
@@ -2457,4 +2515,14 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 	}
 
 	return output, nil
+}
+
+// CloseLISDiagConns closes all cached LisDiag connections (called after queue completes).
+func (s *Server) CloseLISDiagConns() {
+	s.lisdiagMu.Lock()
+	defer s.lisdiagMu.Unlock()
+	for key, conn := range s.lisdiagConns {
+		conn.Close()
+		delete(s.lisdiagConns, key)
+	}
 }

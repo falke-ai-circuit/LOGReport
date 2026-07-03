@@ -68,8 +68,8 @@ func (c *Client) Connect(timeout time.Duration) error {
 		return nil
 	}
 
-	// Wait for "Access code:" prompt
-	_, err = c.readUntil("Access code:", 5*time.Second)
+	// Wait for "Access code:" prompt (LisDiag sends "Access code : " with space before colon)
+	_, err = c.readUntil("Access code", 5*time.Second)
 	if err != nil {
 		// Maybe no access code required despite being configured
 		// Try reading available data
@@ -86,7 +86,7 @@ func (c *Client) Connect(timeout time.Duration) error {
 		return fmt.Errorf("lisdiag: sending access code: %w", err)
 	}
 
-	// Wait for command prompt ">>"
+	// Wait for command prompt ">>" (LisDiag sends "AL01:1(0)>> ")
 	_, err = c.readUntil(">>", 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("lisdiag: waiting for prompt after auth: %w", err)
@@ -108,6 +108,8 @@ func (c *Client) Close() {
 // SendCommand sends a command and returns the output text.
 // Reads until the next ">>" prompt appears or timeout.
 // The LisDiag output function writes frame data as text lines.
+// If buffers are empty, LisDiag may just echo the command and return to prompt
+// with no data — the output will be empty but the command succeeds.
 func (c *Client) SendCommand(command string, timeout time.Duration) (string, error) {
 	if c.conn == nil {
 		return "", fmt.Errorf("lisdiag: not connected")
@@ -119,8 +121,12 @@ func (c *Client) SendCommand(command string, timeout time.Duration) (string, err
 	}
 
 	// Read output until we see the prompt again
+	// LisDiag echoes the command on a line, then outputs data, then shows ">>"
+	// With empty buffers, "io 0" is echoed and then "AL01:1(0)>> " appears immediately
 	output, err := c.readUntil(">>", timeout)
 	if err != nil {
+		// Return partial output even on timeout — the command may have succeeded
+		// but produced no data (empty buffers)
 		return output, fmt.Errorf("lisdiag: reading response for %q: %w", command, err)
 	}
 
@@ -153,28 +159,28 @@ func (c *Client) readUntil(prompt string, timeout time.Duration) (string, error)
 	}
 }
 
+// IOCommand builds an io command for a given channel (exe number).
+// io displays BOTH recently received (irb) AND transmitted (orb) LIS frames
+// with timestamps in a single output. This replaces separate irb+orb calls.
+// channel is 0-indexed (exe1=0, exe2=1, ..., exe6=5).
+// Reverse-engineered: FUN_00406530 in LisDiag.exe reads from both irb and orb
+// ring buffers and outputs them together.
+func IOCommand(channel int) string {
+	return fmt.Sprintf("io %d", channel)
+}
+
 // IRBCommand builds an irb command for a given channel (exe number).
 // irb displays recently received LIS frames with timestamps.
-// irb alone shows a few recent frames; irb <n> shows n frames.
-// channel is 0-indexed (exe1=0, exe2=1, ..., exe6=5).
+// Deprecated: prefer IOCommand which combines irb+orb in one output.
 func IRBCommand(channel int) string {
 	return fmt.Sprintf("irb %d", channel)
 }
 
 // ORBCommand builds an orb command for a given channel (exe number).
 // orb displays recently transmitted LIS frames with timestamps.
+// Deprecated: prefer IOCommand which combines irb+orb in one output.
 func ORBCommand(channel int) string {
 	return fmt.Sprintf("orb %d", channel)
-}
-
-// IRBAllCommand shows a few most recently received frames on current channel.
-func IRBAllCommand() string {
-	return "irb"
-}
-
-// ORBAllCommand shows a few most recently transmitted frames on current channel.
-func ORBAllCommand() string {
-	return "orb"
 }
 
 // ExeCommand switches to a specific execution/channel.

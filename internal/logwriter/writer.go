@@ -91,9 +91,11 @@ func fileExtension(tokenType string) string {
 }
 
 // logPath returns the full path for a specific log file.
-// Directory: {logRoot}/_LOG/{stationName}/{tokenType}/
-// Filename: {stationName}_{ipFormatted}_{tokenID}.{ext}
-// For LOG type: {stationName}_{ipFormatted}.log (no tokenID in filename)
+// Directory: {logRoot}/{stationName}/{tokenType}/
+// Filename patterns:
+//   FBC/RPC: {stationName}_{ipFormatted}_{tokenID}.{ext}
+//   LOG:     {stationName}_{ipFormatted}.log (no tokenID)
+//   LIS:     {stationName}_{ipFormatted}_exe{N}.lis (tokenID contains _exe{N} suffix)
 func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	ext := fileExtension(tokenType)
 	ipFmt := formatIP(ip)
@@ -101,20 +103,44 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	stationName := extractStationName(nodeName)
 
 	var fileName string
-	if strings.ToUpper(tokenType) == "LOG" {
+	switch strings.ToUpper(tokenType) {
+	case "LOG":
 		fileName = fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
-	} else {
+	case "LIS":
+		// tokenID for LIS is like "102_exe1" — we want just the exe part
+		// Extract exe number from tokenID (format: {tokenID}_exe{N})
+		exeNum := extractExeNum(tokenID)
+		if exeNum > 0 {
+			fileName = fmt.Sprintf("%s_%s_exe%d%s", stationName, ipFmt, exeNum, ext)
+		} else {
+			// Fallback: use tokenID as-is
+			fileName = fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
+		}
+	default:
 		fileName = fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
 	}
 
-	return filepath.Join(lw.logRoot, "_LOG", stationName, typeDir, fileName)
+	return filepath.Join(lw.logRoot, stationName, typeDir, fileName)
+}
+
+// extractExeNum extracts the exe number from a tokenID like "102_exe1" → 1.
+// Returns 0 if no _exe{N} suffix found.
+func extractExeNum(tokenID string) int {
+	idx := strings.Index(tokenID, "_exe")
+	if idx < 0 {
+		return 0
+	}
+	numStr := tokenID[idx+4:]
+	var n int
+	fmt.Sscanf(numStr, "%d", &n)
+	return n
 }
 
 // nodeDir returns the directory path for a node's logs, creating it if needed.
-// Directory: {logRoot}/_LOG/{stationName}/{tokenType}/
+// Directory: {logRoot}/{stationName}/{tokenType}/
 func (lw *LogWriter) nodeDir(nodeName, tokenType string) (string, error) {
 	stationName := extractStationName(nodeName)
-	dir := filepath.Join(lw.logRoot, "_LOG", stationName, strings.ToUpper(tokenType))
+	dir := filepath.Join(lw.logRoot, stationName, strings.ToUpper(tokenType))
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("logwriter: create dir %s: %w", dir, err)
 	}
@@ -207,12 +233,12 @@ func (lw *LogWriter) ListFiles(tokenType string) ([]LogEntry, error) {
 
 
 // ListLogs returns all log files for a given node (by station name).
-// It scans {logRoot}/_LOG/{stationName}/*/ for all files.
+// It scans {logRoot}/{stationName}/*/ for all files.
 func (lw *LogWriter) ListLogs(nodeName string) ([]LogEntry, error) {
 	stationName := extractStationName(nodeName)
 	entries := make([]LogEntry, 0)
 
-	stationDir := filepath.Join(lw.logRoot, "_LOG", stationName)
+	stationDir := filepath.Join(lw.logRoot, stationName)
 	typeEntries, err := os.ReadDir(stationDir)
 	if err != nil {
 		return entries, nil

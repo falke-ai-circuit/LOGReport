@@ -15,10 +15,12 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
+	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
 	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
@@ -170,6 +172,8 @@ type Server struct {
 	telnetSM     *telnet.SessionManager // Commander: persistent telnet sessions
 	commandQueue *commandqueue.Queue    // Commander: sequential command queue
 	logRootDir   string                 // Commander: root dir for log files
+	lisdiagConns map[string]*lisdiag.Client // cached LisDiag connections
+	lisdiagMu    sync.Mutex                // protects lisdiagConns
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
@@ -183,6 +187,7 @@ func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClien
 		telnetSM:     telnet.NewSessionManager(),
 		commandQueue: commandqueue.NewQueue(nil, nil),
 		logRootDir:   "logs",
+		lisdiagConns: make(map[string]*lisdiag.Client),
 	}
 }
 

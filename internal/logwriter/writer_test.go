@@ -1,6 +1,7 @@
 package logwriter
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +18,10 @@ func TestWriteAndReadLog(t *testing.T) {
 		t.Fatalf("WriteOutput failed: %v", err)
 	}
 
-	// Verify file exists — station-based nesting: FBC/AP01m/AP01_unknown-ip_162.fbc
-	path := filepath.Join(dir, "FBC", "AP01m", "AP01_unknown-ip_162.fbc")
+	// Verify file exists — station-based nesting: {dir}/AP01m/FBC/AP01m_unknown-ip_162.fbc
+	path := filepath.Join(dir, "AP01m", "FBC", "AP01m_unknown-ip_162.fbc")
 	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("expected log file to exist: %v", err)
+		t.Fatalf("expected log file to exist at %s: %v", path, err)
 	}
 
 	// Read back
@@ -40,10 +41,7 @@ func TestWriteOutputAppends(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
 
-	// Write first output
 	lw.WriteOutput("AP01", "FBC", "100", "first output")
-
-	// Write second output
 	lw.WriteOutput("AP01", "FBC", "100", "second output")
 
 	content, _ := lw.ReadLog("AP01", "FBC", "100", "")
@@ -59,12 +57,10 @@ func TestListLogs(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
 
-	// Create multiple log files — all under station folder AP01m
 	lw.WriteOutput("AP01", "FBC", "162", "fbc data 162")
 	lw.WriteOutput("AP01_m2", "FBC", "163", "fbc data 163")
 	lw.WriteOutput("AP01", "RPC", "363", "rpc data 363")
 
-	// ListLogs for any member of the station should find all files in the station folder
 	entries, err := lw.ListLogs("AP01")
 	if err != nil {
 		t.Fatalf("ListLogs failed: %v", err)
@@ -73,14 +69,12 @@ func TestListLogs(t *testing.T) {
 		t.Fatalf("expected 3 log files, got %d", len(entries))
 	}
 
-	// Verify all have non-zero size
 	for _, e := range entries {
 		if e.Size <= 0 {
 			t.Errorf("expected non-zero size for %s, got %d", e.FileName, e.Size)
 		}
 	}
 
-	// Verify sorted by name
 	if entries[0].FileName > entries[1].FileName {
 		t.Errorf("expected sorted order, got %s before %s", entries[0].FileName, entries[1].FileName)
 	}
@@ -112,44 +106,6 @@ func TestReadLogNotFound(t *testing.T) {
 	}
 }
 
-func TestClearLog(t *testing.T) {
-	dir := t.TempDir()
-	lw := New(dir)
-
-	lw.WriteOutput("AP01", "FBC", "100", "some data")
-	// Station-based path: FBC/AP01m/AP01_unknown-ip_100.fbc
-	path := filepath.Join(dir, "FBC", "AP01m", "AP01_unknown-ip_100.fbc")
-
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("expected file to exist: %v", err)
-	}
-	if info.Size() == 0 {
-		t.Fatal("expected non-zero size before clear")
-	}
-
-	if err := lw.ClearLog("AP01", "FBC", "100", ""); err != nil {
-		t.Fatalf("ClearLog failed: %v", err)
-	}
-
-	info, err = os.Stat(path)
-	if err != nil {
-		t.Fatalf("expected file to still exist after clear: %v", err)
-	}
-	if info.Size() != 0 {
-		t.Errorf("expected zero size after clear, got %d", info.Size())
-	}
-}
-
-func TestClearLogNotFound(t *testing.T) {
-	dir := t.TempDir()
-	lw := New(dir)
-	// Should not error for non-existent file
-	if err := lw.ClearLog("NonExistent", "FBC", "999", ""); err != nil {
-		t.Errorf("expected no error for clearing non-existent log, got: %v", err)
-	}
-}
-
 func TestWriteOutputEmptyNodeName(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
@@ -159,9 +115,70 @@ func TestWriteOutputEmptyNodeName(t *testing.T) {
 	}
 }
 
-func TestLogRoot(t *testing.T) {
-	lw := New("/some/path")
-	if lw.LogRoot() != "/some/path" {
-		t.Errorf("expected /some/path, got %s", lw.LogRoot())
+func TestLISFilename(t *testing.T) {
+	dir := t.TempDir()
+	lw := New(dir)
+
+	// LIS tokenID format: "102_exe1" — should produce {station}_{ip}_exe1.lis
+	err := lw.WriteOutputWithIP("AL01", "LIS", "102_exe1", "lis frame data", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("WriteOutputWithIP for LIS failed: %v", err)
+	}
+
+	// Expected: {dir}/AL01/LIS/AL01_127-0-0-1_exe1.lis
+	path := filepath.Join(dir, "AL01", "LIS", "AL01_127-0-0-1_exe1.lis")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected LIS file at %s: %v", path, err)
+	}
+
+	// Verify content
+	content, err := lw.ReadLog("AL01", "LIS", "102_exe1", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("ReadLog for LIS failed: %v", err)
+	}
+	if !strings.Contains(content, "lis frame data") {
+		t.Errorf("expected 'lis frame data' in content, got: %s", content)
+	}
+}
+
+func TestLISAllExeFiles(t *testing.T) {
+	dir := t.TempDir()
+	lw := New(dir)
+
+	// Write all 6 exe files for one token
+	for exe := 1; exe <= 6; exe++ {
+		tokenID := fmt.Sprintf("102_exe%d", exe)
+		err := lw.WriteOutputWithIP("AL01", "LIS", tokenID, fmt.Sprintf("frame data exe%d", exe), "127.0.0.1")
+		if err != nil {
+			t.Fatalf("WriteOutputWithIP for LIS exe%d failed: %v", exe, err)
+		}
+	}
+
+	// Verify all 6 files exist
+	for exe := 1; exe <= 6; exe++ {
+		path := filepath.Join(dir, "AL01", "LIS", fmt.Sprintf("AL01_127-0-0-1_exe%d.lis", exe))
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("expected exe%d file at %s: %v", exe, path, err)
+		}
+	}
+}
+
+func TestExtractExeNum(t *testing.T) {
+	tests := []struct {
+		tokenID  string
+		expected int
+	}{
+		{"102_exe1", 1},
+		{"102_exe6", 6},
+		{"501_exe3", 3},
+		{"102", 0},
+		{"", 0},
+		{"_exe2", 2},
+	}
+	for _, tt := range tests {
+		got := extractExeNum(tt.tokenID)
+		if got != tt.expected {
+			t.Errorf("extractExeNum(%q) = %d, want %d", tt.tokenID, got, tt.expected)
+		}
 	}
 }

@@ -11,6 +11,7 @@ interface SettingsData {
   bstool_path: string;
   communication_line: string;
   output_dir: string;
+  lis_mode: string;
 }
 
 export default function SettingsPage() {
@@ -164,6 +165,21 @@ export default function SettingsPage() {
             placeholder="EAS-C2023"
             style={inputStyle}
           />
+        </FormField>
+      </SettingsSection>
+
+      {/* LIS Capture Mode */}
+      <SettingsSection title="LIS Capture Mode" icon={<Network size={16} />}>
+        <FormField label="LIS Capture Method" hint="How AL node LIS frames are captured: RSU6 (DIA telnet), LisDiag (direct telnet port 4321), or DiagLIS (manual)">
+          <select
+            value={settings.lis_mode || 'rsu'}
+            onChange={(e) => updateField('lis_mode', e.target.value)}
+            style={inputStyle}
+          >
+            <option value="rsu">RSU6 via DIA (requires RSU6 hardware)</option>
+            <option value="lisdiag">LisDiag Telnet (direct, no RSU6 needed)</option>
+            <option value="diaglis">DiagLIS Manual (skip automated capture)</option>
+          </select>
         </FormField>
       </SettingsSection>
 

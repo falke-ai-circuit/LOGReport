@@ -159,8 +159,12 @@ export default function CommanderLayout() {
     }
   }, [currentNodeName, activeLogRoot]);
 
-  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, _parentNode?: TreeNodeData) => {
+  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
+    // For group nodes (FBC/RPC/LOG/LIS folders), the station name is in parentNode
+    if (node.type === 'group' && parentNode?.name) {
+      nodeName = parentNode.name;
+    }
     const tokenId = node.token_id || '';
     // Extract IP from the tree node or from the filename
     let nodeIp = node.ip || '';
@@ -192,6 +196,11 @@ export default function CommanderLayout() {
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }) })
           .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('rpc batch error:', err));
+        break;
+      case 'lis_print_all':
+        fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) })
+          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
+          .catch(err => console.error('lis batch error:', err));
         break;
       case 'fbc_print': {
         // Sanitize tokenId: if it looks like a filename, extract just the number
@@ -365,7 +374,7 @@ export default function CommanderLayout() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
         <Terminal size={18} color="var(--accent)" />
         <h1 style={{ fontSize: '16px', fontWeight: 700 }}>Commander</h1>
@@ -493,21 +502,21 @@ export default function CommanderLayout() {
         </div>
       ) : (
       <>
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'auto' }}>
+        <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'auto' }}>
           <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} activeExecFile={activeExecFile} />
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', gap: '2px', padding: '0 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+          <div style={{ display: 'flex', gap: '2px', padding: '0 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
             {tabs.map((t) => (
               <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '12px', fontWeight: activeTab === t.id ? 600 : 400, color: activeTab === t.id ? 'var(--accent)' : 'var(--text-secondary)', backgroundColor: 'transparent', border: 'none', borderBottom: activeTab === t.id ? '2px solid var(--accent)' : '2px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)', transition: 'all 0.15s ease' }}>
                 {t.icon}{t.label}
               </button>
             ))}
           </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
             {activeTab === 'telnet' && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
                 <TelnetTerminal currentToken={currentToken} currentTokenType={currentTokenType} currentNodeName={currentNodeName} pendingCommand={pendingCommand} onCommandSent={() => setPendingCommand(null)} />
                 {terminalLog.length > 0 && (
                   <div style={{ maxHeight: '150px', overflow: 'auto', borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', padding: '4px 8px', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -519,8 +528,8 @@ export default function CommanderLayout() {
             {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => setPendingServerName(null)} currentNodeName={currentNodeName} />}
             {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={activeLogRoot || localStorage.getItem('logRoot') || ''} />}
             {activeTab === 'logviewer' && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', backgroundColor: 'var(--bg-primary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                   <FileText size={14} color="var(--accent)" />
                   <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{fileViewName || 'No file selected'}</span>
                   {fileViewPath && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }} title={fileViewPath}>{fileViewPath}</span>}

@@ -190,7 +190,7 @@ export default function ReportList() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {/* Header */}
       <div
         style={{
@@ -308,7 +308,7 @@ export default function ReportList() {
 
       {/* Main layout: left sidebar (30%) + right preview (70%) */}
       {!loading && !error && reports.length > 0 && (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flex: 1, overflow: 'auto' }}>
           {/* Left sidebar: report list */}
           <div
             style={{
@@ -376,7 +376,7 @@ export default function ReportList() {
           </div>
 
           {/* Right: report preview area */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'var(--bg-primary)' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', backgroundColor: 'var(--bg-primary)' }}>
             {selectedReport ? (
               <>
                 {/* Preview header */}

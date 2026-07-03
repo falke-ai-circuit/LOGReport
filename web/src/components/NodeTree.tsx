@@ -264,6 +264,7 @@ export default function NodeTree({
         { icon: <Printer size={14} />, label: `Execute All Print Commands for ${node.name}`, action: 'print_all' },
         { icon: <Printer size={14} />, label: `Print All FBC Tokens for ${node.name}`, action: 'fbc_print_all' },
         { icon: <Printer size={14} />, label: `Print All RPC Tokens for ${node.name}`, action: 'rpc_print_all' },
+        { icon: <Printer size={14} />, label: `Print All LIS RSU Traces for ${node.name}`, action: 'lis_print_all' },
         { icon: <Server size={14} />, label: `Print All LOG Tokens for ${node.name}`, action: 'bstool_errlog' },
       ];
     }
@@ -284,6 +285,11 @@ export default function NodeTree({
         return [
           { icon: <Server size={14} />, label: `Print All LOG Tokens for ${nodeName}`, action: 'bstool_errlog' },
           { icon: <Trash2 size={14} />, label: `Clear All LOG Files for ${nodeName}`, action: 'clear_logs' },
+        ];
+      }
+      if (sectionType === 'LIS') {
+        return [
+          { icon: <Printer size={14} />, label: `Print All LIS RSU Traces for ${nodeName}`, action: 'lis_print_all' },
         ];
       }
       return [
@@ -343,10 +349,8 @@ export default function NodeTree({
         // Parse exe number from filename (e.g. "AL01_192-168-1-171_102_exe3.lis" → 3)
         const exeMatch = node.name?.match(/exe(\d+)/i);
         const exeNum = exeMatch ? parseInt(exeMatch[1], 10) : 1;
-        const channel = exeNum - 1; // Exe1→chn0, Exe2→chn1, etc.
-        // RSU6 agent ID = tokenID << 16 (hw_addr << 16, 4 hex zeros appended)
-        const rsuid = tokenId ? tokenId + '0000' : '';
         return [
+          { icon: <Printer size={14} />, label: `Print All LIS RSU Traces for this node`, action: 'lis_print_all' },
           { icon: <Play size={14} />, label: `Print RSU Trace (rx+tx) Exe${exeNum}`, action: 'rsu_trace' },
           { icon: <Server size={14} />, label: `Print RSU Status Exe${exeNum}`, action: 'rsu_status' },
           ...fileMgmtItems,

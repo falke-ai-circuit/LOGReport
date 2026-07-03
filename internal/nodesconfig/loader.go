@@ -100,7 +100,7 @@ func fileExtension(tokenType string) string {
 // buildFileName creates the expected filename for a token in a station.
 // Pattern: {stationName}_{ipFormatted}_{tokenID}.{ext}
 // For LOG: {stationName}_{ipFormatted}.log (no tokenID)
-// For LIS: {stationName}_{ipFormatted}_{tokenID}_exe1.lis (representative, actual files are exe1-exe6)
+// For LIS: {stationName}_{ipFormatted}_exe1.lis (representative, actual files are exe1-exe6)
 func buildFileName(stationName, ip, tokenType, tokenID string) string {
 	ext := fileExtension(tokenType)
 	ipFmt := formatIP(ip)
@@ -108,7 +108,7 @@ func buildFileName(stationName, ip, tokenType, tokenID string) string {
 		return fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
 	}
 	if strings.ToUpper(tokenType) == "LIS" {
-		return fmt.Sprintf("%s_%s_%s_exe1%s", stationName, ipFmt, tokenID, ext)
+		return fmt.Sprintf("%s_%s_exe1%s", stationName, ipFmt, ext)
 	}
 	return fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
 }
@@ -260,14 +260,23 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool)
 				Children:    make([]types.TreeNode, 0),
 			}
 
-			// Scan dir: {logRoot}/{_LOG}/{station}/{type}/ (case-insensitive)
+			// Scan dir: {logRoot}/{station}/{type}/ (case-insensitive)
 			// Try lowercase first, then uppercase for backward compat
-			scanDir := filepath.Join(logRoot, "_LOG", stationName, strings.ToLower(gType))
+			scanDir := filepath.Join(logRoot, stationName, strings.ToLower(gType))
 			entries, err := os.ReadDir(scanDir)
 			if err != nil {
-				// Try old uppercase path (backward compat)
+				// Try uppercase path
 				scanDir = filepath.Join(logRoot, stationName, gType)
 				entries, err = os.ReadDir(scanDir)
+			}
+			if err != nil {
+				// Try old _LOG path (backward compat for older deployments)
+				scanDir = filepath.Join(logRoot, "_LOG", stationName, strings.ToLower(gType))
+				entries, err = os.ReadDir(scanDir)
+				if err != nil {
+					scanDir = filepath.Join(logRoot, "_LOG", stationName, gType)
+					entries, err = os.ReadDir(scanDir)
+				}
 			}
 			if err != nil {
 				// Dir doesn't exist -- add token nodes with filenames from config (unless hideMissing)

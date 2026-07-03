@@ -186,7 +186,7 @@ export default function BsToolPanel({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {/* Top bar */}
       <div
         style={{

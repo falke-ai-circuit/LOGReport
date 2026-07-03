@@ -422,7 +422,7 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}
 			for i := 1; i <= 6; i++ {
-				fileName := fmt.Sprintf("%s_%s_%s_exe%d.lis", stationName, ipFormatted, tok.TokenID, i)
+				fileName := fmt.Sprintf("%s_%s_exe%d.lis", stationName, ipFormatted, i)
 				filePath := filepath.Join(lisDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {

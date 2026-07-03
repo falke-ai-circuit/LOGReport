@@ -305,7 +305,7 @@ export default function TelnetTerminal({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {/* Connection bar */}
       <div
         style={{

@@ -77,7 +77,8 @@ export default function Layout() {
       <main
         style={{
           flex: 1,
-          overflow: 'hidden',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           backgroundColor: 'var(--bg-primary)',
         }}
       >

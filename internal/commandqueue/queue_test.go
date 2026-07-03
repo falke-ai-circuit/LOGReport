@@ -293,3 +293,50 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 		t.Errorf("expected 12 LIS commands (6 exe × 2 rx/tx), got %d", lisCount)
 	}
 }
+
+func TestQueueAddBatchLISDiagMode(t *testing.T) {
+	q := NewQueue(nil, nil)
+	configs := []types.NodeConfig{
+		{
+			Name:          "AL02",
+			IPAddress:     "192.168.1.102",
+			LISDiagParams: "-s AL02 -p 4321 -x password",
+			Tokens: []types.Token{
+				{TokenID: "501", TokenType: types.TokenLIS, Port: 2077, Protocol: "telnet"},
+			},
+		},
+	}
+
+	q.AddBatchFromNodes(configs, "", nil, "lisdiag")
+
+	_, total, _ := q.Status()
+	// LISDiag: exe×6 + io×6 = 12 commands (io combines irb+orb)
+	if total != 12 {
+		t.Fatalf("expected 12 LISDiag commands (6 exe + 6 io), got %d", total)
+	}
+
+	cmds := q.Commands()
+	ioCount := 0
+	exeCount := 0
+	for _, c := range cmds {
+		if c.Type != CmdLISDiag {
+			t.Errorf("expected CmdLISDiag type, got %s", c.Type)
+		}
+		if strings.Contains(c.Command, "io ") {
+			ioCount++
+		}
+		if strings.HasPrefix(c.Command, "exe ") {
+			exeCount++
+		}
+		// Verify no separate irb/orb commands
+		if strings.Contains(c.Command, "irb ") || strings.Contains(c.Command, "orb ") {
+			t.Errorf("found separate irb/orb command in io mode: %s", c.Command)
+		}
+	}
+	if exeCount != 6 {
+		t.Errorf("expected 6 exe commands, got %d", exeCount)
+	}
+	if ioCount != 6 {
+		t.Errorf("expected 6 io commands, got %d", ioCount)
+	}
+}
