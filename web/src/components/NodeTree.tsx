@@ -339,6 +339,20 @@ export default function NodeTree({
           ...fileMgmtItems,
         ];
       }
+      if (sectionType === 'LIS') {
+        // Parse exe number from filename (e.g. "AL01_192-168-1-171_102_exe3.lis" → 3)
+        const exeMatch = node.name?.match(/exe(\d+)/i);
+        const exeNum = exeMatch ? parseInt(exeMatch[1], 10) : 1;
+        const channel = exeNum - 1; // Exe1→chn0, Exe2→chn1, etc.
+        // RSU6 agent ID = tokenID << 16 (hw_addr << 16, 4 hex zeros appended)
+        const rsuid = tokenId ? tokenId + '0000' : '';
+        return [
+          { icon: <Play size={14} />, label: `Print RSU RX-Trace (irb) Exe${exeNum}`, action: 'rsu_rx_trace' },
+          { icon: <Play size={14} />, label: `Print RSU TX-Trace (orb) Exe${exeNum}`, action: 'rsu_tx_trace' },
+          { icon: <Server size={14} />, label: `Print RSU Status Exe${exeNum}`, action: 'rsu_status' },
+          ...fileMgmtItems,
+        ];
+      }
       return fileMgmtItems;
     }
 

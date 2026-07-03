@@ -396,8 +396,9 @@ PARAMETERS=-cpu ../AL01_10.1_cpu
 
 	// Expected nodes:
 	// Machine A (161): AP01_main(LOG), AP01_m2(FBC+RPC), AP01_m3(FBC+RPC)
-	// Machine B (181): AP02_main(LOG), AP02_m2(FBC+RPC), AL02_Remote_monitor(LIS), AL02(LIS)
+	// Machine B (181): AP02_main(LOG), AP02_m2(FBC+RPC), AL02(LIS)
 	// Machine C (501): AL01(LIS)
+	// AL02_Remote_monitor EXCLUDED (LISDIAG_CODE — diagnostic slot)
 
 	// Verify AL01 is standalone (only LIS token, no FBC/RPC)
 	for _, c := range configs {
@@ -415,14 +416,11 @@ PARAMETERS=-cpu ../AL01_10.1_cpu
 		}
 	}
 
-	// Verify AL02 has two LIS entries (Remote_monitor + AL02 itself)
-	var al02, al02mon *types.NodeConfig
+	// Verify AL02 has LIS token (AL02_Remote_monitor is EXCLUDED — LISDIAG_CODE)
+	var al02 *types.NodeConfig
 	for i := range configs {
 		if configs[i].Name == "AL02" {
 			al02 = &configs[i]
-		}
-		if configs[i].Name == "AL02_Remote_monitor" {
-			al02mon = &configs[i]
 		}
 	}
 	if al02 != nil {
@@ -437,14 +435,10 @@ PARAMETERS=-cpu ../AL01_10.1_cpu
 			}
 		}
 	}
-	if al02mon != nil {
-		for _, tok := range al02mon.Tokens {
-			if tok.TokenType == types.TokenLIS {
-				// 181 + 13 = 18e (slot 14 → offset 13)
-				if tok.TokenID != "18e" {
-					t.Errorf("AL02_Remote_monitor LIS token: got %s, want 18e (181 + 13)", tok.TokenID)
-				}
-			}
+	// AL02_Remote_monitor should NOT be present
+	for i := range configs {
+		if configs[i].Name == "AL02_Remote_monitor" {
+			t.Fatal("AL02_Remote_monitor should be excluded (LISDIAG_CODE)")
 		}
 	}
 

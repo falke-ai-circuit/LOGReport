@@ -194,29 +194,30 @@ PROGRAM=<PCS_CODE>
 		t.Logf("  Name=%s IP=%s Tokens=%v", c.Name, c.IPAddress, c.Tokens)
 	}
 
-	// Should have: AP03_main, AP03_m2, AP03_m3, AL03_Remote_monitor, AL03
-	// (NCU2 filtered)
-	if len(configs) != 5 {
-		t.Errorf("config count: got %d, want 5", len(configs))
+	// Should have: AP03_main, AP03_m2, AP03_m3, AL03
+	// AL03_Remote_monitor (LISDIAG_CODE) is EXCLUDED — diagnostic slot, not LIS PCS.
+	// (NCU2 also filtered)
+	if len(configs) != 4 {
+		t.Errorf("config count: got %d, want 4 (AL03_Remote_monitor excluded as LISDiag)", len(configs))
 	}
 
-	// Find AL03 (the actual LIS link station, not the monitor)
+	// Find AL03 (the actual LIS link station)
 	var al03 *types.NodeConfig
-	var al03Mon *types.NodeConfig
 	for i := range configs {
 		if configs[i].Name == "AL03" {
 			al03 = &configs[i]
-		}
-		if configs[i].Name == "AL03_Remote_monitor" {
-			al03Mon = &configs[i]
 		}
 	}
 
 	if al03 == nil {
 		t.Fatal("AL03 node not found")
 	}
-	if al03Mon == nil {
-		t.Fatal("AL03_Remote_monitor node not found")
+
+	// AL03_Remote_monitor should NOT be present (LISDIAG_CODE excluded)
+	for i := range configs {
+		if configs[i].Name == "AL03_Remote_monitor" {
+			t.Fatal("AL03_Remote_monitor should be excluded (LISDIAG_CODE)")
+		}
 	}
 
 	// AL03 (slot 15) should have LIS token with ID = 1a1 + 14 = 1af
@@ -225,16 +226,6 @@ PROGRAM=<PCS_CODE>
 		if tok.TokenType == types.TokenLIS {
 			if tok.TokenID != "1af" {
 				t.Errorf("AL03 LIS token ID: got %s, want 1af (1a1 + 14)", tok.TokenID)
-			}
-		}
-	}
-
-	// AL03_Remote_monitor (slot 14) should have LIS token with ID = 1a1 + 13 = 1ae
-	for _, tok := range al03Mon.Tokens {
-		t.Logf("AL03_Remote_monitor token: type=%s id=%s", tok.TokenType, tok.TokenID)
-		if tok.TokenType == types.TokenLIS {
-			if tok.TokenID != "1ae" {
-				t.Errorf("AL03_Remote_monitor LIS token ID: got %s, want 1ae (1a1 + 13)", tok.TokenID)
 			}
 		}
 	}

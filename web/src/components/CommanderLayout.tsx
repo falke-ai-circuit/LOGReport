@@ -249,6 +249,35 @@ export default function CommanderLayout() {
         setActiveTab('bstool');
         setPendingServerName(stripNodeSuffix(nodeName));
         break;
+      case 'rsu_rx_trace':
+      case 'rsu_tx_trace':
+      case 'rsu_status': {
+        // Parse exe number from filename (e.g. "AL01_192-168-1-171_102_exe3.lis" → 3)
+        const fn = node.file_name || node.name || '';
+        const exeMatch = fn.match(/exe(\d+)/i);
+        const exeNum = exeMatch ? parseInt(exeMatch[1], 10) : 1;
+        const channel = exeNum - 1; // Exe1→chn0, Exe2→chn1, etc.
+        // RSU6 agent ID = tokenID << 16 (append 4 hex zeros)
+        const cleanTokenId = tokenId.includes('_') && tokenId.includes('.')
+          ? tokenId.replace(/\.[^.]+$/, '').split('_').pop() || tokenId
+          : tokenId;
+        const rsuid = cleanTokenId + '0000';
+        let rsuCmd = '';
+        if (action === 'rsu_rx_trace') rsuCmd = 'print from rsu rx-trace ' + rsuid + ' ' + channel;
+        else if (action === 'rsu_tx_trace') rsuCmd = 'print from rsu tx-trace ' + rsuid + ' ' + channel;
+        else if (action === 'rsu_status') rsuCmd = 'print from rsu status ' + rsuid + ' ' + channel;
+        setActiveTab('telnet');
+        setTerminalLog(prev => [...prev, '> ' + rsuCmd]);
+        setActiveExecFile(`${nodeName}:${cleanTokenId}:lis_exe${exeNum}`);
+        try {
+          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: rsuCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
+          const data = await res.json();
+          if (data.output) setTerminalLog(prev => [...prev, data.output]);
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        finally { setActiveExecFile(null); }
+        break;
+      }
       case 'open_file':
         handleDoubleClickFile(node);
         break;

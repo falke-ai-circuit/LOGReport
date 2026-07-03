@@ -165,6 +165,14 @@ func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {
 				continue
 			}
 
+			// Skip LIS diagnostic slots (LISDIAG_CODE / DIAGLIS_CODE).
+			// These are diagnostic/monitor programs (Remote_monitor, DiagLis),
+			// NOT the actual LIS PCS application. We only want the LIS PCS
+			// slots (PROGRAM=PCS_CODE) that handle serial communication.
+			if isLISDiagProgram(sfn.Program) {
+				continue
+			}
+
 			node, exists := nodeMap[lid]
 			if !exists {
 				node = &types.NodeConfig{
@@ -365,8 +373,10 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			}
 		}
 
-		// LOG files for PCS nodes (both CPU and fieldbus slots get errlog)
-		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] || tokenTypeSet[types.TokenLOG] {
+		// LOG files for PCS and LIS nodes (both CPU and fieldbus slots get errlog)
+		// LIS nodes (ALxx) also get a LOG subfolder for their errlog output,
+		// in addition to their LIS subfolder for serial communication files.
+		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] || tokenTypeSet[types.TokenLOG] || tokenTypeSet[types.TokenLIS] {
 			logDir := filepath.Join(outputDir, stationName, "LOG")
 			if err := os.MkdirAll(logDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
@@ -402,4 +412,12 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 	}
 
 	return nil
+}
+
+// isLISDiagProgram checks if a PROGRAM string indicates a LIS diagnostic
+// slot (LISDIAG_CODE or DIAGLIS_CODE), which should be excluded from
+// node configs. We only want the actual LIS PCS slots (PROGRAM=PCS_CODE).
+func isLISDiagProgram(program string) bool {
+	upper := strings.ToUpper(program)
+	return strings.Contains(upper, "LISDIAG") || strings.Contains(upper, "DIAGLIS")
 }
