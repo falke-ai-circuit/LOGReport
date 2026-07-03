@@ -18,6 +18,8 @@ type Config struct {
 	BsToolRemote      string
 	BsToolTimeout     int
 	CommunicationLine string
+	BrowserPath       string // path to browser executable (auto-detect Supermium if empty)
+	NoBrowser         bool   // disable auto-launching browser
 }
 
 // ParseFlags parses command-line flags and returns a Config.
@@ -36,6 +38,8 @@ func ParseFlags() *Config {
 		flag.StringVar(&cfg.BsToolRemote, "bstool-remote", "", "hermes-remote agent for remote BsTool execution")
 		flag.IntVar(&cfg.BsToolTimeout, "bstool-timeout", 15, "Default BsTool timeout in seconds")
 		flag.StringVar(&cfg.CommunicationLine, "communication-line", "", "COMMUNICATION_LINE env var for BsTool (BU hostname)")
+		flag.StringVar(&cfg.BrowserPath, "browser", "", "Path to browser executable (auto-detect Supermium if empty)")
+		flag.BoolVar(&cfg.NoBrowser, "no-browser", false, "Disable auto-launching browser")
 	}
 
 	// Parse os.Args[1:] but don't fail on unknown flags in test environments
@@ -49,6 +53,8 @@ func ParseFlags() *Config {
 	fs.StringVar(&cfg.BsToolRemote, "bstool-remote", "", "hermes-remote agent for remote BsTool execution")
 	fs.IntVar(&cfg.BsToolTimeout, "bstool-timeout", 15, "Default BsTool timeout in seconds")
 	fs.StringVar(&cfg.CommunicationLine, "communication-line", "", "COMMUNICATION_LINE env var for BsTool")
+	fs.StringVar(&cfg.BrowserPath, "browser", "", "Path to browser executable (auto-detect Supermium if empty)")
+	fs.BoolVar(&cfg.NoBrowser, "no-browser", false, "Disable auto-launching browser")
 
 	// Filter out test flags
 	var args []string

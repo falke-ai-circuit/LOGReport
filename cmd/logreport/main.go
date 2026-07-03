@@ -9,6 +9,7 @@ import (
 
 	assets "github.com/falke-ai-circuit/LOGReport"
 	"github.com/falke-ai-circuit/LOGReport/internal/api"
+	"github.com/falke-ai-circuit/LOGReport/internal/browser"
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
@@ -83,6 +84,17 @@ func main() {
 	// Print startup banner
 	printBanner(cfg.Port, cfg.DBPath)
 
+	// Auto-launch browser (unless --no-browser flag is set)
+	// Looks for Supermium Portable next to the binary, or uses --browser path
+	if !cfg.NoBrowser {
+		url := fmt.Sprintf("http://localhost:%d", cfg.Port)
+		go func() {
+			// Wait a moment for the server to start
+			time.Sleep(500 * time.Millisecond)
+			browser.Launch(url, cfg.BrowserPath)
+		}()
+	}
+
 	// Start the HTTP server (blocks until shutdown)
 	if err := srv.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
@@ -135,8 +147,19 @@ Flags:
   --bstool-path       Path to BsTool.exe (auto-detect if empty)
   --bstool-remote     Hermes-remote agent for remote BsTool execution
   --bstool-timeout    BsTool timeout in seconds (default 15)
+  --browser           Path to browser exe (auto-detect Supermium if empty)
+  --no-browser        Disable auto-launching browser
   --version           Print version and exit
   --help              Print this help and exit
+
+Browser Auto-Launch:
+  When Supermium Portable is placed next to LOGReport.exe in a folder
+  called "supermium" or "SupermiumPortable", it is launched automatically
+  on startup. Use --no-browser to disable, or --browser to specify a path.
+
+  Directory layout:
+    LOGReport.exe
+    supermium/SupermiumPortable.exe   ← auto-detected
 
 Build:
   make build          Build frontend + backend into one binary
