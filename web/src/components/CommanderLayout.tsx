@@ -249,8 +249,7 @@ export default function CommanderLayout() {
         setActiveTab('bstool');
         setPendingServerName(stripNodeSuffix(nodeName));
         break;
-      case 'rsu_rx_trace':
-      case 'rsu_tx_trace':
+      case 'rsu_trace':
       case 'rsu_status': {
         // Parse exe number from filename (e.g. "AL01_192-168-1-171_102_exe3.lis" → 3)
         const fn = node.file_name || node.name || '';
@@ -262,20 +261,40 @@ export default function CommanderLayout() {
           ? tokenId.replace(/\.[^.]+$/, '').split('_').pop() || tokenId
           : tokenId;
         const rsuid = cleanTokenId + '0000';
-        let rsuCmd = '';
-        if (action === 'rsu_rx_trace') rsuCmd = 'print from rsu rx-trace ' + rsuid + ' ' + channel;
-        else if (action === 'rsu_tx_trace') rsuCmd = 'print from rsu tx-trace ' + rsuid + ' ' + channel;
-        else if (action === 'rsu_status') rsuCmd = 'print from rsu status ' + rsuid + ' ' + channel;
         setActiveTab('telnet');
-        setTerminalLog(prev => [...prev, '> ' + rsuCmd]);
         setActiveExecFile(`${nodeName}:${cleanTokenId}:lis_exe${exeNum}`);
-        try {
-          const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: rsuCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
-          const data = await res.json();
-          if (data.output) setTerminalLog(prev => [...prev, data.output]);
+
+        if (action === 'rsu_status') {
+          // Single status command
+          const rsuCmd = 'print from rsu status ' + rsuid + ' ' + channel;
+          setTerminalLog(prev => [...prev, '> ' + rsuCmd]);
+          try {
+            const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: rsuCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
+            const data = await res.json();
+            if (data.output) setTerminalLog(prev => [...prev, data.output]);
+            setTreeReloadKey((k) => k + 1);
+          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        } else {
+          // rsu_trace: send both rx-trace and tx-trace sequentially, both write to same .lis file
+          const rxCmd = 'print from rsu rx-trace ' + rsuid + ' ' + channel;
+          const txCmd = 'print from rsu tx-trace ' + rsuid + ' ' + channel;
+          setTerminalLog(prev => [...prev, '> ' + rxCmd]);
+          try {
+            const res1 = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: rxCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
+            const data1 = await res1.json();
+            if (data1.output) setTerminalLog(prev => [...prev, data1.output]);
+          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+
+          setTerminalLog(prev => [...prev, '> ' + txCmd]);
+          try {
+            const res2 = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: txCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
+            const data2 = await res2.json();
+            if (data2.output) setTerminalLog(prev => [...prev, data2.output]);
+          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+
           setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        finally { setActiveExecFile(null); }
+        }
+        setActiveExecFile(null);
         break;
       }
       case 'open_file':

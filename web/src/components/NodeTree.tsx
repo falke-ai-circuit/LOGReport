@@ -347,8 +347,7 @@ export default function NodeTree({
         // RSU6 agent ID = tokenID << 16 (hw_addr << 16, 4 hex zeros appended)
         const rsuid = tokenId ? tokenId + '0000' : '';
         return [
-          { icon: <Play size={14} />, label: `Print RSU RX-Trace (irb) Exe${exeNum}`, action: 'rsu_rx_trace' },
-          { icon: <Play size={14} />, label: `Print RSU TX-Trace (orb) Exe${exeNum}`, action: 'rsu_tx_trace' },
+          { icon: <Play size={14} />, label: `Print RSU Trace (rx+tx) Exe${exeNum}`, action: 'rsu_trace' },
           { icon: <Server size={14} />, label: `Print RSU Status Exe${exeNum}`, action: 'rsu_status' },
           ...fileMgmtItems,
         ];
