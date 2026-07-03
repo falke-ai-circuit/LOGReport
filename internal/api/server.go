@@ -40,7 +40,7 @@ func (s *Server) Start() error {
 		Addr:         s.config.Addr(),
 		Handler:      handler,
 		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 120 * time.Second, // long enough for scan-nodes (worst case ~90s)
+		WriteTimeout: 120 * time.Second, // long enough for scan-nodes (worst case ~95s)
 		IdleTimeout:  120 * time.Second,
 	}
 
@@ -138,6 +138,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// 5. Scan node
 	mux.HandleFunc("POST /api/v1/nodes/{addr}/scan", s.scanNodeHandler)
 
+	// 5a. Delete node (SQLite store)
+	mux.HandleFunc("DELETE /api/v1/nodes/{addr}", s.deleteNodeHandler)
+
+	// 5b. Rename node (SQLite store)
+	mux.HandleFunc("POST /api/v1/nodes/{addr}/rename", s.renameNodeHandler)
+
 	// 6. Get FBC
 	mux.HandleFunc("GET /api/v1/nodes/{addr}/fbc", s.getFBCHandler)
 
@@ -208,6 +214,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/sysfiles/load", s.handleLoadSysFiles)
 	mux.HandleFunc("GET /api/v1/sysfiles/parse", s.handleSysFileParseDir)
 	mux.HandleFunc("GET /api/v1/sysfiles/scan", s.handleSysFileScan)
+	mux.HandleFunc("POST /api/v1/sysfiles/parse-multi", s.handleSysFileParseMulti)
 
 	// Scan nodes via DIA
 	mux.HandleFunc("POST /api/v1/sysfiles/scan-nodes", s.handleScanNodes)
@@ -231,6 +238,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Create log structure
 	mux.HandleFunc("POST /api/v1/nodesconfig/create-structure", s.handleCreateLogStructure)
+	mux.HandleFunc("DELETE /api/v1/nodesconfig/delete-structure", s.handleDeleteLogStructure)
 
 	// Erase/empty a log file
 	mux.HandleFunc("POST /api/v1/logs/erase", s.handleEraseLogFile)
@@ -247,6 +255,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Create a new folder (directory) on disk
 	mux.HandleFunc("POST /api/v1/logs/create-folder", s.handleCreateFolder)
 	mux.HandleFunc("GET /api/v1/browse", s.handleBrowseDir)
+
+	// Delete/rename node entries in nodes.json
+	mux.HandleFunc("DELETE /api/v1/nodesconfig/entry", s.handleDeleteNodesConfigEntry)
+	mux.HandleFunc("POST /api/v1/nodesconfig/rename", s.handleRenameNodesConfigEntry)
 }
 
 // NewTestServer creates a Server suitable for testing with a temp JSON store.

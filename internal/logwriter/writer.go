@@ -7,7 +7,7 @@
 //	FBC: {stationName}_{ipFormatted}_{tokenID}.fbc
 //	RPC: {stationName}_{ipFormatted}_{tokenID}.rpc
 //	LOG: {stationName}_{ipFormatted}.log
-//	LIS: {stationName}_{ipFormatted}_exe{i}_irb_orb.lis
+//	LIS: {stationName}_{ipFormatted}_{tokenID}_exe{i}.lis
 //
 // Where ipFormatted = IP address with dots replaced by hyphens (e.g. 192-168-0-11).
 // All slots of a station share the station name in the filename.

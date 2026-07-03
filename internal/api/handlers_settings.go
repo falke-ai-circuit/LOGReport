@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 )
 
@@ -22,10 +23,15 @@ type Settings struct {
 	BsToolPath        string `json:"bstool_path"`
 	CommunicationLine string `json:"communication_line"`
 	OutputDir         string `json:"output_dir"`
+	BUDir             string `json:"bu_dir"` // path to .sys files directory (default: C:\dna\CA\bu)
 }
 
 // defaultSettings returns platform-appropriate defaults.
 func defaultSettings() Settings {
+	buDir := "C:\\dna\\CA\\bu"
+	if runtime.GOOS != "windows" {
+		buDir = "/dna/CA/bu"
+	}
 	return Settings{
 		DIAHost:     "127.0.0.1",
 		DIAPort:     1234,
@@ -34,6 +40,7 @@ func defaultSettings() Settings {
 		LogRoot:     "",
 		LogRootName: "_LOG",
 		OutputDir:   "",
+		BUDir:       buDir,
 	}
 }
 
@@ -100,6 +107,9 @@ func (s *Server) initSettings() {
 	}
 	if st.CommunicationLine == "" {
 		st.CommunicationLine = def.CommunicationLine
+	}
+	if st.BUDir == "" {
+		st.BUDir = def.BUDir
 	}
 
 	globalSettings.settings = st
@@ -179,6 +189,9 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.CommunicationLine == "" {
 		req.CommunicationLine = def.CommunicationLine
+	}
+	if req.BUDir == "" {
+		req.BUDir = def.BUDir
 	}
 
 	// Apply log_root immediately

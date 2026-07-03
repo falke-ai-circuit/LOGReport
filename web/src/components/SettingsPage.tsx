@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { Settings as SettingsIcon, Save, Loader2, Server, Network, FolderOpen, CheckCircle } from 'lucide-react';
 

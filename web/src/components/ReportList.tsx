@@ -1,7 +1,6 @@
-// @ts-nocheck
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Loader2, AlertTriangle, FileJson, FileArchive, X, Trash2, RefreshCw } from 'lucide-react';
+import { FileText, Plus, Loader2, AlertTriangle, FileJson, FileArchive, Trash2, RefreshCw } from 'lucide-react';
 import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 import type { ApiReport, ReportListResponse } from '../types/api';
 import ReportConfig from './ReportConfig';
@@ -71,8 +70,14 @@ export default function ReportList() {
       const res = await fetch('/api/v1/reports');
       if (res.ok) {
         const data: ReportListResponse = await res.json();
-        setAllReports(data.reports ?? []);
-        setReports(data.reports ?? []);
+        const all = data.reports ?? [];
+        setAllReports(all);
+        // Filter by active project
+        if (!activeProjectId) {
+          setReports([]);
+        } else {
+          setReports(all.filter(r => (r as any).project_id === activeProjectId || !(r as any).project_id));
+        }
         if (selectedReport?.report_id === reportId) {
           setSelectedReport(null);
         }
@@ -85,6 +90,7 @@ export default function ReportList() {
 
   function handleRegenerateReport(report: ApiReport) {
     // Open the config modal pre-filled with the report's parameters
+    setSelectedReport(report);
     setShowConfig(true);
     setContextMenu(null);
   }
@@ -106,7 +112,7 @@ export default function ReportList() {
         if (!cancelled) {
           const all = data.reports ?? [];
           setAllReports(all);
-          // Auto-select first report for preview
+          // Auto-select first report for preview (only if nothing selected)
           if (all.length > 0 && !selectedReport) {
             setSelectedReport(all[0]);
           }
@@ -122,16 +128,17 @@ export default function ReportList() {
 
     fetchReports();
     return () => { cancelled = true; };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount; selectedReport checked via ref below
 
   // Filter reports by active project
   useEffect(() => {
     if (!activeProjectId) {
       setReports([]);
     } else {
-      // Filter by project_id if available, otherwise show all (legacy reports may not have project_id)
+      // Filter by project_id if available; legacy reports without project_id are included
       const filtered = allReports.filter(r => (r as any).project_id === activeProjectId || !(r as any).project_id);
-      setReports(filtered.length > 0 ? filtered : allReports);
+      setReports(filtered);
     }
   }, [activeProjectId, allReports]);
 
@@ -156,19 +163,26 @@ export default function ReportList() {
   }, [selectedReport]);
 
   // Refresh after generating
-  function handleGenerated(reportId: string) {
+  const handleGenerated = useCallback((reportId: string) => {
     setShowConfig(false);
     fetch('/api/v1/reports')
       .then((res) => res.json())
       .then((data: ReportListResponse) => {
-        setAllReports(data.reports ?? []);
-        setReports(data.reports ?? []);
+        const all = data.reports ?? [];
+        setAllReports(all);
+        // Filter by active project immediately to avoid flashing all reports
+        if (!activeProjectId) {
+          setReports([]);
+        } else {
+          const filtered = all.filter(r => (r as any).project_id === activeProjectId || !(r as any).project_id);
+          setReports(filtered);
+        }
         // Auto-select the new report
-        const newReport = (data.reports ?? []).find(r => r.report_id === reportId);
+        const newReport = all.find(r => r.report_id === reportId);
         if (newReport) setSelectedReport(newReport);
       })
       .catch(() => {});
-  }
+  }, [activeProjectId]);
 
   // Handle clicking a report in the sidebar
   function handleReportClick(report: ApiReport) {
@@ -278,8 +292,8 @@ export default function ReportList() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && reports.length === 0 && (
+      {/* Empty state — only show when a project IS selected but has no reports */}
+      {!loading && !error && activeProjectId && reports.length === 0 && (
         <div className="card" style={{ textAlign: 'center', padding: '48px' }}>
           <FileText size={32} color="var(--text-muted)" style={{ marginBottom: '12px' }} />
           <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>

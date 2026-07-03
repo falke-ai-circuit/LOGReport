@@ -78,8 +78,7 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
 
     fetchNodes();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId]); // fetchNodes is local to effect, no additional deps needed
 
   // Fetch projects for dropdown
   useEffect(() => {

@@ -81,7 +81,7 @@ export default function Dashboard() {
         const data = await res.json().catch(() => ({ message: 'Failed' }));
         throw new Error(data.message || `HTTP ${res.status}`);
       }
-      const created = await res.json().catch(() => null);
+      const created: { id?: number; log_root?: string } = await res.json().catch(() => ({}));
       setShowCreate(false);
       setNewProject({ project_number: '', ship_name: '', log_root: '' });
       await fetchProjects();
@@ -138,7 +138,7 @@ export default function Dashboard() {
         const data = await res.json().catch(() => ({ message: 'Update failed' }));
         throw new Error(data.message || `HTTP ${res.status}`);
       }
-      const data = await res.json();
+      const data: { project?: { id: number; log_root: string } } = await res.json();
       // If log_root changed and project is active, update the active log root
       if (data.project && data.project.log_root && data.project.id === activeProjectId) {
         selectProject(data.project.id, data.project.log_root);

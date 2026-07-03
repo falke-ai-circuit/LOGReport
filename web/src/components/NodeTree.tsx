@@ -14,8 +14,10 @@ import {
   ScanLine,
   RefreshCw,
   FolderPlus,
+  Edit3,
 } from 'lucide-react';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
+import { useActiveProject } from '../hooks/useActiveProject';
 
 export interface NodeTreeProps {
   onSelectNode: (node: TreeNodeData) => void;
@@ -25,7 +27,9 @@ export interface NodeTreeProps {
   onQueueStatusChange?: (status: QueueStatusResponse | null) => void;
   projectId?: number | null;
   selectedFileKey?: string | null;
+  activeExecFile?: string | null;
   onCreateStructure?: () => void;
+  onDeleteStructure?: () => void;
   context?: 'nodes' | 'commander';
   colorMode?: 'nodes' | 'commander';
   onFileMove?: (sourcePath: string, targetPath: string) => Promise<void>;
@@ -83,7 +87,9 @@ export default function NodeTree({
   onQueueStatusChange,
   projectId,
   selectedFileKey,
+  activeExecFile,
   onCreateStructure,
+  onDeleteStructure,
   context = 'commander',
   colorMode,
   onFileMove,
@@ -100,6 +106,7 @@ export default function NodeTree({
   } | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { activeLogRoot } = useActiveProject();
 
   // Fetch tree (now includes log_root + project_id to get project-scoped tree)
   const fetchTree = useCallback(async () => {
@@ -111,9 +118,9 @@ export default function NodeTree({
     setLoading(true);
     setError(null);
     try {
-      const logRoot = localStorage.getItem('logRoot') || '';
+      // Use activeLogRoot from hook instead of reading localStorage directly
       const params: string[] = [];
-      if (logRoot) params.push(`log_root=${encodeURIComponent(logRoot)}`);
+      if (activeLogRoot) params.push(`log_root=${encodeURIComponent(activeLogRoot)}`);
       params.push(`project_id=${projectId}`);
       // Commander mode: hide missing files (only show what's on disk)
       if (context === 'commander') {
@@ -146,7 +153,7 @@ export default function NodeTree({
     } finally {
       setLoading(false);
     }
-  }, [projectId, context]);
+  }, [projectId, context, activeLogRoot]);
 
   useEffect(() => {
     fetchTree();
@@ -243,11 +250,13 @@ export default function NodeTree({
   function getContextmenuItems(node: TreeNodeData, parentNode?: TreeNodeData) {
     // NODE type: station folder
     if (node.type === 'node') {
-      // Nodes mode: folder structure creation commands
+      // Nodes mode: folder structure creation commands + node management
       if (context === 'nodes') {
         return [
           { icon: <FolderPlus size={14} />, label: `Create New Folder under ${node.name}`, action: 'create_folder' },
           { icon: <FileText size={14} />, label: `Create New File under ${node.name}`, action: 'create_file' },
+          { icon: <Edit3 size={14} />, label: `Rename Node "${node.name}"`, action: 'rename_node' },
+          { icon: <Trash2 size={14} />, label: `Delete Node "${node.name}"`, action: 'delete_node' },
         ];
       }
       // Commander mode: print commands
@@ -383,6 +392,21 @@ export default function NodeTree({
             Create Structure
           </button>
         )}
+        {onDeleteStructure && (
+          <button
+            className="btn btn-danger"
+            style={{ fontSize: '11px', padding: '4px 8px', marginLeft: '4px' }}
+            onClick={() => {
+              if (window.confirm('Delete the entire _LOG folder structure? This will remove all log files. Nodes.json will need to be re-imported.')) {
+                onDeleteStructure();
+              }
+            }}
+            title="Delete the _LOG folder structure so it can be recreated"
+          >
+            <Trash2 size={11} style={{ display: 'inline', marginRight: '4px' }} />
+            Delete Structure
+          </button>
+        )}
       </div>
 
 
@@ -430,6 +454,7 @@ export default function NodeTree({
                   activeCommand={queueStatus?.commands?.[queueStatus.current] || null}
                   completedCommands={queueStatus?.commands ? new Set(queueStatus.commands.slice(0, queueStatus.current).map((c) => `${c.node_name}:${c.token_id}:${c.type}`)) : undefined}
                   selectedFileKey={selectedFileKey}
+                  activeExecFile={activeExecFile}
                   colorMode={colorMode}
                   onFileMove={onFileMove}
                   onReloadTree={fetchTree}
@@ -508,6 +533,7 @@ interface TreeBranchProps {
   activeCommand?: { node_name: string; token_id: string; type: string; status: string } | null;
   completedCommands?: Set<string>;
   selectedFileKey?: string | null;
+  activeExecFile?: string | null;
   colorMode?: string;
   onFileMove?: (sourcePath: string, targetPath: string) => Promise<void>;
   onReloadTree?: () => void;
@@ -526,6 +552,7 @@ function TreeBranch({
   activeCommand,
   completedCommands,
   selectedFileKey,
+  activeExecFile,
   colorMode,
   onFileMove,
   onReloadTree,
@@ -578,26 +605,35 @@ function TreeBranch({
     }
   }
 
-  // Check if this file/token matches the active command
-  if (activeCommand && (node.type === 'file' || node.type === 'token')) {
-    const cmdKey = `${activeCommand.node_name}:${activeCommand.token_id}:${activeCommand.type}`;
-    // Match by token_id AND station name. The queue's node_name is the config
-    // name (e.g. "AP01m"), parentNode is the station folder (also "AP01m").
-    // Use exact match or startsWith for cases where config name has slot suffix.
-    const stationMatch = parentNode?.name === activeCommand.node_name ||
-      parentNode?.name?.startsWith(activeCommand.node_name) ||
-      activeCommand.node_name.startsWith(parentNode?.name || '');
-    const nodeMatch = node.token_id === activeCommand.token_id && stationMatch;
-    if (nodeMatch) {
-      nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
-      if (activeCommand.status === 'running') {
-        isActive = true;
+  // Check if this file/token matches the active command (from queue or single exec)
+  if (node.type === 'file' || node.type === 'token') {
+    // Queue-based execution check
+    if (activeCommand) {
+      const cmdKey = `${activeCommand.node_name}:${activeCommand.token_id}:${activeCommand.type}`;
+      const stationMatch = parentNode?.name === activeCommand.node_name ||
+        parentNode?.name?.startsWith(activeCommand.node_name) ||
+        activeCommand.node_name.startsWith(parentNode?.name || '');
+      const nodeMatch = node.token_id === activeCommand.token_id && stationMatch;
+      if (nodeMatch) {
+        nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
+        if (activeCommand.status === 'running') {
+          isActive = true;
+        }
+      }
+      if (completedCommands && completedCommands.has(cmdKey)) {
+        if (nodeMatch) {
+          nodeColor = 'var(--success)';
+        }
       }
     }
-    // Check completed commands — green for done files
-    if (completedCommands && completedCommands.has(cmdKey)) {
-      if (nodeMatch) {
-        nodeColor = 'var(--success)';
+    // Single-command execution check (from CommanderLayout)
+    if (activeExecFile) {
+      const execKey = `${parentNode?.name || ''}:${node.token_id}:${node.section_type?.toLowerCase() || ''}`;
+      const fbcKey = `${parentNode?.name || ''}:${node.token_id}:fbc`;
+      const rpcKey = `${parentNode?.name || ''}:${node.token_id}:rpc`;
+      if (activeExecFile === execKey || activeExecFile === fbcKey || activeExecFile === rpcKey) {
+        isActive = true;
+        nodeColor = 'var(--accent)';
       }
     }
   }
@@ -813,6 +849,7 @@ function TreeBranch({
               activeCommand={activeCommand}
               completedCommands={completedCommands}
               selectedFileKey={selectedFileKey}
+              activeExecFile={activeExecFile}
               colorMode={colorMode}
               onFileMove={onFileMove}
               onReloadTree={onReloadTree}

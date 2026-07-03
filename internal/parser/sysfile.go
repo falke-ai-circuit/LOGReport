@@ -41,8 +41,9 @@ var (
 
 // Regex patterns for slot configuration format.
 var (
-	// slotPattern matches "Slot N" lines.
-	slotPattern = regexp.MustCompile(`^Slot\s+(\d+)\s*$`)
+	// slotPattern matches "Slot N" lines (case-insensitive — real .sys files
+	// sometimes use lowercase "slot N").
+	slotPattern = regexp.MustCompile(`(?i)^Slot\s+(\d+)\s*$`)
 
 	// titlePattern matches "TITLE=..." lines, stripping trailing // comments.
 	titlePattern = regexp.MustCompile(`^TITLE=(.+?)(?:\s*//.*)?$`)
@@ -132,7 +133,11 @@ func parseSysFileScanner(scanner *bufio.Scanner) (*SysFileResult, error) {
 		if m := slotPattern.FindStringSubmatch(trimmed); m != nil {
 			// Flush previous slot if any
 			flushSlot(currentSlot, result)
-			currentSlot = &slotBuilder{}
+			slotNum := 0
+			if len(m) > 1 {
+				fmt.Sscanf(m[1], "%d", &slotNum)
+			}
+			currentSlot = &slotBuilder{slotNum: slotNum}
 			continue
 		}
 
@@ -193,6 +198,7 @@ func flushSlot(sb *slotBuilder, result *SysFileResult) {
 type slotBuilder struct {
 	title   string
 	program string
+	slotNum int
 }
 
 // build converts accumulated slot attributes into a SysFileNode.
@@ -206,11 +212,17 @@ func (sb *slotBuilder) build() *types.SysFileNode {
 	name := sb.title
 	nodeType := resolveNodeType(lid)
 
+	// Detect fieldbus slots: PROGRAM contains FBC_CODE (covers <FBC_CODE>,
+	// <CIO_FBC_CODE>, <MIO_FBC_CODE>)
+	isFieldbus := strings.Contains(sb.program, "FBC_CODE")
+
 	return &types.SysFileNode{
-		LID:     lid,
-		Name:    name,
-		Type:    nodeType,
-		Program: sb.program,
+		LID:        lid,
+		Name:       name,
+		Type:       nodeType,
+		Program:    sb.program,
+		SlotNum:    sb.slotNum,
+		IsFieldbus: isFieldbus,
 	}
 }
 

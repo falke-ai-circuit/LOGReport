@@ -17,8 +17,7 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
     }
   }, [externalStatus]);
 
-  // Always poll at 1s — bar is lightweight and should work independently
-  // of whether external status is provided or not
+  // Poll queue status — poll at 1s when active, 5s when idle to reduce unnecessary requests
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -33,13 +32,15 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
       }
     }
 
-    interval = setInterval(pollStatus, 1000);
+    // Determine poll interval based on current state
+    const isActive = status && (status.total > 0 || status.state === 'running' || status.state === 'paused');
+    interval = setInterval(pollStatus, isActive ? 1000 : 5000);
     pollStatus();
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, []); // always poll, independent of external status
+  }, [status?.state, status?.total]); // Re-evaluate interval when queue state changes
 
   async function handleAction(action: 'start' | 'pause' | 'resume' | 'cancel') {
     setActionLoading(true);

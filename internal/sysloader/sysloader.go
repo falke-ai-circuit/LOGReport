@@ -56,6 +56,21 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		return make([]types.NodeConfig, 0), nil
 	}
 
+	return parseSysFiles(sysFiles)
+}
+
+// LoadSysFilesFromPaths parses .sys files from explicit file paths (not a directory).
+// Used by the multi-file upload endpoint where the browser selects individual files.
+func LoadSysFilesFromPaths(filePaths []string) ([]types.NodeConfig, error) {
+	if len(filePaths) == 0 {
+		return make([]types.NodeConfig, 0), nil
+	}
+	return parseSysFiles(filePaths)
+}
+
+// parseSysFiles is the shared core that processes a list of .sys file paths,
+// merges results by LID, and returns NodeConfig array.
+func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {
 	nodeMap := make(map[string]*types.NodeConfig)
 	nodeOrder := make([]string, 0)
 
@@ -75,9 +90,13 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 			}
 
 			nodeType := entry.NodeType
+			// Skip unknown node types in legacy format too
+			if nodeType == "UNKNOWN" {
+				continue
+			}
 			tokenTypes := nodeTypeToTokenTypes[nodeType]
 			if len(tokenTypes) == 0 {
-				tokenTypes = []types.TokenType{types.TokenFBC, types.TokenRPC}
+				tokenTypes = []types.TokenType{types.TokenLOG}
 			}
 
 			node, exists := nodeMap[lid]
@@ -138,6 +157,14 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				continue
 			}
 
+			// Skip unknown node types — these are infrastructure services
+			// (qemgr, smf1, XComServer, Web Diagnostics, etc.) that don't
+			// have FBC/RPC/LOG tokens relevant to LOGReport.
+			nodeType := sfn.Type
+			if nodeType == "UNKNOWN" {
+				continue
+			}
+
 			node, exists := nodeMap[lid]
 			if !exists {
 				node = &types.NodeConfig{
@@ -154,7 +181,11 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 
 			// Calculate token ID based on slot number
 			tokenID := sysFileToken
-			slotNum := extractSlotNumber(lid)
+			slotNum := sfn.SlotNum
+			if slotNum == 0 {
+				// Fallback to extracting from LID name (legacy path without Slot tracking)
+				slotNum = extractSlotNumber(lid)
+			}
 			if slotNum > 1 {
 				tokenID = offsetToken(sysFileToken, slotNum-1)
 			}
@@ -349,14 +380,17 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			}
 		}
 
-		// LIS files (6 per node: exe1..exe6)
-		if tokenTypeSet[types.TokenLIS] {
+		// LIS files (6 per node: exe1..exe6, one set per LIS token)
+		for _, tok := range cfg.Tokens {
+			if tok.TokenType != types.TokenLIS {
+				continue
+			}
 			lisDir := filepath.Join(outputDir, stationName, "LIS")
 			if err := os.MkdirAll(lisDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}
 			for i := 1; i <= 6; i++ {
-				fileName := fmt.Sprintf("%s_%s_exe%d_irb_orb.lis", stationName, ipFormatted, i)
+				fileName := fmt.Sprintf("%s_%s_%s_exe%d.lis", stationName, ipFormatted, tok.TokenID, i)
 				filePath := filepath.Join(lisDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {

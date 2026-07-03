@@ -1,7 +1,6 @@
-// @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Server, Loader2, Box, Upload, Plus, Trash2, Save, FolderOpen, FileText, ScanLine, RefreshCw, FolderPlus } from 'lucide-react';
+import { Server, Loader2, Box, Upload, Plus, Trash2, Save, FolderOpen, FileText, ScanLine } from 'lucide-react';
 import NodeTree from './NodeTree';
 import CommandQueueBar from './CommandQueueBar';
 import DirBrowser from './DirBrowser';
@@ -50,7 +49,7 @@ export default function NodesPage() {
   const [fileViewName, setFileViewName] = useState<string>('');
   const [fileViewPath, setFileViewPath] = useState<string>('');
   const [fileLoading, setFileLoading] = useState(false);
-  const [terminalLog, setTerminalLog] = useState<string[]>([]);
+  const [, setTerminalLog] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ count: number; configs: NodeConfig[]; structure?: string } | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
@@ -175,6 +174,26 @@ export default function NodesPage() {
     }
   }, [activeLogRoot]);
 
+  const handleDeleteStructure = useCallback(async () => {
+    const logRoot = activeLogRoot || localStorage.getItem('logRoot') || '';
+    try {
+      const res = await fetch('/api/v1/nodesconfig/delete-structure', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ log_root: logRoot }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setTerminalLog(prev => [...prev, `[Structure deleted: ${data.log_dir} ${data.deleted ? 'removed' : 'did not exist'}]`]);
+      setTreeReloadKey((k) => k + 1);
+    } catch (err) {
+      setTerminalLog(prev => [...prev, 'Error deleting structure: ' + (err instanceof Error ? err.message : String(err))]);
+    }
+  }, [activeLogRoot]);
+
   const handleFileMove = useCallback(async (sourcePath: string, targetPath: string) => {
     setTerminalLog(prev => [...prev, '> Moving file: ' + sourcePath + ' → ' + targetPath]);
     try {
@@ -200,9 +219,59 @@ export default function NodesPage() {
       case 'open_file':
         handleDoubleClickFile(node);
         break;
+      case 'rename_node': {
+        const newName = window.prompt('Enter new name for node:', node.name);
+        if (!newName || newName === node.name) break;
+        setTerminalLog(prev => [...prev, '> Renaming node: ' + node.name + ' → ' + newName]);
+        try {
+          // Update in nodes.json via rename endpoint
+          const res = await fetch(`/api/v1/nodesconfig/rename?name=${encodeURIComponent(node.name)}&project_id=${activeProjectId || ''}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_name: newName }),
+          });
+          const data = await res.json();
+          if (data.renamed) {
+            setTerminalLog(prev => [...prev, '[Node renamed: ' + node.name + ' → ' + newName + ']']);
+            setTreeReloadKey((k) => k + 1);
+          } else {
+            setTerminalLog(prev => [...prev, 'Error: ' + (data.message || 'Rename failed')]);
+          }
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'delete_node': {
+        if (!window.confirm('Delete node "' + node.name + '" and all its files?\nThis removes the node from nodes.json and deletes the folder from disk.')) break;
+        setTerminalLog(prev => [...prev, '> Deleting node: ' + node.name]);
+        try {
+          // Delete from nodes.json
+          const res = await fetch(`/api/v1/nodesconfig/entry?name=${encodeURIComponent(node.name)}&project_id=${activeProjectId || ''}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (data.deleted) {
+            setTerminalLog(prev => [...prev, '[Node deleted from config: ' + node.name + ']']);
+          } else {
+            setTerminalLog(prev => [...prev, 'Warning: ' + (data.message || 'Node not found in config')]);
+          }
+          // Also delete the folder from disk
+          const logRoot = activeLogRoot || '';
+          if (logRoot) {
+            const folderPath = logRoot + '/' + node.name;
+            try {
+              await fetch('/api/v1/logs/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: folderPath }),
+              });
+            } catch { /* folder deletion is best-effort */ }
+          }
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
       case 'erase_file': {
         const filePath = node.file_path || '';
-        const tokenId = node.token_id || '';
         const sectionType = node.section_type || '';
         setTerminalLog(prev => [...prev, '> Erasing file: ' + (node.file_name || node.name)]);
         try {
@@ -220,7 +289,6 @@ export default function NodesPage() {
       }
       case 'delete_file': {
         const filePath = node.file_path || '';
-        const tokenId = node.token_id || '';
         const sectionType = node.section_type || '';
         if (!window.confirm('Delete file: ' + (node.file_name || node.name) + '?\nThis removes the file from disk entirely.')) break;
         setTerminalLog(prev => [...prev, '> Deleting file: ' + (node.file_name || node.name)]);
@@ -240,7 +308,6 @@ export default function NodesPage() {
       case 'create_file': {
         const filePath = node.file_path || '';
         const sectionType = node.section_type || '';
-        const tokenId = node.token_id || '';
         setTerminalLog(prev => [...prev, '> Creating file: ' + (node.file_name || node.name)]);
         try {
           const body = filePath ? { path: filePath } : { node_name: nodeName, token_type: sectionType, token_id: tokenId, ip_address: node.ip || '' };
@@ -326,7 +393,7 @@ export default function NodesPage() {
       default:
         break;
     }
-  }, [currentNodeName, handleDoubleClickFile]);
+  }, [currentNodeName, handleDoubleClickFile, activeProjectId, activeLogRoot]);
 
 
 
@@ -414,7 +481,7 @@ export default function NodesPage() {
       <>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
+          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} onDeleteStructure={handleDeleteStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -462,7 +529,7 @@ interface NodesTabContentProps {
   toolbarRef?: React.MutableRefObject<{ save: () => void; addNode: () => void; openFile: () => void; toggleImport: () => void; isSaving: () => boolean; getSaveMsg: () => string | null } | null>;
 }
 
-function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanResult, toolbarRef }: NodesTabContentProps) {
+function NodesTabContent({ projectId, onNodesSaved, toolbarRef }: NodesTabContentProps) {
   // Node config state (NodeConfig[] from nodesconfig API)
   const [nodes, setNodes] = useState<NodeConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -506,10 +573,12 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
   const [singleSysPath, setSingleSysPath] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showDirBrowser, setShowDirBrowser] = useState(false);
+  const [multiFileUploading, setMultiFileUploading] = useState(false);
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
 
   // Load from project state
-  const [allProjects, setAllProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
-  const [loadProjectId, setLoadProjectId] = useState<number | ''>('');
+  const [, setAllProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
+  const [, setLoadProjectId] = useState<number | ''>('');
 
   // ─── Station grouping helpers ────────────────────────────────────
   function getStationName(name: string): string {
@@ -581,6 +650,9 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
   }
 
   // ─── Fetch all projects for "Load from project" dropdown ───────
+  // NOTE: allProjects, loadProjectId, handleLoadFromProject are retained for future
+  // "Load from project" feature but currently unused in render. Suppressed via eslint.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useEffect(() => {
     async function fetchAllProjects() {
       try {
@@ -596,6 +668,7 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
   }, []);
 
   // ─── Load nodes from another project (without saving) ──────────
+  // Retained for future "Load from project" UI feature
   async function handleLoadFromProject(otherId: number) {
     setLoadProjectId(otherId);
     setLoading(true);
@@ -616,6 +689,8 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
       setLoading(false);
     }
   }
+  // Suppress unused warning — function is for future UI feature
+  void handleLoadFromProject;
 
   // ─── Fetch nodes for active project ────────────────────────────
   const fetchNodes = useCallback(async () => {
@@ -656,7 +731,8 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
         getSaveMsg: () => saveMsg,
       };
     }
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saving, saveMsg, showImport]); // Update ref when closures change
 
   // ─── Save all nodes ─────────────────────────────────────────────
   async function handleSaveAll() {
@@ -861,6 +937,43 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
     }
   }
 
+  // ─── Import multiple .sys files via file picker ───────────────────
+  async function handleMultiFileImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setMultiFileUploading(true);
+    setImportError(null);
+    setImportResult(null);
+    setSelectedImports(new Set());
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+      const res = await fetch('/api/v1/sysfiles/parse-multi', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Parse failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const configs: NodeConfig[] = data.configs || [];
+      if (configs.length === 0) {
+        setImportError('No nodes found in uploaded files');
+        return;
+      }
+      setImportResult({ count: configs.length, totalBefore: configs.length, configs });
+      setSelectedImports(new Set(configs.map((_, i) => i)));
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Multi-file import failed');
+    } finally {
+      setMultiFileUploading(false);
+      e.target.value = '';
+    }
+  }
+
   // ─── Toggle import selection ─────────────────────────────────────
   function toggleImportSelection(idx: number) {
     setSelectedImports((prev) => {
@@ -888,6 +1001,15 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
         ref={fileInputRef}
         accept=".json"
         onChange={handleOpenNodesFile}
+        style={{ display: 'none' }}
+      />
+      {/* Hidden file input for multi .sys file import */}
+      <input
+        type="file"
+        ref={multiFileInputRef}
+        accept=".sys"
+        multiple
+        onChange={handleMultiFileImport}
         style={{ display: 'none' }}
       />
 
@@ -938,6 +1060,21 @@ function NodesTabContent({ projectId, onNodesSaved, onScanNodes, scanning, scanR
               disabled={importScanning}
             >
               {importScanning ? <Loader2 size={12} className="spin" /> : 'Scan'}
+            </button>
+          </div>
+
+          {/* Select multiple .sys files via file picker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Or select multiple .sys files:</span>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => multiFileInputRef.current?.click()}
+              disabled={multiFileUploading}
+              title="Select one or more .sys files from file explorer"
+            >
+              {multiFileUploading ? <Loader2 size={14} className="spin" /> : <FileText size={14} />}
+              {multiFileUploading ? 'Parsing...' : 'Select .sys Files'}
             </button>
           </div>
 

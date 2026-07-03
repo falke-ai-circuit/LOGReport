@@ -363,12 +363,95 @@ All 5 pages were screenshot-tested using Microsoft Edge headless mode on the VM 
 - **What to fix:** On component mount, fetch `/api/v1/settings` and pre-fill the telnet port field with `settings.dia_port` (currently 1234) instead of defaulting to 23.
 - **How to verify:** Open Commander page — the port field shows 1234, not 23. Entering an IP and clicking Connect connects successfully.
 
+### TASK 8: Auto-Refresh Scan Tab (MISSING from Python)
+- **Priority:** HIGH (workflow regression — Goran used this daily)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `commander/ui/node_scan_widget.py` — auto_refresh_timer, countdown display, intervals [5,10,30,60,300]s; Go `web/src/components/ScanTab.tsx`
+- **What to build:**
+  1. Add auto-refresh toggle + interval selector (5s/10s/30s/1m/5m) to ScanTab
+  2. On toggle, set interval that re-triggers the scan compare endpoint periodically
+  3. Show countdown timer ("Next refresh in 8s...")
+  4. Stop auto-refresh on tab switch or component unmount
+- **How to verify:** Open Scan tab, select a file, enable auto-refresh at 5s. Every 5 seconds the comparison re-runs automatically with countdown display.
+
+### TASK 9: Hierarchical Commands (MISSING from Python)
+- **Priority:** MEDIUM (efficiency feature — predefined sequences save time)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `commander/services/hierarchical_command_service.py` — execute_hierarchical_command(), subcommand chaining, stop_on_error; Go `internal/commandqueue/queue.go`
+- **What to build:**
+  1. Backend: Define named command sequences (e.g., "Full FBC Sequence" = clear + print + wait + compare) as a new API endpoint `POST /api/v1/commandqueue/hierarchical` with sequence definition
+  2. Frontend: Add named sequences to the context menu (right-click node → "Run Full FBC Sequence", "Run Full RPC Sequence")
+  3. Add stop-on-error toggle
+  4. Show per-step progress in the queue status
+- **How to verify:** Right-click a node → "Run Full FBC Sequence" → see clear → print → compare steps execute sequentially with per-step progress.
+
+### TASK 10: Circuit Breaker for Command Queue (MISSING from Python)
+- **Priority:** MEDIUM (protects against retry storms)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `commander/utils/circuit_breaker.py` — CircuitState (CLOSED/OPEN/HALF_OPEN), 3-failure threshold, 60s timeout; Go `internal/commandqueue/queue.go` + `internal/api/handlers_commander.go`
+- **What to build:**
+  1. Add circuit breaker to the command queue executor: after 3 consecutive failures, open circuit (stop retrying)
+  2. After 60s cooldown, enter half-open state (try one command — if success, close circuit; if fail, re-open)
+  3. Return circuit breaker state in queue status response
+  4. Frontend: show "Circuit breaker tripped" indicator when open
+- **How to verify:** Queue with 11 commands against an unreachable node — after 3 failures, queue stops with "circuit open" status instead of trying all 11.
+
+### TASK 11: Line Filtering UI for Reports (PARTIAL — backend exists, no UI)
+- **Priority:** MEDIUM (Goran filters log lines in daily work)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `gui.py` — "Show All"/"First N"/"Last N"/"Range" dropdown + spinboxes; Go `web/src/components/ReportConfig.tsx` — missing line filtering controls; Go backend `handlers.go` — already supports `line_limit` and `line_range`
+- **What to build:**
+  1. Add line filtering dropdown to ReportConfig: "All Lines" (default), "First N Lines", "Last N Lines", "Lines Range"
+  2. Show spinbox inputs for N or range based on selection
+  3. Send `line_limit` and `line_range` in the report generation request body
+- **How to verify:** Generate a PDF report with "First 50 Lines" → report contains only first 50 lines of each log file.
+
+### TASK 12: Auto-Reconnect for Interactive Telnet (PARTIAL)
+- **Priority:** MEDIUM (DIA drops connections frequently)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `commander/services/telnet_service.py` — stores last_ip/last_port, reconnect on disconnect; Go `web/src/components/TelnetTerminal.tsx` + `internal/telnet/session.go`
+- **What to build:**
+  1. In TelnetTerminal.tsx, detect WebSocket disconnect events
+  2. Auto-attempt reconnect up to 2 times with 5-second delay, using the last-used host:port
+  3. Show "Reconnecting..." status during retry
+  4. If all retries fail, show "Disconnected — click Connect to retry"
+- **How to verify:** Connect to a node, kill the node's telnet port → UI shows "Reconnecting..." within 2 seconds, attempts reconnect.
+
+### TASK 13: Copy-to-Log from Telnet/BsTool (PARTIAL)
+- **Priority:** LOW (workaround: manual copy-paste)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `commander/ui/telnet_tab.py` — copy_to_log_clicked writes to log file; Go `TelnetTerminal.tsx` + `BsToolPanel.tsx` — "Copy" only copies to clipboard
+- **What to build:**
+  1. Add "Copy to Log" button next to "Copy" in telnet and bstool panels
+  2. On click, POST the current terminal output to `/api/v1/logs/{nodeName}` with token_type and token_id
+  3. The log writer writes it to the proper log file
+- **How to verify:** Execute a telnet command, click "Copy to Log" → log file appears in the tree with content from the terminal output.
+
+### TASK 14: Error Detection in Telnet Responses (PARTIAL)
+- **Priority:** LOW (BEL catches most errors, but text-based errors slip through)
+- **Depends on:** none
+- **Delegate to:** Coder
+- **Reference:** Python `commander/utils/error_detection.py` — `is_error_response()` with regex patterns and whitelist; Go `internal/telnet/filter.go` — only BEL detection
+- **What to build:**
+  1. Add `isErrorResponse(output string) bool` function to `internal/telnet/filter.go`
+  2. Check for common error patterns: "error", "failure", "exception", "timeout", "not found", "syntax error", "permission denied"
+  3. Maintain a whitelist of valid responses to avoid false positives
+  4. Mark command queue results as "failed" when error response detected
+- **How to verify:** Send an invalid command to a node → queue shows command as "failed" (not "completed") with error output.
+
 ---
 
 ## Phase Ordering
 
-- **Phase 1 (parallel):** TASK 1 (log root fix) + TASK 3 (middleware) + TASK 4 (tests) + TASK 5 (commit) + TASK 6 (dashboard health) + TASK 7 (telnet port)
-- **Phase 2:** TASK 2 (JSON report) — can also be Phase 1, independent
+- **Phase 1 (parallel):** TASK 1 (log root fix) + TASK 3 (middleware) + TASK 4 (tests) + TASK 5 (commit) + TASK 6 (dashboard health) + TASK 7 (telnet port) + TASK 8 (auto-refresh scan) + TASK 10 (circuit breaker) + TASK 11 (line filtering UI) + TASK 12 (auto-reconnect) + TASK 14 (error detection)
+- **Phase 2:** TASK 2 (JSON report) + TASK 9 (hierarchical commands) + TASK 13 (copy-to-log)
+- **Priority order for coder:** Start with TASK 5 (commit!) → TASK 1 (log root bug) → TASK 8 (auto-refresh, HIGH workflow regression) → TASK 11 (line filtering UI) → TASK 12 (auto-reconnect) → then remaining tasks
 
 ---
 
@@ -412,14 +495,22 @@ npm run build  # outputs to web/dist-new-flat/
 
 ## Reviewer Notes
 
-1. **The app is genuinely working against real DNA nodes.** This is not a mock test — the command queue connected to 192.168.0.11:1234 and got real FBC/RPC/LOG output. The log writer created files with proper decorative headers on the VM filesystem. This is a major milestone.
+1. **Feature gap analysis completed.** The analyst performed a comprehensive 23-area feature-by-feature comparison of the Python source (93 files, 22,919 lines) against the Go+React rewrite. Results: 14 IMPLEMENTED, 7 PARTIAL, 5 MISSING, 3 N/A. Full analysis at `/opt/data/LOGReport/reviews/2026-06-30-feature-gap-analysis/FEATURE_GAP_ANALYSIS.md`.
 
-2. **F1 (log root side-effect) is the most impactful bug.** It silently redirects all command output to wherever the last create-structure call pointed. In production, this means Goran's logs could end up in a project-specific folder without him knowing. Easy fix (one line removal) but high impact.
+2. **The Go version is substantially complete.** 14 of 23 feature areas are fully implemented. 7 are partial (meaning core functionality exists but has gaps). Only 5 are truly missing — and 2 of those (clipboard monitor, VNC session recorder) are desktop-only features not applicable to a web app.
 
-3. **The 45 uncommitted files are a process risk.** The coder is building and deploying binaries (v397→v416 = 19 versions in one day) but not committing the source. If the working directory is lost, all changes since v3.9.0 are gone. TASK 5 (commit) should happen before any code fixes.
+3. **Go has significant advantages over Python.** DIA live node scanning (systemtest node_list), WebSocket real-time streaming, native TCP BsTool transport (no BsTool.exe needed), SSH remote BsTool execution, project management with SQLite, JSON report format, command history, multi-project support, dashboard with health monitoring. These are Go-only features that improve Goran's workflow beyond what Python offered.
 
-4. **Binary bloat is significant.** 27 .exe files totaling ~400MB in the repo root. These should be in .gitignore and removed. The repo is on a dev branch — these binaries are being versioned by filename (v416.exe) instead of git tags.
+4. **The critical missing features for daily work are:** (a) auto-refresh scan — Goran monitors live node state changes and needs periodic re-scan, (b) hierarchical commands — predefined sequences save time on repetitive tasks, (c) circuit breaker — protects against retry storms when nodes are unresponsive, (d) line filtering UI — backend supports it but frontend doesn't expose it.
 
-5. **The main branch has diverged.** `origin/main` has a separate refactoring effort (Phase 1-3 refactoring with NodeConfigRepository, NodeManagerFacade) that the dev branch doesn't have. These need to be reconciled at some point.
+5. **The app is genuinely working against real DNA nodes.** This is not a mock test — the command queue connected to 192.168.0.11:1234 and got real FBC/RPC/LOG output. The log writer created files with proper decorative headers on the VM filesystem. This is a major milestone.
 
-6. **Test infrastructure is partially broken.** 2 unit tests fail, and the api/telnet test suites timeout. This suggests the test suite isn't being run before deployments. The coder should fix this as part of the commit checkpoint.
+6. **F1 (log root side-effect) is the most impactful bug.** It silently redirects all command output to wherever the last create-structure call pointed. In production, this means Goran's logs could end up in a project-specific folder without him knowing. Easy fix (one line removal) but high impact.
+
+7. **The 45 uncommitted files are a process risk.** The coder is building and deploying binaries (v397→v416 = 19 versions in one day) but not committing the source. If the working directory is lost, all changes since v3.9.0 are gone. TASK 5 (commit) should happen before any code fixes.
+
+8. **Binary bloat is significant.** 27 .exe files totaling ~400MB in the repo root. These should be in .gitignore and removed. The repo is on a dev branch — these binaries are being versioned by filename (v416.exe) instead of git tags.
+
+9. **The main branch has diverged.** `origin/main` has a separate refactoring effort (Phase 1-3 refactoring with NodeConfigRepository, NodeManagerFacade) that the dev branch doesn't have. These need to be reconciled at some point.
+
+10. **Test infrastructure is partially broken.** 2 unit tests fail, and the api/telnet test suites timeout. This suggests the test suite isn't being run before deployments. The coder should fix this as part of the commit checkpoint.

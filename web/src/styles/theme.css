@@ -14,7 +14,7 @@
   --border: #1e1e2e;
   --border-light: #2a2a3a;
   --success: #10b981;
-  --warning: #f59e0b;
+  --warning: #fbbf24;
   --error: #ef4444;
   --info: #3b82f6;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -109,12 +109,27 @@ code, pre, .mono {
   background: var(--accent-hover);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-secondary {
   background: var(--bg-elevated);
   color: var(--text-primary);
 }
 .btn-secondary:hover {
   background: var(--border-light);
+}
+
+.btn-danger {
+  background: transparent;
+  color: #ef4444;
+  border-color: #ef4444;
+}
+.btn-danger:hover {
+  background: #ef4444;
+  color: var(--bg-primary);
 }
 
 .btn-ghost {

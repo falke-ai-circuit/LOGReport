@@ -357,7 +357,90 @@ func (s *Server) getNodeHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ─── Handler 5: POST /api/v1/nodes/{addr}/scan ──────────────────
+// ─── Handler 5: DELETE /api/v1/nodes/{addr} ─────────────────────
+
+func (s *Server) deleteNodeHandler(w http.ResponseWriter, r *http.Request) {
+	addr := r.PathValue("addr")
+	if addr == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "node address is required")
+		return
+	}
+
+	if err := s.store.DeleteNode(addr); err != nil {
+		writeError(w, http.StatusInternalServerError, "delete_failed",
+			fmt.Sprintf("failed to delete node: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"deleted": true,
+		"address": addr,
+	})
+}
+
+// ─── Handler 5b: POST /api/v1/nodes/{addr}/rename ───────────────
+
+type renameRequest struct {
+	NewName    string `json:"new_name"`
+	NewAddress string `json:"new_address"`
+}
+
+func (s *Server) renameNodeHandler(w http.ResponseWriter, r *http.Request) {
+	addr := r.PathValue("addr")
+	if addr == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "node address is required")
+		return
+	}
+
+	var req renameRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		return
+	}
+
+	if req.NewName == "" && req.NewAddress == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "new_name or new_address is required")
+		return
+	}
+
+	// Get existing node
+	node, err := s.store.GetNode(addr)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("node with address '%s' not found", addr))
+		return
+	}
+
+	// Update fields
+	if req.NewName != "" {
+		node.Name = req.NewName
+	}
+	newAddr := req.NewAddress
+	if newAddr == "" {
+		newAddr = addr
+	}
+
+	// If address changed, delete old and save new
+	if newAddr != addr {
+		_ = s.store.DeleteNode(addr)
+		node.Address = newAddr
+	}
+
+	if err := s.store.SaveNode(node); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_failed",
+			fmt.Sprintf("failed to rename node: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"renamed":    true,
+		"old_address": addr,
+		"new_address": newAddr,
+		"node":        nodeToAPI(node),
+	})
+}
+
+// ─── Handler 6: POST /api/v1/nodes/{addr}/scan ──────────────────
 
 type scanRequest struct {
 	Modules []string `json:"modules"`

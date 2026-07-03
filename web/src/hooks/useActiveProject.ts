@@ -65,7 +65,7 @@ export function useActiveProject() {
       fetch('/api/v1/logs/setroot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: logRoot || 'C:\\temp\\logreport-output' }),
+        body: JSON.stringify({ path: logRoot || '' }),
       }).catch(() => {});
     }
     // Fire event so all other components update

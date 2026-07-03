@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Loader2, RefreshCw, AlertTriangle, FileText, Timer, Square } from 'lucide-react';
 import type {
   TreeNodeData,
   ScanCompareRequest,
@@ -54,6 +54,12 @@ export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProp
   const [parsedTable, setParsedTable] = useState<{ key: string; value: string }[] | null>(null);
   const [parsedTable2, setParsedTable2] = useState<{ key: string; value: string }[] | null>(null);
   const [selectedCell, setSelectedCell] = useState<ComparisonCell | null>(null);
+
+  // Auto-refresh timer (like Python version: 5/10/30/60/300s intervals)
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(10); // seconds
+  const [countdown, setCountdown] = useState(10);
+  const countdownRef = useRef<number>(10);
 
   // Use prop logRoot or localStorage
   const logRoot = propLogRoot || localStorage.getItem('logRoot') || '';
@@ -233,6 +239,25 @@ export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProp
     },
     [activeNodeName, nodeConfigs, fileData],
   );
+
+  // Auto-refresh: countdown and re-compare when enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      countdownRef.current -= 1;
+      setCountdown(countdownRef.current);
+
+      if (countdownRef.current <= 0) {
+        countdownRef.current = refreshInterval;
+        setCountdown(refreshInterval);
+        // Trigger re-compare
+        runCompare();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, runCompare]);
 
   // Compare two loaded files cell-by-cell
   const runFileCompare = useCallback(() => {
@@ -451,6 +476,55 @@ export default function ScanTab({ treeNodes, logRoot: propLogRoot }: ScanTabProp
           )}
           Compare with Live
         </button>
+
+        {/* Auto-refresh toggle + interval selector */}
+        {fileData && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              className={autoRefresh ? 'btn btn-danger' : 'btn btn-secondary'}
+              style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              onClick={() => {
+                if (autoRefresh) {
+                  setAutoRefresh(false);
+                } else {
+                  countdownRef.current = refreshInterval;
+                  setCountdown(refreshInterval);
+                  setAutoRefresh(true);
+                }
+              }}
+              title={autoRefresh ? 'Stop auto-refresh' : 'Start auto-refresh comparison'}
+            >
+              {autoRefresh ? <Square size={10} /> : <Timer size={12} />}
+              {autoRefresh ? `${countdown}s` : 'Auto'}
+            </button>
+            {autoRefresh && (
+              <select
+                value={refreshInterval}
+                onChange={(e) => {
+                  const newInterval = parseInt(e.target.value);
+                  setRefreshInterval(newInterval);
+                  countdownRef.current = newInterval;
+                  setCountdown(newInterval);
+                }}
+                style={{
+                  padding: '4px 6px',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  color: 'var(--text-primary)',
+                  fontSize: '11px',
+                  outline: 'none',
+                }}
+              >
+                <option value={5}>5s</option>
+                <option value={10}>10s</option>
+                <option value={30}>30s</option>
+                <option value={60}>60s</option>
+                <option value={300}>5min</option>
+              </select>
+            )}
+          </div>
+        )}
 
         <button
           className="btn btn-secondary"

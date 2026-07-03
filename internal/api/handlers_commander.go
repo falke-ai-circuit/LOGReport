@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -80,9 +81,7 @@ func (s *Server) nodesConfigPathForProject(projectID string) string {
 
 // resolveLogRoot returns the effective log root for file writing.
 // Priority: server's logRootDir (set via /logs/setroot by frontend) →
-// settings LogRoot → default temp dir. This ensures the queue executor
-// writes files to the project's _LOG/ structure even if /logs/setroot
-// hasn't been called yet.
+// settings LogRoot → first active project's log_root → default temp dir.
 func (s *Server) resolveLogRoot() string {
 	lr := s.logRoot()
 	if lr != "" && lr != "logs" {
@@ -96,6 +95,20 @@ func (s *Server) resolveLogRoot() string {
 	if st.LogRoot != "" {
 		return st.LogRoot
 	}
+	// Try to find log_root from the first active project in the store
+	if s.store != nil {
+		if projs, err := s.store.ListProjects(); err == nil && len(projs) > 0 {
+			for _, p := range projs {
+				if p.LogRoot != "" && p.Status == "active" {
+					return p.LogRoot
+				}
+			}
+			// If no active project, use the first one with a log_root
+			if projs[0].LogRoot != "" {
+				return projs[0].LogRoot
+			}
+		}
+	}
 	// Last resort: temp dir
 	if runtime.GOOS == "windows" {
 		return "C:\\temp\\logreport-output"
@@ -103,7 +116,7 @@ func (s *Server) resolveLogRoot() string {
 	return "/tmp/logreport-output"
 }
 
-// nodesConfigPathForLogRoot returns the path to nodes.json for a given log root.
+// nodesConfigPathForLogRoot returns
 func (s *Server) nodesConfigPathForLogRoot(logRoot string) string {
 	if logRoot == "" {
 		return s.nodesConfigPath()
@@ -189,6 +202,119 @@ func (s *Server) handleSaveNodesConfig(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleDeleteNodesConfigEntry deletes a single node entry from nodes.json by name.
+// DELETE /api/v1/nodesconfig/entry?project_id={id}&name={name}
+func (s *Server) handleDeleteNodesConfigEntry(w http.ResponseWriter, r *http.Request) {
+	projectID := r.URL.Query().Get("project_id")
+	nodeName := r.URL.Query().Get("name")
+	if nodeName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "name parameter is required")
+		return
+	}
+
+	path := s.nodesConfigPathForProject(projectID)
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load nodes.json: %v", err))
+		return
+	}
+
+	// Filter out the node with matching name
+	var filtered []types.NodeConfig
+	deleted := false
+	for _, c := range configs {
+		if c.Name == nodeName {
+			deleted = true
+			continue
+		}
+		filtered = append(filtered, c)
+	}
+
+	if !deleted {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("node '%s' not found in nodes.json", nodeName))
+		return
+	}
+
+	if err := nodesconfig.SaveToFile(path, filtered); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_error",
+			fmt.Sprintf("failed to save nodes.json: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"deleted": true,
+		"name":    nodeName,
+		"count":   len(filtered),
+	})
+}
+
+// handleRenameNodesConfigEntry renames a node entry in nodes.json by name.
+// POST /api/v1/nodesconfig/rename?project_id={id}&name={oldName}
+// Body: {"new_name": "NEW_NAME", "new_ip": "192.168.0.99"}
+func (s *Server) handleRenameNodesConfigEntry(w http.ResponseWriter, r *http.Request) {
+	projectID := r.URL.Query().Get("project_id")
+	oldName := r.URL.Query().Get("name")
+	if oldName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "name parameter is required")
+		return
+	}
+
+	var req struct {
+		NewName string `json:"new_name"`
+		NewIP   string `json:"new_ip"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		return
+	}
+	if req.NewName == "" && req.NewIP == "" {
+		writeError(w, http.StatusBadRequest, "validation_error", "new_name or new_ip is required")
+		return
+	}
+
+	path := s.nodesConfigPathForProject(projectID)
+	configs, err := nodesconfig.LoadFromFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		writeError(w, http.StatusInternalServerError, "load_error",
+			fmt.Sprintf("failed to load nodes.json: %v", err))
+		return
+	}
+
+	renamed := false
+	for i := range configs {
+		if configs[i].Name == oldName {
+			if req.NewName != "" {
+				configs[i].Name = req.NewName
+			}
+			if req.NewIP != "" {
+				configs[i].IPAddress = req.NewIP
+			}
+			renamed = true
+			break
+		}
+	}
+
+	if !renamed {
+		writeError(w, http.StatusNotFound, "not_found",
+			fmt.Sprintf("node '%s' not found in nodes.json", oldName))
+		return
+	}
+
+	if err := nodesconfig.SaveToFile(path, configs); err != nil {
+		writeError(w, http.StatusInternalServerError, "save_error",
+			fmt.Sprintf("failed to save nodes.json: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"renamed":  true,
+		"old_name": oldName,
+		"count":    len(configs),
+	})
+}
+
 // handleLoadNodesConfig loads nodes.json from a specified file path.
 // PUT /api/v1/nodesconfig/load?path={path}
 func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +372,16 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 
 	// Check for log_root query param or use server's logRoot
 	logRoot := r.URL.Query().Get("log_root")
+	if logRoot == "" {
+		// Try to resolve from project
+		if projectID != "" {
+			if pid, err := strconv.Atoi(projectID); err == nil && pid > 0 {
+				if proj, err := s.store.GetProject(int64(pid)); err == nil && proj != nil {
+					logRoot = proj.LogRoot
+				}
+			}
+		}
+	}
 	if logRoot == "" {
 		logRoot = s.logRoot()
 	}
@@ -1744,6 +1880,77 @@ func (s *Server) handleSysFileScan(w http.ResponseWriter, r *http.Request) {
 }
 
 
+// handleSysFileParseMulti parses multiple uploaded .sys files and returns merged configs.
+// POST /api/v1/sysfiles/parse-multi (multipart/form-data, field "files" repeated)
+func (s *Server) handleSysFileParseMulti(w http.ResponseWriter, r *http.Request) {
+	// 32MB max upload for multiple sys files
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", "failed to parse multipart form")
+		return
+	}
+
+	// Collect all uploaded files
+	r.ParseMultipartForm(32 << 20) // already parsed, safe to call again
+
+	// Save each file to a temp dir, collect paths
+	tmpDir, err := os.MkdirTemp("", "logreport-sysfiles-*")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to create temp dir")
+		return
+	}
+	defer os.RemoveAll(tmpDir)
+
+	var filePaths []string
+	var fileNames []string
+
+	// r.MultipartForm.File is a map[string][]*multipart.FileHeader
+	for _, headers := range r.MultipartForm.File {
+		for _, header := range headers {
+			if !strings.HasSuffix(strings.ToLower(header.Filename), ".sys") {
+				continue
+			}
+			src, err := header.Open()
+			if err != nil {
+				continue
+			}
+			tmpPath := filepath.Join(tmpDir, header.Filename)
+			dst, err := os.Create(tmpPath)
+			if err != nil {
+				src.Close()
+				continue
+			}
+			if _, err := io.Copy(dst, src); err != nil {
+				dst.Close()
+				src.Close()
+				continue
+			}
+			dst.Close()
+			src.Close()
+			filePaths = append(filePaths, tmpPath)
+			fileNames = append(fileNames, header.Filename)
+		}
+	}
+
+	if len(filePaths) == 0 {
+		writeError(w, http.StatusBadRequest, "validation_error", "no .sys files found in upload")
+		return
+	}
+
+	configs, err := sysloader.LoadSysFilesFromPaths(filePaths)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "parse_error",
+			fmt.Sprintf("failed to parse sys files: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs":  configs,
+		"count":    len(configs),
+		"files":    fileNames,
+		"file_count": len(fileNames),
+	})
+}
+
 // ─── Scan Nodes Handler (DIA "print structure") ──────────────────────
 
 // handleScanNodes connects to DIA, sends "systemtest node_list" to generate
@@ -1751,14 +1958,14 @@ func (s *Server) handleSysFileScan(w http.ResponseWriter, r *http.Request) {
 // Falls back to "print structure" + token probing if node_list fails.
 // POST /api/v1/sysfiles/scan-nodes
 func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
-	// 90-second hard timeout — the scan can take up to ~60s in worst case
-	// (15s connect + 12s systemtest + 15s nodelist poll + 12s print structure + probing)
+	// 95-second hard timeout — the scan can take up to ~70s in worst case
+	// (15s connect + 2s delay + 15s systemtest + 20s nodelist poll + 15s print structure + probing)
 	// but must not hang indefinitely. Context cancellation propagates to telnet reads.
-	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 95*time.Second)
 	defer cancel()
 	_ = ctx // r.Context() is already used by the HTTP server; ctx is for future use
 
-	// Load settings for DIA host/port
+	// Load settings for DIA host/port and BU directory
 	if !globalSettings.loaded {
 		s.initSettings()
 	}
@@ -1770,6 +1977,28 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	port := st.DIAPort
 	if port == 0 {
 		port = 1234
+	}
+	buDir := st.BUDir
+	if buDir == "" {
+		buDir = "C:\\dna\\CA\\bu"
+		if runtime.GOOS != "windows" {
+			buDir = "/dna/CA/bu"
+		}
+	}
+
+	// Step 0: Try reading .sys files from the BU directory first.
+	// This gives the SAME result as manually importing .sys files —
+	// real IP addresses, FBC/RPC tokens, full node names.
+	// The .sys files are the authoritative source of node configuration.
+	buConfigs := tryLoadSysFromBUDir(buDir)
+	if len(buConfigs) > 0 {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"configs":    buConfigs,
+			"count":      len(buConfigs),
+			"method":     "bu_sys_files",
+			"bu_dir":     buDir,
+		})
+		return
 	}
 
 	// Disconnect any existing session to avoid conflicts (DIA allows only 1 connection)
@@ -1801,23 +2030,40 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 
 	// Step 1: Delete old nodelist files to detect fresh generation
 	// DIA writes to its own working directory, not LOGReport's
+	// BUT: some DIA versions don't support `systemtest node_list`. In that case,
+	// we fall back to the existing nodelist.txt that was generated at DIA startup.
+	// Save the existing content before deleting, so we can restore it if the
+	// command fails to regenerate the file.
 	knownPaths := []string{
 		"C:\\dna\\CA\\dia\\nodelist.txt",
 		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
 		"nodelist.txt",
 		"C:\\nodelist.txt",
 	}
+
+	// Save existing nodelist content before deleting
+	var existingNodeList string
+	for _, p := range knownPaths {
+		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
+			existingNodeList = string(data)
+			break
+		}
+	}
+
+	// Delete old files to detect fresh generation
 	for _, p := range knownPaths {
 		os.Remove(p)
 	}
 
 	// Step 3: Send systemtest node_list using SendSystemCommand
 	// SendSystemCommand clears with Ctrl+X + Enter only (no Ctrl+Z which exits system mode)
+	// Small delay to let DIA fully enter system mode after connect
+	time.Sleep(2 * time.Second)
 	_ = s.telnetSM.ClearOutput(sessionID)
 	_ = s.telnetSM.SendSystemCommand(sessionID, "systemtest node_list nodelist.txt")
-	_ = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
+	_ = waitForOutput(s.telnetSM, sessionID, 15*time.Second, 2*time.Second, nil)
 
-	// Step 4: Wait for nodelist.txt to appear (poll for up to 15 seconds)
+	// Step 4: Wait for nodelist.txt to appear (poll for up to 20 seconds)
 	// DIA writes the file asynchronously after the command returns
 	var nodeListContent string
 	searchPaths := []string{
@@ -1828,7 +2074,7 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		filepath.Join(os.TempDir(), "nodelist.txt"),
 	}
 
-	deadline := time.Now().Add(15 * time.Second)
+	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
 		for _, p := range searchPaths {
 			if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
@@ -1840,6 +2086,13 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
+	}
+
+	// If systemtest node_list didn't generate a new file, use the existing
+	// nodelist.txt content (saved before deletion). Some DIA versions generate
+	// nodelist.txt at startup but don't support the systemtest command.
+	if nodeListContent == "" && existingNodeList != "" {
+		nodeListContent = existingNodeList
 	}
 
 	var configs []types.NodeConfig
@@ -1864,16 +2117,60 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"configs":        configs,
-		"count":          len(configs),
-		"structure_raw":  structureRaw,
-		"nodelist_raw":   nodeListContent,
-		"method":         "systemtest_node_list",
+		"configs":       configs,
+		"count":         len(configs),
+		"structure_raw": structureRaw,
+		"nodelist_raw":  nodeListContent,
+		"method":        "systemtest_node_list",
 	})
 }
 
+// tryLoadSysFromBUDir attempts to load .sys files from the BU directory.
+// Returns nil if the directory doesn't exist, has no .sys files, or parsing fails.
+// On success, returns the same configs as a manual .sys file import —
+// with real IP addresses, FBC/RPC tokens, and full node names.
+func tryLoadSysFromBUDir(buDir string) []types.NodeConfig {
+	// Check if directory exists
+	if _, err := os.Stat(buDir); err != nil {
+		return nil
+	}
+
+	// Try loading .sys files from the directory
+	configs, err := sysloader.LoadSysFiles(buDir)
+	if err != nil || len(configs) == 0 {
+		// Try bu_VM as fallback (VM-specific directory)
+		buVMDir := filepath.Join(filepath.Dir(buDir), "bu_VM")
+		configs, err = sysloader.LoadSysFiles(buVMDir)
+		if err != nil || len(configs) == 0 {
+			return nil
+		}
+		buDir = buVMDir
+	}
+
+	return configs
+}
+
 // parseNodeList parses nodelist.txt content into NodeConfig array.
-// Format: hw_address,token,ip,os,slot:type:name:extra,slot:type:name:extra,...
+// Format (per LightRAG / AMIS Configuration Manual):
+//   hw_address,token,ip,os,slot:type:name,...,slot:type:name,...
+//
+// Each LINE represents one physical node. CPU/BPU entries are application
+// servers (stations); FBC entries are fieldbus cards that belong to the
+// preceding CPU station on the same line.
+//
+// Token calculation: token = hex(hw_addr + slot_number - 1).
+//   e.g. hw_addr=0x30, slot 1 → 0x30 → "30"  (LOG)
+//        hw_addr=0x30, slot 2 → 0x31 → "31"  (FBC + RPC)
+//
+// Examples from LightRAG:
+//   b030,1,192.168.77.190,ppc,1:CPU:LP01,2:FBC,16:NCU
+//   → LP01 with tokens: 30(LOG), 31(FBC), 31(RPC)
+//
+//   30,1,127.0.0.1,win,1:CPU:AB01:10,2:CPU:AP01:0,3:CPU:A1O1:2,...,16:NCU
+//   → AB01(30/LOG), AP01(31/LOG), A1O1(32/LOG), ...
+//
+// FBC slots without a preceding CPU on the same line get their own config
+// named "NODE_<hw_addr>_<slot>" as fallback.
 func parseNodeList(content string) []types.NodeConfig {
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 	var configs []types.NodeConfig
@@ -1890,17 +2187,14 @@ func parseNodeList(content string) []types.NodeConfig {
 		}
 
 		hwAddr := strings.TrimSpace(parts[0])
-		token := strings.TrimSpace(parts[1])
 		ip := strings.TrimSpace(parts[2])
-		_ = hwAddr
-		_ = token
+
+		// Track the current station (last CPU entry on this line)
+		// so FBC slots can be attached to it.
+		var currentStation *types.NodeConfig
+		var currentStationIdx int = -1
 
 		// Parse slot entries (parts[4:])
-		var stationName string
-		var fbcTokens []string
-		hasCPU := false
-		hasNCU := false
-
 		for _, slotEntry := range parts[4:] {
 			fields := strings.Split(strings.TrimSpace(slotEntry), ":")
 			if len(fields) < 2 {
@@ -1914,82 +2208,77 @@ func parseNodeList(content string) []types.NodeConfig {
 			}
 
 			switch slotType {
-			case "CPU":
-				if stationName == "" && slotName != "" {
-					stationName = slotName
+			case "CPU", "BPU":
+				if slotName == "" {
+					continue
 				}
-				if slotName != "" {
-					stationName = slotName
+				tokenID := computeNodeListToken(hwAddr, slotNum)
+				cfg := types.NodeConfig{
+					Name:      slotName,
+					IPAddress: ip,
+					Tokens: []types.Token{{
+						TokenID:   tokenID,
+						TokenType: types.TokenLOG,
+						Protocol:  "telnet",
+					}},
 				}
-				hasCPU = true
+				configs = append(configs, cfg)
+				currentStation = &configs[len(configs)-1]
+				currentStationIdx = len(configs) - 1
+
 			case "FBC":
-				// FBC slot — token = hw_addr prefix + slot number
-				// e.g. hw_addr=0x30, slot=2 → token = 0x32 (hex)
-				fbcTokens = append(fbcTokens, slotNum)
-			case "NCU":
-				hasNCU = true
-			case "BPU":
-				// BPU is a CPU variant
-				if stationName == "" && slotName != "" {
-					stationName = slotName
+				// FBC slot — belongs to the preceding CPU station on this line.
+				// Gets FBC + RPC tokens with the same token calculation.
+				tokenID := computeNodeListToken(hwAddr, slotNum)
+				fbcToken := types.Token{
+					TokenID:   tokenID,
+					TokenType: types.TokenFBC,
+					Protocol:  "telnet",
 				}
-				hasCPU = true
+				rpcToken := types.Token{
+					TokenID:   tokenID,
+					TokenType: types.TokenRPC,
+					Protocol:  "telnet",
+				}
+				if currentStation != nil && currentStationIdx >= 0 {
+					// Attach to current station — avoid duplicate tokens
+					alreadyExists := false
+					for _, t := range configs[currentStationIdx].Tokens {
+						if t.TokenType == types.TokenFBC && t.TokenID == tokenID {
+							alreadyExists = true
+							break
+						}
+					}
+					if !alreadyExists {
+						configs[currentStationIdx].Tokens = append(configs[currentStationIdx].Tokens, fbcToken, rpcToken)
+					}
+				} else {
+					// No preceding CPU — create a standalone FBC node
+					fallbackName := fmt.Sprintf("NODE_%s_slot%s", hwAddr, slotNum)
+					configs = append(configs, types.NodeConfig{
+						Name:      fallbackName,
+						IPAddress: ip,
+						Tokens:    []types.Token{fbcToken, rpcToken},
+					})
+					currentStation = &configs[len(configs)-1]
+					currentStationIdx = len(configs) - 1
+				}
+
+			case "NCU":
+				// Skip NCU — infrastructure, not a process station
+				continue
 			}
-		}
-
-		// Skip NCU-only nodes (infrastructure, not process stations)
-		if !hasCPU && hasNCU {
-			continue
-		}
-		if stationName == "" {
-			stationName = fmt.Sprintf("NODE_%s", token)
-		}
-
-		// Build tokens for this node
-		var tokens []types.Token
-
-		// CPU slot → LOG-only token
-		if hasCPU {
-			tokens = append(tokens, types.Token{
-				TokenID:   hwAddr,
-				TokenType: types.TokenLOG,
-				Protocol:  "telnet",
-			})
-		}
-
-		// FBC slots → FBC + RPC paired tokens
-		for _, fbcSlot := range fbcTokens {
-			// Token = hw_addr + slot offset
-			// e.g. hw_addr=0x30, slot=2 → 0x32
-			fbcToken := computeFBCToken(hwAddr, fbcSlot)
-			tokens = append(tokens, types.Token{
-				TokenID:   fbcToken,
-				TokenType: types.TokenFBC,
-				Protocol:  "telnet",
-			})
-			tokens = append(tokens, types.Token{
-				TokenID:   fbcToken,
-				TokenType: types.TokenRPC,
-				Protocol:  "telnet",
-			})
-		}
-
-		if len(tokens) > 0 {
-			configs = append(configs, types.NodeConfig{
-				Name:      stationName,
-				IPAddress: ip,
-				Tokens:    tokens,
-			})
 		}
 	}
 
 	return configs
 }
 
-// computeFBCToken computes the FBC token from hw_address and slot number.
-// Token format: hex(hw_addr_value + slot_number)
-// e.g. hw_addr=0x30, slot=2 → 0x32 → "32"
-func computeFBCToken(hwAddr string, slotNum string) string {
+// computeNodeListToken computes the LOG token for a nodelist CPU entry.
+// Token = hex(hw_addr_value + slot_number - 1).
+// e.g. hw_addr=0x30 (48), slot=1 → 48+0=48 → "30"
+//      hw_addr=0x30 (48), slot=2 → 48+1=49 → "31"
+func computeNodeListToken(hwAddr string, slotNum string) string {
 	hwVal, err := strconv.ParseInt(hwAddr, 16, 32)
 	if err != nil {
 		return hwAddr
@@ -1998,7 +2287,7 @@ func computeFBCToken(hwAddr string, slotNum string) string {
 	if err != nil {
 		return hwAddr
 	}
-	token := hwVal + slotVal
+	token := hwVal + slotVal - 1
 	return fmt.Sprintf("%x", token)
 }
 

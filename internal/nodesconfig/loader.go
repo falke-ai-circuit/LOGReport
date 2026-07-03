@@ -100,11 +100,15 @@ func fileExtension(tokenType string) string {
 // buildFileName creates the expected filename for a token in a station.
 // Pattern: {stationName}_{ipFormatted}_{tokenID}.{ext}
 // For LOG: {stationName}_{ipFormatted}.log (no tokenID)
+// For LIS: {stationName}_{ipFormatted}_{tokenID}_exe1.lis (representative, actual files are exe1-exe6)
 func buildFileName(stationName, ip, tokenType, tokenID string) string {
 	ext := fileExtension(tokenType)
 	ipFmt := formatIP(ip)
 	if strings.ToUpper(tokenType) == "LOG" {
 		return fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
+	}
+	if strings.ToUpper(tokenType) == "LIS" {
+		return fmt.Sprintf("%s_%s_%s_exe1%s", stationName, ipFmt, tokenID, ext)
 	}
 	return fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
 }
@@ -148,7 +152,15 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 		}
 
 		groups := make(map[string][]types.Token)
+		// Map token to its config's IP for per-token IP resolution
+		tokenIPs := make(map[string]string) // key: tokenType+tokenID
 		for _, cfg := range memberCfgs {
+			for _, tok := range cfg.Tokens {
+				key := string(tok.TokenType) + ":" + tok.TokenID
+				if _, exists := tokenIPs[key]; !exists && cfg.IPAddress != "" {
+					tokenIPs[key] = cfg.IPAddress
+				}
+			}
 			for _, tok := range cfg.Tokens {
 				groups[string(tok.TokenType)] = append(groups[string(tok.TokenType)], tok)
 			}
@@ -170,7 +182,12 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 				Children:    make([]types.TreeNode, 0),
 			}
 			for _, tok := range tokens {
-				fileName := buildFileName(stationName, stationIP, gType, tok.TokenID)
+				// Use per-token IP if available, otherwise fall back to station IP
+				ipForFile := stationIP
+				if ip, ok := tokenIPs[string(tok.TokenType)+":"+tok.TokenID]; ok {
+					ipForFile = ip
+				}
+				fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
 				groupNode.Children = append(groupNode.Children, types.TreeNode{
 					Name:        fileName,
 					Type:        "token",
@@ -260,7 +277,12 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool)
 				for _, cfg := range memberCfgs {
 					for _, tok := range cfg.Tokens {
 						if strings.EqualFold(string(tok.TokenType), gType) {
-							fileName := buildFileName(stationName, stationIP, gType, tok.TokenID)
+							// Use per-config IP, not station-wide IP — different slots may have different IPs
+							ipForFile := cfg.IPAddress
+							if ipForFile == "" {
+								ipForFile = stationIP
+							}
+							fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
 							sectionNode.Children = append(sectionNode.Children, types.TreeNode{
 								Name:        fileName,
 								Type:        "token",
@@ -275,9 +297,9 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool)
 					stationNode.Children = append(stationNode.Children, sectionNode)
 				}
 				continue
-			}
+				}
 
-			ext := fileExtension(gType)
+				ext := fileExtension(gType)
 
 			for _, entry := range entries {
 				if entry.IsDir() {
@@ -316,7 +338,12 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool)
 				for _, cfg := range memberCfgs {
 					for _, tok := range cfg.Tokens {
 						if strings.EqualFold(string(tok.TokenType), gType) {
-							fileName := buildFileName(stationName, stationIP, gType, tok.TokenID)
+							// Use per-config IP, not station-wide IP
+							ipForFile := cfg.IPAddress
+							if ipForFile == "" {
+								ipForFile = stationIP
+							}
+							fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
 							sectionNode.Children = append(sectionNode.Children, types.TreeNode{
 								Name:        fileName,
 								Type:        "token",
