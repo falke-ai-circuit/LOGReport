@@ -23,7 +23,8 @@ type Settings struct {
 	BsToolPath        string `json:"bstool_path"`
 	CommunicationLine string `json:"communication_line"`
 	OutputDir         string `json:"output_dir"`
-	BUDir             string `json:"bu_dir"` // path to .sys files directory (default: C:\dna\CA\bu)
+	BUDir             string `json:"bu_dir"`  // path to .sys files directory (default: C:\dna\CA\bu)
+	LISMode           string `json:"lis_mode"` // LIS capture method: "rsu" (RSU6 via DIA), "lisdiag" (telnet port 4321), "diaglis" (manual)
 }
 
 // defaultSettings returns platform-appropriate defaults.
@@ -41,6 +42,7 @@ func defaultSettings() Settings {
 		LogRootName: "_LOG",
 		OutputDir:   "",
 		BUDir:       buDir,
+		LISMode:     "rsu", // default: RSU6 via DIA (requires RSU6 hardware)
 	}
 }
 
@@ -110,6 +112,9 @@ func (s *Server) initSettings() {
 	}
 	if st.BUDir == "" {
 		st.BUDir = def.BUDir
+	}
+	if st.LISMode == "" {
+		st.LISMode = def.LISMode
 	}
 
 	globalSettings.settings = st
@@ -192,6 +197,9 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.BUDir == "" {
 		req.BUDir = def.BUDir
+	}
+	if req.LISMode == "" {
+		req.LISMode = def.LISMode
 	}
 
 	// Apply log_root immediately

@@ -2,6 +2,7 @@ package commandqueue
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -242,12 +243,12 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 
 	// AddBatchFromNodes uses telnet.SessionManager but we only pass nil —
 	// it just needs the configs to generate commands, the SM is only for execution.
-	q.AddBatchFromNodes(configs, "", nil)
+	q.AddBatchFromNodes(configs, "", nil, "rsu")
 
 	_, total, _ := q.Status()
-	// FBC + RPC + LOG = 3 commands (LIS skipped)
-	if total != 3 {
-		t.Fatalf("expected 3 commands (FBC+RPC+LOG, LIS skipped), got %d", total)
+	// FBC(1) + RPC(1) + LOG(1) + LIS(1 token × 6 exe × 2 rx/tx = 12) = 15 commands
+	if total != 15 {
+		t.Fatalf("expected 15 commands (FBC+RPC+LOG+LIS 6exe×2), got %d", total)
 	}
 
 	cmds := q.Commands()
@@ -269,7 +270,26 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 			}
 		}
 	}
-	if !types_found[CmdFBC] || !types_found[CmdRPC] || !types_found[CmdLOG] {
-		t.Errorf("expected FBC, RPC, LOG command types, got %v", types_found)
+	if !types_found[CmdFBC] || !types_found[CmdRPC] || !types_found[CmdLOG] || !types_found[CmdLIS] {
+		t.Errorf("expected FBC, RPC, LOG, LIS command types, got %v", types_found)
+	}
+	// Verify LIS commands: 12 total (6 exe × 2 rx/tx), tokenID format "999_exeN"
+	lisCount := 0
+	for _, c := range cmds {
+		if c.Type == CmdLIS {
+			lisCount++
+			// Verify command is rx-trace or tx-trace
+			if !strings.Contains(c.Command, "print from rsu rx-trace") &&
+				!strings.Contains(c.Command, "print from rsu tx-trace") {
+				t.Errorf("unexpected LIS command: %s", c.Command)
+			}
+			// Verify tokenID has _exeN suffix
+			if !strings.Contains(c.TokenID, "_exe") {
+				t.Errorf("expected LIS tokenID with _exeN suffix, got %s", c.TokenID)
+			}
+		}
+	}
+	if lisCount != 12 {
+		t.Errorf("expected 12 LIS commands (6 exe × 2 rx/tx), got %d", lisCount)
 	}
 }

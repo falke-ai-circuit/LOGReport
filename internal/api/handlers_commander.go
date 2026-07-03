@@ -1091,7 +1091,7 @@ func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.commandQueue.Reset()
-	s.commandQueue.AddBatchFromNodes(req.Configs, req.SessionID, s.telnetSM)
+	s.commandQueue.AddBatchFromNodes(req.Configs, req.SessionID, s.telnetSM, getSettings().LISMode)
 	_, total, _ := s.commandQueue.Status()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1167,11 +1167,25 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.commandQueue.Reset()
+	lisMode := getSettings().LISMode
 	if strings.EqualFold(req.TokenType, "LISDiag") {
-		// LISDIAG path: generate telnet commands for LisDiag on port 4321
+		// Explicit LISDiag request — always use LISDiag path
 		s.commandQueue.AddBatchFromNodesLISDiag(filtered, "password")
+	} else if strings.EqualFold(req.TokenType, "LIS") && lisMode == "lisdiag" {
+		// LIS mode is set to lisdiag in settings — route LIS tokens through LISDiag
+		s.commandQueue.AddBatchFromNodesLISDiag(filtered, "password")
+	} else if strings.EqualFold(req.TokenType, "LIS") && lisMode == "diaglis" {
+		// DiagLIS mode — manual capture, skip queue generation
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"batch_added": true,
+			"node_name":   req.NodeName,
+			"token_type":  req.TokenType,
+			"total":       0,
+			"message":     "DiagLIS mode: capture manually via DiagLIS GUI, then import files",
+		})
+		return
 	} else {
-		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM)
+		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM, lisMode)
 	}
 	_, total, _ := s.commandQueue.Status()
 
