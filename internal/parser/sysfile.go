@@ -51,6 +51,9 @@ var (
 	// programPattern matches "PROGRAM=..." lines, stripping trailing // comments.
 	programPattern = regexp.MustCompile(`^PROGRAM=(.+?)(?:\s*//.*)?$`)
 
+	// parametersPattern matches "PARAMETERS=..." lines, stripping trailing // comments.
+	parametersPattern = regexp.MustCompile(`^PARAMETERS=(.+?)(?:\s*//.*)?$`)
+
 	// ipAddrPattern matches "set XD_IP_ADDR=..." lines.
 	ipAddrPattern = regexp.MustCompile(`^set\s+XD_IP_ADDR=(\S+)`)
 )
@@ -160,8 +163,17 @@ func parseSysFileScanner(scanner *bufio.Scanner) (*SysFileResult, error) {
 			}
 			currentSlot.program = program
 			continue
-		}
-	}
+			}
+
+			if m := parametersPattern.FindStringSubmatch(trimmed); m != nil {
+			params := strings.TrimSpace(m[1])
+			if currentSlot == nil {
+				currentSlot = &slotBuilder{}
+			}
+			currentSlot.parameters = params
+			continue
+			}
+			}
 
 	// Flush last slot
 	flushSlot(currentSlot, result)
@@ -196,9 +208,10 @@ func flushSlot(sb *slotBuilder, result *SysFileResult) {
 
 // slotBuilder accumulates attributes for a single Slot section.
 type slotBuilder struct {
-	title   string
-	program string
-	slotNum int
+	title      string
+	program    string
+	parameters string
+	slotNum    int
 }
 
 // build converts accumulated slot attributes into a SysFileNode.
@@ -221,6 +234,7 @@ func (sb *slotBuilder) build() *types.SysFileNode {
 		Name:       name,
 		Type:       nodeType,
 		Program:    sb.program,
+		Parameters: sb.parameters,
 		SlotNum:    sb.slotNum,
 		IsFieldbus: isFieldbus,
 	}

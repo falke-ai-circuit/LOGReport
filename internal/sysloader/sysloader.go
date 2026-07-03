@@ -73,6 +73,10 @@ func LoadSysFilesFromPaths(filePaths []string) ([]types.NodeConfig, error) {
 func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {
 	nodeMap := make(map[string]*types.NodeConfig)
 	nodeOrder := make([]string, 0)
+	// lisDiagParams accumulates PARAMETERS from LISDiag slots, keyed by LID.
+	// Applied to matching nodes after all slots are processed, because the
+	// LISDiag slot may appear before the PCS slot in the .sys file.
+	lisDiagParams := make(map[string]string)
 
 	for _, sysPath := range sysFiles {
 		result, err := parser.ParseSysFile(sysPath)
@@ -170,6 +174,12 @@ func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {
 			// NOT the actual LIS PCS application. We only want the LIS PCS
 			// slots (PROGRAM=PCS_CODE) that handle serial communication.
 			if isLISDiagProgram(sfn.Program) {
+				// Store LISDiag parameters for later matching. The LISDiag slot
+				// (e.g. "AL02_Remote_monitor") may appear before the PCS slot
+				// ("AL02") in the .sys file, so we defer the assignment.
+				if sfn.Parameters != "" && lid != "" {
+					lisDiagParams[lid] = sfn.Parameters
+				}
 				continue
 			}
 
@@ -233,6 +243,18 @@ func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {
 						Protocol:  "telnet",
 					})
 				}
+			}
+		}
+	}
+
+	// Apply deferred LISDiag parameters: match each LISDiag slot LID
+	// (e.g. "AL02_Remote_monitor") to the corresponding AL node ("AL02")
+	// by prefix matching.
+	for diagLID, params := range lisDiagParams {
+		for _, lid := range nodeOrder {
+			if strings.HasPrefix(diagLID, lid) {
+				nodeMap[lid].LISDiagParams = params
+				break
 			}
 		}
 	}

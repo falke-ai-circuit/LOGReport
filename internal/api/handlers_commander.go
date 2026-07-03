@@ -2416,10 +2416,11 @@ func scanFromStructure(s *Server, sessionID string, structureOutput string) []ty
 // the output is minimal (just sets the channel). For "irb"/"orb" commands,
 // the output contains frame data with timestamps.
 func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) {
+	// Default port and password
 	port := 4321
 	password := cmd.LISDiagPwd
 	if password == "" {
-		password = "password" // default from .sys config
+		password = "password" // fallback default from .sys config
 	}
 
 	client := lisdiag.NewClient(cmd.IPAddress, port, password)

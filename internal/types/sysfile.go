@@ -34,6 +34,7 @@ type SysFileNode struct {
 	Name       string `json:"name"`
 	Type       string `json:"type"`
 	Program    string `json:"program"`
-	SlotNum    int   `json:"slot_num"`
-	IsFieldbus bool  `json:"is_fieldbus"`
+	Parameters string `json:"parameters,omitempty"` // PARAMETERS= line (e.g. "-s AL02 -p 4321 -x password")
+	SlotNum    int    `json:"slot_num"`
+	IsFieldbus bool   `json:"is_fieldbus"`
 }

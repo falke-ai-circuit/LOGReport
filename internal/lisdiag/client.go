@@ -182,3 +182,50 @@ func ORBAllCommand() string {
 func ExeCommand(exeNum int) string {
 	return fmt.Sprintf("exe %d", exeNum)
 }
+
+// ParseParameters extracts the LisDiag port and password from a PARAMETERS
+// string like "-s AL02 -p 4321 -x password -i 192.168.255.255".
+// Returns port (default 4321) and password (default "" if no -x flag).
+func ParseParameters(params string) (port int, password string) {
+	port = 4321 // default
+	parts := splitArgs(params)
+	for i := 0; i < len(parts); i++ {
+		switch parts[i] {
+		case "-p":
+			if i+1 < len(parts) {
+				fmt.Sscanf(parts[i+1], "%d", &port)
+			}
+		case "-x":
+			if i+1 < len(parts) {
+				password = parts[i+1]
+			}
+		}
+	}
+	return port, password
+}
+
+// splitArgs splits a parameter string into individual args, handling
+// whitespace separation. Quoted args are not supported (Valmet .sys
+// files don't use quotes in PARAMETERS).
+func splitArgs(s string) []string {
+	var args []string
+	for _, part := range fmt.Sprintf("%s", s) {
+		_ = part
+	}
+	// Simple whitespace split
+	current := ""
+	for _, c := range s {
+		if c == ' ' || c == '	' {
+			if current != "" {
+				args = append(args, current)
+				current = ""
+			}
+		} else {
+			current += string(c)
+		}
+	}
+	if current != "" {
+		args = append(args, current)
+	}
+	return args
+}

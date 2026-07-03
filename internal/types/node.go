@@ -70,9 +70,10 @@ type Token struct {
 
 // NodeConfig represents the full nodes.json entry (node + all tokens).
 type NodeConfig struct {
-	Name      string  `json:"name"`
-	IPAddress string  `json:"ip_address"`
-	Tokens    []Token `json:"tokens"`
+	Name          string  `json:"name"`
+	IPAddress     string  `json:"ip_address"`
+	Tokens        []Token `json:"tokens"`
+	LISDiagParams string  `json:"lisdiag_params,omitempty"` // PARAMETERS from .sys LISDiag slot (-p port -x password)
 }
 
 // TreeNode is the hierarchical structure for the frontend node tree.

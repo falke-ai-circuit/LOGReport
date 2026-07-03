@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/telnet"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
@@ -273,49 +274,57 @@ func (q *Queue) Reset() {
 // The password field is stored in the Command field as "password|irb 0" format
 // (parsed by the executor). Actually, password is passed via IPAddress field
 // encoding: we add a separate LISDiagPassword field.
-func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, password string) {
+func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPassword string) {
 	for _, node := range configs {
-		hasLIS := false
+		// Extract port and password from node's LISDiagParams (from .sys file)
+		// Falls back to defaultPassword if not configured
+		port, password := lisdiag.ParseParameters(node.LISDiagParams)
+		if password == "" {
+			password = defaultPassword
+		}
+		_ = port // port is used by the executor, not stored per-command
+
 		for _, tok := range node.Tokens {
 			if tok.TokenType == types.TokenLIS {
-				hasLIS = true
 				for exeNum := 1; exeNum <= 6; exeNum++ {
 					channel := exeNum - 1
 					tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
-					// irb command (received frames)
+					// exe N — set channel
 					q.Add(QueuedCommand{
-						ID:        fmt.Sprintf("%s-LISDiag-%s-exe%d-irb", node.Name, tok.TokenID, exeNum),
-						Type:      CmdLISDiag,
-						NodeName:  node.Name,
-						TokenID:   tokenIDWithExe,
-						Command:   fmt.Sprintf("exe %d", exeNum),
-						Status:    StatusPending,
-						IPAddress: node.IPAddress,
+						ID:         fmt.Sprintf("%s-LISDiag-%s-exe%d", node.Name, tok.TokenID, exeNum),
+						Type:       CmdLISDiag,
+						NodeName:   node.Name,
+						TokenID:    tokenIDWithExe,
+						Command:    fmt.Sprintf("exe %d", exeNum),
+						Status:     StatusPending,
+						IPAddress:  node.IPAddress,
+						LISDiagPwd: password,
 					})
+					// irb — received frames
 					q.Add(QueuedCommand{
-						ID:        fmt.Sprintf("%s-LISDiag-%s-exe%d-irb-cmd", node.Name, tok.TokenID, exeNum),
-						Type:      CmdLISDiag,
-						NodeName:  node.Name,
-						TokenID:   tokenIDWithExe,
-						Command:   fmt.Sprintf("irb %d", channel),
-						Status:    StatusPending,
-						IPAddress: node.IPAddress,
+						ID:         fmt.Sprintf("%s-LISDiag-%s-exe%d-irb", node.Name, tok.TokenID, exeNum),
+						Type:       CmdLISDiag,
+						NodeName:   node.Name,
+						TokenID:    tokenIDWithExe,
+						Command:    fmt.Sprintf("irb %d", channel),
+						Status:     StatusPending,
+						IPAddress:  node.IPAddress,
+						LISDiagPwd: password,
 					})
-					// orb command (transmitted frames)
+					// orb — transmitted frames
 					q.Add(QueuedCommand{
-						ID:        fmt.Sprintf("%s-LISDiag-%s-exe%d-orb", node.Name, tok.TokenID, exeNum),
-						Type:      CmdLISDiag,
-						NodeName:  node.Name,
-						TokenID:   tokenIDWithExe,
-						Command:   fmt.Sprintf("orb %d", channel),
-						Status:    StatusPending,
-						IPAddress: node.IPAddress,
+						ID:         fmt.Sprintf("%s-LISDiag-%s-exe%d-orb", node.Name, tok.TokenID, exeNum),
+						Type:       CmdLISDiag,
+						NodeName:   node.Name,
+						TokenID:    tokenIDWithExe,
+						Command:    fmt.Sprintf("orb %d", channel),
+						Status:     StatusPending,
+						IPAddress:  node.IPAddress,
+						LISDiagPwd: password,
 					})
 				}
-				continue
 			}
 		}
-		_ = hasLIS
 	}
 }
 
