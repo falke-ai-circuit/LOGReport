@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
+	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
 	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
@@ -810,6 +811,12 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 	// after timeout or errors). Matches Python sequential_command_processor.py
 	// behavior: if connection lost, reconnect and retry.
 	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
+		// LISDIAG commands go through a separate telnet connection to port 4321,
+		// not through the DIA session on port 1234.
+		if cmd.Type == commandqueue.CmdLISDiag {
+			return s.executeLISDiag(cmd)
+		}
+
 		// Find an active session to send commands through
 		ids := s.telnetSM.ListSessions()
 		var sessionID string
@@ -932,6 +939,12 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 
 	// Re-create the executor with auto-reconnect (same as handleQueueStart)
 	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
+		// LISDIAG commands go through a separate telnet connection to port 4321,
+		// not through the DIA session on port 1234.
+		if cmd.Type == commandqueue.CmdLISDiag {
+			return s.executeLISDiag(cmd)
+		}
+
 		ids := s.telnetSM.ListSessions()
 		var sessionID string
 
@@ -1128,10 +1141,15 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 	for _, c := range configs {
 		if c.Name == req.NodeName {
 			// If token_type specified, filter tokens
-			if req.TokenType != "" {
+			// Exception: "LISDiag" means we want LIS tokens but via LisDiag path
+			filterType := req.TokenType
+			if strings.EqualFold(filterType, "LISDiag") {
+				filterType = "LIS" // map LISDiag to LIS for token filtering
+			}
+			if filterType != "" {
 				var filteredTokens []types.Token
 				for _, t := range c.Tokens {
-					if strings.EqualFold(string(t.TokenType), req.TokenType) {
+					if strings.EqualFold(string(t.TokenType), filterType) {
 						filteredTokens = append(filteredTokens, t)
 					}
 				}
@@ -1149,7 +1167,12 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.commandQueue.Reset()
-	s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM)
+	if strings.EqualFold(req.TokenType, "LISDiag") {
+		// LISDIAG path: generate telnet commands for LisDiag on port 4321
+		s.commandQueue.AddBatchFromNodesLISDiag(filtered, "password")
+	} else {
+		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM)
+	}
 	_, total, _ := s.commandQueue.Status()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -2379,4 +2402,44 @@ func scanFromStructure(s *Server, sessionID string, structureOutput string) []ty
 	}
 
 	return configs
+}
+
+// executeLISDiag executes a single LISDIAG command by connecting to the
+// LisDiag telnet server on the node's IP at port 4321. Each command opens
+// a fresh connection, authenticates, sends the command, captures output,
+// writes to .lis log file, and closes. This is safe because LisDiag is
+// read-only (doesn't modify shared memory or interfere with PCS).
+//
+// The command sequence for a full LIS capture is:
+//   exe N → irb (channel) → orb (channel)
+// The executor receives one command at a time. For "exe N" commands,
+// the output is minimal (just sets the channel). For "irb"/"orb" commands,
+// the output contains frame data with timestamps.
+func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) {
+	port := 4321
+	password := cmd.LISDiagPwd
+	if password == "" {
+		password = "password" // default from .sys config
+	}
+
+	client := lisdiag.NewClient(cmd.IPAddress, port, password)
+	if err := client.Connect(10 * time.Second); err != nil {
+		return "", fmt.Errorf("lisdiag connect %s:%d: %w", cmd.IPAddress, port, err)
+	}
+	defer client.Close()
+
+	// Send the command and capture output
+	output, err := client.SendCommand(cmd.Command, 15*time.Second)
+	if err != nil {
+		return output, err
+	}
+
+	// Write output to .lis log file
+	lw := logwriter.New(s.resolveLogRoot())
+	tokenType := "LIS"
+	if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, output, cmd.IPAddress); err != nil {
+		log.Printf("lisdiag: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+	}
+
+	return output, nil
 }

@@ -19,8 +19,10 @@ const (
 	CmdFBC    CommandType = "fbc"
 	CmdRPC    CommandType = "rpc"
 	CmdLOG    CommandType = "log"
-	CmdBsTool CommandType = "bstool"
-	CmdRaw    CommandType = "raw"
+	CmdLIS    CommandType = "lis"
+	CmdBsTool  CommandType = "bstool"
+	CmdRaw     CommandType = "raw"
+	CmdLISDiag CommandType = "lisdiag"
 )
 
 // CommandStatus represents the execution state of a queued command.
@@ -45,6 +47,7 @@ type QueuedCommand struct {
 	Output     string        `json:"output,omitempty"`
 	Error      string        `json:"error,omitempty"`
 	IPAddress  string        `json:"ip_address,omitempty"`
+	LISDiagPwd string        `json:"lisdiag_pwd,omitempty"` // password for LisDiag telnet auth
 	StartedAt  *time.Time    `json:"started_at,omitempty"`
 	FinishedAt *time.Time    `json:"finished_at,omitempty"`
 }
@@ -263,9 +266,61 @@ func (q *Queue) Reset() {
 	q.state = QueueIdle
 }
 
+// AddBatchFromNodesLISDiag generates LISDIAG telnet commands (irb+orb) for
+// LIS tokens. Unlike the RSU6 path (which goes through DIA), LISDIAG connects
+// directly to the LisDiag telnet server on port 4321 per node.
+// For each LIS token, generates: exe N → irb → orb for channels 0-5.
+// The password field is stored in the Command field as "password|irb 0" format
+// (parsed by the executor). Actually, password is passed via IPAddress field
+// encoding: we add a separate LISDiagPassword field.
+func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, password string) {
+	for _, node := range configs {
+		hasLIS := false
+		for _, tok := range node.Tokens {
+			if tok.TokenType == types.TokenLIS {
+				hasLIS = true
+				for exeNum := 1; exeNum <= 6; exeNum++ {
+					channel := exeNum - 1
+					tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
+					// irb command (received frames)
+					q.Add(QueuedCommand{
+						ID:        fmt.Sprintf("%s-LISDiag-%s-exe%d-irb", node.Name, tok.TokenID, exeNum),
+						Type:      CmdLISDiag,
+						NodeName:  node.Name,
+						TokenID:   tokenIDWithExe,
+						Command:   fmt.Sprintf("exe %d", exeNum),
+						Status:    StatusPending,
+						IPAddress: node.IPAddress,
+					})
+					q.Add(QueuedCommand{
+						ID:        fmt.Sprintf("%s-LISDiag-%s-exe%d-irb-cmd", node.Name, tok.TokenID, exeNum),
+						Type:      CmdLISDiag,
+						NodeName:  node.Name,
+						TokenID:   tokenIDWithExe,
+						Command:   fmt.Sprintf("irb %d", channel),
+						Status:    StatusPending,
+						IPAddress: node.IPAddress,
+					})
+					// orb command (transmitted frames)
+					q.Add(QueuedCommand{
+						ID:        fmt.Sprintf("%s-LISDiag-%s-exe%d-orb", node.Name, tok.TokenID, exeNum),
+						Type:      CmdLISDiag,
+						NodeName:  node.Name,
+						TokenID:   tokenIDWithExe,
+						Command:   fmt.Sprintf("orb %d", channel),
+						Status:    StatusPending,
+						IPAddress: node.IPAddress,
+					})
+				}
+				continue
+			}
+		}
+		_ = hasLIS
+	}
+}
+
 // AddBatchFromNodes generates FBC+RPC+LOG commands for all nodes in a
-// NodeConfig list. Matches Python "Print All Nodes" behavior: for each
-// node, for each token, generate the appropriate print command.
+// NodeConfig list.
 func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, sm *telnet.SessionManager) {
 	for _, node := range configs {
 		for _, tok := range node.Tokens {
@@ -282,8 +337,39 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 			case types.TokenLOG:
 				cmd = fmt.Sprintf("print from log structure %s0000", tok.TokenID)
 				cmdType = CmdLOG
+			case types.TokenLIS:
+				// LIS: generate RSU rx+tx trace commands for each exe (channel 0-5)
+				// RSU6 agent ID = tokenID << 16 (append 4 hex zeros)
+				rsuid := tok.TokenID + "0000"
+				for exeNum := 1; exeNum <= 6; exeNum++ {
+					channel := exeNum - 1
+					// TokenID encodes exe number: "162_exe1" so logwriter writes to
+					// {station}_{ip}_{tokenID}_exe{N}.lis
+					tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
+					// rx-trace command
+					q.Add(QueuedCommand{
+						ID:        fmt.Sprintf("%s-LIS-%s-exe%d-rx", node.Name, tok.TokenID, exeNum),
+						Type:      CmdLIS,
+						NodeName:  node.Name,
+						TokenID:   tokenIDWithExe,
+						Command:   fmt.Sprintf("print from rsu rx-trace %s %d", rsuid, channel),
+						Status:    StatusPending,
+						IPAddress: node.IPAddress,
+					})
+					// tx-trace command
+					q.Add(QueuedCommand{
+						ID:        fmt.Sprintf("%s-LIS-%s-exe%d-tx", node.Name, tok.TokenID, exeNum),
+						Type:      CmdLIS,
+						NodeName:  node.Name,
+						TokenID:   tokenIDWithExe,
+						Command:   fmt.Sprintf("print from rsu tx-trace %s %d", rsuid, channel),
+						Status:    StatusPending,
+						IPAddress: node.IPAddress,
+					})
+				}
+				continue // Already added commands above, skip the generic Add below
 			default:
-				continue // Skip LIS, FTP, etc.
+				continue // Skip FTP, etc.
 			}
 
 			q.Add(QueuedCommand{
