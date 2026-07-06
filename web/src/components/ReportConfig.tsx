@@ -43,8 +43,11 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
       setNodesLoading(true);
       setNodesError(null);
       try {
-        // Try SQLite nodes first
-        const res = await fetch('/api/v1/nodes');
+        // Try SQLite nodes first (with timeout — /api/v1/nodes may scan network)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch('/api/v1/nodes', { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (res.ok) {
           const data: NodeListResponse = await res.json();
           if (!cancelled && data.nodes && data.nodes.length > 0) {
@@ -68,8 +71,24 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
           if (!cancelled) setNodes(apiNodes);
         }
       } catch (err) {
-        if (!cancelled) {
-          setNodesError(err instanceof Error ? err.message : 'Failed to load nodes');
+        // If timeout, try nodesconfig fallback directly
+        try {
+          const configUrl = projectId ? `/api/v1/nodesconfig?project_id=${projectId}` : '/api/v1/nodesconfig';
+          const cfgRes = await fetch(configUrl);
+          if (!cancelled && cfgRes.ok) {
+            const cfgData = await cfgRes.json();
+            const configs = cfgData.configs || [];
+            const apiNodes: ApiNode[] = configs.map((c: { name: string; ip_address: string }) => ({
+              address: c.name,
+              ip_address: c.ip_address,
+              name: c.name,
+            }));
+            if (!cancelled) setNodes(apiNodes);
+          }
+        } catch (err2) {
+          if (!cancelled) {
+            setNodesError(err2 instanceof Error ? err2.message : 'Failed to load nodes');
+          }
         }
       } finally {
         if (!cancelled) setNodesLoading(false);
