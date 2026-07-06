@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Terminal, Server, ScanLine, Settings, Loader2, FileText, Folder, Printer } from 'lucide-react';
 import NodeTree from './NodeTree';
@@ -67,19 +67,6 @@ export default function CommanderLayout() {
   const [showLogRootDropdown, setShowLogRootDropdown] = useState(false);
   const [customLogRoot, setCustomLogRoot] = useState('');
   const [printing, setPrinting] = useState(false);
-  const [activeExecFile, setActiveExecFile] = useState<string | null>(null);
-  const logRootDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close LogRoot dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (logRootDropdownRef.current && !logRootDropdownRef.current.contains(e.target as Node)) {
-        setShowLogRootDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Sync log root to backend when it changes (from shared hook)
   useEffect(() => {
@@ -159,20 +146,14 @@ export default function CommanderLayout() {
     }
   }, [currentNodeName, activeLogRoot]);
 
-  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, parentNode?: TreeNodeData) => {
+  const handleContextAction = useCallback(async (action: string, node: TreeNodeData, _parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
-    // For group nodes (FBC/RPC/LOG/LIS folders), the station name is in parentNode
-    if (node.type === 'group' && parentNode?.name) {
-      nodeName = parentNode.name;
-    }
     const tokenId = node.token_id || '';
     // Extract IP from the tree node or from the filename
     let nodeIp = node.ip || '';
     if (!nodeIp && (node.type === 'token' || node.type === 'file') && node.file_name) {
-      // Filename format: STATION_IP-HYPHENATED_TOKEN.ext — extract IP from filename
       const parts = node.file_name.split('_');
       if (parts.length >= 2) {
-        // IP is the second segment, with hyphens replaced by dots
         nodeIp = parts[1].replace(/-/g, '.');
       }
     }
@@ -197,11 +178,6 @@ export default function CommanderLayout() {
           .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('rpc batch error:', err));
         break;
-      case 'lis_print_all':
-        fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) })
-          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
-          .catch(err => console.error('lis batch error:', err));
-        break;
       case 'fbc_print': {
         // Sanitize tokenId: if it looks like a filename, extract just the number
         const cleanTokenId = tokenId.includes('_') && tokenId.includes('.') 
@@ -210,14 +186,12 @@ export default function CommanderLayout() {
         const cmd = 'print from fbc io structure ' + cleanTokenId + '0000';
         setActiveTab('telnet');
         setTerminalLog(prev => [...prev, '> ' + cmd]);
-        setActiveExecFile(`${nodeName}:${cleanTokenId}:fbc`);
         try {
           const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'FBC', token_id: cleanTokenId, ip_address: nodeIp }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        finally { setActiveExecFile(null); }
         break;
       }
       case 'rpc_print': {
@@ -228,14 +202,12 @@ export default function CommanderLayout() {
         const cmd = 'print from fbc rupi counters ' + cleanTokenId + '0000';
         setActiveTab('telnet');
         setTerminalLog(prev => [...prev, '> ' + cmd]);
-        setActiveExecFile(`${nodeName}:${cleanTokenId}:rpc`);
         try {
           const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd, node_name: nodeName, token_type: 'RPC', token_id: cleanTokenId, ip_address: nodeIp }) });
           const data = await res.json();
           if (data.output) setTerminalLog(prev => [...prev, data.output]);
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        finally { setActiveExecFile(null); }
         break;
       }
       case 'rpc_clear': {
@@ -258,54 +230,6 @@ export default function CommanderLayout() {
         setActiveTab('bstool');
         setPendingServerName(stripNodeSuffix(nodeName));
         break;
-      case 'rsu_trace':
-      case 'rsu_status': {
-        // Parse exe number from filename (e.g. "AL01_192-168-1-171_102_exe3.lis" → 3)
-        const fn = node.file_name || node.name || '';
-        const exeMatch = fn.match(/exe(\d+)/i);
-        const exeNum = exeMatch ? parseInt(exeMatch[1], 10) : 1;
-        const channel = exeNum - 1; // Exe1→chn0, Exe2→chn1, etc.
-        // RSU6 agent ID = tokenID << 16 (append 4 hex zeros)
-        const cleanTokenId = tokenId.includes('_') && tokenId.includes('.')
-          ? tokenId.replace(/\.[^.]+$/, '').split('_').pop() || tokenId
-          : tokenId;
-        const rsuid = cleanTokenId + '0000';
-        setActiveTab('telnet');
-        setActiveExecFile(`${nodeName}:${cleanTokenId}:lis_exe${exeNum}`);
-
-        if (action === 'rsu_status') {
-          // Single status command
-          const rsuCmd = 'print from rsu status ' + rsuid + ' ' + channel;
-          setTerminalLog(prev => [...prev, '> ' + rsuCmd]);
-          try {
-            const res = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: rsuCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
-            const data = await res.json();
-            if (data.output) setTerminalLog(prev => [...prev, data.output]);
-            setTreeReloadKey((k) => k + 1);
-          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-        } else {
-          // rsu_trace: send both rx-trace and tx-trace sequentially, both write to same .lis file
-          const rxCmd = 'print from rsu rx-trace ' + rsuid + ' ' + channel;
-          const txCmd = 'print from rsu tx-trace ' + rsuid + ' ' + channel;
-          setTerminalLog(prev => [...prev, '> ' + rxCmd]);
-          try {
-            const res1 = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: rxCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
-            const data1 = await res1.json();
-            if (data1.output) setTerminalLog(prev => [...prev, data1.output]);
-          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-
-          setTerminalLog(prev => [...prev, '> ' + txCmd]);
-          try {
-            const res2 = await fetch('/api/v1/telnet/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: txCmd, node_name: nodeName, token_type: 'LIS', token_id: cleanTokenId, ip_address: nodeIp }) });
-            const data2 = await res2.json();
-            if (data2.output) setTerminalLog(prev => [...prev, data2.output]);
-          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
-
-          setTreeReloadKey((k) => k + 1);
-        }
-        setActiveExecFile(null);
-        break;
-      }
       case 'open_file':
         handleDoubleClickFile(node);
         break;
@@ -374,7 +298,7 @@ export default function CommanderLayout() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
         <Terminal size={18} color="var(--accent)" />
         <h1 style={{ fontSize: '16px', fontWeight: 700 }}>Commander</h1>
@@ -385,7 +309,7 @@ export default function CommanderLayout() {
           </span>
         )}
         {/* LogRoot selector — replaces project dropdown */}
-        <div style={{ position: 'relative', marginLeft: '8px' }} ref={logRootDropdownRef}>
+        <div style={{ position: 'relative', marginLeft: '8px' }}>
           <button
             className="btn btn-secondary"
             style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -490,33 +414,23 @@ export default function CommanderLayout() {
             Go to Dashboard
           </button>
         </div>
-      ) : !activeLogRoot ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '48px', textAlign: 'center' }}>
-          <Folder size={48} color="var(--text-muted)" style={{ marginBottom: '16px' }} />
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
-            No LogRoot set. Select a LogRoot directory from the dropdown above to load files.
-          </p>
-          <button className="btn btn-primary" onClick={() => setShowLogRootDropdown(true)}>
-            Set LogRoot
-          </button>
-        </div>
       ) : (
       <>
-      <div style={{ display: 'flex', flex: 1, overflow: 'auto' }}>
-        <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'auto' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} activeExecFile={activeExecFile} />
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
+          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} />
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-          <div style={{ display: 'flex', gap: '2px', padding: '0 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: '2px', padding: '0 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
             {tabs.map((t) => (
               <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '12px', fontWeight: activeTab === t.id ? 600 : 400, color: activeTab === t.id ? 'var(--accent)' : 'var(--text-secondary)', backgroundColor: 'transparent', border: 'none', borderBottom: activeTab === t.id ? '2px solid var(--accent)' : '2px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)', transition: 'all 0.15s ease' }}>
                 {t.icon}{t.label}
               </button>
             ))}
           </div>
-          <div style={{ flex: 1, overflow: 'auto' }}>
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {activeTab === 'telnet' && (
-              <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <TelnetTerminal currentToken={currentToken} currentTokenType={currentTokenType} currentNodeName={currentNodeName} pendingCommand={pendingCommand} onCommandSent={() => setPendingCommand(null)} />
                 {terminalLog.length > 0 && (
                   <div style={{ maxHeight: '150px', overflow: 'auto', borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', padding: '4px 8px', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -528,8 +442,8 @@ export default function CommanderLayout() {
             {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => setPendingServerName(null)} currentNodeName={currentNodeName} />}
             {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={activeLogRoot || localStorage.getItem('logRoot') || ''} />}
             {activeTab === 'logviewer' && (
-              <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', backgroundColor: 'var(--bg-primary)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
                   <FileText size={14} color="var(--accent)" />
                   <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{fileViewName || 'No file selected'}</span>
                   {fileViewPath && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }} title={fileViewPath}>{fileViewPath}</span>}

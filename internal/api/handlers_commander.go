@@ -2089,15 +2089,9 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Convert SysFileData to the struct format expected by LoadSysFilesFromData
-	dataSlice := make([]struct {
-		Name string
-		Data []byte
-	}, len(sysFileData))
+	dataSlice := make([]sysloader.SysFileData, len(sysFileData))
 	for i, sf := range sysFileData {
-		dataSlice[i] = struct {
-			Name string
-			Data []byte
-		}{Name: sf.Name, Data: sf.Data}
+		dataSlice[i] = sysloader.SysFileData{Name: sf.Name, Data: sf.Data}
 	}
 
 	configs, err := sysloader.LoadSysFilesFromData(dataSlice)
