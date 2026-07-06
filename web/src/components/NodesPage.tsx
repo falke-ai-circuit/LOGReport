@@ -55,7 +55,7 @@ export default function NodesPage() {
   const [scanResult, setScanResult] = useState<{ count: number; configs: NodeConfig[]; structure?: string } | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
 
-  // Scan Nodes: connect to DIA, parse structure, probe tokens
+  // Scan Nodes: scan BU directory for .sys files, save to backend, reload tree
   const handleScanNodes = useCallback(async () => {
     setScanning(true);
     setScanResult(null);
@@ -68,6 +68,14 @@ export default function NodesPage() {
       const data = await res.json();
       const configs: NodeConfig[] = data.configs || [];
       setScanResult({ count: configs.length, configs, structure: data.structure_raw });
+      // Save configs to backend so tree shows them
+      if (configs.length > 0 && activeProjectId) {
+        await fetch(`/api/v1/nodesconfig?project_id=${activeProjectId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configs),
+        });
+      }
       // Reload tree with newly scanned nodes
       setTreeReloadKey((k) => k + 1);
     } catch (err) {
@@ -75,7 +83,7 @@ export default function NodesPage() {
     } finally {
       setScanning(false);
     }
-  }, []);
+  }, [activeProjectId]);
 
   // Auto-set log root from shared hook (only if not already set by project selection)
   useEffect(() => {
