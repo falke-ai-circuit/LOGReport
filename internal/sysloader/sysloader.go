@@ -68,6 +68,44 @@ func LoadSysFilesFromPaths(filePaths []string) ([]types.NodeConfig, error) {
 	return parseSysFiles(filePaths)
 }
 
+// LoadSysFilesFromData parses .sys files from in-memory content (remote BU retrieval).
+// Each SysFileData entry has a filename and raw bytes — we write to temp files,
+// parse them, then clean up. This produces identical results to LoadSysFiles on a
+// local directory.
+//
+// Used by the scan-nodes handler when retrieving .sys files from a remote BU via
+// the BsTool TCP protocol.
+func LoadSysFilesFromData(files []struct {
+	Name string
+	Data []byte
+}) ([]types.NodeConfig, error) {
+	if len(files) == 0 {
+		return make([]types.NodeConfig, 0), nil
+	}
+
+	// Write each file to a temp directory, then parse
+	tmpDir, err := os.MkdirTemp("", "bstool-sys-*")
+	if err != nil {
+		return nil, fmt.Errorf("sysloader: create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	var sysPaths []string
+	for _, f := range files {
+		path := filepath.Join(tmpDir, f.Name)
+		if err := os.WriteFile(path, f.Data, 0644); err != nil {
+			continue // skip files we can't write
+		}
+		sysPaths = append(sysPaths, path)
+	}
+
+	if len(sysPaths) == 0 {
+		return make([]types.NodeConfig, 0), nil
+	}
+
+	return parseSysFiles(sysPaths)
+}
+
 // parseSysFiles is the shared core that processes a list of .sys file paths,
 // merges results by LID, and returns NodeConfig array.
 func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {

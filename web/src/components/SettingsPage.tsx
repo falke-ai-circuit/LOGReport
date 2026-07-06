@@ -128,9 +128,9 @@ export default function SettingsPage() {
         </FormField>
       </SettingsSection>
 
-      {/* BsTool Settings */}
-      <SettingsSection title="BsTool" icon={<Network size={16} />}>
-        <FormField label="BsTool Host" hint="IP address for BsTool TCP connection">
+      {/* BU Connection Settings (BsTool Protocol) */}
+      <SettingsSection title="BU Connection (BsTool Protocol)" icon={<Network size={16} />}>
+        <FormField label="BU IP Address" hint="IP address of the BU (default 127.0.0.1 for local BU)">
           <input
             type="text"
             value={settings.bstool_host}
@@ -139,7 +139,7 @@ export default function SettingsPage() {
             style={inputStyle}
           />
         </FormField>
-        <FormField label="BsTool Port" hint="TCP port for BsTool (default 1516)">
+        <FormField label="BU TCP Port" hint="TCP port for BU communication (default 1516)">
           <input
             type="number"
             value={settings.bstool_port}
@@ -157,12 +157,12 @@ export default function SettingsPage() {
             style={inputStyle}
           />
         </FormField>
-        <FormField label="Communication Line" hint="COMMUNICATION_LINE env var (BU hostname)">
+        <FormField label="Communication Line" hint="Communication line / server name on the BU (e.g. AB01)">
           <input
             type="text"
             value={settings.communication_line}
             onChange={(e) => updateField('communication_line', e.target.value)}
-            placeholder="EAS-C2023"
+            placeholder="AB01"
             style={inputStyle}
           />
         </FormField>

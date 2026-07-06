@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
 	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
@@ -2019,31 +2020,20 @@ func (s *Server) handleSysFileParseMulti(w http.ResponseWriter, r *http.Request)
 
 // ─── Scan Nodes Handler (DIA "print structure") ──────────────────────
 
-// handleScanNodes connects to DIA, sends "systemtest node_list" to generate
-// a complete node listing with hw-address, token, IP, OS, slots and program names.
-// Falls back to "print structure" + token probing if node_list fails.
+// handleScanNodes retrieves .sys files from the BU and parses them for node detection.
+// It first tries the local BU directory (fast path), then falls back to remote BsTool
+// TCP retrieval from the BU at the configured BsTool host:port.
 // POST /api/v1/sysfiles/scan-nodes
 func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
-	// 95-second hard timeout — the scan can take up to ~70s in worst case
-	// (15s connect + 2s delay + 15s systemtest + 20s nodelist poll + 15s print structure + probing)
-	// but must not hang indefinitely. Context cancellation propagates to telnet reads.
 	ctx, cancel := context.WithTimeout(r.Context(), 95*time.Second)
 	defer cancel()
-	_ = ctx // r.Context() is already used by the HTTP server; ctx is for future use
+	_ = ctx
 
-	// Load settings for DIA host/port and BU directory
 	if !globalSettings.loaded {
 		s.initSettings()
 	}
 	st := getSettings()
-	host := st.DIAHost
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	port := st.DIAPort
-	if port == 0 {
-		port = 1234
-	}
+
 	buDir := st.BUDir
 	if buDir == "" {
 		buDir = "C:\\dna\\CA\\bu"
@@ -2052,142 +2042,78 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Step 0: Try reading .sys files from the BU directory first.
-	// This gives the SAME result as manually importing .sys files —
-	// real IP addresses, FBC/RPC tokens, full node names.
-	// The .sys files are the authoritative source of node configuration.
-	buConfigs := tryLoadSysFromBUDir(buDir)
-	if len(buConfigs) > 0 {
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"configs":    buConfigs,
-			"count":      len(buConfigs),
-			"method":     "bu_sys_files",
-			"bu_dir":     buDir,
-		})
-		return
+	buHost := st.BsToolHost
+	if buHost == "" {
+		buHost = "127.0.0.1"
+	}
+	buPort := st.BsToolPort
+	if buPort == 0 {
+		buPort = 1516
+	}
+	commLine := st.CommunicationLine
+	if commLine == "" {
+		commLine = "AB01"
 	}
 
-	// Disconnect any existing session to avoid conflicts (DIA allows only 1 connection)
-	for _, id := range s.telnetSM.ListSessions() {
-		s.telnetSM.Disconnect(id)
+	// If the BU IP is not localhost, skip local dir and go straight to remote.
+	// This ensures the configured BU IP is actually used on systems where
+	// a local C:\dna\CA\bu directory happens to exist but the real BU is remote.
+	isLocalBU := buHost == "127.0.0.1" || buHost == "localhost" || buHost == "::1"
+
+	// Step 1: If BU is local, try reading .sys files from the local BU directory (fast path).
+	if isLocalBU {
+		buConfigs := tryLoadSysFromBUDir(buDir)
+		if len(buConfigs) > 0 {
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"configs": buConfigs,
+				"count":   len(buConfigs),
+				"method":  "bu_local_sys_files",
+				"bu_dir":  buDir,
+			})
+			return
+		}
 	}
 
-	// Create a fresh session
-	sess, err := s.telnetSM.Connect("", host, port, 15*time.Second)
+	// Step 2: Retrieve .sys files from remote BU via BsTool TCP protocol.
+	timeout := 10 * time.Second
+	sysFileData, err := bstool.RetrieveSysFileData(buHost, buPort, commLine, timeout)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "connection_failed",
-			fmt.Sprintf("DIA connect %s:%d failed: %v", host, port, err))
+		writeError(w, http.StatusBadGateway, "bu_connection_failed",
+			fmt.Sprintf("Remote BU %s:%d retrieval failed: %v", buHost, buPort, err))
 		return
 	}
-	// Nil session safety — Connect should never return nil+nil, but guard against panics
-	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "session_error",
-			"telnet session returned nil after connect")
+	if len(sysFileData) == 0 {
+		writeError(w, http.StatusNotFound, "no_sys_files",
+			fmt.Sprintf("No .sys files found on BU %s:%d (commLine=%s)", buHost, buPort, commLine))
 		return
 	}
-	sessionID := sess.ID
-	defer s.telnetSM.Disconnect(sessionID)
 
-	// verifySystemMode() in Connect() already:
-	// 1. Read initial DIA response, sent "y" only if override prompt was present
-	// 2. Cleared the line editor (Ctrl+X + Ctrl+Z + Enter)
-	// 3. Entered system mode
-	// We're already in system mode here — don't re-handle override or send "systemmode"
-
-	// Step 1: Delete old nodelist files to detect fresh generation
-	// DIA writes to its own working directory, not LOGReport's
-	// BUT: some DIA versions don't support `systemtest node_list`. In that case,
-	// we fall back to the existing nodelist.txt that was generated at DIA startup.
-	// Save the existing content before deleting, so we can restore it if the
-	// command fails to regenerate the file.
-	knownPaths := []string{
-		"C:\\dna\\CA\\dia\\nodelist.txt",
-		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
-		"nodelist.txt",
-		"C:\\nodelist.txt",
+	// Convert SysFileData to the struct format expected by LoadSysFilesFromData
+	dataSlice := make([]struct {
+		Name string
+		Data []byte
+	}, len(sysFileData))
+	for i, sf := range sysFileData {
+		dataSlice[i] = struct {
+			Name string
+			Data []byte
+		}{Name: sf.Name, Data: sf.Data}
 	}
 
-	// Save existing nodelist content before deleting
-	var existingNodeList string
-	for _, p := range knownPaths {
-		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-			existingNodeList = string(data)
-			break
-		}
-	}
-
-	// Delete old files to detect fresh generation
-	for _, p := range knownPaths {
-		os.Remove(p)
-	}
-
-	// Step 3: Send systemtest node_list using SendSystemCommand
-	// SendSystemCommand clears with Ctrl+X + Enter only (no Ctrl+Z which exits system mode)
-	// Small delay to let DIA fully enter system mode after connect
-	time.Sleep(2 * time.Second)
-	_ = s.telnetSM.ClearOutput(sessionID)
-	_ = s.telnetSM.SendSystemCommand(sessionID, "systemtest node_list nodelist.txt")
-	_ = waitForOutput(s.telnetSM, sessionID, 15*time.Second, 2*time.Second, nil)
-
-	// Step 4: Wait for nodelist.txt to appear (poll for up to 20 seconds)
-	// DIA writes the file asynchronously after the command returns
-	var nodeListContent string
-	searchPaths := []string{
-		"C:\\dna\\CA\\dia\\nodelist.txt",
-		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
-		"C:\\nodelist.txt",
-		"nodelist.txt",
-		filepath.Join(os.TempDir(), "nodelist.txt"),
-	}
-
-	deadline := time.Now().Add(20 * time.Second)
-	for time.Now().Before(deadline) {
-		for _, p := range searchPaths {
-			if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-				nodeListContent = string(data)
-				break
-			}
-		}
-		if nodeListContent != "" {
-			break
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-
-	// If systemtest node_list didn't generate a new file, use the existing
-	// nodelist.txt content (saved before deletion). Some DIA versions generate
-	// nodelist.txt at startup but don't support the systemtest command.
-	if nodeListContent == "" && existingNodeList != "" {
-		nodeListContent = existingNodeList
-	}
-
-	var configs []types.NodeConfig
-	var structureRaw string
-
-	if nodeListContent != "" {
-		// ─── Parse nodelist.txt format ───────────────────────────
-		// Format: hw_address,token,ip,os,slot:type:name:extra,...
-		// Example: 30,1,127.0.0.1,win,1:CPU:AB01:10,2:CPU:AP01:0,...,16:NCU
-		configs = parseNodeList(nodeListContent)
-
-		// Also get print structure for the structure_raw field
-		_ = s.telnetSM.ClearOutput(sessionID)
-		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
-	} else {
-		// ─── Fallback: print structure + token probing ────────────
-		_ = s.telnetSM.ClearOutput(sessionID)
-		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
-		configs = scanFromStructure(s, sessionID, structureRaw)
+	configs, err := sysloader.LoadSysFilesFromData(dataSlice)
+	if err != nil || len(configs) == 0 {
+		writeError(w, http.StatusInternalServerError, "parse_failed",
+			fmt.Sprintf("Parsed %d .sys files but got 0 configs: %v", len(sysFileData), err))
+		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"configs":       configs,
-		"count":         len(configs),
-		"structure_raw": structureRaw,
-		"nodelist_raw":  nodeListContent,
-		"method":        "systemtest_node_list",
+		"configs": configs,
+		"count":   len(configs),
+		"method":  "bstool_remote_sys_files",
+		"bu_host": buHost,
+		"bu_port": buPort,
+		"sys_count": len(sysFileData),
 	})
 }
 
@@ -2196,254 +2122,17 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 // On success, returns the same configs as a manual .sys file import —
 // with real IP addresses, FBC/RPC tokens, and full node names.
 func tryLoadSysFromBUDir(buDir string) []types.NodeConfig {
-	// Check if directory exists
 	if _, err := os.Stat(buDir); err != nil {
 		return nil
 	}
-
-	// Try loading .sys files from the directory
 	configs, err := sysloader.LoadSysFiles(buDir)
 	if err != nil || len(configs) == 0 {
-		// Try bu_VM as fallback (VM-specific directory)
 		buVMDir := filepath.Join(filepath.Dir(buDir), "bu_VM")
 		configs, err = sysloader.LoadSysFiles(buVMDir)
 		if err != nil || len(configs) == 0 {
 			return nil
 		}
-		buDir = buVMDir
 	}
-
-	return configs
-}
-
-// parseNodeList parses nodelist.txt content into NodeConfig array.
-// Format (per LightRAG / AMIS Configuration Manual):
-//   hw_address,token,ip,os,slot:type:name,...,slot:type:name,...
-//
-// Each LINE represents one physical node. CPU/BPU entries are application
-// servers (stations); FBC entries are fieldbus cards that belong to the
-// preceding CPU station on the same line.
-//
-// Token calculation: token = hex(hw_addr + slot_number - 1).
-//   e.g. hw_addr=0x30, slot 1 → 0x30 → "30"  (LOG)
-//        hw_addr=0x30, slot 2 → 0x31 → "31"  (FBC + RPC)
-//
-// Examples from LightRAG:
-//   b030,1,192.168.77.190,ppc,1:CPU:LP01,2:FBC,16:NCU
-//   → LP01 with tokens: 30(LOG), 31(FBC), 31(RPC)
-//
-//   30,1,127.0.0.1,win,1:CPU:AB01:10,2:CPU:AP01:0,3:CPU:A1O1:2,...,16:NCU
-//   → AB01(30/LOG), AP01(31/LOG), A1O1(32/LOG), ...
-//
-// FBC slots without a preceding CPU on the same line get their own config
-// named "NODE_<hw_addr>_<slot>" as fallback.
-func parseNodeList(content string) []types.NodeConfig {
-	lines := strings.Split(strings.TrimSpace(content), "\n")
-	var configs []types.NodeConfig
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.Split(line, ",")
-		if len(parts) < 5 {
-			continue
-		}
-
-		hwAddr := strings.TrimSpace(parts[0])
-		ip := strings.TrimSpace(parts[2])
-
-		// Track the current station (last CPU entry on this line)
-		// so FBC slots can be attached to it.
-		var currentStation *types.NodeConfig
-		var currentStationIdx int = -1
-
-		// Parse slot entries (parts[4:])
-		for _, slotEntry := range parts[4:] {
-			fields := strings.Split(strings.TrimSpace(slotEntry), ":")
-			if len(fields) < 2 {
-				continue
-			}
-			slotNum := strings.TrimSpace(fields[0])
-			slotType := strings.ToUpper(strings.TrimSpace(fields[1]))
-			slotName := ""
-			if len(fields) >= 3 {
-				slotName = strings.TrimSpace(fields[2])
-			}
-
-			switch slotType {
-			case "CPU", "BPU":
-				if slotName == "" {
-					continue
-				}
-				tokenID := computeNodeListToken(hwAddr, slotNum)
-				cfg := types.NodeConfig{
-					Name:      slotName,
-					IPAddress: ip,
-					Tokens: []types.Token{{
-						TokenID:   tokenID,
-						TokenType: types.TokenLOG,
-						Protocol:  "telnet",
-					}},
-				}
-				configs = append(configs, cfg)
-				currentStation = &configs[len(configs)-1]
-				currentStationIdx = len(configs) - 1
-
-			case "FBC":
-				// FBC slot — belongs to the preceding CPU station on this line.
-				// Gets FBC + RPC tokens with the same token calculation.
-				tokenID := computeNodeListToken(hwAddr, slotNum)
-				fbcToken := types.Token{
-					TokenID:   tokenID,
-					TokenType: types.TokenFBC,
-					Protocol:  "telnet",
-				}
-				rpcToken := types.Token{
-					TokenID:   tokenID,
-					TokenType: types.TokenRPC,
-					Protocol:  "telnet",
-				}
-				if currentStation != nil && currentStationIdx >= 0 {
-					// Attach to current station — avoid duplicate tokens
-					alreadyExists := false
-					for _, t := range configs[currentStationIdx].Tokens {
-						if t.TokenType == types.TokenFBC && t.TokenID == tokenID {
-							alreadyExists = true
-							break
-						}
-					}
-					if !alreadyExists {
-						configs[currentStationIdx].Tokens = append(configs[currentStationIdx].Tokens, fbcToken, rpcToken)
-					}
-				} else {
-					// No preceding CPU — create a standalone FBC node
-					fallbackName := fmt.Sprintf("NODE_%s_slot%s", hwAddr, slotNum)
-					configs = append(configs, types.NodeConfig{
-						Name:      fallbackName,
-						IPAddress: ip,
-						Tokens:    []types.Token{fbcToken, rpcToken},
-					})
-					currentStation = &configs[len(configs)-1]
-					currentStationIdx = len(configs) - 1
-				}
-
-			case "NCU":
-				// Skip NCU — infrastructure, not a process station
-				continue
-			}
-		}
-	}
-
-	return configs
-}
-
-// computeNodeListToken computes the LOG token for a nodelist CPU entry.
-// Token = hex(hw_addr_value + slot_number - 1).
-// e.g. hw_addr=0x30 (48), slot=1 → 48+0=48 → "30"
-//      hw_addr=0x30 (48), slot=2 → 48+1=49 → "31"
-func computeNodeListToken(hwAddr string, slotNum string) string {
-	hwVal, err := strconv.ParseInt(hwAddr, 16, 32)
-	if err != nil {
-		return hwAddr
-	}
-	slotVal, err := strconv.ParseInt(slotNum, 10, 32)
-	if err != nil {
-		return hwAddr
-	}
-	token := hwVal + slotVal - 1
-	return fmt.Sprintf("%x", token)
-}
-
-// scanFromStructure is the fallback: parse print structure output and probe tokens
-func scanFromStructure(s *Server, sessionID string, structureOutput string) []types.NodeConfig {
-	lines := strings.Split(structureOutput, "\n")
-
-	type slotEntry struct {
-		token   int
-		slotNum int
-		slotType string
-	}
-	var slots []slotEntry
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			continue
-		}
-		// Look for data lines: "1 20 CPU CPU CPU ... NCU"
-		// First field = token (hex), second = VME addr (hex), rest = slot types
-		tokenNum, err := strconv.ParseInt(fields[0], 16, 32)
-		if err != nil {
-			continue
-		}
-		for i := 2; i < len(fields); i++ {
-			upperField := strings.ToUpper(fields[i])
-			if upperField == "CPU" || upperField == "FBC" || upperField == "NCU" {
-				slots = append(slots, slotEntry{
-					token:    int(tokenNum),
-					slotNum:  i - 1, // slot 1 = first after VME addr
-					slotType: upperField,
-				})
-			}
-		}
-	}
-
-	// Group by station: CPU starts new station, FBC belongs to current station
-	type stationTokens struct {
-		name      string
-		cpuToken  int
-		fbcTokens []int
-	}
-	var stations []*stationTokens
-
-	for _, sl := range slots {
-		if sl.slotType == "NCU" {
-			continue
-		}
-		if sl.slotType == "CPU" {
-			stations = append(stations, &stationTokens{
-				name:     fmt.Sprintf("NODE_%d", len(stations)+1),
-				cpuToken: sl.token,
-			})
-		} else if sl.slotType == "FBC" && len(stations) > 0 {
-			stations[len(stations)-1].fbcTokens = append(stations[len(stations)-1].fbcTokens, sl.token)
-		}
-	}
-
-	var configs []types.NodeConfig
-	for _, st := range stations {
-		var tokens []types.Token
-		if st.cpuToken > 0 {
-			tokens = append(tokens, types.Token{
-				TokenID:   fmt.Sprintf("%x", st.cpuToken),
-				TokenType: types.TokenLOG,
-				Protocol:  "telnet",
-			})
-		}
-		for _, fbcToken := range st.fbcTokens {
-			tokens = append(tokens, types.Token{
-				TokenID:   fmt.Sprintf("%x", fbcToken),
-				TokenType: types.TokenFBC,
-				Protocol:  "telnet",
-			})
-			tokens = append(tokens, types.Token{
-				TokenID:   fmt.Sprintf("%x", fbcToken),
-				TokenType: types.TokenRPC,
-				Protocol:  "telnet",
-			})
-		}
-		if len(tokens) > 0 {
-			configs = append(configs, types.NodeConfig{
-				Name:   st.name,
-				Tokens: tokens,
-			})
-		}
-	}
-
 	return configs
 }
 
