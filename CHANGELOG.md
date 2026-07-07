@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.9.10] — 2026-07-07
+
+### Fixed
+
+- **Version display** — Health endpoint now returns the build-injected version (via `main.version` ldflag) instead of hardcoded "1.0.0". CLI `--version` prints `LOGReport v3.9.10 (windows/amd64)`. Frontend StatusBar and Dashboard show the real version from health API.
+- **Commander: command input visibility** — Changed `overflow: hidden` to `overflow: auto` on the tab content container so the TelnetTerminal command input bar is always visible at the bottom and not clipped.
+- **Commander: Log Viewer hint text** — Updated from "Double-click a file" to "Click a file" to match the new single-click behavior.
+
 ## [v3.9.9] — 2026-07-07
 
 ### Added

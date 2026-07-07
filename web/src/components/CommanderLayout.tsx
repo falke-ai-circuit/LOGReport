@@ -430,7 +430,7 @@ export default function CommanderLayout() {
               </button>
             ))}
           </div>
-          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
             {activeTab === 'telnet' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <TelnetTerminal currentToken={currentToken} currentTokenType={currentTokenType} currentNodeName={currentNodeName} pendingCommand={pendingCommand} onCommandSent={() => setPendingCommand(null)} />
@@ -454,7 +454,7 @@ export default function CommanderLayout() {
                   {fileLoading ? (
                     <div style={{ textAlign: 'center', padding: '24px' }}><Loader2 size={20} color="var(--accent)" className="spin" /><p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '8px' }}>Loading file...</p></div>
                   ) : fileContent ? <ColorizedLog content={fileContent} /> : (
-                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '12px' }}>Double-click a file in the node tree to view its content.</div>
+                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '12px' }}>Click a file in the node tree to view its content.</div>
                   )}
                 </div>
               </div>

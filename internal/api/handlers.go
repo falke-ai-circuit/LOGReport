@@ -174,6 +174,7 @@ type Server struct {
 	logRootDir   string                 // Commander: root dir for log files
 	lisdiagConns map[string]*lisdiag.Client // cached LisDiag connections
 	lisdiagMu    sync.Mutex                // protects lisdiagConns
+	version      string                    // build version (injected via ldflags)
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
@@ -189,6 +190,11 @@ func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClien
 		logRootDir:   "logs",
 		lisdiagConns: make(map[string]*lisdiag.Client),
 	}
+}
+
+// SetVersion sets the build version string (injected via ldflags in main.go).
+func (s *Server) SetVersion(v string) {
+	s.version = v
 }
 
 // logRoot returns the log root directory, ensuring it exists.
@@ -215,6 +221,10 @@ func (s *Server) StartTime() time.Time {
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	h := server.GetHealth(true, s.startTime)
+	// Override version with the build-injected version if set
+	if s.version != "" {
+		h.Version = s.version
+	}
 	// Override node_count with nodesconfig count (actual configured nodes, not SQLite scan nodes)
 	if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
 		h.NodeCount = len(configs)
