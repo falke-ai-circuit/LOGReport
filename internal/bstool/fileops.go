@@ -103,17 +103,14 @@ func (ft *FileTransport) Close() error {
 // ListDir lists files matching the given pattern on the remote BU.
 // pattern is the glob (e.g. "*.sys"). The commLine prefix is added automatically.
 // Returns directory entries or an error if the directory listing fails.
+//
+// VERIFIED 2026-07-07: Native TCP protocol works for file I/O on buc_16.20.exe.
+// The 3x handshake (cmd=0x0C) is sufficient — no zzInitTcpLineIO reconnection needed.
+// All operations (READ_DIR, GET_DIR_ENTRY, FILE_OPEN, FILE_READ, FILE_CLOSE) work
+// on a single connection. The BU returns param=0x02CC (716 = buffer size) on handshake.
 func (ft *FileTransport) ListDir(commLine, pattern string) ([]DirEntry, error) {
-	// BsTool.exe reconnects (zzInitTcpLineIO) before each file operation.
-	// The BU requires a fresh connection for READ_DIR to return results.
-	if ft.handshake {
-		if err := ft.reconnect(); err != nil {
-			return nil, fmt.Errorf("fileops: reconnect: %w", err)
-		}
-	} else {
-		if err := ft.connectAndHandshake(); err != nil {
-			return nil, err
-		}
+	if err := ft.connectAndHandshake(); err != nil {
+		return nil, err
 	}
 
 	// READ_DIR: data = ":s:{commLine}:{pattern}\0"
@@ -199,19 +196,17 @@ func parseDirEntry(resp *Block) DirEntry {
 	parts := bytes.SplitN(resp.Data, []byte{0}, 2)
 	name := string(parts[0])
 
+	// Strip ":s:" prefix first (e.g. ":s:AB01:1041.sys" → "AB01:1041.sys")
+	name = strings.TrimPrefix(name, ":s:")
+
 	// Strip comm line prefix if present (e.g. "AB01:1041.sys" → "1041.sys")
-	// The prefix is everything before the last ":" in the filename
 	if idx := strings.LastIndex(name, ":"); idx >= 0 && idx < len(name)-1 {
-		// Check if the part before ":" looks like a comm line (alphanumeric, short)
 		prefix := name[:idx]
 		suffix := name[idx+1:]
 		if isCommLinePrefix(prefix) && suffix != "" {
 			name = suffix
 		}
 	}
-
-	// Strip any leading ":s:" prefix
-	name = strings.TrimPrefix(name, ":s:")
 
 	var date string
 	if len(parts) > 1 {
@@ -249,16 +244,12 @@ func (ft *FileTransport) ListSysFiles(commLine string) ([]DirEntry, error) {
 // ReadFile reads a single file from the remote BU.
 // filename is the bare filename (e.g. "161.sys"). The commLine prefix is added.
 // Returns the complete file content.
+//
+// VERIFIED 2026-07-07: Works on single connection after handshake.
+// FILE_READ uses param=1024 (0x400) chunk size, not 448.
 func (ft *FileTransport) ReadFile(commLine, filename string) ([]byte, error) {
-	// Reconnect for each file read — BU requires fresh connection
-	if ft.handshake {
-		if err := ft.reconnect(); err != nil {
-			return nil, fmt.Errorf("fileops: reconnect: %w", err)
-		}
-	} else {
-		if err := ft.connectAndHandshake(); err != nil {
-			return nil, err
-		}
+	if err := ft.connectAndHandshake(); err != nil {
+		return nil, err
 	}
 
 	// FILE_OPEN: data = ":s:{commLine}:{filename}\0rb\0"
@@ -296,14 +287,14 @@ func (ft *FileTransport) ReadFile(commLine, filename string) ([]byte, error) {
 		return nil, fmt.Errorf("fileops: FILE_OPEN failed (handle=0x%08x)", fileHandle)
 	}
 
-	// Read file in 448-byte chunks
+	// Read file in 1024-byte chunks (BsTool.exe uses 0x400 = 1024, verified by MITM)
 	var fileData []byte
 	for {
 		readBlock := &Block{
 			Header: BlockHeader{
 				Command: CmdFileRead,
 				Source:  fileHandle,
-				Param:   DefaultChunkSize, // 448
+				Param:   0x00000400, // 1024 bytes per chunk
 			},
 		}
 
@@ -325,7 +316,7 @@ func (ft *FileTransport) ReadFile(commLine, filename string) ([]byte, error) {
 		}
 
 		// If we got less than the chunk size, we're done
-		if readResp.Header.DataLen < DefaultChunkSize || len(readResp.Data) == 0 {
+		if readResp.Header.DataLen < 0x00000400 || len(readResp.Data) == 0 {
 			break
 		}
 	}
@@ -345,7 +336,15 @@ func (ft *FileTransport) ReadFile(commLine, filename string) ([]byte, error) {
 
 // RetrieveSysFileData lists all .sys files on the remote BU and reads each one.
 // Returns a slice of SysFileData (name + raw content) for each .sys file.
+//
+// VERIFIED 2026-07-07: Native TCP protocol works — no BsTool.exe subprocess needed.
+// Directory listing (READ_DIR + GET_DIR_ENTRY) works on one connection.
+// File reading (FILE_OPEN + FILE_READ + FILE_CLOSE) requires a fresh connection
+// (verified by MITM capture — BsTool.exe reconnects between -ls and -cat operations).
 func RetrieveSysFileData(host string, port int, commLine string, timeout time.Duration) ([]SysFileData, error) {
+	if timeout < 10*time.Second {
+		timeout = 10 * time.Second
+	}
 	ft := NewFileTransport(host, port, timeout)
 	defer ft.Close()
 
@@ -358,6 +357,10 @@ func RetrieveSysFileData(host string, port int, commLine string, timeout time.Du
 
 	if debug {
 		log.Printf("[BSTOOL_DEBUG] ListSysFiles returned %d entries", len(entries))
+	}
+
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("retrieve sys files: ListSysFiles returned 0 entries (no error)")
 	}
 
 	var files []SysFileData

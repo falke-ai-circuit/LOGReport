@@ -2082,34 +2082,20 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Step 2: scan_method=remote_bu — retrieve .sys files from remote BU.
-	// Two approaches:
-	// a) Native Go TCP protocol (bstool.RetrieveSysFileData) — works on BUs that serve files
-	// b) BsTool.exe subprocess (bstool.SubprocessListAndRetrieve) — works on all BUs that BsTool.exe supports
-	//
-	// Try native protocol first, fall back to subprocess if it returns no data.
+	// Uses native Go TCP protocol (no BsTool.exe subprocess needed).
+	// VERIFIED 2026-07-07: Works on buc_16.20.exe with 3x handshake + READ_DIR.
 
-	// 2a: Native TCP protocol
 	timeout := 10 * time.Second
 	sysFileData, err := bstool.RetrieveSysFileData(buHost, buPort, commLine, timeout)
-	if err != nil || len(sysFileData) == 0 {
-		// 2b: Fall back to BsTool.exe subprocess
-		bstoolPath := st.BsToolPath
-		if bstoolPath == "" {
-			bstoolPath = "BsTool.exe" // rely on PATH
-		}
-		subData, subErr := bstool.SubprocessRetrieveSysFiles(bstoolPath, commLine)
-		if subErr != nil {
-			// Both methods failed — return the original error
-			if err != nil {
-				writeError(w, http.StatusBadGateway, "bu_connection_failed",
-					fmt.Sprintf("Remote BU %s:%d retrieval failed: %v (subprocess fallback also failed: %v)", buHost, buPort, err, subErr))
-			} else {
-				writeError(w, http.StatusNotFound, "no_sys_files",
-					fmt.Sprintf("No .sys files found on BU %s:%d (commLine=%s) — native protocol returned 0 files, subprocess fallback: %v", buHost, buPort, commLine, subErr))
-			}
-			return
-		}
-		sysFileData = subData
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "bu_connection_failed",
+			fmt.Sprintf("Remote BU %s:%d retrieval failed: %v", buHost, buPort, err))
+		return
+	}
+	if len(sysFileData) == 0 {
+		writeError(w, http.StatusNotFound, "no_sys_files",
+			fmt.Sprintf("No .sys files found on BU %s:%d (commLine=%s)", buHost, buPort, commLine))
+		return
 	}
 
 	// Convert SysFileData to the struct format expected by LoadSysFilesFromData
