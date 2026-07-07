@@ -84,18 +84,6 @@ export default function CommanderLayout() {
     setCurrentNodeName(node.name);
   }, []);
 
-  const handleSelectToken = useCallback((token: TreeNodeData) => {
-    setSelectedToken(token);
-    setCurrentToken(token.token_id || '');
-    setCurrentTokenType(token.section_type || 'FBC');
-    // Build file key for bidirectional highlighting
-    if (token.type === 'file' || token.type === 'token') {
-      const sectionType = token.section_type || '';
-      const fileName = token.file_name || token.name;
-      setSelectedFileKey(`${currentNodeName}:${sectionType}:${fileName}`);
-    }
-  }, [currentNodeName]);
-
   const handleDoubleClickFile = useCallback(async (node: TreeNodeData) => {
     let filePath = node.file_path || '';
     let fileName = node.file_name || node.name;
@@ -145,6 +133,20 @@ export default function CommanderLayout() {
       setFileLoading(false);
     }
   }, [currentNodeName, activeLogRoot]);
+
+  const handleSelectToken = useCallback((token: TreeNodeData) => {
+    setSelectedToken(token);
+    setCurrentToken(token.token_id || '');
+    setCurrentTokenType(token.section_type || 'FBC');
+    // Build file key for bidirectional highlighting
+    if (token.type === 'file' || token.type === 'token') {
+      const sectionType = token.section_type || '';
+      const fileName = token.file_name || token.name;
+      setSelectedFileKey(`${currentNodeName}:${sectionType}:${fileName}`);
+      // Single-click opens file content on the right side (Log Viewer tab)
+      handleDoubleClickFile(token);
+    }
+  }, [currentNodeName, handleDoubleClickFile]);
 
   const handleContextAction = useCallback(async (action: string, node: TreeNodeData, _parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;

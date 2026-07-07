@@ -2055,13 +2055,15 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		commLine = "AB01"
 	}
 
-	// If the BU IP is not localhost, skip local dir and go straight to remote.
-	// This ensures the configured BU IP is actually used on systems where
-	// a local C:\dna\CA\bu directory happens to exist but the real BU is remote.
-	isLocalBU := buHost == "127.0.0.1" || buHost == "localhost" || buHost == "::1"
+	// Scan method: "remote_bu" (default) uses BsTool TCP, "local_dir" uses local BU directory.
+	// The user selects this in Settings — no automatic fallback.
+	scanMethod := st.ScanMethod
+	if scanMethod == "" {
+		scanMethod = "remote_bu"
+	}
 
-	// Step 1: If BU is local, try reading .sys files from the local BU directory (fast path).
-	if isLocalBU {
+	// Step 1: If scan method is local_dir, read .sys files from the local BU directory.
+	if scanMethod == "local_dir" {
 		buConfigs := tryLoadSysFromBUDir(buDir)
 		if len(buConfigs) > 0 {
 			writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -2072,9 +2074,13 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+		// Local dir selected but no .sys files found — return error, do NOT fallback to remote
+		writeError(w, http.StatusNotFound, "no_sys_files",
+			fmt.Sprintf("No .sys files found in local BU directory %s (scan_method=local_dir)", buDir))
+		return
 	}
 
-	// Step 2: Retrieve .sys files from remote BU via BsTool TCP protocol.
+	// Step 2: scan_method=remote_bu — retrieve .sys files from remote BU via BsTool TCP protocol.
 	timeout := 10 * time.Second
 	sysFileData, err := bstool.RetrieveSysFileData(buHost, buPort, commLine, timeout)
 	if err != nil {

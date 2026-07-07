@@ -1,5 +1,17 @@
 # Changelog
 
+## [v3.9.9] — 2026-07-07
+
+### Added
+
+- **Settings: Scan Method toggle** — New `scan_method` setting in Settings page with dropdown: "Remote BU (BsTool TCP Protocol)" (default) or "Local Directory (.sys files on disk)". No automatic fallback between methods — the selected method is used exclusively.
+- **Nodes page: Clear Nodes button** — Two-word button "Clear Nodes" in the Nodes page toolbar that removes all detected node configs from the project with a confirmation dialog.
+
+### Fixed
+
+- **Double .log files** — LOG-type tokens were creating duplicate tree entries and duplicate files on disk because `buildFileName` for LOG type doesn't include token ID (`{station}_{ip}.log`), so multiple LOG tokens produced identical filenames. Now deduplicated: one LOG file per station+IP combination. Fixed in `BuildTree`, `BuildFileTree` (3 locations), and `createLogStructure`.
+- **Commander: single-click opens files** — Clicking on .li/.fbc/.rpc/.log files in the Commander node tree now opens file content on the right side (Log Viewer tab) immediately, instead of requiring a double-click.
+
 ## [v3.9.3] — 2026-06-29
 
 ### Fixed

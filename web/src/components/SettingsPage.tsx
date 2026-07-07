@@ -12,6 +12,7 @@ interface SettingsData {
   communication_line: string;
   output_dir: string;
   lis_mode: string;
+  scan_method: string;
 }
 
 export default function SettingsPage() {
@@ -165,6 +166,16 @@ export default function SettingsPage() {
             placeholder="AB01"
             style={inputStyle}
           />
+        </FormField>
+        <FormField label="Scan Method" hint="How nodes are detected: Remote BU (BsTool TCP protocol) or Local Directory (.sys files on disk)">
+          <select
+            value={settings.scan_method || 'remote_bu'}
+            onChange={(e) => updateField('scan_method', e.target.value)}
+            style={inputStyle}
+          >
+            <option value="remote_bu">Remote BU (BsTool TCP Protocol)</option>
+            <option value="local_dir">Local Directory (.sys files on disk)</option>
+          </select>
         </FormField>
       </SettingsSection>
 

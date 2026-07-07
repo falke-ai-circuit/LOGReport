@@ -52,6 +52,7 @@ export default function NodesPage() {
   const [fileLoading, setFileLoading] = useState(false);
   const [terminalLog, setTerminalLog] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [scanResult, setScanResult] = useState<{ count: number; configs: NodeConfig[]; structure?: string } | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
 
@@ -82,6 +83,28 @@ export default function NodesPage() {
       setTerminalLog(prev => [...prev, 'Scan Error: ' + (err instanceof Error ? err.message : String(err))]);
     } finally {
       setScanning(false);
+    }
+  }, [activeProjectId]);
+
+  // Clear Nodes: remove all node configs for the active project
+  const handleClearNodes = useCallback(async () => {
+    if (!activeProjectId) return;
+    if (!window.confirm('Remove ALL detected nodes from this project? This cannot be undone.')) return;
+    setClearing(true);
+    try {
+      // Save empty array to clear all node configs
+      await fetch(`/api/v1/nodesconfig?project_id=${activeProjectId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([]),
+      });
+      setScanResult(null);
+      setTreeReloadKey((k) => k + 1);
+      setTerminalLog(prev => [...prev, '[All nodes cleared]']);
+    } catch (err) {
+      setTerminalLog(prev => [...prev, 'Error clearing nodes: ' + (err instanceof Error ? err.message : String(err))]);
+    } finally {
+      setClearing(false);
     }
   }, [activeProjectId]);
 
@@ -402,6 +425,16 @@ export default function NodesPage() {
             >
               <Plus size={14} />
               Add Node
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={handleClearNodes}
+              disabled={clearing || !activeProjectId}
+              title="Remove all detected nodes from the project"
+            >
+              {clearing ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+              Clear Nodes
             </button>
             <button
               className="btn btn-primary"

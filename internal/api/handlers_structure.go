@@ -179,9 +179,16 @@ func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, 
 			}
 			createdDirs++
 
-			// Create empty file for each token
+			// Create empty file for each token (deduplicate LOG — one file per station)
+			seenLog := make(map[string]bool)
 			for _, tok := range tokens {
 				fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
+				if tokenType == "LOG" {
+					if seenLog[fileName] {
+						continue
+					}
+					seenLog[fileName] = true
+				}
 				filePath := filepath.Join(dir, fileName)
 				// Only create if file doesn't exist (don't overwrite existing files)
 				if _, statErr := os.Stat(filePath); statErr == nil {

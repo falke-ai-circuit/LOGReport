@@ -181,22 +181,48 @@ func BuildTree(configs []types.NodeConfig) *types.TreeNode {
 				SectionType: gType,
 				Children:    make([]types.TreeNode, 0),
 			}
-			for _, tok := range tokens {
-				// Use per-token IP if available, otherwise fall back to station IP
-				ipForFile := stationIP
-				if ip, ok := tokenIPs[string(tok.TokenType)+":"+tok.TokenID]; ok {
-					ipForFile = ip
+			if gType == "LOG" {
+				// LOG files don't include token ID in the filename — one file per station.
+				// Deduplicate: create only one LOG entry per station+IP.
+				seen := make(map[string]bool)
+				for _, tok := range tokens {
+					ipForFile := stationIP
+					if ip, ok := tokenIPs[string(tok.TokenType)+":"+tok.TokenID]; ok {
+						ipForFile = ip
+					}
+					fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
+					if seen[fileName] {
+						continue
+					}
+					seen[fileName] = true
+					groupNode.Children = append(groupNode.Children, types.TreeNode{
+						Name:        fileName,
+						Type:        "token",
+						TokenID:     tok.TokenID,
+						Port:        tok.Port,
+						Protocol:    tok.Protocol,
+						SectionType: gType,
+						FileName:    fileName,
+					})
 				}
-				fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
-				groupNode.Children = append(groupNode.Children, types.TreeNode{
-					Name:        fileName,
-					Type:        "token",
-					TokenID:     tok.TokenID,
-					Port:        tok.Port,
-					Protocol:    tok.Protocol,
-					SectionType: gType,
-					FileName:    fileName,
-				})
+			} else {
+				for _, tok := range tokens {
+					// Use per-token IP if available, otherwise fall back to station IP
+					ipForFile := stationIP
+					if ip, ok := tokenIPs[string(tok.TokenType)+":"+tok.TokenID]; ok {
+						ipForFile = ip
+					}
+					fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
+					groupNode.Children = append(groupNode.Children, types.TreeNode{
+						Name:        fileName,
+						Type:        "token",
+						TokenID:     tok.TokenID,
+						Port:        tok.Port,
+						Protocol:    tok.Protocol,
+						SectionType: gType,
+						FileName:    fileName,
+					})
+				}
 			}
 			stationNode.Children = append(stationNode.Children, groupNode)
 		}
@@ -283,22 +309,36 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool)
 				if hideMissing {
 					continue
 				}
-				for _, cfg := range memberCfgs {
-					for _, tok := range cfg.Tokens {
-						if strings.EqualFold(string(tok.TokenType), gType) {
-							// Use per-config IP, not station-wide IP — different slots may have different IPs
-							ipForFile := cfg.IPAddress
-							if ipForFile == "" {
-								ipForFile = stationIP
+				if gType == "LOG" {
+					// LOG: one file per station (no token ID in filename) — deduplicate
+					seen := make(map[string]bool)
+					for _, cfg := range memberCfgs {
+						for _, tok := range cfg.Tokens {
+							if strings.EqualFold(string(tok.TokenType), gType) {
+								ipForFile := cfg.IPAddress
+								if ipForFile == "" { ipForFile = stationIP }
+								fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
+								if seen[fileName] { continue }
+								seen[fileName] = true
+								sectionNode.Children = append(sectionNode.Children, types.TreeNode{
+									Name: fileName, Type: "token", TokenID: tok.TokenID,
+									SectionType: gType, FileName: fileName,
+								})
 							}
-							fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
-							sectionNode.Children = append(sectionNode.Children, types.TreeNode{
-								Name:        fileName,
-								Type:        "token",
-								TokenID:     tok.TokenID,
-								SectionType: gType,
-								FileName:    fileName,
-							})
+						}
+					}
+				} else {
+					for _, cfg := range memberCfgs {
+						for _, tok := range cfg.Tokens {
+							if strings.EqualFold(string(tok.TokenType), gType) {
+								ipForFile := cfg.IPAddress
+								if ipForFile == "" { ipForFile = stationIP }
+								fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
+								sectionNode.Children = append(sectionNode.Children, types.TreeNode{
+									Name: fileName, Type: "token", TokenID: tok.TokenID,
+									SectionType: gType, FileName: fileName,
+								})
+							}
 						}
 					}
 				}
@@ -344,22 +384,35 @@ func BuildFileTree(configs []types.NodeConfig, logRoot string, hideMissing bool)
 			})
 
 			if len(sectionNode.Children) == 0 && !hideMissing {
-				for _, cfg := range memberCfgs {
-					for _, tok := range cfg.Tokens {
-						if strings.EqualFold(string(tok.TokenType), gType) {
-							// Use per-config IP, not station-wide IP
-							ipForFile := cfg.IPAddress
-							if ipForFile == "" {
-								ipForFile = stationIP
+				if gType == "LOG" {
+					seen := make(map[string]bool)
+					for _, cfg := range memberCfgs {
+						for _, tok := range cfg.Tokens {
+							if strings.EqualFold(string(tok.TokenType), gType) {
+								ipForFile := cfg.IPAddress
+								if ipForFile == "" { ipForFile = stationIP }
+								fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
+								if seen[fileName] { continue }
+								seen[fileName] = true
+								sectionNode.Children = append(sectionNode.Children, types.TreeNode{
+									Name: fileName, Type: "token", TokenID: tok.TokenID,
+									SectionType: gType, FileName: fileName,
+								})
 							}
-							fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
-							sectionNode.Children = append(sectionNode.Children, types.TreeNode{
-								Name:        fileName,
-								Type:        "token",
-								TokenID:     tok.TokenID,
-								SectionType: gType,
-								FileName:    fileName,
-							})
+						}
+					}
+				} else {
+					for _, cfg := range memberCfgs {
+						for _, tok := range cfg.Tokens {
+							if strings.EqualFold(string(tok.TokenType), gType) {
+								ipForFile := cfg.IPAddress
+								if ipForFile == "" { ipForFile = stationIP }
+								fileName := buildFileName(stationName, ipForFile, gType, tok.TokenID)
+								sectionNode.Children = append(sectionNode.Children, types.TreeNode{
+									Name: fileName, Type: "token", TokenID: tok.TokenID,
+									SectionType: gType, FileName: fileName,
+								})
+							}
 						}
 					}
 				}
