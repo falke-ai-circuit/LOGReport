@@ -63,7 +63,7 @@ func (ft *FileTransport) connectAndHandshake() error {
 	if err := ft.tcp.Connect(); err != nil {
 		return fmt.Errorf("fileops: connect: %w", err)
 	}
-	// Handshake: send 3x cmd=0x0C, BU responds param=0x02CC
+	// Handshake: send 3x cmd=0x0C, BU responds with dst=0x02CC
 	for i := 0; i < 3; i++ {
 		hsBlock := &Block{
 			Header: BlockHeader{
@@ -79,10 +79,19 @@ func (ft *FileTransport) connectAndHandshake() error {
 		if err != nil {
 			return fmt.Errorf("fileops: handshake recv[%d]: %w", i, err)
 		}
-		_ = resp // BU responds with param=0x02CC
+		_ = resp // BU responds with dst=0x02CC
 	}
 	ft.handshake = true
 	return nil
+}
+
+// reconnect closes and re-establishes the connection with a fresh handshake.
+// BsTool.exe calls zzInitTcpLineIO before each file operation — the BU may
+// require a fresh connection for READ_DIR to work correctly.
+func (ft *FileTransport) reconnect() error {
+	ft.handshake = false
+	ft.tcp.Close()
+	return ft.connectAndHandshake()
 }
 
 // Close closes the underlying TCP connection.
@@ -95,8 +104,16 @@ func (ft *FileTransport) Close() error {
 // pattern is the glob (e.g. "*.sys"). The commLine prefix is added automatically.
 // Returns directory entries or an error if the directory listing fails.
 func (ft *FileTransport) ListDir(commLine, pattern string) ([]DirEntry, error) {
-	if err := ft.connectAndHandshake(); err != nil {
-		return nil, err
+	// BsTool.exe reconnects (zzInitTcpLineIO) before each file operation.
+	// The BU requires a fresh connection for READ_DIR to return results.
+	if ft.handshake {
+		if err := ft.reconnect(); err != nil {
+			return nil, fmt.Errorf("fileops: reconnect: %w", err)
+		}
+	} else {
+		if err := ft.connectAndHandshake(); err != nil {
+			return nil, err
+		}
 	}
 
 	// READ_DIR: data = ":s:{commLine}:{pattern}\0"
@@ -233,8 +250,15 @@ func (ft *FileTransport) ListSysFiles(commLine string) ([]DirEntry, error) {
 // filename is the bare filename (e.g. "161.sys"). The commLine prefix is added.
 // Returns the complete file content.
 func (ft *FileTransport) ReadFile(commLine, filename string) ([]byte, error) {
-	if err := ft.connectAndHandshake(); err != nil {
-		return nil, err
+	// Reconnect for each file read — BU requires fresh connection
+	if ft.handshake {
+		if err := ft.reconnect(); err != nil {
+			return nil, fmt.Errorf("fileops: reconnect: %w", err)
+		}
+	} else {
+		if err := ft.connectAndHandshake(); err != nil {
+			return nil, err
+		}
 	}
 
 	// FILE_OPEN: data = ":s:{commLine}:{filename}\0rb\0"
