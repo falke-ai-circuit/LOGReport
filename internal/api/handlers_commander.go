@@ -2066,9 +2066,10 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	if scanMethod == "local_dir" {
 		buConfigs := tryLoadSysFromBUDir(buDir)
 		if len(buConfigs) > 0 {
+			filtered := filterNodeConfigs(buConfigs, st.NodeFilter)
 			writeJSON(w, http.StatusOK, map[string]interface{}{
-				"configs": buConfigs,
-				"count":   len(buConfigs),
+				"configs": filtered,
+				"count":   len(filtered),
 				"method":  "bu_local_sys_files",
 				"bu_dir":  buDir,
 			})
@@ -2107,12 +2108,14 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filtered := filterNodeConfigs(configs, st.NodeFilter)
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"configs": configs,
-		"count":   len(configs),
-		"method":  "bstool_remote_sys_files",
-		"bu_host": buHost,
-		"bu_port": buPort,
+		"configs":   filtered,
+		"count":     len(filtered),
+		"method":    "bstool_remote_sys_files",
+		"bu_host":   buHost,
+		"bu_port":   buPort,
 		"sys_count": len(sysFileData),
 	})
 }
@@ -2134,6 +2137,66 @@ func tryLoadSysFromBUDir(buDir string) []types.NodeConfig {
 		}
 	}
 	return configs
+}
+
+// filterNodeConfigs filters a list of NodeConfig by station name prefix.
+// The filter is a comma-separated list of prefixes. A prefix starting with "-"
+// excludes stations starting with that prefix. Otherwise it includes them.
+// Examples:
+//   "AP,AL"          → only AP* and AL* stations
+//   "AP,AL,-AL08"    → AP* and AL* stations, but exclude AL08
+//   "-A1O,-B1O"      → all stations except A1O* and B1O*
+//   ""               → no filtering (return all)
+func filterNodeConfigs(configs []types.NodeConfig, filter string) []types.NodeConfig {
+	if filter == "" {
+		return configs
+	}
+	parts := strings.Split(filter, ",")
+	var includes, excludes []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if strings.HasPrefix(p, "-") {
+			excludes = append(excludes, strings.ToUpper(p[1:]))
+		} else {
+			includes = append(includes, strings.ToUpper(p))
+		}
+	}
+
+	var result []types.NodeConfig
+	for _, cfg := range configs {
+		station := extractStationNameFromConfig(cfg.Name)
+		stationUpper := strings.ToUpper(station)
+
+		// Check excludes first
+		excluded := false
+		for _, ex := range excludes {
+			if strings.HasPrefix(stationUpper, ex) {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
+			continue
+		}
+
+		// If includes is empty, include everything not excluded
+		if len(includes) == 0 {
+			result = append(result, cfg)
+			continue
+		}
+
+		// Check includes
+		for _, inc := range includes {
+			if strings.HasPrefix(stationUpper, inc) {
+				result = append(result, cfg)
+				break
+			}
+		}
+	}
+	return result
 }
 
 // executeLISDiag executes a single LISDIAG command by connecting to the

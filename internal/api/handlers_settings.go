@@ -26,6 +26,7 @@ type Settings struct {
 	BUDir             string `json:"bu_dir"`  // path to .sys files directory (default: C:\dna\CA\bu)
 	LISMode           string `json:"lis_mode"`    // LIS capture method: "rsu" (RSU6 via DIA), "lisdiag" (telnet port 4321), "diaglis" (manual)
 	ScanMethod        string `json:"scan_method"` // Node scan method: "remote_bu" (BsTool TCP, default), "local_dir" (local .sys files)
+	NodeFilter        string `json:"node_filter"` // Comma-separated station prefixes to include/exclude (e.g. "AP,AL" or "AP,AL,-A1O,-B1O")
 }
 
 // defaultSettings returns platform-appropriate defaults.

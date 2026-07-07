@@ -1,5 +1,17 @@
 # Changelog
 
+## [v3.9.11] — 2026-07-07
+
+### Added
+
+- **Settings: Node Filter** — New `node_filter` field in Settings page. Comma-separated station prefixes to include/exclude. Examples: `AP,AL` = only AP+AL stations, `AP,AL,-AL08` = AP+AL except AL08, `-A1O,-B1O` = all except A1O+B1O. Leave empty for all nodes. Applied during scan-nodes for both local_dir and remote_bu methods.
+
+### Fixed
+
+- **Scan nodes: remote_bu is default** — `scan_method` defaults to `remote_bu` (BsTool TCP). No automatic fallback to local directory. User selects method in Settings.
+- **Scan nodes: hostname support** — BU host field accepts hostnames (e.g. `localhost`, `bu.internal.example.com`), not just IP addresses. TCP transport uses `net.Dial` which resolves hostnames.
+- **Scan nodes: commLine default** — Communication line defaults to `AB01` if not set in settings.
+
 ## [v3.9.10] — 2026-07-07
 
 ### Fixed

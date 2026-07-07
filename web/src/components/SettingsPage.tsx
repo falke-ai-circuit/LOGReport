@@ -13,6 +13,7 @@ interface SettingsData {
   output_dir: string;
   lis_mode: string;
   scan_method: string;
+  node_filter: string;
 }
 
 export default function SettingsPage() {
@@ -176,6 +177,15 @@ export default function SettingsPage() {
             <option value="remote_bu">Remote BU (BsTool TCP Protocol)</option>
             <option value="local_dir">Local Directory (.sys files on disk)</option>
           </select>
+        </FormField>
+        <FormField label="Node Filter" hint="Comma-separated station prefixes to include/exclude. e.g. 'AP,AL' = only AP+AL stations, 'AP,AL,-AL08' = AP+AL except AL08, '-A1O,-B1O' = all except A1O+B1O. Leave empty for all nodes.">
+          <input
+            type="text"
+            value={settings.node_filter || ''}
+            onChange={(e) => updateField('node_filter', e.target.value)}
+            placeholder="e.g. AP,AL  or  AP,AL,-AL08  or  -A1O,-B1O"
+            style={inputStyle}
+          />
         </FormField>
       </SettingsSection>
 
