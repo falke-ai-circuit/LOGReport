@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"runtime"
 	"sync"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
+	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
 	"github.com/falke-ai-circuit/LOGReport/internal/telnet"
 	"github.com/gorilla/websocket"
 )
@@ -225,10 +229,12 @@ type bstoolWSMessage struct {
 
 // bstoolWSResponse is the JSON message sent from server to client.
 type bstoolWSResponse struct {
-	Type     string `json:"type"`                // "output", "done", "error"
-	Data     string `json:"data,omitempty"`      // for "output"
-	ExitCode int    `json:"exit_code,omitempty"` // for "done"
-	Message  string `json:"message,omitempty"`   // for "error"
+	Type        string `json:"type"`                  // "output", "done", "error"
+	Data        string `json:"data,omitempty"`        // for "output"
+	ExitCode    int    `json:"exit_code,omitempty"`   // for "done"
+	Message     string `json:"message,omitempty"`    // for "error"
+	FileWritten bool   `json:"file_written,omitempty"` // for "done" — true if .log file was written
+	FilePath    string `json:"file_path,omitempty"`    // for "done" — path to written .log file
 }
 
 // bstoolWSHandler handles WebSocket for BsTool output streaming.
@@ -298,13 +304,56 @@ func (s *Server) bstoolWSHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			// Write output to .log file (same logic as REST handler in handlers.go)
+			fileWritten := false
+			filePathStr := ""
+			if result.RawOutput != "" {
+				// Look up IP from nodes.json
+				ipAddress := ""
+				if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+					for _, c := range configs {
+						if c.Name == msg.ServerName || extractStationNameFromConfig(c.Name) == msg.ServerName {
+							ipAddress = c.IPAddress
+							break
+						}
+					}
+				}
+
+				lr := s.logRoot()
+				if lr == "" || lr == "logs" {
+					if !globalSettings.loaded {
+						s.initSettings()
+					}
+					st := getSettings()
+					if st.LogRoot != "" {
+						lr = st.LogRoot
+					} else if runtime.GOOS == "windows" {
+						lr = "C:\\temp\\logreport-output"
+					} else {
+						lr = "/tmp/logreport-output"
+					}
+					s.SetLogRoot(lr)
+					os.MkdirAll(lr, 0755)
+				}
+
+				lw := logwriter.New(lr)
+				if err := lw.WriteOutputWithIP(msg.ServerName, "LOG", "", result.RawOutput, ipAddress); err != nil {
+					log.Printf("bstool/ws: failed to write log for %s: %v", msg.ServerName, err)
+				} else {
+					fileWritten = true
+					filePathStr = lw.LogPath(msg.ServerName, "LOG", "", ipAddress)
+				}
+			}
+
 			// Stream output
 			if result.RawOutput != "" {
 				s.writeBsToolWS(conn, bstoolWSResponse{Type: "output", Data: result.RawOutput})
 			}
 			s.writeBsToolWS(conn, bstoolWSResponse{
-				Type:     "done",
-				ExitCode: result.ExitCode,
+				Type:        "done",
+				ExitCode:    result.ExitCode,
+				FileWritten: fileWritten,
+				FilePath:    filePathStr,
 			})
 
 		default:

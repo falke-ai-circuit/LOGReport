@@ -80,6 +80,9 @@ export default function BsToolPanel({
               appendOutput(msg.data);
             } else if (msg.type === 'done') {
               appendOutput(`[Done — exit code: ${msg.exit_code ?? 0}]`);
+              if (msg.file_written) {
+                appendOutput(`[Log file written: ${msg.file_path ?? ''}]`);
+              }
               setExecuting(false);
               onExecutionComplete?.();
             } else if (msg.type === 'error' && msg.message) {
@@ -169,7 +172,7 @@ export default function BsToolPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token_type: 'BSTOOL',
+          token_type: 'LOG',
           token_id: 'errlog',
           output: outputText,
         }),

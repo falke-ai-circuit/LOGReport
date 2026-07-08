@@ -238,6 +238,8 @@ export interface BsToolWSResponse {
   data?: string;
   exit_code?: number;
   message?: string;
+  file_written?: boolean;
+  file_path?: string;
 }
 
 // ─── Commander: Command Queue ─────────────────────────────────────

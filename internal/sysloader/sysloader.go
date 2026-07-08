@@ -17,11 +17,9 @@ import (
 
 // nodeTypeToTokenTypes maps a node type string to the token types
 // that should be created for that node.
-// AL stations (LIS type) are PCS-type stations that need both LIS files
-// (for lisdiag commands) and LOG files (for BsTool errlog).
 var nodeTypeToTokenTypes = map[string][]types.TokenType{
 	"PCS":      {types.TokenFBC, types.TokenRPC}, // PCS fieldbus slots
-	"LIS":      {types.TokenLIS, types.TokenLOG},  // AL stations: LIS files + LOG for BsTool errlog
+	"LIS":      {types.TokenLIS},
 	"DIA":      {types.TokenLOG},
 	"NETWATCH": {types.TokenLOG},
 	"MAINT":    {types.TokenLOG},
@@ -58,8 +56,27 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		return make([]types.NodeConfig, 0), nil
 	}
 
+	return parseSysFiles(sysFiles)
+}
+
+// LoadSysFilesFromPaths parses .sys files from explicit file paths (not a directory).
+// Used by the multi-file upload endpoint where the browser selects individual files.
+func LoadSysFilesFromPaths(filePaths []string) ([]types.NodeConfig, error) {
+	if len(filePaths) == 0 {
+		return make([]types.NodeConfig, 0), nil
+	}
+	return parseSysFiles(filePaths)
+}
+
+// parseSysFiles is the shared core that processes a list of .sys file paths,
+// merges results by LID, and returns NodeConfig array.
+func parseSysFiles(sysFiles []string) ([]types.NodeConfig, error) {
 	nodeMap := make(map[string]*types.NodeConfig)
 	nodeOrder := make([]string, 0)
+	// lisDiagParams accumulates PARAMETERS from LISDiag slots, keyed by LID.
+	// Applied to matching nodes after all slots are processed, because the
+	// LISDiag slot may appear before the PCS slot in the .sys file.
+	lisDiagParams := make(map[string]string)
 
 	for _, sysPath := range sysFiles {
 		result, err := parser.ParseSysFile(sysPath)
@@ -86,14 +103,16 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				tokenTypes = []types.TokenType{types.TokenLOG}
 			}
 
-			node, exists := nodeMap[lid]
+			// Legacy :e:hw: entries — also key by LID+IP to be consistent
+			legacyKey := lid + "|" + ipAddr
+			node, exists := nodeMap[legacyKey]
 			if !exists {
 				node = &types.NodeConfig{
 					Name:      lid,
 					IPAddress: ipAddr,
 				}
-				nodeMap[lid] = node
-				nodeOrder = append(nodeOrder, lid)
+				nodeMap[legacyKey] = node
+				nodeOrder = append(nodeOrder, legacyKey)
 			}
 
 			if node.IPAddress == "" && ipAddr != "" {
@@ -152,14 +171,36 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				continue
 			}
 
-			node, exists := nodeMap[lid]
+			// Skip LIS diagnostic slots (LISDIAG_CODE / DIAGLIS_CODE).
+			// These are diagnostic/monitor programs (Remote_monitor, DiagLis),
+			// NOT the actual LIS PCS application. We only want the LIS PCS
+			// slots (PROGRAM=PCS_CODE) that handle serial communication.
+			if isLISDiagProgram(sfn.Program) {
+				// Store LISDiag parameters for later matching. The LISDiag slot
+				// (e.g. "AL02_Remote_monitor") may appear before the PCS slot
+				// ("AL02") in the .sys file, so we defer the assignment.
+				if sfn.Parameters != "" && lid != "" {
+					lisDiagParams[lid] = sfn.Parameters
+				}
+				continue
+			}
+
+			// For slot-format nodes, key by LID+IP to prevent phantom tokens.
+			// When the same LID (e.g. AP01) appears in multiple .sys files with
+			// different IPs (different hardware configurations), they must be
+			// separate nodes — otherwise tokens from the wrong .sys file pollute
+			// the node (e.g. AP01 in 5a1.sys IP=192.168.0.45 vs 221.sys IP=different).
+			// Within the same .sys file, all slots share the same IP, so they
+			// correctly merge into one node.
+			nodeKey := lid + "|" + ipAddr
+			node, exists := nodeMap[nodeKey]
 			if !exists {
 				node = &types.NodeConfig{
 					Name:      lid,
 					IPAddress: ipAddr,
 				}
-				nodeMap[lid] = node
-				nodeOrder = append(nodeOrder, lid)
+				nodeMap[nodeKey] = node
+				nodeOrder = append(nodeOrder, nodeKey)
 			}
 
 			if node.IPAddress == "" && ipAddr != "" {
@@ -168,7 +209,11 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 
 			// Calculate token ID based on slot number
 			tokenID := sysFileToken
-			slotNum := extractSlotNumber(lid)
+			slotNum := sfn.SlotNum
+			if slotNum == 0 {
+				// Fallback to extracting from LID name (legacy path without Slot tracking)
+				slotNum = extractSlotNumber(lid)
+			}
 			if slotNum > 1 {
 				tokenID = offsetToken(sysFileToken, slotNum-1)
 			}
@@ -203,11 +248,29 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				}
 				if !alreadyExists {
 					node.Tokens = append(node.Tokens, types.Token{
-						TokenID:   tokenID,
-						TokenType: tt,
-						Protocol:  "telnet",
+						TokenID:      tokenID,
+						TokenType:    tt,
+						Protocol:     "telnet",
+						FieldbusType: sfn.FieldbusType,
 					})
 				}
+			}
+		}
+	}
+
+	// Apply deferred LISDiag parameters: match each LISDiag slot LID
+	// (e.g. "AL02_Remote_monitor") to the corresponding AL node ("AL02")
+	// by prefix matching. nodeOrder now uses "LID|IP" keys, so extract
+	// the LID portion for prefix matching.
+	for diagLID, params := range lisDiagParams {
+		for _, key := range nodeOrder {
+			lid := key
+			if idx := strings.Index(key, "|"); idx >= 0 {
+				lid = key[:idx]
+			}
+			if strings.HasPrefix(diagLID, lid) {
+				nodeMap[key].LISDiagParams = params
+				break
 			}
 		}
 	}
@@ -255,6 +318,9 @@ func offsetToken(base string, offset int) string {
 }
 
 // extractStationName derives the station folder name from a node name.
+// Only adds m/r suffix when the original LID actually has _m or _r
+// (e.g. "AP01_m2" → "AP01m", "AP01_r2" → "AP01r").
+// A standalone "AP03" (no _m/_r in any slot title) stays "AP03".
 func extractStationName(nodeName string) string {
 	if strings.HasPrefix(nodeName, "AL") || strings.Contains(nodeName, "OPS") {
 		base := nodeName
@@ -265,6 +331,7 @@ func extractStationName(nodeName string) string {
 	}
 
 	isReserve := strings.Contains(nodeName, "Reserve") || strings.Contains(nodeName, "_r")
+	hasMSuffix := strings.Contains(nodeName, "_m")
 
 	base := nodeName
 	if idx := strings.Index(base, " "); idx >= 0 {
@@ -274,10 +341,14 @@ func extractStationName(nodeName string) string {
 		base = base[:idx]
 	}
 
+	// Only add m/r suffix if the original name had _m or _r
 	if isReserve {
 		return base + "r"
 	}
-	return base + "m"
+	if hasMSuffix {
+		return base + "m"
+	}
+	return base
 }
 
 // CreateFolderStructure creates the FBC/RPC/LOG/LIS directory tree.
@@ -348,8 +419,10 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			}
 		}
 
-		// LOG files for PCS nodes (both CPU and fieldbus slots get errlog)
-		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] || tokenTypeSet[types.TokenLOG] {
+		// LOG files for PCS and LIS nodes (both CPU and fieldbus slots get errlog)
+		// LIS nodes (ALxx) also get a LOG subfolder for their errlog output,
+		// in addition to their LIS subfolder for serial communication files.
+		if tokenTypeSet[types.TokenFBC] || tokenTypeSet[types.TokenRPC] || tokenTypeSet[types.TokenLOG] || tokenTypeSet[types.TokenLIS] {
 			logDir := filepath.Join(outputDir, stationName, "LOG")
 			if err := os.MkdirAll(logDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LOG dir %s: %w", logDir, err)
@@ -363,14 +436,17 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 			}
 		}
 
-		// LIS files (6 per node: exe1..exe6)
-		if tokenTypeSet[types.TokenLIS] {
+		// LIS files (6 per node: exe1..exe6, one set per LIS token)
+		for _, tok := range cfg.Tokens {
+			if tok.TokenType != types.TokenLIS {
+				continue
+			}
 			lisDir := filepath.Join(outputDir, stationName, "LIS")
 			if err := os.MkdirAll(lisDir, 0755); err != nil {
 				return fmt.Errorf("sysloader: create LIS dir %s: %w", lisDir, err)
 			}
 			for i := 1; i <= 6; i++ {
-				fileName := fmt.Sprintf("%s_%s_exe%d_irb_orb.lis", stationName, ipFormatted, i)
+				fileName := fmt.Sprintf("%s_%s_exe%d.lis", stationName, ipFormatted, i)
 				filePath := filepath.Join(lisDir, fileName)
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
@@ -384,181 +460,10 @@ func CreateFolderStructure(outputDir string, configs []types.NodeConfig) error {
 	return nil
 }
 
-// LoadSysFilesFromPaths parses .sys files from a list of file paths.
-// This is the same as LoadSysFiles but accepts explicit paths instead of
-// scanning a directory. Used by the upload handler and scan-nodes handler.
-func LoadSysFilesFromPaths(paths []string) ([]types.NodeConfig, error) {
-	if len(paths) == 0 {
-		return make([]types.NodeConfig, 0), nil
-	}
-
-	nodeMap := make(map[string]*types.NodeConfig)
-	nodeOrder := make([]string, 0)
-
-	for _, sysPath := range paths {
-		result, err := parser.ParseSysFile(sysPath)
-		if err != nil {
-			continue
-		}
-		processSysFileResult(result, sysPath, nodeMap, &nodeOrder)
-	}
-
-	configs := make([]types.NodeConfig, 0, len(nodeOrder))
-	for _, lid := range nodeOrder {
-		configs = append(configs, *nodeMap[lid])
-	}
-	return configs, nil
-}
-
-// SysFileData holds a .sys file name and its raw content for in-memory parsing.
-type SysFileData struct {
-	Name string
-	Data []byte
-}
-
-// LoadSysFilesFromData parses .sys files from in-memory content.
-// Used by the BsTool remote retrieval handler where files are fetched via TCP.
-func LoadSysFilesFromData(files []SysFileData) ([]types.NodeConfig, error) {
-	if len(files) == 0 {
-		return make([]types.NodeConfig, 0), nil
-	}
-
-	nodeMap := make(map[string]*types.NodeConfig)
-	nodeOrder := make([]string, 0)
-
-	for _, sf := range files {
-		result := parser.ParseSysFileString(string(sf.Data))
-		if result == nil {
-			continue
-		}
-		// Use the file name (stem) as the token base, same as LoadSysFiles
-		sysPath := sf.Name
-		processSysFileResult(result, sysPath, nodeMap, &nodeOrder)
-	}
-
-	configs := make([]types.NodeConfig, 0, len(nodeOrder))
-	for _, lid := range nodeOrder {
-		configs = append(configs, *nodeMap[lid])
-	}
-	return configs, nil
-}
-
-// processSysFileResult is the shared parsing logic used by both LoadSysFiles,
-// LoadSysFilesFromPaths, and LoadSysFilesFromData. It processes :e:hw: entries
-// and Slot-format nodes, adding them to nodeMap and nodeOrder.
-func processSysFileResult(result *parser.SysFileResult, sysPath string, nodeMap map[string]*types.NodeConfig, nodeOrder *[]string) {
-	ipAddr := result.IPAddr
-
-	// Process :e:hw: entries (legacy format)
-	for _, entry := range result.Entries {
-		lid := entry.LID
-		if lid == "" {
-			continue
-		}
-		nodeType := entry.NodeType
-		if nodeType == "UNKNOWN" {
-			continue
-		}
-		tokenTypes := nodeTypeToTokenTypes[nodeType]
-		if len(tokenTypes) == 0 {
-			tokenTypes = []types.TokenType{types.TokenLOG}
-		}
-
-		node, exists := nodeMap[lid]
-		if !exists {
-			node = &types.NodeConfig{
-				Name:      lid,
-				IPAddress: ipAddr,
-			}
-			nodeMap[lid] = node
-			*nodeOrder = append(*nodeOrder, lid)
-		}
-		if node.IPAddress == "" && ipAddr != "" {
-			node.IPAddress = ipAddr
-		}
-
-		tokenID := entry.HWAddr
-		if tokenID == "" {
-			tokenID = strings.ReplaceAll(lid, " ", "_")
-		}
-
-		for _, tt := range tokenTypes {
-			alreadyExists := false
-			for _, existing := range node.Tokens {
-				if existing.TokenType == tt && existing.TokenID == tokenID {
-					alreadyExists = true
-					break
-				}
-			}
-			if !alreadyExists {
-				node.Tokens = append(node.Tokens, types.Token{
-					TokenID:   tokenID,
-					TokenType: tt,
-					Protocol:  "telnet",
-				})
-			}
-		}
-	}
-
-	// Process Slot-format nodes
-	sysFileToken := strings.TrimSuffix(filepath.Base(sysPath), filepath.Ext(sysPath))
-	for _, sfn := range result.Nodes {
-		lid := sfn.LID
-		if lid == "" || lid == "NCU2" {
-			continue
-		}
-		nodeType := sfn.Type
-		if nodeType == "UNKNOWN" {
-			continue
-		}
-
-		node, exists := nodeMap[lid]
-		if !exists {
-			node = &types.NodeConfig{
-				Name:      lid,
-				IPAddress: ipAddr,
-			}
-			nodeMap[lid] = node
-			*nodeOrder = append(*nodeOrder, lid)
-		}
-		if node.IPAddress == "" && ipAddr != "" {
-			node.IPAddress = ipAddr
-		}
-
-		tokenID := sysFileToken
-		slotNum := extractSlotNumber(lid)
-		if slotNum > 1 {
-			tokenID = offsetToken(sysFileToken, slotNum-1)
-		}
-
-		var tokenTypes []types.TokenType
-		if sfn.IsFieldbus {
-			tokenTypes = []types.TokenType{types.TokenFBC, types.TokenRPC}
-		} else {
-			tokenTypes = nodeTypeToTokenTypes[sfn.Type]
-			if len(tokenTypes) == 0 {
-				tokenTypes = []types.TokenType{types.TokenLOG}
-			}
-			if sfn.Type == "PCS" {
-				tokenTypes = []types.TokenType{types.TokenLOG}
-			}
-		}
-
-		for _, tt := range tokenTypes {
-			alreadyExists := false
-			for _, existing := range node.Tokens {
-				if existing.TokenType == tt && existing.TokenID == tokenID {
-					alreadyExists = true
-					break
-				}
-			}
-			if !alreadyExists {
-				node.Tokens = append(node.Tokens, types.Token{
-					TokenID:   tokenID,
-					TokenType: tt,
-					Protocol:  "telnet",
-				})
-			}
-		}
-	}
+// isLISDiagProgram checks if a PROGRAM string indicates a LIS diagnostic
+// slot (LISDIAG_CODE or DIAGLIS_CODE), which should be excluded from
+// node configs. We only want the actual LIS PCS slots (PROGRAM=PCS_CODE).
+func isLISDiagProgram(program string) bool {
+	upper := strings.ToUpper(program)
+	return strings.Contains(upper, "LISDIAG") || strings.Contains(upper, "DIAGLIS")
 }

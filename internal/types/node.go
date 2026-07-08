@@ -62,10 +62,11 @@ const (
 
 // Token represents a single token entry from nodes.json.
 type Token struct {
-	TokenID   string    `json:"token_id"`
-	TokenType TokenType `json:"token_type"`
-	Port      int       `json:"port"`
-	Protocol  string    `json:"protocol"` // "telnet" or "ftp"
+	TokenID      string    `json:"token_id"`
+	TokenType    TokenType `json:"token_type"`
+	Port         int       `json:"port"`
+	Protocol     string    `json:"protocol"`           // "telnet" or "ftp"
+	FieldbusType string    `json:"fieldbus_type,omitempty"` // "CIO", "MIO", "PROFIBUS", "IBC" (for FBC/RPC tokens)
 }
 
 // NodeConfig represents the full nodes.json entry (node + all tokens).
@@ -78,16 +79,17 @@ type NodeConfig struct {
 
 // TreeNode is the hierarchical structure for the frontend node tree.
 type TreeNode struct {
-	Name       string     `json:"name"`
-	Type       string     `json:"type"` // "root", "node", "group", "token", "file"
-	IP         string     `json:"ip,omitempty"`
-	TokenID    string     `json:"token_id,omitempty"`
-	Port       int        `json:"port,omitempty"`
-	Protocol   string     `json:"protocol,omitempty"`
-	Status     string     `json:"status,omitempty"` // "idle", "connected", "error"
-	FilePath   string     `json:"file_path,omitempty"`   // absolute path for file-type nodes
-	FileName   string     `json:"file_name,omitempty"`   // base filename for file-type nodes
-	SectionType string    `json:"section_type,omitempty"` // "FBC", "RPC", "LOG", "LIS"
-	LineCount  int        `json:"line_count,omitempty"`  // line count for file-type nodes (color indicator)
-	Children   []TreeNode `json:"children,omitempty"`
+	Name        string     `json:"name"`
+	Type        string     `json:"type"` // "root", "node", "group", "token", "file"
+	IP          string     `json:"ip,omitempty"`
+	TokenID     string     `json:"token_id,omitempty"`
+	Port        int        `json:"port,omitempty"`
+	Protocol    string     `json:"protocol,omitempty"`
+	Status      string     `json:"status,omitempty"` // "idle", "connected", "error"
+	FilePath    string     `json:"file_path,omitempty"`   // absolute path for file-type nodes
+	FileName    string     `json:"file_name,omitempty"`   // base filename for file-type nodes
+	SectionType string     `json:"section_type,omitempty"` // "FBC", "RPC", "LOG", "LIS"
+	LineCount   int        `json:"line_count,omitempty"`  // line count for file-type nodes (color indicator)
+	FieldbusType string    `json:"fieldbus_type,omitempty"` // "CIO", "MIO", "PROFIBUS", "IBC"
+	Children    []TreeNode `json:"children,omitempty"`
 }

@@ -371,28 +371,48 @@ PROGRAM=<PCS_CODE>
 		t.Logf("  Name=%s IP=%s Tokens=%v", c.Name, c.IPAddress, c.Tokens)
 	}
 
-	// AL01 appears in both files with different IPs/tokens — they should merge
-	// into ONE node with multiple LIS tokens (one per .sys file)
-	var al01 *types.NodeConfig
+	// AL01 appears in both files with different IPs/tokens — with LID+IP keying,
+	// they are correctly separate nodes (different hardware configurations).
+	// AL01@192.168.1.171 has LIS token 102 (from 101.SYS slot 2)
+	// AL01@192.168.1.40 has LIS token 501 (from 501.SYS slot 1)
+	var al01_171, al01_40 *types.NodeConfig
 	for i := range configs {
 		if configs[i].Name == "AL01" {
-			al01 = &configs[i]
-			break
+			if configs[i].IPAddress == "192.168.1.171" {
+				al01_171 = &configs[i]
+			}
+			if configs[i].IPAddress == "192.168.1.40" {
+				al01_40 = &configs[i]
+			}
 		}
 	}
-	if al01 == nil {
-		t.Fatal("AL01 node not found")
+	if al01_171 == nil {
+		t.Fatal("AL01@192.168.1.171 node not found")
 	}
-	t.Logf("AL01 merged: IP=%s Tokens=%v", al01.IPAddress, al01.Tokens)
+	if al01_40 == nil {
+		t.Fatal("AL01@192.168.1.40 node not found")
+	}
+	t.Logf("AL01@171: IP=%s Tokens=%v", al01_171.IPAddress, al01_171.Tokens)
+	t.Logf("AL01@40: IP=%s Tokens=%v", al01_40.IPAddress, al01_40.Tokens)
 
-	// Should have 2 LIS tokens: 102 (from 101.SYS slot 2) and 501 (from 501.SYS slot 1)
-	lisCount := 0
-	for _, tok := range al01.Tokens {
+	// Each should have exactly 1 LIS token (from its own .sys file)
+	lis171 := 0
+	for _, tok := range al01_171.Tokens {
 		if tok.TokenType == types.TokenLIS {
-			lisCount++
+			lis171++
 		}
 	}
-	if lisCount != 2 {
-		t.Errorf("AL01 should have 2 LIS tokens (one per .sys file), got %d", lisCount)
+	if lis171 != 1 {
+		t.Errorf("AL01@192.168.1.171 should have 1 LIS token, got %d", lis171)
+	}
+
+	lis40 := 0
+	for _, tok := range al01_40.Tokens {
+		if tok.TokenType == types.TokenLIS {
+			lis40++
+		}
+	}
+	if lis40 != 1 {
+		t.Errorf("AL01@192.168.1.40 should have 1 LIS token, got %d", lis40)
 	}
 }

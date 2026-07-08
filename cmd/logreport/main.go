@@ -35,6 +35,8 @@ func main() {
 
 	// Parse command-line flags
 	cfg := server.ParseFlags()
+	// Inject build version into config so health endpoint can report it
+	cfg.Version = version
 
 	// Open the SQLite store
 	st, err := store.Open(cfg.DBPath)
@@ -71,7 +73,6 @@ func main() {
 
 	// Create the API server with embedded web UI
 	srv := api.NewServer(st, cfg, assets.FS, bstoolClient)
-	srv.SetVersion(version)
 
 	// Verify embedded assets are populated (guard against empty //go:embed)
 	// If web/dist-new-flat/ wasn't built before go build, the binary serves 404 for all GUI routes.

@@ -174,7 +174,6 @@ type Server struct {
 	logRootDir   string                 // Commander: root dir for log files
 	lisdiagConns map[string]*lisdiag.Client // cached LisDiag connections
 	lisdiagMu    sync.Mutex                // protects lisdiagConns
-	version      string                    // build version (injected via ldflags)
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
@@ -190,11 +189,6 @@ func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClien
 		logRootDir:   "logs",
 		lisdiagConns: make(map[string]*lisdiag.Client),
 	}
-}
-
-// SetVersion sets the build version string (injected via ldflags in main.go).
-func (s *Server) SetVersion(v string) {
-	s.version = v
 }
 
 // logRoot returns the log root directory, ensuring it exists.
@@ -220,11 +214,11 @@ func (s *Server) StartTime() time.Time {
 // ─── Handler 1: GET /health ─────────────────────────────────────
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
-	h := server.GetHealth(true, s.startTime)
-	// Override version with the build-injected version if set
-	if s.version != "" {
-		h.Version = s.version
+	version := ""
+	if s.config != nil {
+		version = s.config.Version
 	}
+	h := server.GetHealth(true, s.startTime, version)
 	// Override node_count with nodesconfig count (actual configured nodes, not SQLite scan nodes)
 	if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
 		h.NodeCount = len(configs)
@@ -1154,12 +1148,8 @@ func (s *Server) getReportHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			w.Header().Set("Content-Type", contentType)
-			disposition := "inline"
-			if rpt.Format == types.FormatDOCX || rpt.Format == types.FormatJSON {
-				disposition = "attachment"
-			}
 			w.Header().Set("Content-Disposition",
-				fmt.Sprintf(`%s; filename="%s"`, disposition, filepath.Base(rpt.FilePath)))
+				fmt.Sprintf(`inline; filename="%s"`, filepath.Base(rpt.FilePath)))
 			http.ServeFile(w, r, rpt.FilePath)
 			return
 		}
