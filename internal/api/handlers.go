@@ -1154,8 +1154,12 @@ func (s *Server) getReportHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			w.Header().Set("Content-Type", contentType)
+			disposition := "inline"
+			if rpt.Format == types.FormatDOCX || rpt.Format == types.FormatJSON {
+				disposition = "attachment"
+			}
 			w.Header().Set("Content-Disposition",
-				fmt.Sprintf(`inline; filename="%s"`, filepath.Base(rpt.FilePath)))
+				fmt.Sprintf(`%s; filename="%s"`, disposition, filepath.Base(rpt.FilePath)))
 			http.ServeFile(w, r, rpt.FilePath)
 			return
 		}
