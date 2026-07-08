@@ -231,6 +231,8 @@ export default function CommanderLayout() {
       case 'bstool_errlog':
         setActiveTab('bstool');
         setPendingServerName(stripNodeSuffix(nodeName));
+        // Reload tree after a delay to pick up any new LOG files written by BsTool
+        setTimeout(() => setTreeReloadKey((k) => k + 1), 3000);
         break;
       case 'open_file':
         handleDoubleClickFile(node);
@@ -433,15 +435,10 @@ export default function CommanderLayout() {
           <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
             {activeTab === 'telnet' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <TelnetTerminal currentToken={currentToken} currentTokenType={currentTokenType} currentNodeName={currentNodeName} pendingCommand={pendingCommand} onCommandSent={() => setPendingCommand(null)} />
-                {terminalLog.length > 0 && (
-                  <div style={{ maxHeight: '150px', overflow: 'auto', borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', padding: '4px 8px', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {terminalLog.map((line, i) => (<div key={i} style={{ color: line.startsWith('Error') || line.startsWith('[ERROR') ? '#ef4444' : line.startsWith('>') ? '#f59e0b' : '#22c55e' }}>{line}</div>))}
-                  </div>
-                )}
+                <TelnetTerminal currentToken={currentToken} currentTokenType={currentTokenType} currentNodeName={currentNodeName} pendingCommand={pendingCommand} onCommandSent={() => setPendingCommand(null)} externalLog={terminalLog} />
               </div>
             )}
-            {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => setPendingServerName(null)} currentNodeName={currentNodeName} />}
+            {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => setPendingServerName(null)} currentNodeName={currentNodeName} onExecutionComplete={() => setTreeReloadKey((k) => k + 1)} />}
             {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={activeLogRoot || localStorage.getItem('logRoot') || ''} />}
             {activeTab === 'logviewer' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>

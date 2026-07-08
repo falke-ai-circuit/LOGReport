@@ -17,7 +17,9 @@ var belPattern = regexp.MustCompile("\x07")
 // controlCharPattern matches control characters except BEL (0x07, handled
 // separately), newline (\x0A), carriage return (\x0D), and space (\x20).
 // Backspaces (\x08) are handled separately by backspacePattern.
-var controlCharPattern = regexp.MustCompile(`[\x00-\x06\x08\x0B-\x1F\x7F]`)
+// Tabs (\x09) ARE removed here (they are not useful in table output — spaces
+// are used for column alignment, not tabs).
+var controlCharPattern = regexp.MustCompile(`[\x00-\x06\x08\x09\x0B-\x1F\x7F]`)
 
 // backspacePattern matches a backspace character (\x08).
 // DIA sends backspaces to erase echoed characters in INSERT mode.
@@ -60,6 +62,10 @@ func FilterOutputNoBackspace(raw string) string {
 // FilterOutput cleans raw telnet response text by removing ANSI escape codes,
 // control characters, known artifacts, and normalizing whitespace.
 // It mirrors the Python telnet_client.py:185-201 _filter_output method.
+// IMPORTANT: Multiple spaces are NOT collapsed — ASCII table formatting from
+// DIA FBC/RPC commands relies on space-padded columns. Collapsing spaces
+// destroys the table layout. Leading whitespace after newlines is also
+// preserved for the same reason.
 func FilterOutput(raw string) string {
 	if raw == "" {
 		return ""
@@ -80,16 +86,20 @@ func FilterOutput(raw string) string {
 
 	// Step 3: Remove control characters but preserve newlines (\x0A)
 	// and carriage returns (\x0D). BEL is already handled above.
+	// Also preserve spaces (\x20) — do NOT collapse multiple spaces.
 	filtered = controlCharPattern.ReplaceAllString(filtered, "")
 
 	// Step 4: Remove the "texitoggleure" artifact
 	filtered = texitoggleurePattern.ReplaceAllString(filtered, "")
 
-	// Step 5: Normalize whitespace — collapse multiple spaces/tabs to single space
-	filtered = multiSpacePattern.ReplaceAllString(filtered, " ")
+	// Step 5: Normalize \r\n to \n (carriage returns are redundant)
+	filtered = strings.ReplaceAll(filtered, "\r\n", "\n")
+	filtered = strings.ReplaceAll(filtered, "\r", "\n")
 
-	// Step 6: Remove leading whitespace after newlines
-	filtered = leadingWhitespaceAfterNewline.ReplaceAllString(filtered, "\n")
+	// NOTE: Steps 5-6 from the original (collapse multi-space, strip leading
+	// whitespace after newline) are intentionally REMOVED. They destroy ASCII
+	// table formatting that DIA FBC/RPC commands produce. The table columns
+	// rely on space-padding for alignment.
 
 	return strings.TrimSpace(filtered)
 }

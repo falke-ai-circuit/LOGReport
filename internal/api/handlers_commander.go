@@ -415,8 +415,10 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 		logRoot = s.logRoot()
 	}
 
-	// hide_missing=true: Commander mode — only show files that exist on disk
-	hideMissing := r.URL.Query().Get("hide_missing") == "true"
+	// Commander mode: show ALL nodes (files on disk + expected token nodes).
+	// Previously used hide_missing=true which hid expected-but-not-yet-executed
+	// token nodes, causing "remaining files disappear after command execution."
+	hideMissing := false
 
 	var tree *types.TreeNode
 	if logRoot != "" {

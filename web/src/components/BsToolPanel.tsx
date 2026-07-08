@@ -13,6 +13,7 @@ export interface BsToolPanelProps {
   onServerNameConsumed?: () => void;
   currentNodeName?: string;
   onOutputChange?: (output: string) => void;
+  onExecutionComplete?: () => void;
 }
 
 export default function BsToolPanel({
@@ -20,6 +21,7 @@ export default function BsToolPanel({
   onServerNameConsumed,
   currentNodeName,
   onOutputChange,
+  onExecutionComplete,
 }: BsToolPanelProps) {
   const [bstoolPath, setBstoolPath] = useState(() => localStorage.getItem('bstoolPath') || '');
   const [commLine, setCommLine] = useState(() => localStorage.getItem('bstoolCommLine') || 'AB01');
@@ -79,6 +81,7 @@ export default function BsToolPanel({
             } else if (msg.type === 'done') {
               appendOutput(`[Done — exit code: ${msg.exit_code ?? 0}]`);
               setExecuting(false);
+              onExecutionComplete?.();
             } else if (msg.type === 'error' && msg.message) {
               setError(msg.message);
               appendOutput(`[ERROR] ${msg.message}`);
@@ -124,6 +127,7 @@ export default function BsToolPanel({
         appendOutput(data.raw_output);
       }
       appendOutput(`[Done — exit code: ${data.exit_code ?? 0}]`);
+      onExecutionComplete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'BsTool execution failed');
       appendOutput(`[ERROR] ${err instanceof Error ? err.message : 'BsTool failed'}`);
