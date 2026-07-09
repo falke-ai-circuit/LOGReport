@@ -231,6 +231,7 @@ export interface BsToolWSMessage {
   action: 'execute';
   server_name: string;
   command?: string;
+  node_ip?: string;
 }
 
 export interface BsToolWSResponse {
@@ -238,8 +239,6 @@ export interface BsToolWSResponse {
   data?: string;
   exit_code?: number;
   message?: string;
-  file_written?: boolean;
-  file_path?: string;
 }
 
 // ─── Commander: Command Queue ─────────────────────────────────────

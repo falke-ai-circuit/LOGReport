@@ -16,14 +16,10 @@ type Health struct {
 
 // GetHealth builds a Health struct from the database connection status and start time.
 // dbConnected is true when the store is operational.
-// version is the build version from Config (falls back to "dev" if empty).
-func GetHealth(dbConnected bool, startTime time.Time, version string) Health {
-	if version == "" {
-		version = "dev"
-	}
+func GetHealth(dbConnected bool, startTime time.Time) Health {
 	h := Health{
 		Status:  "ok",
-		Version: version,
+		Version: "1.0.0",
 		Uptime:  formatUptime(time.Since(startTime)),
 	}
 

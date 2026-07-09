@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
 	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
@@ -343,39 +344,6 @@ func (s *Server) handleRenameNodesConfigEntry(w http.ResponseWriter, r *http.Req
 	})
 }
 
-// handleClearNodesConfig deletes the entire nodes.json for a project,
-// effectively clearing all node configurations. Returns cleared=true on success.
-// DELETE /api/v1/nodesconfig/clear?project_id={id}
-func (s *Server) handleClearNodesConfig(w http.ResponseWriter, r *http.Request) {
-	projectID := r.URL.Query().Get("project_id")
-	path := s.nodesConfigPathForProject(projectID)
-
-	// Check if file exists
-	if _, err := os.Stat(path); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			writeJSON(w, http.StatusOK, map[string]interface{}{
-				"cleared": true,
-				"message": "nodes.json did not exist",
-			})
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "stat_error",
-			fmt.Sprintf("failed to stat nodes.json: %v", err))
-		return
-	}
-
-	if err := os.Remove(path); err != nil {
-		writeError(w, http.StatusInternalServerError, "delete_error",
-			fmt.Sprintf("failed to delete nodes.json: %v", err))
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"cleared": true,
-		"path":    path,
-	})
-}
-
 // handleLoadNodesConfig loads nodes.json from a specified file path.
 // PUT /api/v1/nodesconfig/load?path={path}
 func (s *Server) handleLoadNodesConfig(w http.ResponseWriter, r *http.Request) {
@@ -447,8 +415,10 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 		logRoot = s.logRoot()
 	}
 
-	// hide_missing=true: Commander mode — only show files that exist on disk
-	hideMissing := r.URL.Query().Get("hide_missing") == "true"
+	// Commander mode: show ALL nodes (files on disk + expected token nodes).
+	// Previously used hide_missing=true which hid expected-but-not-yet-executed
+	// token nodes, causing "remaining files disappear after command execution."
+	hideMissing := false
 
 	var tree *types.TreeNode
 	if logRoot != "" {
@@ -1335,6 +1305,7 @@ func (s *Server) handleWriteLog(w http.ResponseWriter, r *http.Request) {
 		TokenType string `json:"token_type"`
 		TokenID   string `json:"token_id"`
 		Output    string `json:"output"`
+		NodeIP    string `json:"node_ip,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "validation_error", "invalid JSON body")
@@ -1345,19 +1316,8 @@ func (s *Server) handleWriteLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Look up IP from nodes.json for correct filename
-	ipAddress := ""
-	if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
-		for _, c := range configs {
-			if c.Name == nodeName || extractStationNameFromConfig(c.Name) == nodeName {
-				ipAddress = c.IPAddress
-				break
-			}
-		}
-	}
-
-	lw := logwriter.New(s.logRoot())
-	if err := lw.WriteOutputWithIP(nodeName, req.TokenType, req.TokenID, req.Output, ipAddress); err != nil {
+	lw := logwriter.New(s.resolveLogRoot())
+	if err := lw.WriteOutputWithIP(nodeName, req.TokenType, req.TokenID, req.Output, req.NodeIP); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error",
 			fmt.Sprintf("failed to write log: %v", err))
 		return
@@ -2063,31 +2023,20 @@ func (s *Server) handleSysFileParseMulti(w http.ResponseWriter, r *http.Request)
 
 // ─── Scan Nodes Handler (DIA "print structure") ──────────────────────
 
-// handleScanNodes connects to DIA, sends "systemtest node_list" to generate
-// a complete node listing with hw-address, token, IP, OS, slots and program names.
-// Falls back to "print structure" + token probing if node_list fails.
+// handleScanNodes retrieves .sys files from the BU and parses them for node detection.
+// It first tries the local BU directory (fast path), then falls back to remote BsTool
+// TCP retrieval from the BU at the configured BsTool host:port.
 // POST /api/v1/sysfiles/scan-nodes
 func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
-	// 95-second hard timeout — the scan can take up to ~70s in worst case
-	// (15s connect + 2s delay + 15s systemtest + 20s nodelist poll + 15s print structure + probing)
-	// but must not hang indefinitely. Context cancellation propagates to telnet reads.
 	ctx, cancel := context.WithTimeout(r.Context(), 95*time.Second)
 	defer cancel()
-	_ = ctx // r.Context() is already used by the HTTP server; ctx is for future use
+	_ = ctx
 
-	// Load settings for DIA host/port and BU directory
 	if !globalSettings.loaded {
 		s.initSettings()
 	}
 	st := getSettings()
-	host := st.DIAHost
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	port := st.DIAPort
-	if port == 0 {
-		port = 1234
-	}
+
 	buDir := st.BUDir
 	if buDir == "" {
 		buDir = "C:\\dna\\CA\\bu"
@@ -2096,143 +2045,180 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Step 0: Try reading .sys files from the BU directory first.
-	// This gives the SAME result as manually importing .sys files —
-	// real IP addresses, FBC/RPC tokens, full node names.
-	// The .sys files are the authoritative source of node configuration.
-	buConfigs := tryLoadSysFromBUDir(buDir)
-	if len(buConfigs) > 0 {
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"configs":    buConfigs,
-			"count":      len(buConfigs),
-			"method":     "bu_sys_files",
-			"bu_dir":     buDir,
-		})
-		return
+	buHost := st.BsToolHost
+	if buHost == "" {
+		buHost = "127.0.0.1"
+	}
+	buPort := st.BsToolPort
+	if buPort == 0 {
+		buPort = 1516
+	}
+	commLine := st.CommunicationLine
+	if commLine == "" {
+		commLine = "AB01"
 	}
 
-	// Disconnect any existing session to avoid conflicts (DIA allows only 1 connection)
-	for _, id := range s.telnetSM.ListSessions() {
-		s.telnetSM.Disconnect(id)
+	// Scan method: "remote_bu" (default) uses BsTool TCP, "local_dir" uses local BU directory.
+	// The user selects this in Settings — no automatic fallback.
+	scanMethod := st.ScanMethod
+	if scanMethod == "" {
+		scanMethod = "remote_bu"
 	}
 
-	// Create a fresh session
-	sess, err := s.telnetSM.Connect("", host, port, 15*time.Second)
-	if err != nil {
-		writeError(w, http.StatusBadGateway, "connection_failed",
-			fmt.Sprintf("DIA connect %s:%d failed: %v", host, port, err))
-		return
-	}
-	// Nil session safety — Connect should never return nil+nil, but guard against panics
-	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "session_error",
-			"telnet session returned nil after connect")
-		return
-	}
-	sessionID := sess.ID
-	defer s.telnetSM.Disconnect(sessionID)
-
-	// verifySystemMode() in Connect() already:
-	// 1. Read initial DIA response, sent "y" only if override prompt was present
-	// 2. Cleared the line editor (Ctrl+X + Ctrl+Z + Enter)
-	// 3. Entered system mode
-	// We're already in system mode here — don't re-handle override or send "systemmode"
-
-	// Step 1: Delete old nodelist files to detect fresh generation
-	// DIA writes to its own working directory, not LOGReport's
-	// BUT: some DIA versions don't support `systemtest node_list`. In that case,
-	// we fall back to the existing nodelist.txt that was generated at DIA startup.
-	// Save the existing content before deleting, so we can restore it if the
-	// command fails to regenerate the file.
-	knownPaths := []string{
-		"C:\\dna\\CA\\dia\\nodelist.txt",
-		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
-		"nodelist.txt",
-		"C:\\nodelist.txt",
-	}
-
-	// Save existing nodelist content before deleting
-	var existingNodeList string
-	for _, p := range knownPaths {
-		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-			existingNodeList = string(data)
-			break
+	// Step 1: If scan method is local_dir, read .sys files from the local BU directory.
+	if scanMethod == "local_dir" {
+		buConfigs := tryLoadSysFromBUDir(buDir)
+		if len(buConfigs) > 0 {
+			// Apply XdSysUsed filtering from local filesystem too.
+			buConfigs, filterInfo := filterLocalSysByXdSysUsed(buDir, buConfigs)
+			filtered := filterNodeConfigs(buConfigs, st.NodeFilter)
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"configs":     filtered,
+				"count":       len(filtered),
+				"method":      "bu_local_sys_files",
+				"bu_dir":      buDir,
+				"filter_info": filterInfo,
+			})
+			return
 		}
+		// Local dir selected but no .sys files found — return error, do NOT fallback to remote
+		writeError(w, http.StatusNotFound, "no_sys_files",
+			fmt.Sprintf("No .sys files found in local BU directory %s (scan_method=local_dir)", buDir))
+		return
 	}
 
-	// Delete old files to detect fresh generation
-	for _, p := range knownPaths {
-		os.Remove(p)
+	// Step 2: scan_method=remote_bu — retrieve .sys files from remote BU.
+	// Uses native Go TCP protocol (no BsTool.exe subprocess needed).
+	// VERIFIED 2026-07-07: Works on buc_16.20.exe with 3x handshake + READ_DIR.
+
+	timeout := 10 * time.Second
+	sysFileData, err := bstool.RetrieveSysFileData(buHost, buPort, commLine, timeout)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "bu_connection_failed",
+			fmt.Sprintf("Remote BU %s:%d retrieval failed: %v", buHost, buPort, err))
+		return
+	}
+	if len(sysFileData) == 0 {
+		writeError(w, http.StatusNotFound, "no_sys_files",
+			fmt.Sprintf("No .sys files found on BU %s:%d (commLine=%s)", buHost, buPort, commLine))
+		return
 	}
 
-	// Step 3: Send systemtest node_list using SendSystemCommand
-	// SendSystemCommand clears with Ctrl+X + Enter only (no Ctrl+Z which exits system mode)
-	// Small delay to let DIA fully enter system mode after connect
-	time.Sleep(2 * time.Second)
-	_ = s.telnetSM.ClearOutput(sessionID)
-	_ = s.telnetSM.SendSystemCommand(sessionID, "systemtest node_list nodelist.txt")
-	_ = waitForOutput(s.telnetSM, sessionID, 15*time.Second, 2*time.Second, nil)
+	// Filter .sys files by active config (XdSysUsed → _sys file → active hw addresses).
+	// This eliminates stale nodes from old .sys files that are no longer active.
+	sysFileData, filterInfo := filterSysDataByXdSysUsed(buHost, buPort, commLine, timeout, sysFileData)
 
-	// Step 4: Wait for nodelist.txt to appear (poll for up to 20 seconds)
-	// DIA writes the file asynchronously after the command returns
-	var nodeListContent string
-	searchPaths := []string{
-		"C:\\dna\\CA\\dia\\nodelist.txt",
-		"C:\\dna\\CA\\AM_IS\\nodelist.txt",
-		"C:\\nodelist.txt",
-		"nodelist.txt",
-		filepath.Join(os.TempDir(), "nodelist.txt"),
+	// Convert SysFileData to the struct format expected by LoadSysFilesFromData
+	dataSlice := make([]sysloader.SysFileData, len(sysFileData))
+	for i, sf := range sysFileData {
+		dataSlice[i] = sysloader.SysFileData{Name: sf.Name, Data: sf.Data}
 	}
 
-	deadline := time.Now().Add(20 * time.Second)
-	for time.Now().Before(deadline) {
-		for _, p := range searchPaths {
-			if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-				nodeListContent = string(data)
-				break
+	configs, err := sysloader.LoadSysFilesFromData(dataSlice)
+	if err != nil || len(configs) == 0 {
+		writeError(w, http.StatusInternalServerError, "parse_failed",
+			fmt.Sprintf("Parsed %d .sys files but got 0 configs: %v", len(sysFileData), err))
+		return
+	}
+
+	filtered := filterNodeConfigs(configs, st.NodeFilter)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"configs":     filtered,
+		"count":       len(filtered),
+		"method":      "bstool_remote_sys_files",
+		"bu_host":     buHost,
+		"bu_port":     buPort,
+		"sys_count":   len(sysFileData),
+		"filter_info": filterInfo,
+	})
+}
+
+// filterSysDataByXdSysUsed implements the 3-layer active config filter:
+// 1. Fetch XdSysUsed from BU → parse to find active _sys filename
+// 2. Fetch _sys file from BU → parse :e:hw: entries for active hw addresses
+// 3. Filter .sys files — only keep those whose filename stem matches an active hw address
+//
+// If any step fails (file not found, parse error), returns the original data unchanged
+// with a description of what happened in the filter_info string.
+func filterSysDataByXdSysUsed(host string, port int, commLine string, timeout time.Duration, sysFileData []bstool.SysFileData) ([]bstool.SysFileData, string) {
+	ft := bstool.NewFileTransport(host, port, timeout)
+	defer ft.Close()
+
+	// Step 1: Fetch XdSysUsed file from BU.
+	xdData, err := ft.ReadFile(commLine, "XdSysUsed")
+	if err != nil {
+		return sysFileData, fmt.Sprintf("XdSysUsed fetch failed: %v (no filtering applied)", err)
+	}
+
+	xdText := string(xdData)
+	// Parse XdSysUsed: each line has "station_name sys_file grp_file" format.
+	// Extract the _sys filenames (second column, ends with _sys).
+	var activeSysFiles []string
+	for _, line := range strings.Split(xdText, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, ":") || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			sysFile := parts[1]
+			if strings.HasSuffix(strings.ToLower(sysFile), "_sys") {
+				activeSysFiles = append(activeSysFiles, sysFile)
 			}
 		}
-		if nodeListContent != "" {
-			break
+	}
+
+	if len(activeSysFiles) == 0 {
+		return sysFileData, "XdSysUsed parsed but no _sys files found (no filtering applied)"
+	}
+
+	// Step 2: Fetch each _sys file and extract active hw addresses from :e:hw: entries.
+	activeHW := make(map[string]bool)
+	for _, sysFile := range activeSysFiles {
+		sysData, err := ft.ReadFile(commLine, sysFile)
+		if err != nil {
+			continue
 		}
-		time.Sleep(500 * time.Millisecond)
+		// Parse :e:hw:{hw_addr} {station} {config} entries
+		for _, line := range strings.Split(string(sysData), "\n") {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, ":e:hw:") {
+				continue
+			}
+			rest := strings.TrimPrefix(line, ":e:hw:")
+			fields := strings.Fields(rest)
+			if len(fields) >= 1 {
+				hwAddr := strings.TrimSpace(fields[0])
+				if hwAddr != "" {
+					activeHW[hwAddr] = true
+				}
+			}
+		}
 	}
 
-	// If systemtest node_list didn't generate a new file, use the existing
-	// nodelist.txt content (saved before deletion). Some DIA versions generate
-	// nodelist.txt at startup but don't support the systemtest command.
-	if nodeListContent == "" && existingNodeList != "" {
-		nodeListContent = existingNodeList
+	if len(activeHW) == 0 {
+		return sysFileData, fmt.Sprintf("Parsed %d _sys files but found 0 :e:hw: entries (no filtering applied)", len(activeSysFiles))
 	}
 
-	var configs []types.NodeConfig
-	var structureRaw string
-
-	if nodeListContent != "" {
-		// ─── Parse nodelist.txt format ───────────────────────────
-		// Format: hw_address,token,ip,os,slot:type:name:extra,...
-		// Example: 30,1,127.0.0.1,win,1:CPU:AB01:10,2:CPU:AP01:0,...,16:NCU
-		configs = parseNodeList(nodeListContent)
-
-		// Also get print structure for the structure_raw field
-		_ = s.telnetSM.ClearOutput(sessionID)
-		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
-	} else {
-		// ─── Fallback: print structure + token probing ────────────
-		_ = s.telnetSM.ClearOutput(sessionID)
-		_ = s.telnetSM.SendSystemCommand(sessionID, "print structure")
-		structureRaw = waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, nil)
-		configs = scanFromStructure(s, sessionID, structureRaw)
+	// Step 3: Filter .sys files — only keep those whose filename stem matches an active hw address.
+	var filtered []bstool.SysFileData
+	skipped := 0
+	for _, sf := range sysFileData {
+		stem := strings.TrimSuffix(sf.Name, filepath.Ext(sf.Name))
+		if activeHW[stem] {
+			filtered = append(filtered, sf)
+		} else {
+			skipped++
+		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"configs":       configs,
-		"count":         len(configs),
-		"structure_raw": structureRaw,
-		"nodelist_raw":  nodeListContent,
-		"method":        "systemtest_node_list",
-	})
+	if len(filtered) == 0 {
+		// All files were filtered out — this likely means the hw address format doesn't match.
+		// Return original data to avoid breaking the scan.
+		return sysFileData, fmt.Sprintf("All %d .sys files filtered out by hw address match (returned original, filter may need format adjustment)", len(sysFileData))
+	}
+
+	return filtered, fmt.Sprintf("XdSysUsed→%d _sys files→%d active hw addresses: %d .sys files kept, %d stale files removed", len(activeSysFiles), len(activeHW), len(filtered), skipped)
 }
 
 // tryLoadSysFromBUDir attempts to load .sys files from the BU directory.
@@ -2240,255 +2226,182 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 // On success, returns the same configs as a manual .sys file import —
 // with real IP addresses, FBC/RPC tokens, and full node names.
 func tryLoadSysFromBUDir(buDir string) []types.NodeConfig {
-	// Check if directory exists
 	if _, err := os.Stat(buDir); err != nil {
 		return nil
 	}
-
-	// Try loading .sys files from the directory
 	configs, err := sysloader.LoadSysFiles(buDir)
 	if err != nil || len(configs) == 0 {
-		// Try bu_VM as fallback (VM-specific directory)
 		buVMDir := filepath.Join(filepath.Dir(buDir), "bu_VM")
 		configs, err = sysloader.LoadSysFiles(buVMDir)
 		if err != nil || len(configs) == 0 {
 			return nil
 		}
-		buDir = buVMDir
 	}
-
 	return configs
 }
 
-// parseNodeList parses nodelist.txt content into NodeConfig array.
-// Format (per LightRAG / AMIS Configuration Manual):
-//   hw_address,token,ip,os,slot:type:name,...,slot:type:name,...
-//
-// Each LINE represents one physical node. CPU/BPU entries are application
-// servers (stations); FBC entries are fieldbus cards that belong to the
-// preceding CPU station on the same line.
-//
-// Token calculation: token = hex(hw_addr + slot_number - 1).
-//   e.g. hw_addr=0x30, slot 1 → 0x30 → "30"  (LOG)
-//        hw_addr=0x30, slot 2 → 0x31 → "31"  (FBC + RPC)
-//
-// Examples from LightRAG:
-//   b030,1,192.168.77.190,ppc,1:CPU:LP01,2:FBC,16:NCU
-//   → LP01 with tokens: 30(LOG), 31(FBC), 31(RPC)
-//
-//   30,1,127.0.0.1,win,1:CPU:AB01:10,2:CPU:AP01:0,3:CPU:A1O1:2,...,16:NCU
-//   → AB01(30/LOG), AP01(31/LOG), A1O1(32/LOG), ...
-//
-// FBC slots without a preceding CPU on the same line get their own config
-// named "NODE_<hw_addr>_<slot>" as fallback.
-func parseNodeList(content string) []types.NodeConfig {
-	lines := strings.Split(strings.TrimSpace(content), "\n")
-	var configs []types.NodeConfig
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.Split(line, ",")
-		if len(parts) < 5 {
-			continue
-		}
-
-		hwAddr := strings.TrimSpace(parts[0])
-		ip := strings.TrimSpace(parts[2])
-
-		// Track the current station (last CPU entry on this line)
-		// so FBC slots can be attached to it.
-		var currentStation *types.NodeConfig
-		var currentStationIdx int = -1
-
-		// Parse slot entries (parts[4:])
-		for _, slotEntry := range parts[4:] {
-			fields := strings.Split(strings.TrimSpace(slotEntry), ":")
-			if len(fields) < 2 {
-				continue
-			}
-			slotNum := strings.TrimSpace(fields[0])
-			slotType := strings.ToUpper(strings.TrimSpace(fields[1]))
-			slotName := ""
-			if len(fields) >= 3 {
-				slotName = strings.TrimSpace(fields[2])
-			}
-
-			switch slotType {
-			case "CPU", "BPU":
-				if slotName == "" {
-					continue
-				}
-				tokenID := computeNodeListToken(hwAddr, slotNum)
-				cfg := types.NodeConfig{
-					Name:      slotName,
-					IPAddress: ip,
-					Tokens: []types.Token{{
-						TokenID:   tokenID,
-						TokenType: types.TokenLOG,
-						Protocol:  "telnet",
-					}},
-				}
-				configs = append(configs, cfg)
-				currentStation = &configs[len(configs)-1]
-				currentStationIdx = len(configs) - 1
-
-			case "FBC":
-				// FBC slot — belongs to the preceding CPU station on this line.
-				// Gets FBC + RPC tokens with the same token calculation.
-				tokenID := computeNodeListToken(hwAddr, slotNum)
-				fbcToken := types.Token{
-					TokenID:   tokenID,
-					TokenType: types.TokenFBC,
-					Protocol:  "telnet",
-				}
-				rpcToken := types.Token{
-					TokenID:   tokenID,
-					TokenType: types.TokenRPC,
-					Protocol:  "telnet",
-				}
-				if currentStation != nil && currentStationIdx >= 0 {
-					// Attach to current station — avoid duplicate tokens
-					alreadyExists := false
-					for _, t := range configs[currentStationIdx].Tokens {
-						if t.TokenType == types.TokenFBC && t.TokenID == tokenID {
-							alreadyExists = true
-							break
-						}
-					}
-					if !alreadyExists {
-						configs[currentStationIdx].Tokens = append(configs[currentStationIdx].Tokens, fbcToken, rpcToken)
-					}
-				} else {
-					// No preceding CPU — create a standalone FBC node
-					fallbackName := fmt.Sprintf("NODE_%s_slot%s", hwAddr, slotNum)
-					configs = append(configs, types.NodeConfig{
-						Name:      fallbackName,
-						IPAddress: ip,
-						Tokens:    []types.Token{fbcToken, rpcToken},
-					})
-					currentStation = &configs[len(configs)-1]
-					currentStationIdx = len(configs) - 1
-				}
-
-			case "NCU":
-				// Skip NCU — infrastructure, not a process station
-				continue
-			}
-		}
-	}
-
-	return configs
-}
-
-// computeNodeListToken computes the LOG token for a nodelist CPU entry.
-// Token = hex(hw_addr_value + slot_number - 1).
-// e.g. hw_addr=0x30 (48), slot=1 → 48+0=48 → "30"
-//      hw_addr=0x30 (48), slot=2 → 48+1=49 → "31"
-func computeNodeListToken(hwAddr string, slotNum string) string {
-	hwVal, err := strconv.ParseInt(hwAddr, 16, 32)
+// filterLocalSysByXdSysUsed applies the same 3-layer XdSysUsed filter as filterSysDataByXdSysUsed,
+// but reads from the local BU directory instead of remote BU via TCP.
+func filterLocalSysByXdSysUsed(buDir string, configs []types.NodeConfig) ([]types.NodeConfig, string) {
+	// Step 1: Read XdSysUsed from local BU directory.
+	xdPath := filepath.Join(buDir, "XdSysUsed")
+	xdData, err := os.ReadFile(xdPath)
 	if err != nil {
-		return hwAddr
+		return configs, fmt.Sprintf("XdSysUsed not found in %s: %v (no filtering applied)", buDir, err)
 	}
-	slotVal, err := strconv.ParseInt(slotNum, 10, 32)
-	if err != nil {
-		return hwAddr
-	}
-	token := hwVal + slotVal - 1
-	return fmt.Sprintf("%x", token)
-}
 
-// scanFromStructure is the fallback: parse print structure output and probe tokens
-func scanFromStructure(s *Server, sessionID string, structureOutput string) []types.NodeConfig {
-	lines := strings.Split(structureOutput, "\n")
-
-	type slotEntry struct {
-		token   int
-		slotNum int
-		slotType string
-	}
-	var slots []slotEntry
-
-	for _, line := range lines {
+	// Parse XdSysUsed: each line has "station_name sys_file grp_file" format.
+	var activeSysFiles []string
+	for _, line := range strings.Split(string(xdData), "\n") {
 		line = strings.TrimSpace(line)
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
+		if line == "" || strings.HasPrefix(line, ":") || strings.HasPrefix(line, "#") {
 			continue
 		}
-		// Look for data lines: "1 20 CPU CPU CPU ... NCU"
-		// First field = token (hex), second = VME addr (hex), rest = slot types
-		tokenNum, err := strconv.ParseInt(fields[0], 16, 32)
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			sysFile := parts[1]
+			if strings.HasSuffix(strings.ToLower(sysFile), "_sys") {
+				activeSysFiles = append(activeSysFiles, sysFile)
+			}
+		}
+	}
+
+	if len(activeSysFiles) == 0 {
+		return configs, "XdSysUsed parsed but no _sys files found (no filtering applied)"
+	}
+
+	// Step 2: Read each _sys file and extract active hw addresses from :e:hw: entries.
+	activeHW := make(map[string]bool)
+	for _, sysFile := range activeSysFiles {
+		sysPath := filepath.Join(buDir, sysFile)
+		sysData, err := os.ReadFile(sysPath)
 		if err != nil {
 			continue
 		}
-		for i := 2; i < len(fields); i++ {
-			upperField := strings.ToUpper(fields[i])
-			if upperField == "CPU" || upperField == "FBC" || upperField == "NCU" {
-				slots = append(slots, slotEntry{
-					token:    int(tokenNum),
-					slotNum:  i - 1, // slot 1 = first after VME addr
-					slotType: upperField,
-				})
+		for _, line := range strings.Split(string(sysData), "\n") {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, ":e:hw:") {
+				continue
+			}
+			rest := strings.TrimPrefix(line, ":e:hw:")
+			fields := strings.Fields(rest)
+			if len(fields) >= 1 {
+				hwAddr := strings.TrimSpace(fields[0])
+				if hwAddr != "" {
+					activeHW[hwAddr] = true
+				}
 			}
 		}
 	}
 
-	// Group by station: CPU starts new station, FBC belongs to current station
-	type stationTokens struct {
-		name      string
-		cpuToken  int
-		fbcTokens []int
+	if len(activeHW) == 0 {
+		return configs, fmt.Sprintf("Parsed %d _sys files but found 0 :e:hw: entries (no filtering applied)", len(activeSysFiles))
 	}
-	var stations []*stationTokens
 
-	for _, sl := range slots {
-		if sl.slotType == "NCU" {
+	// Step 3: Filter configs — only keep those whose config name's hw address matches.
+	// NodeConfig.Name contains the station name (e.g. "AP01m"), and the config was loaded
+	// from a .sys file whose stem is the hw address. We need to match by the .sys file
+	// that produced this config. Since configs don't carry their source filename,
+	// we match by scanning the BU dir for .sys files and mapping hw address → config.
+	// Build a map of active .sys file paths.
+	activeSysPaths := make(map[string]bool)
+	for hwAddr := range activeHW {
+		activeSysPaths[hwAddr+".sys"] = true
+	}
+
+	// Re-scan the BU directory to find which .sys files exist and match.
+	matches, err := filepath.Glob(filepath.Join(buDir, "*.sys"))
+	if err != nil || len(matches) == 0 {
+		return configs, fmt.Sprintf("Could not scan .sys files in %s: %v (no filtering applied)", buDir, err)
+	}
+
+	// Build set of active .sys file basenames.
+	activeBases := make(map[string]bool)
+	for _, m := range matches {
+		base := filepath.Base(m)
+		if activeSysPaths[base] {
+			activeBases[base] = true
+		}
+	}
+
+	// Re-load only the active .sys files to get filtered configs.
+	if len(activeBases) == 0 {
+		return configs, fmt.Sprintf("0 .sys files matched active hw addresses out of %d files (no filtering applied)", len(matches))
+	}
+
+	var activePaths []string
+	for _, m := range matches {
+		if activeBases[filepath.Base(m)] {
+			activePaths = append(activePaths, m)
+		}
+	}
+
+	filteredConfigs, err := sysloader.LoadSysFilesFromPaths(activePaths)
+	if err != nil || len(filteredConfigs) == 0 {
+		return configs, fmt.Sprintf("Re-load of %d active .sys files failed: %v (no filtering applied)", len(activePaths), err)
+	}
+
+	return filteredConfigs, fmt.Sprintf("XdSysUsed→%d _sys files→%d active hw addresses: %d configs kept, %d stale removed", len(activeSysFiles), len(activeHW), len(filteredConfigs), len(configs)-len(filteredConfigs))
+}
+
+// filterNodeConfigs filters a list of NodeConfig by station name prefix.
+// The filter is a comma-separated list of prefixes. A prefix starting with "-"
+// excludes stations starting with that prefix. Otherwise it includes them.
+// Examples:
+//   "AP,AL"          → only AP* and AL* stations
+//   "AP,AL,-AL08"    → AP* and AL* stations, but exclude AL08
+//   "-A1O,-B1O"      → all stations except A1O* and B1O*
+//   ""               → no filtering (return all)
+func filterNodeConfigs(configs []types.NodeConfig, filter string) []types.NodeConfig {
+	if filter == "" {
+		return configs
+	}
+	parts := strings.Split(filter, ",")
+	var includes, excludes []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
 			continue
 		}
-		if sl.slotType == "CPU" {
-			stations = append(stations, &stationTokens{
-				name:     fmt.Sprintf("NODE_%d", len(stations)+1),
-				cpuToken: sl.token,
-			})
-		} else if sl.slotType == "FBC" && len(stations) > 0 {
-			stations[len(stations)-1].fbcTokens = append(stations[len(stations)-1].fbcTokens, sl.token)
+		if strings.HasPrefix(p, "-") {
+			excludes = append(excludes, strings.ToUpper(p[1:]))
+		} else {
+			includes = append(includes, strings.ToUpper(p))
 		}
 	}
 
-	var configs []types.NodeConfig
-	for _, st := range stations {
-		var tokens []types.Token
-		if st.cpuToken > 0 {
-			tokens = append(tokens, types.Token{
-				TokenID:   fmt.Sprintf("%x", st.cpuToken),
-				TokenType: types.TokenLOG,
-				Protocol:  "telnet",
-			})
+	var result []types.NodeConfig
+	for _, cfg := range configs {
+		station := extractStationNameFromConfig(cfg.Name)
+		stationUpper := strings.ToUpper(station)
+
+		// Check excludes first
+		excluded := false
+		for _, ex := range excludes {
+			if strings.HasPrefix(stationUpper, ex) {
+				excluded = true
+				break
+			}
 		}
-		for _, fbcToken := range st.fbcTokens {
-			tokens = append(tokens, types.Token{
-				TokenID:   fmt.Sprintf("%x", fbcToken),
-				TokenType: types.TokenFBC,
-				Protocol:  "telnet",
-			})
-			tokens = append(tokens, types.Token{
-				TokenID:   fmt.Sprintf("%x", fbcToken),
-				TokenType: types.TokenRPC,
-				Protocol:  "telnet",
-			})
+		if excluded {
+			continue
 		}
-		if len(tokens) > 0 {
-			configs = append(configs, types.NodeConfig{
-				Name:   st.name,
-				Tokens: tokens,
-			})
+
+		// If includes is empty, include everything not excluded
+		if len(includes) == 0 {
+			result = append(result, cfg)
+			continue
+		}
+
+		// Check includes
+		for _, inc := range includes {
+			if strings.HasPrefix(stationUpper, inc) {
+				result = append(result, cfg)
+				break
+			}
 		}
 	}
-
-	return configs
+	return result
 }
 
 // executeLISDiag executes a single LISDIAG command by connecting to the

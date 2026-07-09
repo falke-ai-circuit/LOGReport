@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -225,16 +225,17 @@ type bstoolWSMessage struct {
 	Action     string `json:"action"`                // "execute"
 	ServerName string `json:"server_name,omitempty"` // for "execute"
 	Command    string `json:"command,omitempty"`     // for "execute" (future)
+	NodeIP     string `json:"node_ip,omitempty"`    // IP address for log file naming
 }
 
 // bstoolWSResponse is the JSON message sent from server to client.
 type bstoolWSResponse struct {
-	Type        string `json:"type"`                  // "output", "done", "error"
-	Data        string `json:"data,omitempty"`        // for "output"
-	ExitCode    int    `json:"exit_code,omitempty"`   // for "done"
-	Message     string `json:"message,omitempty"`    // for "error"
-	FileWritten bool   `json:"file_written,omitempty"` // for "done" — true if .log file was written
-	FilePath    string `json:"file_path,omitempty"`    // for "done" — path to written .log file
+	Type        string `json:"type"`                   // "output", "done", "error"
+	Data        string `json:"data,omitempty"`         // for "output"
+	ExitCode    int    `json:"exit_code,omitempty"`    // for "done"
+	Message     string `json:"message,omitempty"`      // for "error"
+	FileWritten bool   `json:"file_written,omitempty"` // for "done"
+	FilePath    string `json:"file_path,omitempty"`    // for "done"
 }
 
 // bstoolWSHandler handles WebSocket for BsTool output streaming.
@@ -297,6 +298,22 @@ func (s *Server) bstoolWSHandler(w http.ResponseWriter, r *http.Request) {
 			// Execute BsTool errlog
 			result, err := s.bstoolClient.ErrLog(r.Context(), msg.ServerName)
 			if err != nil {
+				// Write empty file so tree shows it as red (command ran, no data)
+				ipAddress := msg.NodeIP
+				if ipAddress == "" {
+					if configs, cfgErr := nodesconfig.LoadFromFile(s.nodesConfigPath()); cfgErr == nil {
+						for _, c := range configs {
+							if c.Name == msg.ServerName || extractStationNameFromConfig(c.Name) == msg.ServerName {
+								ipAddress = c.IPAddress
+								break
+							}
+						}
+					}
+				}
+				lr := s.resolveLogRoot()
+				os.MkdirAll(lr, 0755)
+				lw := logwriter.New(lr)
+				lw.WriteOutputWithIP(msg.ServerName, "LOG", "", "", ipAddress)
 				s.writeBsToolWS(conn, bstoolWSResponse{
 					Type:    "error",
 					Message: fmt.Sprintf("bstool error: %v", err),
@@ -304,51 +321,47 @@ func (s *Server) bstoolWSHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			// Write output to .log file (same logic as REST handler in handlers.go)
-			fileWritten := false
-			filePathStr := ""
+			// Stream output
 			if result.RawOutput != "" {
-				// Look up IP from nodes.json
-				ipAddress := ""
-				if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
-					for _, c := range configs {
-						if c.Name == msg.ServerName || extractStationNameFromConfig(c.Name) == msg.ServerName {
-							ipAddress = c.IPAddress
-							break
+				s.writeBsToolWS(conn, bstoolWSResponse{Type: "output", Data: result.RawOutput})
+			}
+
+			// Write output to .log file (same logic as REST handler)
+			fileWritten := false
+			var filePathStr string
+			if result != nil && len(result.Messages) > 0 {
+				var sb strings.Builder
+				for _, m := range result.Messages {
+					sb.WriteString(m)
+					sb.WriteString("\n")
+				}
+				output := sb.String()
+
+				// Look up IP from nodes.json, or use node_ip from message
+				ipAddress := msg.NodeIP
+				if ipAddress == "" {
+					if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+						for _, c := range configs {
+							if c.Name == msg.ServerName || extractStationNameFromConfig(c.Name) == msg.ServerName {
+								ipAddress = c.IPAddress
+								break
+							}
 						}
 					}
 				}
 
-				lr := s.logRoot()
-				if lr == "" || lr == "logs" {
-					if !globalSettings.loaded {
-						s.initSettings()
-					}
-					st := getSettings()
-					if st.LogRoot != "" {
-						lr = st.LogRoot
-					} else if runtime.GOOS == "windows" {
-						lr = "C:\\temp\\logreport-output"
-					} else {
-						lr = "/tmp/logreport-output"
-					}
-					s.SetLogRoot(lr)
-					os.MkdirAll(lr, 0755)
-				}
-
+				// Resolve log root (project-aware)
+				lr := s.resolveLogRoot()
+				os.MkdirAll(lr, 0755)
 				lw := logwriter.New(lr)
-				if err := lw.WriteOutputWithIP(msg.ServerName, "LOG", "", result.RawOutput, ipAddress); err != nil {
-					log.Printf("bstool/ws: failed to write log for %s: %v", msg.ServerName, err)
+				if err := lw.WriteOutputWithIP(msg.ServerName, "LOG", "", output, ipAddress); err != nil {
+					log.Printf("ws/bstool: failed to write log for %s: %v", msg.ServerName, err)
 				} else {
 					fileWritten = true
 					filePathStr = lw.LogPath(msg.ServerName, "LOG", "", ipAddress)
 				}
 			}
 
-			// Stream output
-			if result.RawOutput != "" {
-				s.writeBsToolWS(conn, bstoolWSResponse{Type: "output", Data: result.RawOutput})
-			}
 			s.writeBsToolWS(conn, bstoolWSResponse{
 				Type:        "done",
 				ExitCode:    result.ExitCode,

@@ -259,7 +259,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Delete/rename node entries in nodes.json
 	mux.HandleFunc("DELETE /api/v1/nodesconfig/entry", s.handleDeleteNodesConfigEntry)
 	mux.HandleFunc("POST /api/v1/nodesconfig/rename", s.handleRenameNodesConfigEntry)
-	mux.HandleFunc("DELETE /api/v1/nodesconfig/clear", s.handleClearNodesConfig)
 }
 
 // NewTestServer creates a Server suitable for testing with a temp JSON store.

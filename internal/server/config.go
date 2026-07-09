@@ -18,9 +18,8 @@ type Config struct {
 	BsToolRemote      string
 	BsToolTimeout     int
 	CommunicationLine string
-	BrowserPath        string // path to browser executable (auto-detect Supermium if empty)
+	BrowserPath       string // path to browser executable (auto-detect Supermium if empty)
 	NoBrowser         bool   // disable auto-launching browser
-	Version            string // build version (injected via -ldflags -X main.version)
 }
 
 // ParseFlags parses command-line flags and returns a Config.

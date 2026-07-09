@@ -1,33 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Server, FileText, LayoutDashboard, Terminal, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-interface HealthStatus {
-  status: string;
-  version: string;
-  uptime: string;
-  db_status: string;
-  node_count: number;
-}
 
 export default function Layout() {
-  const [version, setVersion] = useState<string>('');
-
-  useEffect(() => {
-    async function fetchVersion() {
-      try {
-        const res = await fetch('/health');
-        if (res.ok) {
-          const data = await res.json();
-          setVersion(data.version || '');
-        }
-      } catch { /* ignore */ }
-    }
-    fetchVersion();
-    const interval = setInterval(fetchVersion, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   const tabStyle = (isActive: boolean): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
@@ -72,11 +46,6 @@ export default function Layout() {
         >
           <span style={{ fontSize: 16 }}>📋</span>
           LOGReport
-          {version && (
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '4px' }}>
-              {version}
-            </span>
-          )}
         </div>
 
         <NavLink to="/" end style={({ isActive }) => tabStyle(isActive)}>

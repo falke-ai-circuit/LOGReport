@@ -63,16 +63,17 @@ const STATUS_COLORS: Record<string, string> = {
 // In "nodes" colorMode: token = expected file not on disk = red
 // In "commander" colorMode: file = content-based, token = expected but not on disk = red
 function fileColor(node: TreeNodeData, _colorMode?: string): string {
-  // Token type = expected file that may or may not exist on disk
+  // Token type = expected file that doesn't exist on disk yet
+  // Use muted/gray — NOT red. Red means "command executed but file is empty".
   if (node.type === 'token') {
-    return 'var(--error)'; // red — file doesn't exist on disk yet
+    return 'var(--text-muted)'; // gray — expected but not yet created
   }
   // File type = actually on disk, color by content
   if (node.type === 'file') {
     if (node.line_count === undefined || node.line_count === null) {
       return 'var(--text-muted)'; // gray — unknown status
     }
-    if (node.line_count === 0) return 'var(--error)'; // red — exists but empty (no data collected)
+    if (node.line_count === 0) return 'var(--error)'; // red — exists but empty (command ran but no data)
     if (node.line_count < 10) return '#f59e0b'; // yellow — low content
     return 'var(--success)'; // green — has content
   }
@@ -122,10 +123,11 @@ export default function NodeTree({
       const params: string[] = [];
       if (activeLogRoot) params.push(`log_root=${encodeURIComponent(activeLogRoot)}`);
       params.push(`project_id=${projectId}`);
-      // Commander mode: hide missing files (only show what's on disk)
-      if (context === 'commander') {
-        params.push('hide_missing=true');
-      }
+      // Commander mode: show all nodes (files on disk + expected token placeholders).
+      // Backend hardcodes hideMissing=false — sending the param is harmless but unnecessary.
+      // if (context === 'commander') {
+      //   params.push('hide_missing=true');
+      // }
       const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
       const url = `/api/v1/nodesconfig/tree${queryStr}`;
       const res = await fetch(url);
@@ -835,8 +837,8 @@ function TreeBranch({
           {node.name}
         </span>
 
-        {/* Extra info */}
-        {node.ip && (
+        {/* Extra info — only show IP on station-level nodes, not on files */}
+        {node.ip && node.type === 'node' && (
           <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px' }}>
             ({node.ip})
           </span>

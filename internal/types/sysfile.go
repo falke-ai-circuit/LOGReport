@@ -30,12 +30,12 @@ var LIDMapping = map[string]string{
 
 // SysFileNode represents a node extracted from a _sys file.
 type SysFileNode struct {
-	LID         string `json:"lid"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Program     string `json:"program"`
-	Parameters  string `json:"parameters,omitempty"` // PARAMETERS= line (e.g. "-s AL02 -p 4321 -x password")
-	SlotNum     int    `json:"slot_num"`
+	LID        string `json:"lid"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Program    string `json:"program"`
+	Parameters string `json:"parameters,omitempty"` // PARAMETERS= line (e.g. "-s AL02 -p 4321 -x password")
+	SlotNum    int    `json:"slot_num"`
 	IsFieldbus  bool   `json:"is_fieldbus"`
-	FieldbusType string `json:"fieldbus_type,omitempty"` // "CIO", "MIO", "PROFIBUS", "IBC" (empty for non-fieldbus)
+	FieldbusType string `json:"fieldbus_type,omitempty"` // CIO, MIO, PROFIBUS, IBC, or empty
 }

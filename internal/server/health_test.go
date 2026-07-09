@@ -7,13 +7,13 @@ import (
 
 func TestGetHealthConnected(t *testing.T) {
 	startTime := time.Now().Add(-5 * time.Minute)
-	h := GetHealth(true, startTime, "v3.9.9")
+	h := GetHealth(true, startTime)
 
 	if h.Status != "ok" {
 		t.Errorf("Status: got %q, want ok", h.Status)
 	}
-	if h.Version != "v3.9.9" {
-		t.Errorf("Version: got %q, want v3.9.9", h.Version)
+	if h.Version != "1.0.0" {
+		t.Errorf("Version: got %q, want 1.0.0", h.Version)
 	}
 	if h.DBStatus != "connected" {
 		t.Errorf("DBStatus: got %q, want connected", h.DBStatus)
@@ -25,7 +25,7 @@ func TestGetHealthConnected(t *testing.T) {
 
 func TestGetHealthNilDB(t *testing.T) {
 	startTime := time.Now()
-	h := GetHealth(false, startTime, "")
+	h := GetHealth(false, startTime)
 
 	if h.Status != "degraded" {
 		t.Errorf("Status: got %q, want degraded", h.Status)
@@ -33,14 +33,11 @@ func TestGetHealthNilDB(t *testing.T) {
 	if h.DBStatus != "disconnected" {
 		t.Errorf("DBStatus: got %q, want disconnected", h.DBStatus)
 	}
-	if h.Version != "dev" {
-		t.Errorf("Version: got %q, want dev (empty fallback)", h.Version)
-	}
 }
 
 func TestGetHealthEmptyNodes(t *testing.T) {
 	startTime := time.Now()
-	h := GetHealth(true, startTime, "v1.0.0")
+	h := GetHealth(true, startTime)
 
 	if h.Status != "ok" {
 		t.Errorf("Status: got %q, want ok", h.Status)
