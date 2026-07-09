@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="12" fill="#0a0a0f"/>
+  <rect x="2" y="2" width="60" height="60" rx="10" stroke="#f59e0b" stroke-width="2"/>
+  <text x="32" y="38" text-anchor="middle" font-family="monospace" font-size="22" font-weight="bold" fill="#f59e0b">LR</text>
+  <path d="M12 48 L22 36 L32 44 L42 28 L52 40" stroke="#f59e0b" stroke-width="2" fill="none" opacity="0.6"/>
+</svg>
