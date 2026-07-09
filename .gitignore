@@ -19,3 +19,5 @@ test/e2e/logs/
 test/integration/logreport-data/
 web/dist-new-flat/
 logreport.db
+.git-corrupted/
+web/dist-root-old/
