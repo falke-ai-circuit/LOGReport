@@ -1,0 +1,8 @@
+2026-06-25 10:00:00 INFO AP01m Connected to node
+2026-06-25 10:00:01 INFO AP01m FBC scan started
+2026-06-25 10:00:05 INFO AP01m FBC scan complete (12 tokens)
+2026-06-25 10:00:06 INFO AP01m RPC scan started
+2026-06-25 10:00:10 INFO AP01m RPC scan complete (12 tokens)
+2026-06-25 10:00:11 WARN AP01m DI1.IN = 0 (expected 1)
+2026-06-25 10:00:12 INFO AP01m LIS scan started
+2026-06-25 10:00:15 INFO AP01m LIS scan complete (4 items)

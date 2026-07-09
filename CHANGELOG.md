@@ -1,524 +1,188 @@
 # Changelog
 
-## [Unreleased]
+## [v3.9.12] — 2026-07-07
 
-### Scan Tab Phase 3+4 - Live Comparison & Auto-Refresh Polish (2025-10-15)
-- [FEATURE] **Live FBC/RPC Comparison Engine** - Implemented real-time comparison between file data and live telnet responses from field nodes. Click "Compare Live" button to execute telnet commands (`print from fbc io structure {tokenID}` or `print rupi counters {tokenID}`) and perform cell-by-cell validation. Comparison engine color-codes cells: **Green** (match), **Yellow** (difference with file/live values shown), **Red** (parse errors). Match percentage displayed in status bar and widget label.
-- [FEATURE] **Auto-Refresh Monitoring** - Added configurable auto-refresh system with 5 interval options: 5s, 10s, 30s, 60s, 5min (default: 30s). Enable auto-refresh checkbox to periodically re-compare live data. Countdown timer shows "Next: Xs" during intervals. Auto-pause implemented when switching tabs or nodes to prevent unnecessary background operations.
-- [FEATURE] **Auto-Connect with Retry** - Comparison automatically connects to telnet debugger if disconnected. 2-retry logic with 10-second delay between attempts. Authorization sequence: sends "YES", CTRL+Z, then executes `systemmode` to ensure system mode (%s prompt). Connection info (IP/port) retrieved from Telnet tab UI via callback chain.
-- [FEATURE] **Context Menu Integration** - Right-click .fbc/.rpc files in node tree → "Scan FieldBus Structure" action. Automatically switches to Scan tab, selects file, connects to telnet, and triggers comparison in single operation. Streamlines validation workflow from tree navigation.
-- [FEATURE] **Tab-Aware Auto-Refresh** - Auto-refresh pauses when user switches away from Scan tab (to Telnet/BsTool) or changes node subtabs. Resumes when returning to active Scan tab/node. Preserves checkbox state during pause/resume cycles. Prevents CPU waste on invisible comparisons.
-- [FEATURE] **Status Message Propagation** - Comparison lifecycle messages displayed in main window status bar: "Comparing {node} ({file})..." on start, "✓ {node} ({file}): 75% match (12/16 cells)" on success, "✗ {node} ({file}): Connection timeout" on failure. Provides visibility without tab switching.
-- [BUGFIX] **PIC 0 Row Missing** - Fixed telnet response parser losing first row (PIC 0) due to hardcoded separator assumption. Telnet responses have no separator line after header (data starts immediately), while files have separator. Implemented dynamic separator detection: checks if line after header matches `FBC_ROW_PATTERN` or contains "Not Exists" → data starts immediately (telnet), else skip separator (file). All 16 rows (PICs 0-15) now parsed correctly.
-- [BUGFIX] **Auto-Load on Tab Open** - Scan tab now auto-loads most recent file when opened. Added `QTimer.singleShot(100ms)` deferred loading to ensure UI fully initialized before populating tables. Eliminates blank tables requiring manual file selection.
-- [BUGFIX] **Tab Switch Prevention** - Clicking .fbc/.rpc in node tree while on Scan tab no longer switches to Telnet tab. Added `select_file_only()` methods that select file in dropdown without triggering tab change. Current tab detection ensures correct behavior.
-- [IMPLEMENTATION] Created `src/commander/services/fbc_comparison_service.py` (387 lines) with `FbcComparisonService` class. Methods: `compare_with_live()` (main entry), `_execute_telnet_command()` (with auto-connect), `_parse_telnet_response()`, `_compare_tables()` (cell-by-cell logic). Returns `ComparisonResult` dataclass with success, match_percentage, matches, differences, errors.
-- [IMPLEMENTATION] Enhanced `src/commander/services/fbc_parser_service.py` (+25 lines) with dynamic separator detection in `_determine_data_start_line()`. Checks `is_data_row = FBC_ROW_PATTERN.match(next_line) or 'Not Exists' in next_line` to distinguish telnet from file format.
-- [IMPLEMENTATION] Enhanced `src/commander/ui/node_scan_widget.py` (+130 lines) with comparison UI integration. Added `ComparisonWorker` async execution via QThreadPool, `pause_auto_refresh()`/`resume_auto_refresh()` methods, `_on_comparison_finished()` result handler, `apply_comparison_results()` cell coloring logic, auto-refresh timer management.
-- [IMPLEMENTATION] Enhanced `src/commander/ui/scan_tab.py` (+45 lines) with `_on_node_tab_changed()` handler, `pause_all_auto_refresh()`/`resume_active_auto_refresh()` methods, `select_file_and_compare()` for context menu integration.
-- [IMPLEMENTATION] Enhanced `src/commander/ui/session_view.py` (+20 lines) with `_on_main_tab_changed()` handler connecting to `tab_widget.currentChanged` signal. Pauses Scan tab auto-refresh when switching to Telnet/BsTool tabs.
-- [IMPLEMENTATION] Enhanced `src/commander/ui/commander_window.py` (+40 lines) with callback chain setup (`get_connection_info_callback` passed through SessionView → ScanTab → NodeScanWidget), context menu "Scan FieldBus Structure" action with auto-connect, signal connection (`scan_tab.status_message → status_service.show_message`).
-- [PARSER FIXES] **Empty Slot Detection** - Parser now handles rows with "---" placeholder (e.g., PIC 12 card 5). Extracts PIC/card/slot/type, displays "---" in table instead of skipping row.
-- [PARSER FIXES] **'N' Suffix Capture** - Extended unit type regex to capture trailing 'N' (e.g., "BI8N" from AP06m). Pattern: `r'([A-Za-z]{2}\d+N?)'` allows optional 'N'.
-- [PARSER FIXES] **'Not Exists' Display** - Rows with "Not Exists" PIC status display "N/E" in Type column with empty I/O values. Prevents blank rows or parsing failures.
-- [PARSER FIXES] **IBC Format Support** - Added IBC (I/O Board Card) detection with 16 columns (0-15) and unit types Di16/Do16. IBC rows: `PIC=X Y=Y   00=Do16 01=Do16 ... 15=Di16` parsed correctly.
-- [PARSER FIXES] **Mixed-Case Units** - Changed unit type extraction from uppercase-only to case-preserving. Handles `Ai8`, `Do16`, `BI8N` without case conversion.
-- [TESTING] Created `tests/test_fbc_comparison_service.py` (450+ lines, 18 unit tests) with 100% pass rate. Test classes: TestTelnetCommandExecution (3 tests - command generation, connection handling), TestResponseParsing (4 tests - parse success, empty response, invalid format, malformed data), TestTableComparison (6 tests - all match, differences, errors, missing rows, header mismatch, mixed results), TestErrorHandling (4 tests - connection errors, timeout, parse errors, empty data), TestIntegration (2 tests - end-to-end workflows).
-- [TESTING] Created `tests/test_auto_refresh_tab_switch.py` (370 lines, 10 unit tests) with 100% pass rate. Test classes: TestNodeScanWidgetPauseResume (6 tests - pause/resume logic, idempotency, checkbox state), TestScanTabNodeSwitch (1 test - node subtab switching), TestSessionViewMainTabSwitch (2 tests - main tab pause/resume), TestIntegration (1 test - multi-level tab switching).
-- [TESTING] Created `tests/test_status_message_propagation.py` (220 lines, 5 unit tests) with 100% pass rate. Test classes: TestNodeScanWidgetStatusMessages (3 tests - comparison start, success summary, failure error), TestScanTabSignalPropagation (1 test - message forwarding), TestIntegrationWithCommanderWindow (1 test - signal chain verification).
-- [MODIFIED] `src/commander/services/fbc_comparison_service.py` (+387 lines) - New comparison service module
-- [MODIFIED] `src/commander/services/fbc_parser_service.py` (+25 lines) - Dynamic separator detection
-- [MODIFIED] `src/commander/ui/node_scan_widget.py` (+130 lines) - Comparison UI, auto-refresh, pause/resume
-- [MODIFIED] `src/commander/ui/scan_tab.py` (+45 lines) - Tab switch handlers, context menu integration
-- [MODIFIED] `src/commander/ui/session_view.py` (+20 lines) - Main tab change handler
-- [MODIFIED] `src/commander/ui/commander_window.py` (+40 lines) - Callback chain, context menu, signal connections
-- [MODIFIED] `tests/test_fbc_comparison_service.py` (+450 lines) - Comparison service tests
-- [MODIFIED] `tests/test_auto_refresh_tab_switch.py` (+370 lines) - Auto-refresh tests
-- [MODIFIED] `tests/test_status_message_propagation.py` (+220 lines) - Status message tests
-- [SKIPPED] **Phase 4.2: Config Change Auto-Refresh** - Node manager doesn't emit config change signals, low priority, workaround exists (manual restart). Can be implemented in future if needed.
-- [SKIPPED] **Phase 4.3: Enhanced Error Handling** - Basic error handling exists in test suite, user-friendly messages are nice-to-have but not blocking. Can be implemented in future if needed.
-- [USER IMPACT] Users can now validate live field configurations against saved token files in real-time. Auto-refresh enables continuous monitoring during commissioning or troubleshooting. Color-coded comparison results (green/yellow/red) provide instant visual feedback. Tab-aware pause prevents unnecessary CPU usage when working in other tabs. Context menu integration streamlines workflow from node tree to comparison. Status bar messages keep users informed without requiring tab switches. Auto-connect with retry eliminates manual connection steps before comparison.
+### Added
 
-### Scan Tab Phase 1 Implementation (2025-10-14)
-- [FEATURE] **Scan Tab - Node-Based File Viewer** - Added new "Scan" tab in Commander Center for viewing FBC (Field Bus Configuration) and RPC (RUPI Counter) token file contents. Tab includes automatic per-node subtabs (e.g., AP01, AP02m, AP06) populated from loaded node configuration, providing centralized inspection without manual file navigation.
-- [FEATURE] **Unified FBC/RPC Parser** - Implemented `FbcParserService` (349 lines) with dual-format parsing: FBC files (I/O tables with agent columns) and RPC files (error counter tables with 6 fixed columns). Parser auto-detects file type via filename pattern (*.fbc, *_err.rpc) and uses 10 regex patterns (6 FBC-specific, 4 RPC-specific) to extract headers, data rows, totals, and metadata (timestamp, command, agent ID).
-- [FEATURE] **Dark Theme Table Display** - Each node subtab includes QTableWidget with monospace font (Consolas 10pt), alternating row backgrounds (#1E1E1E base, #252526 alternate), dark headers (#3D3D3D), and high-contrast text (#DCDCDC). Auto-resizes columns to content and preserves column alignment for tabular data.
-- [FEATURE] **Mixed File Dropdown** - File selector (QComboBox) per node combines both FBC and RPC files from `_DIA/FBC/{node}/` and `_DIA/RPC/{node}/` directories. Files sorted by modification time (newest first) with most recent file auto-loading on subtab open.
-- [FEATURE] **Placeholder Controls** - Phase 1 includes disabled UI elements for future phases: "Compare Live" button (Phase 3 telnet-based live comparison), auto-refresh checkbox + interval dropdown (Phase 2 enhanced styling).
-- [IMPLEMENTATION] Created `src/commander/services/fbc_parser_service.py` (349 lines) with `FbcTableData` dataclass and parsing methods. Handles edge cases: missing headers, malformed rows, whitespace, unknown file types (default to FBC).
-- [IMPLEMENTATION] Created `src/commander/ui/scan_tab.py` (161 lines) with `ScanTab` class hosting QTabWidget for node subtabs. Methods: `populate_nodes()` iterates `NodeManager.get_all_nodes()`, `_get_node_token_files()` scans FBC/RPC directories.
-- [IMPLEMENTATION] Created `src/commander/ui/node_scan_widget.py` (455 lines) with `NodeScanWidget` class for per-node UI. Methods: `load_token_file()` parses and displays file, `_create_table_from_data()` builds QTableWidget, `_get_most_recent_file()` sorts by mtime.
-- [IMPLEMENTATION] Modified `src/commander/ui/session_view.py` (lines 48-56) to conditionally create Scan tab if `node_manager` available. Requires `telnet_service` parameter for Phase 3 integration.
-- [IMPLEMENTATION] Modified `src/commander/ui/commander_window.py` (line 85) to move `telnet_service` initialization before `init_ui()` call. Added `scan_tab.populate_nodes()` call in `populate_node_tree()` method after node tree population.
-- [IMPLEMENTATION] Modified `src/commander/ui/commander_ui_factory.py` to accept and pass `node_manager` and `telnet_service` parameters through constructor chain (CommanderWindow → Factory → SessionView).
-- [BUGFIX] **Node Iteration** - Changed `populate_nodes()` from `nodes.keys()` to `List[Node]` iteration. `NodeManager.get_all_nodes()` returns `List[Node]` not dict, requiring `sorted(nodes, key=lambda n: n.name)` instead of `sorted(nodes.keys())`.
-- [BUGFIX] **Path Construction** - Removed double `_DIA` prefix in `_get_node_token_files()`. `log_root` from `NodeManager` already includes `_DIA`, so path construction changed from `Path(log_root) / "_DIA" / "FBC"` to `Path(log_root) / "FBC"`.
-- [BUGFIX] **Dark Theme Styling** - Fixed white backgrounds for table cells, checkbox, and corner button. Applied comprehensive CSS stylesheet with `QTableWidget::item`, `QHeaderView::section`, `QTableCornerButton::section`, and `QCheckBox` indicator styling.
-- [TESTING] Created `tests/test_fbc_parser_service.py` (338 lines, 29 unit tests) with 100% pass rate (0.21s runtime). Test classes: TestFileTypeDetection (3 tests), TestFBCParsing (6 tests), TestRPCParsing (5 tests), TestMetadataExtraction (5 tests), TestEdgeCases (6 tests), TestRealFileIntegration (2 tests), TestRawContentPreservation (2 tests).
-- [DOCUMENTATION] Created `docs/technical/TECH_scan_tab_usage.md` (2847 words) comprehensive technical guide covering: architecture (component hierarchy, key classes), usage guide (accessing tab, viewing files, table display), file discovery (directory structure, sorting), parsing logic (file type detection, regex patterns), dark theme styling (color palette, CSS chain), integration points, API reference, debugging, testing, future enhancements (Phases 2-4).
-- [MEMORY] Extracted 3 entities to `project_memory.json`: Feature.Commander.Scan.Tab_ScanTab (node subtab population), Method.Parser.FBC.Service_parse_dual_format (dual regex patterns), Pattern.PyQt5.Table.Strategy_cell_highlighting (dark theme colors).
-- [CODEGRAPH] Added 3 new modules to `codegraph.json`: Module_commander_services_fbc_parser_service (parser service), Module_commander_ui_scan_tab (main tab), Module_commander_ui_node_scan_widget (per-node widget). Added 10 relations (domain membership + imports).
-- [BLUEPRINT] Followed `docs/blueprints/BLUEPRINT_scan_tab_v1.md` (643 lines) for Phase 1 implementation. Phases 2-4 deferred: Phase 2 (enhanced table styling), Phase 3 (live comparison engine), Phase 4 (error handling polish).
-- [MODIFIED] `src/commander/services/fbc_parser_service.py` (+349 lines) - New parser service module
-- [MODIFIED] `src/commander/ui/scan_tab.py` (+161 lines) - New main Scan tab module
-- [MODIFIED] `src/commander/ui/node_scan_widget.py` (+455 lines) - New per-node widget module
-- [MODIFIED] `tests/test_fbc_parser_service.py` (+338 lines) - New unit test suite
-- [MODIFIED] `src/commander/ui/session_view.py` (+12 lines) - Conditional Scan tab creation
-- [MODIFIED] `src/commander/ui/commander_window.py` (+5 lines) - Telnet service init order, scan tab population
-- [MODIFIED] `src/commander/ui/commander_ui_factory.py` (+4 lines) - Parameter propagation chain
-- [MODIFIED] `docs/technical/TECH_scan_tab_usage.md` (+2847 words) - New technical documentation
-- [MODIFIED] `project_memory.json` (+3 entities) - Memory extraction
-- [MODIFIED] `codegraph.json` (+3 modules, +10 relations) - Codebase structure update
-- [USER IMPACT] Users can now view FBC/RPC token file contents directly in Commander Center without opening external file managers or text editors. Node-based organization streamlines inspection of multiple tokens per node. Auto-loading most recent file saves manual file selection steps. Dark theme consistency maintains visual harmony with rest of Commander UI. Future phases will add live telnet comparison (Phase 3) for real-time config validation.
+- **Remote BU scan: BsTool.exe subprocess fallback** — When the native Go TCP protocol fails (returns 0 files or error), the scan-nodes handler now falls back to running `BsTool.exe -ls` and `BsTool.exe -cat` as subprocesses. This guarantees compatibility with any BU that BsTool.exe supports. The subprocess inherits the parent environment (critical: `COMMUNICATION_TYPES` system env var must be present) and adds `COMMUNICATION_LINE`. Working directory is set to BsTool.exe's location.
+- **Remote BU scan: reconnect before each file operation** — Updated `FileTransport.ListDir` and `ReadFile` to reconnect (close + fresh handshake) before each operation, matching BsTool.exe's `zzInitTcpLineIO` behavior.
+- **New file: `internal/bstool/subprocess.go`** — `SubprocessRetrieveSysFiles`, `subprocessListDir`, `subprocessCatFile`, `parseListOutput` functions.
 
-### UI Bug Fixes and Theme Improvements (2025-10-14)
-- [BUGFIX] **Context Menu Dark Theme** - Fixed context menus displaying with default OS styling instead of application dark theme. Added STYLESHEETS import and menu.setStyleSheet() call in ContextMenuService.show_context_menu() before menu.exec(). Context menus now match application styling with grey highlights and dark background.
-- [BUGFIX] **BsTool Clean Output Display** - Fixed duplicate/wrapped BsTool output by preventing decorative formatting for .log files. Added early return in commander_window.py on_log_write_notification() (line 431) when file extension is .log. BsTool output now goes directly via bstool_output_signal without "📝 Writing to" and "✓ Content written" wrappers that appear for .fbc/.rpc/.lis files.
-- [FEATURE] **Unified Grey Selection Highlight** - Changed selection highlight color from purple/pink to grey across entire application. Updated ColorPalette.SELECTION_BACKGROUND in theme.py (line 32) from #C969E6 to #5D5D5D and QPalette.Highlight in gui.py (line 81) from QColor(142,45,197) to QColor(93,93,93). Affects Commander window, Main window, and Node Configurator selections.
-- [TECHNICAL] Root cause: Dual signal paths for BsTool output - direct path (BsToolWorker.signals.finished → bstool_output_signal) + indirect path (log_writer.log_write_completed → on_log_write_notification decorative formatting). Fixed by skipping indirect path for .log files using file extension check.
-- [MODIFIED] `src/commander/services/context_menu_service.py` (+1 import, +1 line) - Added STYLESHEETS import (line 28) and menu.setStyleSheet() call (line 259)
-- [MODIFIED] `src/commander/ui/commander_window.py` (+1 line) - Added early return for .log files in on_log_write_notification() at line 431
-- [MODIFIED] `src/commander/ui/theme.py` (1 value change) - Changed SELECTION_BACKGROUND from #C969E6 to #5D5D5D (line 32)
-- [MODIFIED] `src/gui.py` (1 value change) - Changed QPalette.Highlight from QColor(142,45,197).lighter() to QColor(93,93,93) (line 81)
+### Fixed
 
-### BsTool Bundling and Path Auto-Detection (2025-10-13)
-- [FEATURE] **BsTool.exe Bundling** - BsTool.exe now bundled with LOGReporter executable via PyInstaller, eliminating need for separate BsTool.exe distribution. Users can run single LOGReporter.exe without manual path configuration
-- [FEATURE] **Automatic Path Detection** - BsTool path field in UI auto-populates on application startup using hybrid detection algorithm. Works in both development mode (project root) and packaged mode (PyInstaller _MEIPASS temp directory)
-- [FEATURE] **Manual Path Override** - Users can manually enter or browse for custom BsTool.exe location if needed. Custom paths persist across sessions via QSettings
-- [IMPLEMENTATION] Created `src/commander/utils/bstool_path_resolver.py` utility with get_bstool_path() function implementing 3-tier detection: (1) sys._MEIPASS (PyInstaller onefile temp extraction), (2) sys.executable directory (PyInstaller onedir mode), (3) project root (development mode)
-- [IMPLEMENTATION] Modified `src/commander/ui/bstool_tab.py` to call _auto_populate_bstool_path() during __init__(), populating bstool_path_edit QLineEdit field automatically
-- [IMPLEMENTATION] Updated `src/commander/services/bstool_command_service.py` to use centralized bstool_path_resolver utility instead of inline path detection
-- [CONFIGURATION] Updated `LOGReporter_PyQt5.spec` binaries section: `(os.path.abspath('BsTool.exe'), '.')` ensures BsTool.exe bundled in PyInstaller build
-- [TESTING] User validated bundling: Renamed BsTool.exe in repository root after build, bundled executable still worked (confirms PyInstaller extracts from build-time capture, independent of runtime repository state)
-- [TESTING] Created comprehensive test scripts: `scripts/quick_test_bstool.ps1` (5-step automated test), `scripts/test_bundled_exe.ps1` (full 3-scenario suite), `docs/TESTING_BSTOOL_BUNDLING.md` (documentation with validation checklist)
-- [MODIFIED] `src/commander/utils/bstool_path_resolver.py` (+103 lines) - New utility module for centralized path detection
-- [MODIFIED] `src/commander/ui/bstool_tab.py` (+15 lines) - Added _auto_populate_bstool_path() method called during initialization
-- [MODIFIED] `src/commander/services/bstool_command_service.py` (+2 lines) - Import and use bstool_path_resolver utility
-- [MODIFIED] `TODO.md` (line 50) - Marked BsTool bundling task complete
-- [CREATED] `scripts/quick_test_bstool.ps1` (100 lines) - Quick automated test script for bundling validation
-- [CREATED] `scripts/test_bundled_exe.ps1` (200 lines) - Comprehensive test script with 3 scenarios
-- [CREATED] `docs/TESTING_BSTOOL_BUNDLING.md` (400 lines) - Complete test documentation with procedures, checklist, troubleshooting
-- [MEMORY] Extracted 3 entities to project_memory.json: Feature_BsToolBundling (bundling details), Method_PathAutoPopulation (UI auto-fill), Pattern_PyInstallerBundling (packaging pattern)
-- [CODEGRAPH] Added 1 new module to codegraph.json: Module_commander_utils_bstool_path_resolver (utility module). Updated 2 existing modules with IMPORTS relations
-- [USER IMPACT] Users no longer need to manually locate and configure BsTool.exe path. Application works out-of-the-box with single executable distribution. Path field shows detected location for transparency while allowing manual override if needed
+- **Remote BU scan now works on Vegas VM** — The native Go TCP protocol returns `param=0` for READ_DIR on this BU (buc_16.20.exe), but BsTool.exe subprocess successfully lists and retrieves 35 .sys files → 99 NodeConfigs. The subprocess fallback bridges the gap.
+- **Environment variable inheritance** — `exec.Command.Env` was replacing the entire environment instead of appending. Fixed: `cmd.Env = append(os.Environ(), "COMMUNICATION_LINE=...")` to inherit system env vars like `COMMUNICATION_TYPES`.
 
-### UI Styling Improvements (2025-10-13)
-- [FEATURE] **Modern Scrollbar Styling** - Added custom scrollbar CSS to Commander theme for BsTool tab, Telnet tab, and Nodes tree with rounded handles (6px radius), hover states, and 12px width/height for consistent cross-platform appearance
-- [FEATURE] **Unified Highlight Color** - Changed selection highlight from #007ACC (blue) to #C969E6 (purple) matching main LOGReport window and Node Configurator (QColor(142, 45, 197).lighter()) for visual consistency across application
-- [FEATURE] **Tree Header Styling** - Added QHeaderView::section CSS to style "Nodes" tree header with dark theme colors (BACKGROUND_MEDIUM #3D3D3D) matching rest of Commander window
-- [IMPLEMENTATION] Added 4 new ColorPalette constants: SCROLLBAR_BACKGROUND (#2D2D30), SCROLLBAR_HANDLE (#5D5D5D), SCROLLBAR_HANDLE_HOVER (#6D6D6D), SCROLLBAR_HANDLE_PRESSED (#4D4D4D)
-- [IMPLEMENTATION] Enhanced StyleSheetManager.get_application_stylesheet() with ~50 lines of QScrollBar CSS (vertical/horizontal), QTreeWidget::item pseudo-classes (selected, hover), QHeaderView::section styling
-- [IMPLEMENTATION] Updated get_telnet_tab_stylesheet() with matching scrollbar styling for consistency
-- [MODIFIED] `src/commander/ui/theme.py` (+80 lines) - Updated ColorPalette and StyleSheetManager with scrollbar styling, unified highlight color, header styling
-- [NOTE] Windows native title bar color cannot be changed via Qt stylesheets (OS limitation)
+## [v3.9.11] — 2026-07-07
 
-### Report Generation Improvements (2025-10-13)
-- [FEATURE] **Node-Based Report Organization** - Reports now group log content by node name (AP01, AP02m, AL01, etc.) instead of flat file list, processing all file types for each node before moving to next node
-- [FEATURE] **File Type Ordering** - Within each node, files processed in consistent order: .fbc → .rpc → .log → .lis (defined by TYPE_ORDER constant)
-- [FEATURE] **Clickable Table of Contents (PDF)** - PDF reports include clickable navigation at beginning with href links to node chapters, using anchor bookmarks (<a name="node"/>) for navigation targets
-- [FEATURE] **Automatic Table of Contents (DOCX)** - Word documents generate TOC automatically via add_heading() hierarchical structure (level 1=nodes, level 2=files)
-- [FEATURE] **Intelligent Line Wrapping** - Long lines in .log files automatically wrap at 80 characters (scientifically calculated: Courier 10pt × 80 chars = 480 points = 169.33mm, fits within 170mm usable width on A4 page with 20mm margins)
-- [FEATURE] **Button Rename** - Changed "Generate" button label to "Save Report" for clarity in main GUI
-- [IMPLEMENTATION] Added 5 new methods to src/generator.py: extract_node_from_filename() (regex AP\d{2}[mr]?|AL\d{2}), group_logs_by_node() (Dict[str, Dict[str, List[Dict]]] structure), wrap_long_lines() (textwrap with break_long_words=True for continuous chars), generate_pdf() (rewritten with TOC + anchors), generate_docx() (rewritten with hierarchical headings)
-- [IMPLEMENTATION] Try/except import pattern for runtime/test compatibility: `try: from utils.file_utils except: from src.utils.file_utils`
-- [BUGFIX] Fixed node manager QLayout error preventing multiple node deletions - removed duplicate init_ui() + populate_node_list() calls from node_config_dialog.py remove_node() method (lines 324-325)
-- [TESTING] Created comprehensive test suite tests/unit/test_report_generation_improvements.py with 24 tests (100% passing): NodeExtraction (6 tests), LogGrouping (4 tests), LineWrapping (6 tests), PDFGeneration (3 tests), DOCXGeneration (3 tests), Integration (2 tests)
-- [TESTING] Scientific width validation: reportlab.pdfbase.pdfmetrics.stringWidth('A'*80, 'Courier', 10) = 480 points = 169.33mm < 170mm usable width
-- [MODIFIED] `src/generator.py` (+120 lines) - Added node extraction, grouping, wrapping methods; rewrote PDF/DOCX generation with TOC and hierarchical structure
-- [MODIFIED] `src/gui.py` (line 155) - Changed button label from "Generate" to "Save Report"
-- [MODIFIED] `src/node_config_dialog.py` (-2 lines) - Removed duplicate init_ui() call in remove_node() method
-- [MODIFIED] `TODO.md` (line 56) - Marked report generation task complete with implementation details
-- [MEMORY] Extracted 4 entities to project_memory.json: Feature_NodeBasedOrganization, Feature_AnchorBookmarks, Feature_IntelligentLineWrapping, Feature_ComprehensiveTestCoverage
-- [CODEGRAPH] Added 2 module entities to codegraph.json: Module_generator (node-based report generation), Module_test_report_generation_improvements (comprehensive test coverage)
-- [USER VALIDATION] Line width calculation verified through 3 iterations (90→100→80 chars), user confirmed TOC missing then added, right edge overflow then fixed with scientific calculation
+### Added
 
-### Vertical Mode Protocol (VMP) Integration (2025-10-13)
-- [ARCHITECTURE] **Unified Workflow Interruption Management** - Replaced IRP (Interruption Response Protocol) with VMP (Vertical Mode Protocol) providing unified handling of user questions and agent-detected blockers via single stack-based protocol
-- [DESIGN] **Stack-Based Context Preservation** - Implemented PUSH/POP operations with breadcrumb navigation (← arrows), max depth 5 levels, emergency POP_ALL for circular dependencies. CEPH context accumulates evidence across stack levels
-- [AUTO-DETECTION] **Intelligent Phase Routing** - Agent automatically emits VMP PUSH when detecting: Anomalies→ANALYZE, Investigations (3+ hypotheses)→DEBUG, Test failures (<100% pass, MANDATORY)→DEBUG, Design flaws (architectural limitations)→ARCHITECT, Requirement gaps (ambiguous criteria)→ANALYZE
-- [CONDENSED STYLE] **Minimal Documentation Footprint** - Condensed VMP specification from 60 lines (verbose IRP+VMP) to 18 lines matching DevTeam chatmode terse style. Unified template with [PUSH|POP] variants, one-line trigger descriptions with pipe separators, compact rules
-- [INTEGRATION] **Seamless Workflow Compatibility** - No breaking changes to existing 11-phase workflow. VMP activates only when interruptions/blockers detected. STACK optional field appears in completion format only when depth ≥ 1 (vertical mode active)
-- [TEMPLATE] **Unified VMP Syntax** - Single template: `🔄 VMP [PUSH|POP]` with STACK (breadcrumb trail), MODE (current specialist), ORIGIN (phase.action with interrupted_by/blocked_by), TRIGGER/RESOLVED (context-dependent), ACTION (next step)
-- [ERROR RECOVERY] **Vertical Routing** - Enhanced error recovery: Test failures→VMP PUSH DEBUG (mandatory), Blocked phases→VMP PUSH appropriate phase (ANALYZE/DEBUG/ARCHITECT), Max depth/circular dependencies→POP_ALL to depth 0
-- [MODIFIED] `.github/chatmodes/DevTeam.chatmode.md` (+4 lines net: -56 verbose IRP, +60 condensed VMP) - Replaced IRP section, added VMP to Core Principles, updated Error Recovery with vertical routing, extended Communication section with Horizontal/Vertical flows, added STACK optional field to completion format
-- [MODIFIED] `.github/instructions/standards.md` (+6 lines) - Added VMP format requirements section with ✅/❌ examples, added STACK optional field to status format
-- [CREATED] `docs/architecture/VMP_specification_draft.md` (v2.0.0 Unified, 120 lines) - Complete VMP specification with auto-detection rules, decision tree, workflow examples (simple/deep/lateral/emergency), LOG template extension, safety mechanisms
-- [MEMORY] Extracted 3 patterns to project_memory.json: Feature_VMP_Integration (unified protocol details), Pattern_Unified_Interruption_Protocol (stack-based design), Method_Condensed_Chatmode_Style (terse documentation approach)
-- [CODEGRAPH] Added 2 config entities to codegraph.json: Module_DevTeam_chatmode (VMP integration), Module_standards (VMP format standards)
-- [PATTERN] **Unified Interruption Protocol** - All workflow interruptions (user-driven questions/feedback, agent-driven anomalies/blockers) share same pattern: preserve context → resolve → resume. ORIGIN field naturally differentiates source without separate protocols
-- [USER IMPACT] Developers using DevTeam chatmode now have unified protocol for all context switches. Agent automatically handles vertical exploration (PUSH→investigate→POP) while maintaining horizontal workflow progress. User questions answered inline without losing phase context
+- **Settings: Node Filter** — New `node_filter` field in Settings page. Comma-separated station prefixes to include/exclude. Examples: `AP,AL` = only AP+AL stations, `AP,AL,-AL08` = AP+AL except AL08, `-A1O,-B1O` = all except A1O+B1O. Leave empty for all nodes. Applied during scan-nodes for both local_dir and remote_bu methods.
 
-### Pause/Resume/Cancel Button Fix (2025-10-13)
-- [BUGFIX] **Fixed Buttons Disabled During Print All Nodes** - Pause/resume/cancel buttons now remain enabled and clickable throughout Print All Nodes workflow execution, resolving issue where buttons became disabled immediately after first command completion
-- [ROOT CAUSE] Signal collision: Both NodeTreePresenter and SequentialCommandProcessor connected to command_queue.command_completed signal. SequentialCommandProcessor incorrectly processed Print All Nodes commands despite not initiating them (_total_commands=0), causing premature ExecutionState.IDLE emission that disabled all workflow buttons
-- [SOLUTION] Guard condition in SequentialCommandProcessor._on_command_completed() (line 628): Checks _is_processing flag before processing commands. Only processes when actively managing sequential execution via process_tokens_sequentially() (context menu operations). Print All Nodes workflow bypasses SequentialCommandProcessor, so guard prevents interference
-- [IMPLEMENTATION] Added 5-line guard at sequential_command_processor.py line 628: `if not self._is_processing: return` with debug logging. Prevents responding to unowned commands from other workflows
-- [PATTERN] Shared Signal Listener Isolation - Signal listeners sharing command_queue.command_completed must validate command ownership before processing. Architecture pattern for PyQt5 signal/slot systems with multiple listeners on shared signals
-- [MODIFIED] `src/commander/services/sequential_command_processor.py` (+5 lines) - Added ownership guard in _on_command_completed() method
-- [CREATED] `tests/unit/services/test_sequential_processor_guard.py` (4 test cases, 100% passing) - Validates: (1) ignores commands when not processing, (2) processes commands when actively processing, (3) finishes when all owned commands complete, (4) guard prevents premature finish (bug scenario)
-- [TEST STATUS] 4/4 tests passing, 0 failures, 1 deprecation warning (telnetlib Python 3.13)
-- [USER VALIDATION REQUIRED] Test Print All Nodes workflow and verify buttons stay enabled/clickable throughout execution with hover highlighting
+### Fixed
 
-### Test Suite Optimization (2025-01-13)
-- [TEST SUITE] **Phase 6 Validation Complete** - Established 87.1% pass rate baseline (27/31 tests) with 0.34s total runtime, validated hierarchical test organization (226 tests collected, 0 import errors from Phase 3 reorganization)
-- [ORGANIZATION] **100% Test Consolidation** - Completed Phase 3: Moved 68+ files into hierarchical structure (tests/[type]/[theme]/test_*.py), eliminated 46% unconsolidated tests, created 18 thematic directories
-- [COVERAGE] **Phase 2 Test Creation** - Added 196 tests (+587 assertions) across 3 critical suites: test_log_creator.py (14 tests, 100% passing), test_generator.py (21 tests), test_processor_integration.py (38 tests)
-- [QUALITY] **Test Quality Improvement** - Increased quality score from 4.62/10 to 5.12/10 (+10.8%) via static AST analysis of 558 tests (1648 assertions), identified 3 critical coverage gaps
-- [ANALYSIS] **Gap Analysis Complete** - Phase 5: Identified P0 critical gaps (6 modules, 2,523 LOC, 180 tests needed), P1 high priority (5 modules, 80 tests), performance gaps (0 tests exist, 3 needed), 30 orphaned tests (70% actionable)
-- [VALIDATION] **Test Suite Metrics** - Performance: 0.02s slowest test (excellent), Coverage: LogCreator 100%, Token Detection 100%, SYS File Parser 75% (4 AL node tests systematic failure)
-- [BLOCKERS] **Environment Issues Documented** - Python 3.13 telnetlib removal (22 tests blocked), PyQt6 DLL errors (31 tests blocked), import path inconsistencies (74 tests blocked)
-- [DOCUMENTATION] **Test Suite Documentation** - Created tests/README.md (organization guide, naming conventions, quality standards, known issues), updated README.md test section
-- [ARTIFACTS] Phase reports: logs/tests_analysis_PHASE_[0-6]*.md (inventory, static analysis, coverage, organization, alignment, gap analysis, validation)
-- [MEMORY] Extracted 6 patterns to project_memory.json: HierarchicalTestOrganization, SystematicALParserFailures, StaticAnalysisFallback, ImportPathInconsistency, FixtureSchemaValidation, Phase2TestSuiteQuality
-- [CODEGRAPH] Added 3 test module entities to codegraph.json: test_log_creator (100% passing), test_sys_file_parser (75% passing), test_token_detection (100% passing with quality warning)
-- [NEXT STEPS] Sprint 1: Fix AL parser (4 tests), standardize import paths (74 tests), fix fixture schema (13 tests), begin P0 test creation (sequential_command_processor:40, node_config_dialog:35)
+- **Scan nodes: remote_bu is default** — `scan_method` defaults to `remote_bu` (BsTool TCP). No automatic fallback to local directory. User selects method in Settings.
+- **Scan nodes: hostname support** — BU host field accepts hostnames (e.g. `localhost`, `bu.internal.example.com`), not just IP addresses. TCP transport uses `net.Dial` which resolves hostnames.
+- **Scan nodes: commLine default** — Communication line defaults to `AB01` if not set in settings.
 
-### Print All Nodes Auto-Connect (2025-10-12)
-- [FEATURE] **Automatic Telnet Connection Check** - Print All Nodes now automatically establishes Telnet debugger connection before starting sequential execution, preventing workflow failures due to missing connection
-- [IMPLEMENTATION] Added auto-connect check in NodeTreePresenter.process_all_nodes_print_commands() at line 1098, executes before workflow initialization (button enable, log scan)
-- [IMPLEMENTATION] Added telnet_service parameter to NodeTreePresenter.__init__ for dependency injection, passed from CommanderWindow (line 142)
-- [CONNECTION FLOW] Auto-connect reuses telnet_service._ensure_debugger_connection() which handles: 2 connection attempts with 10s delay, initial character sequence, system mode verification (%s prompt), automatic "systemmode" command if needed
-- [USER FEEDBACK] Status messages during auto-connect: "Checking Telnet debugger connection...", "Connecting to debugger 192.168.x.x... (attempt 1/2)", "Connection failed, retrying in 10s...", "Connected to debugger 192.168.x.x"
-- [ERROR HANDLING] Graceful abort if connection fails after retries: displays "Failed to establish Telnet debugger connection. Please connect manually in Telnet tab." (8s duration), does not enable workflow buttons
-- [PATTERN] Early Prerequisite Validation - Checks prerequisites before multi-step workflow to avoid partial failure, provides clear user feedback, maintains consistent state
-- [MODIFIED] `src/commander/presenters/node_tree_presenter.py` (+11 lines) - Added connection check (lines 1095-1105), added telnet_service param to __init__ (line 49, optional for backwards compatibility)
-- [MODIFIED] `src/commander/ui/commander_window.py` (+1 line) - Pass telnet_service to NodeTreePresenter constructor (line 142)
-- [CREATED] `tests/test_print_all_nodes_auto_connect.py` (6 test cases, 252 lines) - Comprehensive test suite: connected scenario, disconnected auto-connect, connection failure abort, call ordering validation, error message clarity, existing connection reuse
-- [TEST STATUS] Test suite created and validated (telnetlib Python 3.13 compatibility issue blocks execution, not feature-specific)
-- [MEMORY] Extracted 3 learnings to project_memory.json: Project.Feature.Connection.PrintAllNodesAutoConnect, Project.Method.Presenter.ProcessAllNodesPrintCommands_AutoConnect, Project.Pattern.Validation.EarlyPrerequisiteCheck
-- [CODEGRAPH] Updated codegraph.json: Code.Module.commander_presenters_node_tree_presenter with telnet_service dependency
+## [v3.9.10] — 2026-07-07
 
-### Sequential Execution UI Improvements (2025-10-12)
-- [BUGFIX] **UI Highlight Timing Fix** - Fixed premature highlight jump during "Print All Nodes" sequential execution - highlight now stays on current node until all commands (FBC→RPC→LOG) complete
-- [ROOT CAUSE] Synchronous _highlight_current_file() called in process_node_print_commands Phase 3 before async BsTool worker completed, causing visual jump to next node
-- [SOLUTION] Removed premature highlight from process_node_print_commands Phase 3, moved highlight logic to _check_sequential_processing_continuation where it executes after command_queue.is_processing==False
-- [BUGFIX] **BsTool Output Display Fix** - Fixed BsTool tab showing no content during sequential execution - output now displays with separator headers distinguishing each node
-- [ROOT CAUSE] BsToolWorker stored summary message instead of actual output in self.result; _handle_worker_completed never emitted bstool_output_signal during sequential mode
-- [SOLUTION] Changed BsToolWorker.run() to store '\n'.join(output_lines) in self.result; added bstool_output_signal.emit() in _handle_worker_completed with header formatting
-- [FEATURE] **Dynamic Tab Switching** - Automatically switches tabs during sequential execution to show relevant output: Telnet tab for FBC/RPC commands, BsTool tab for LOG commands
-- [IMPLEMENTATION] Modified handle_command_completed() to unconditionally emit switch_to_telnet_tab_signal for FBC/RPC tokens, switch_to_bstool_tab_signal for LOG tokens
-- [MODIFIED] `src/commander/presenters/node_tree_presenter.py` - Removed premature highlight (line ~1042), added deferred highlight logic (line ~1223), simplified tab switching (line ~395-415)
-- [MODIFIED] `src/commander/services/bstool_command_service.py` - Added separator header formatting in _handle_worker_completed (line ~381): "={'*80}\nBsTool output for {filename}\n={'*80}\n"
-- [MODIFIED] `src/commander/services/bstool_worker.py` - Changed self.result from summary message to actual output: self.result = '\n'.join(output_lines) (line ~160)
-- [USER VALIDATION] User confirmed: "now its perfect" - all fixes working in production
-- [MEMORY] Extracted 5 learnings to project_memory.json: SequentialUIHighlightTiming_Feature, SequentialBsToolOutputDisplay_Feature, DynamicTabSwitching_Pattern, BsToolCommandService_HandleWorkerCompleted_Method, NodeTreePresenter_CheckSequentialProcessingContinuation_Method
+### Fixed
 
-### Sequential Output Display & Tab Switching (2025-10-12)
-- [FEATURE] **Sequential Execution Output Display** - Implemented automatic tab switching and output display for sequential "Print All Nodes" execution to match manual execution behavior
-- [IMPLEMENTATION] Added switch_to_telnet_tab_signal to NodeTreePresenter, emits when FBC/RPC commands complete during sequential processing
-- [IMPLEMENTATION] Added command_output_display_signal(str,str) carrying output text and token type for routing to appropriate tabs
-- [IMPLEMENTATION] Created _handle_sequential_output() method in CommanderWindow to route FBC/RPC output to telnet_tab.append_output()
-- [SIGNAL FLOW] NodeTreePresenter.handle_command_completed() → switch_to_telnet_tab_signal.emit() + command_output_display_signal.emit(result, token_type) → CommanderWindow._handle_sequential_output() → telnet_tab.append_output()
-- [MODIFIED] `src/commander/presenters/node_tree_presenter.py` (+9 lines) - Added 2 signals (lines 39-40), modified handle_command_completed to emit signals for FBC/RPC tokens (lines 395-397)
-- [MODIFIED] `src/commander/ui/commander_window.py` (+23 lines) - Added _handle_sequential_output() routing handler (lines 455-469), connected signals in _connect_signals() (lines 184-185)
-- [CREATED] `tests/test_sequential_output_display.py` (8 test cases) - Validates signal emission, token routing, FBC/RPC/LOG handling
-- [PATTERN] Dual Execution Path Unification - Signal-based architecture enables identical behavior between manual and sequential execution paths
-- [USER TESTING] Tab switching confirmed working by user, sequential execution now displays output just like manual execution
-- [MEMORY] Extracted 4 learnings to project_memory.json: TabSwitchingAutomation_Feature, SwitchToTelnetTabSignal_Method, HandleSequentialOutput_Method, DualExecutionPathUnification_Pattern
-- [CODEGRAPH] Updated 2 modules in codegraph.json: commander_presenters_node_tree_presenter (added signal descriptions), commander_ui_commander_window (added _handle_sequential_output method)
+- **Version display** — Health endpoint now returns the build-injected version (via `main.version` ldflag) instead of hardcoded "1.0.0". CLI `--version` prints `LOGReport v3.9.10 (windows/amd64)`. Frontend StatusBar and Dashboard show the real version from health API.
+- **Commander: command input visibility** — Changed `overflow: hidden` to `overflow: auto` on the tab content container so the TelnetTerminal command input bar is always visible at the bottom and not clipped.
+- **Commander: Log Viewer hint text** — Updated from "Double-click a file" to "Click a file" to match the new single-click behavior.
 
-### BsTool Signal Forwarding Fix (2025-10-12)
-- [BUGFIX] **Sequential Processing Continuation** - Fixed sequential "Print All Nodes" workflow stopping after first BsTool execution by implementing signal forwarding from BsToolCommandService to CommandQueue
-- [ROOT CAUSE] BsToolWorker submitted directly to thread pool bypassed CommandQueue.start_processing(), missing automatic signal forwarding that CommandWorker (FBC/RPC) receives
-- [SOLUTION] Added `_handle_worker_completed()` method in BsToolCommandService that forwards `command_completed` signal to CommandQueue, enabling NodeTreePresenter to receive completion events
-- [SIGNAL CHAIN] BsToolWorker.signals.command_completed → BsToolCommandService._handle_worker_completed → CommandQueue.command_completed.emit → NodeTreePresenter.handle_command_completed → _check_sequential_processing_continuation
-- [MODIFIED] `src/commander/services/bstool_command_service.py` - Added 2 lines: `self.logger.debug("Forwarding signal to CommandQueue")` and `self.command_queue.command_completed.emit(command, result, success, token)` in _handle_worker_completed method
-- [CREATED] `src/commander/services/bstool_worker.py` - QRunnable worker (194 lines) for synchronous BsTool execution with stdin=DEVNULL, 10s timeout, content-based success validation (tempfile size check)
-- [PATTERN] QRunnable Signal Bridging - Service layer acts as signal bridge when workers bypass normal queue processing: Worker.signals → Service.handler → Queue.signals → Presenter.handler
-- [TESTING] User confirmed sequential processing works correctly across multiple nodes (AP01, AP02m, AP02r, AP06), workflow continues even on BsTool failures
-- [KNOWN ISSUE] Minor cosmetic UI highlight timing issue - highlight jumps to next AP before previous AP processing completes (added to TODO for future fix)
-- [MEMORY] Extracted 3 learnings to project_memory.json: Feature_BsToolSignalForwarding, Method_HandleWorkerCompleted, Pattern_QRunnableSignalBridging
-- [CODEGRAPH] Added 2 modules + 6 relations to codegraph.json: Code.Module.commander_services_bstool_worker, Code.Class.commander_services_bstool_worker.BsToolWorker, IMPORTS/BELONGS_TO relations
+## [v3.9.9] — 2026-07-07
 
-### Documentation Consolidation - Incremental Update (2025-10-11)
-- [DOCUMENTATION] **Incremental Consolidation Workflow** - Consolidated 18 new documentation files created after October 11, 2025 consolidation into existing core documentation structure
-- [CREATED] `docs/implementation/IMPL_bstool_evolution.md` (832 lines) - Comprehensive BsTool integration evolution narrative consolidating 8 implementation summaries with 5-phase timeline (Jan-Oct 2025)
-- [ENHANCED] `docs/technical/TECH_codegraph_system.md` (+327 lines, 970→1,297 lines) - Added 3 sections: Cluster Layer Enhancement (5-layer hierarchy), DevTeam Integration Patterns (phase-specific codegraph usage), Documentation Pointer System (bidirectional code↔docs linking)
-- [ENHANCED] `docs/architecture/ARCH_command_system.md` (+367 lines, 1,069→1,436 lines) - Added Advanced Execution Patterns section with 5 subsections: Deferred BsTool Execution, System Mode Validation, Memory-Optimized Cleanup, Sequential Command Queue Fix
-- [ARCHIVED] 15 implementation summaries to `docs/archive/implementation/2025-01/` - Preserved 8 bstool summaries, 3 codegraph summaries, 4 command execution summaries for historical reference
-- [METRICS] **Content Efficiency**: 59% reduction (3,684 lines from 15 files → 1,526 lines in 3 docs)
-  - Cluster A (BsTool): 1,846 lines (8 files) → 832 lines (1 file) = 55% reduction
-  - Cluster B (Codegraph): 895 lines (3 files) → 327 lines (sections) = 63% reduction
-  - Cluster C (Commands): 943 lines (4 files) → 367 lines (sections) = 61% reduction
-- [METRICS] **Documentation State**: 73 total docs → 58 active docs (19 core + 39 workflow artifacts) + 15 archived = 23.3% active doc reduction
-- [QUALITY] **Template Compliance**: 100% (all 3 docs meet YAML metadata, TOC with #section links, 5-10 sections, cross-references requirements)
-- [QUALITY] **Cross-Reference Integrity**: 12 bidirectional links added (IMPL_bstool_evolution ↔ ARCH_command_system, TECH_codegraph_system ↔ ARCH_memory_system, etc.)
-- [QUALITY] **Duplication Analysis**: <2% cross-document duplication (well under 5% target)
-- [STRATEGY] Hybrid consolidation approach: (A) Create comprehensive evolution doc for distinct iterative implementations, (B) Enhance existing core docs with new sections for related technical/architectural content, (C) Archive originals for historical reference
-- [MEMORY] Extracted 5 consolidation learnings to `project_memory.json`: IncrementalConsolidation_Feature, EvolutionaryDocumentation_Pattern, CoreDocEnhancement_Method, ClusterBasedConsolidation_Pattern, UpdateDocuments_Workflow
+### Added
 
-### PyQt6 to PyQt5 Migration (2025-01-11)
-- [MIGRATION] **Complete PyQt6→PyQt5 Migration** - Migrated entire application from PyQt6 6.4.2 to PyQt5 5.15.11 for Windows Server 2012 compatibility
-- [MODIFIED] **169+ Files Updated** - Changed all Python files: 80+ in src/, 89+ in tests/, requirements.txt, runtime_hook.py
-- [IMPLEMENTATION] 5-step migration pattern: (1) Imports PyQt6→PyQt5, (2) Enums QPalette.ColorRole.X→QPalette.X + Qt.GlobalColor.Y→Qt.Y, (3) Methods app.exec()→app.exec_() + dialog.exec()→dialog.exec_(), (4) QAction import path QtGui→QtWidgets, (5) Runtime paths PyQt6/Qt6→PyQt5/Qt5
-- [IMPLEMENTATION] PowerShell-based bulk regex replacements for systematic changes across all files with 100% success rate
-- [IMPLEMENTATION] Manual targeted fixes for 4 exec() calls and 2 QAction import locations to ensure correctness
-- [MODIFIED] `requirements.txt` - Updated dependencies: PyQt6==6.4.2 → PyQt5==5.15.11, removed PyQt6-sip and PyQt6-Qt6, added PyQt5-Qt5==5.15.2
-- [MODIFIED] `src/runtime_hooks/runtime_hook.py` - Changed plugin paths from PyQt6/Qt6 to PyQt5/Qt5 for frozen builds
-- [MODIFIED] `src/gui.py` - Updated dark theme palette to use PyQt5 attribute-style enums (QPalette.Window vs QPalette.ColorRole.Window)
-- [MODIFIED] `src/main.py`, `src/gui.py`, `src/commander/ui/commander_window.py` - Changed app.exec() to app.exec_() for PyQt5 compatibility
-- [MODIFIED] `src/commander/services/context_menu_service.py` - Moved QAction import from PyQt5.QtGui to PyQt5.QtWidgets
-- [MODIFIED] All test files - Updated @patch decorators, comments, and mocks from PyQt6 to PyQt5 references
-- [TEST] Validation: 23/34 PyQt-specific tests passing (signal emission, node color coding, validation), 11 pre-existing business logic failures unrelated to migration
-- [TEST] Import verification: All UI classes successfully inherit from PyQt5.QtWidgets (QMainWindow, QWidget, etc.)
-- [TECHNICAL] Preserved dark theme visual style by correctly converting enum-based palette setColor calls to attribute-based API
-- [TECHNICAL] QAction moved to QtWidgets in PyQt5 (was QtGui in PyQt6) - critical for context menu functionality
-- [USER VALUE] Application now compatible with Windows Server 2012 (Qt 5.15.2 supports Win Server 2012, Qt 6.4+ requires Win 10 1809+)
-- [USER VALUE] Can build with LOGReporter_PyQt5.spec for Server 2012 deployment, maintains identical functionality and appearance
+- **Settings: Scan Method toggle** — New `scan_method` setting in Settings page with dropdown: "Remote BU (BsTool TCP Protocol)" (default) or "Local Directory (.sys files on disk)". No automatic fallback between methods — the selected method is used exclusively.
+- **Nodes page: Clear Nodes button** — Two-word button "Clear Nodes" in the Nodes page toolbar that removes all detected node configs from the project with a confirmation dialog.
 
-### Update Modes Workflow Enhancement (2025-10-10)
-- [WORKFLOW] **Generic Chatmode Optimization** - Condensed update_modes workflow to support user-defined chatmode targets instead of hardcoded references
-- [WORKFLOW] Reduced workflow definition from 600+ lines to 188 lines (-68% reduction) while maintaining comprehensive analysis capabilities
-- [WORKFLOW] 6-phase architecture: Discovery(0) → Completion Analysis(1) → Chatmode Evaluation(2) → Optimization Planning(3) → Instruction Updates(4) → Validation(5)
-- [WORKFLOW] User specifies TARGET_CHATMODE parameter (e.g., `.github/chatmodes/DevTeam.chatmode.md`), workflow analyzes all logs/workflow_*.md files
-- [WORKFLOW] Completion format compliance scoring: STATUS/PHASE/CEPH/METRICS/LEARNINGS/BLOCKERS/ARTIFACTS with presence + quality metrics
-- [WORKFLOW] Four-tier prioritization: Critical (mandatory <60%), High (quality <70%), Medium (consistency), Low (enhancements)
-- [WORKFLOW] Generates optimization report `/logs/chatmode_optimization_[chatmode_name]_[date].md` with before/after metrics and specific recommendations
-- [TECHNICAL] Field compliance analysis identifies instruction gaps: missing field pattern (≥40%), partial field pattern (≥30%), quality issues
-- [TECHNICAL] Batch workflow log processing from logs/ directory with aggregate statistics and trend analysis
-- [USER VALUE] Enables continuous improvement of chatmode instructions based on actual workflow execution patterns and completion format compliance
+### Fixed
 
-### Hierarchical Icon Coloring System (2025-10-10)
-- [FEATURE] **Dual Color System** - Implemented independent icon (execution status) and text (content) color systems for commander node tree
-- [FEATURE] Rectangle icons for files/sections and circle icons for nodes change color based on command execution status (green=success, yellow=partial, red=failed)
-- [FEATURE] Hierarchical icon color aggregation: file icons → section rectangles → node circles with red-priority logic (any red child → red parent, all green → green parent)
-- [FEATURE] Text color remains independent, updating from actual file content check after command execution (red=0 lines, yellow<10 lines, green≥10 lines)
-- [IMPLEMENTATION] Added 9 icon generator functions in `src/commander/icons.py`: `get_file_icon_green/yellow/red()`, `get_section_icon_green/yellow/red()`, `get_node_icon_green/yellow/red()`
-- [IMPLEMENTATION] Separated `update_node_icon()` (execution status, uses setIcon) from `update_node_color()` (content, uses setForeground) in `NodeTreeView`
-- [IMPLEMENTATION] Icon colors stored in UserRole['icon_color'] for aggregation, text colors derived from live file content via `get_file_line_count()`
-- [IMPLEMENTATION] Three aggregation methods: `_aggregate_hierarchical_colors()` (trigger), `_aggregate_section_color()` (files→section), `_aggregate_node_color()` (sections→node)
-- [IMPLEMENTATION] Modified `_check_and_update_node_color()` to update BOTH icon color (execution) and text color (content check) after command completion
-- [TECHNICAL] Icon aggregation uses red-priority logic: any red child makes parent red, all green children make parent green, otherwise yellow
-- [TECHNICAL] Auto-detects item type from UserRole['type'] to use circles for nodes, rectangles for files/sections
-- [USER VALUE] Visual feedback shows both command execution success (icon) and actual file content (text) independently, enabling quick identification of execution vs content issues
-- [USER VALUE] Hierarchical aggregation provides at-a-glance overview of entire system state through color-coded node tree sections and nodes
+- **Double .log files** — LOG-type tokens were creating duplicate tree entries and duplicate files on disk because `buildFileName` for LOG type doesn't include token ID (`{station}_{ip}.log`), so multiple LOG tokens produced identical filenames. Now deduplicated: one LOG file per station+IP combination. Fixed in `BuildTree`, `BuildFileTree` (3 locations), and `createLogStructure`.
+- **Commander: single-click opens files** — Clicking on .li/.fbc/.rpc/.log files in the Commander node tree now opens file content on the right side (Log Viewer tab) immediately, instead of requiring a double-click.
 
-### VNC Tab Removal (2025-01-10)
-- [REMOVAL] **Complete VNC Functionality Removal** - Eliminated all VNC-related code from LOGReport application per user request
-- [DELETED] `src/commander/ui/vnc_tab.py` (272 lines) - VNC tab UI widget with recording controls
-- [DELETED] `tests/test_vnc_connection.py` (193 lines) - VNC connection tests
-- [MODIFIED] `src/commander/ui/session_view.py` - Removed VNCTab import, vnc_tab creation, 5 recording signals, 7 signal connections, 5 VNC methods
-- [MODIFIED] `src/commander/ui/commander_window.py` - Removed vnc_tab assignment, _connect_vnc_signals method, toggle_vnc_connection method (54 lines)
-- [MODIFIED] `src/commander/session_manager.py` - Removed VNCSession class (166 lines), SessionType.VNC enum value, vncdotool dependency
-- [MODIFIED] `src/commander/presenters/session_presenter.py` - Removed VNCTab import, active_vnc_session state, 9 VNC-related methods (150+ lines)
-- [MODIFIED] `src/commander/presenters/commander_presenter.py` - Removed VNC signal connections (7 signals), handle_vnc_text_selection method
-- [MODIFIED] `src/commander/ui/commander_ui_factory.py` - Removed VNCTab import, vnc_tab assignment, get_vnc_tab method
-- [MODIFIED] `src/commander/ui/theme.py` - Removed get_vnc_tab_stylesheet method (47 lines of stylesheet code)
-- [MODIFIED] `tests/commander/test_button_styling.py` - Removed VNCTab import, vnc_tab fixture, VNC-specific test
-- [TEST] Validation: 488 tests collected (1 VNC test excluded), 26 tests passed, no import errors, no broken dependencies
-- [IMPACT] Application maintains full Telnet and BsTool tab functionality with no regressions
-- [USER VALUE] Simplified codebase by removing unused feature, reduced dependencies, improved maintainability
+## [v3.9.3] — 2026-06-29
 
-### Log Write Content Display (2025-01-10)
-- [FEATURE] **Telnet Tab Content Visibility** - Actual file content now displays in Telnet tab when writing to .lis, .fbc, .log, and .rpc files
-- [FEATURE] Shows REAL CONTENT being written, not just notifications - enables comparison between Telnet display and file content
-- [FEATURE] Formatted display with headers showing destination file: "📝 Writing to: filename.fbc (25 new lines | Total: 50 lines)"
-- [FEATURE] Content display includes command output with separator bars for visual clarity
-- [FEATURE] Displays "No new content written" notifications when files are accessed but not modified
-- [FEATURE] Shows "❌ Failed to write to filename" error indicators for write failures
-- [IMPLEMENTATION] Extended `log_write_completed` signal from 4 to 5 parameters to include content: `pyqtSignal(str, bool, int, int, str)`
-- [IMPLEMENTATION] Updated `CommanderWindow.on_log_write_notification()` to accept and display actual content with formatted headers/footers
-- [IMPLEMENTATION] Updated `NodeTreePresenter.handle_log_write_completed()` signature to accept content parameter (maintains existing color logic)
-- [TEST] Comprehensive test suite with 8 passing tests validating content display (signal connection, actual content verification, multiple writes, format consistency)
-- [DOCUMENTATION] Implementation follows existing signal/slot pattern throughout the project for maintainability
-- [USER VALUE] Users can now see exactly what's being written to files and compare with Telnet output for verification
+### Fixed
 
-### Multi-File Type Report Generation (2025-10-10)
-- [FEATURE] **Enhanced Report Generation** - Reports now include .lis, .fbc, and .rpc file contents in addition to .log and .txt files
-- [IMPROVEMENT] Updated LogProcessor to scan for all Commander log file types (.log, .txt, .text, .lis, .fbc, .rpc)
-- [IMPROVEMENT] Modified `process_directory()` to use dynamic `supported_ext` tuple instead of hardcoded filter
-- [IMPROVEMENT] Recursive subfolder scanning now captures all file types in nested directory structures
-- [TEST] Created comprehensive test suite with 10 tests covering all file types, recursive scanning, and content validation
-- [TEST] All 10 tests passing - verified extension support, subfolder recursion, content reading, and result structure
-- [DOCUMENTATION] Maintains backward compatibility - existing .log/.txt scanning unchanged
+- **NodesPage: duplicate file viewer** — Removed floating panel that overlapped with modal (both rendered simultaneously, z-index conflict)
+- **NodesPage: missing context menu handlers** — Added bstool_errlog, rpc_clear, fbc_scan, rpc_scan, clear_logs actions (5 dead buttons fixed)
+- **NodeTree: parentNode never passed** — Context menu labels for group/token nodes were empty ("Print All FBC Tokens for " with no name). Fixed by adding parentNode to TreeBranchProps and passing it through recursive calls
+- **NodeTree: fileColor not applied to tokens** — Token-type nodes used statusColor instead of fileColor. Now token nodes show green/yellow/red based on line count
+- **NodeTree: undefined line_count** — Files with unknown line count appeared green (has content). Now show gray (unknown)
+- **NodeTree: dead code removed** — Unreachable second token handler block (lines 237-260) that provided fewer menu items
+- **CommanderLayout: auto-set log root** — Now auto-sets log root on page load (same as NodesPage)
 
-### Sequential Execution Controls (2025-01-20)
-- [FIX] **Print All Nodes execution bug** - Fixed critical issue where only first node's commands executed when using "Print All Nodes" button
-- [IMPROVEMENT] Refactored `process_all_nodes_print_commands()` to reuse proven `process_node_print_commands()` mechanism instead of custom sequential processor
-- [IMPROVEMENT] Implemented QTimer-based command chaining using `command_queue.is_processing` property to detect when each node's commands complete
-- [IMPROVEMENT] Added `_check_sequential_processing_continuation()` method to bridge command completion and next node processing
-- [TECHNICAL] Uses 100ms QTimer delay to ensure CommandQueue state updates before checking if queue is idle
-- [TECHNICAL] Properly queues FBC and RPC commands through `fbc_service.queue_fieldbus_command()` and `rpc_service.queue_rpc_command()`
-- [TEST] All 27 existing tests pass (18 unit + 9 integration) - no regressions introduced
-- [DOCUMENTATION] Created comprehensive technical guide `print_all_nodes_execution_fix.md` documenting architecture, implementation, and chaining mechanism
-- [RESULT] All nodes now execute commands correctly, log files are written, and colors update as expected
 
-### Pause/Resume/Cancel Controls (2025-01-19)
-- [FEATURE] Implemented pause/resume/cancel controls for sequential command execution in Commander window
-- [FEATURE] Added three control buttons to Commander toolbar: Pause, Resume, Cancel
-- [FEATURE] Created ExecutionState enum (IDLE/RUNNING/PAUSED/CANCELLED) for state machine management
-- [FEATURE] Enhanced SequentialCommandProcessor with pause/resume/cancel methods
-- [FEATURE] Implemented visual tree tracking - automatically expands tree and highlights current file during execution
-- [FEATURE] Added real-time status messages showing progress: "Processing node 3/15: AP03m..."
-- [FIX] Fixed 9 LogWriter API mismatches (incorrect logging levels, missing methods)
-- [IMPROVEMENT] Refactored LogWriter API calls from unsupported methods to `write_to_log()` and `write_to_app_log()`
-- [IMPROVEMENT] Created `_generate_log_path()` method to replace non-existent `open_log_for_token()` method
-- [TEST] Created comprehensive test suite `test_pause_resume_cancel.py` with 18 unit tests covering state transitions, process control, signal emission, edge cases
-- [TEST] Created integration test suite `test_sequential_integration.py` with 9 tests covering realistic execution, pause/resume cycles, cancellation, visual tracking
-- [TEST] All 27 tests passing (100% success rate)
-- [DOCUMENTATION] Created implementation guide `pause_resume_cancel_controls.md` with architecture, state machine, signal flow diagrams
-- [DOCUMENTATION] Created LogWriter API refactoring guide `logwriter_api_refactoring.md` documenting all 9 API fixes
+All notable changes to LOGReport will be documented in this file.
 
-### Node Configuration Enhancements (2025-10-09)
-- [FEATURE] Implemented visual node validation with color coding in Node Configurator: green for complete nodes (all required fields), red for incomplete nodes
-- [FEATURE] Added `validate_node()` method to check node completeness: name (required), IP address (required), types (required), tokens (required for FBC/RPC types)
-- [FEATURE] Enhanced standalone tokenid.sys file loading - when loading only token files (e.g., "162.sys"), automatically matches token to existing nodes and updates IP addresses
-- [FEATURE] Real-time color updates as users edit node properties in the configuration dialog
-- [IMPROVEMENT] Node list now provides immediate visual feedback on configuration status, eliminating need to manually check each field
-- [IMPROVEMENT] Standalone token file support enables incremental IP address updates without reloading entire configuration
-- [TEST] Created comprehensive test suite `test_node_config_validation.py` with 13 test cases covering validation logic, color coding, and standalone token matching
+## [v3.9.0] — 2026-06-29
 
-### Node-Level Print Command Execution
-- [FEATURE] Renamed node context menu from "Execute All Commands Hierarchically" to "Execute All Print Commands for [nodename]"
-- [FEATURE] Implemented `process_node_print_commands()` method that executes ONLY print-based commands (FBC print, RPC print, LOG display) - excludes BsTool processing
-- [FEATURE] Added LOG subgroup support with "Print All LOG Tokens for [nodename]" context menu option (previously missing)
-- [FEATURE] Created `process_all_log_subgroup_commands()` method in `NodeTreePresenter` to handle LOG subgroup print operations
-- [FEATURE] Extended context menu service to support LOG subgroups alongside FBC and RPC subgroups
-- [CONFIGURATION] Updated `config/menu_filter_rules.json` to include LOG subgroup in filter rules (version 1.2)
-- [TEST] Created comprehensive test suite `test_node_print_commands.py` with 5 test cases validating print-only execution and LOG subgroup support
-- [DOCUMENTATION] Updated context menu labels and descriptions to reflect print-only execution workflow
-- [IMPROVEMENT] Print command execution provides focused workflow for displaying/printing data without triggering BsTool processing
-- [IMPROVEMENT] Three-phase print execution: Phase 1 (Print FBC tokens), Phase 2 (Print RPC tokens), Phase 3 (Display LOG files)
+### Added
 
-### Node-Level Hierarchical Command Execution
-- [FEATURE] Implemented node-level hierarchical command execution allowing users to right-click on a node and execute all FBC, RPC, and LOG commands in a single orchestrated workflow
-- [FEATURE] Added three-phase execution model: Phase 1 (FBC commands), Phase 2 (RPC commands), Phase 3 (LOG/BsTool processing)
-- [FEATURE] Created `process_node_hierarchical_commands()` method in `NodeTreePresenter` to orchestrate hierarchical execution with proper error handling and status reporting
-- [FEATURE] Extended `ContextMenuService` to detect node-level right-clicks and display "Execute All Commands Hierarchically" option
-- [FEATURE] Added `_get_tokens_for_node()` helper method to retrieve all tokens of a specific type for hierarchical processing
-- [CONFIGURATION] Added node-level filtering rule to `config/menu_filter_rules.json` for controlling hierarchical command visibility
-- [TEST] Created comprehensive test suite `test_node_hierarchical_commands.py` with 10 test cases covering menu display, execution order, error handling, and status messages
-- [DOCUMENTATION] Updated `ARCH_command_system.md` with detailed node-level hierarchical execution architecture and implementation examples
-- [DOCUMENTATION] Enhanced README.md with hierarchical execution feature description, usage examples, and benefits
-- [IMPROVEMENT] Hierarchical execution provides efficiency gains by executing all node commands with a single action, ensuring consistent command order (FBC → RPC → LOG)
-- [IMPROVEMENT] Added clear phase-based status messages for user feedback during hierarchical execution
+- **Horizontal top navigation** — Dashboard, Nodes, Reports, Commander as horizontal tabs across the top, replacing the left sidebar (Layout.tsx)
+- **Nodes as standalone main area** — New `NodesPage.tsx` component with node tree (left panel) + station cards + sys file ingest + "Open File" button + colorized log viewer. Moved from Commander sub-tab to its own main navigation area.
+- **Colorized log file viewer** — Log content rendered with color coding: green (#22c55e) = normal output, red (#ef4444) = errors, yellow (#f59e0b) = prompts/status, teal (#10b981) = success. Available in both NodesPage and CommanderLayout.
+- **Double-click on token nodes** — Token-type nodes in the tree now respond to double-click, constructing the file path from log_root + station + type + filename and opening content in the log viewer.
+- **"Open File Content" in token context menus** — Right-click on FBC/RPC/LOG token nodes now includes "Open File Content" action.
+- **Value persistence across tab changes** — Telnet host/port and BsTool server name/comm line/bstool path are saved to localStorage on connect/execute and restored on component mount. Values survive tab switches.
 
-### Memory Hierarchy Compliance Workflow
-- Implemented Memory Hierarchy Compliance Workflow, including entity renaming, cluster merging, domain creation, and establishing explicit hierarchical relations in project memory.
-- Refined global memory by deleting project-specific entities and generalizing universal patterns.
-- Updated README.md to reflect the enhanced memory consolidation workflow and promoted global patterns.
-- Updated CHANGELOG.md to include memory optimization and hierarchy compliance efforts.
+### Changed
 
-### Memory Graph Optimization
-- Removed 5 deprecated entities: CommandExecution, logging module, Command Execution Flow, Static Analysis (MyPy), Comprehensive Type Hinting
-- Merged 3 duplicate entities into core components
-- Added 10 new relationships strengthening domain clustering
-- Verified 8 existing relationships ensuring full connectivity
-- Completed comprehensive cluster revalidation
+- **CommanderLayout simplified** — Removed Nodes tab, sys scan panel, and NodesTabContent function. Commander now has: Telnet, BsTool, Scan, Log Viewer tabs only. Node tree stays on left for right-click commands.
+- **App.tsx routes** — `/nodes` now renders `NodesPage` instead of old `NodeBrowser`. Old NodeBrowser preserved at `/nodes/browser`.
+- **embed.go** — Reverted to `web/dist/*` path (was temporarily changed to `web/dist-new/*` during build directory issues).
 
-- [REFACTOR] CommanderWindow MVP Implementation:
-  - Separated UI logic from business logic using Model-View-Presenter pattern
-  - Created NodeTreePresenter to handle node tree UI logic
-  - Moved UI components to `src/commander/ui/` directory
-  - Implemented clear interface contracts between View and Presenter components
-  - Added comprehensive documentation for MVP implementation in `docs/architecture/`
+### Fixed
 
-- [FEATURE] Memory Consolidation Architecture:
-  - Implemented dual-assertion model with project_memory and global_memory MCP servers
-  - Added UAL (Universal Asset Locator) identifier system for cross-context asset referencing
-  - Integrated cryptographic verification process with SHA-256 hashing for memory integrity
-  - Added versioned memory schema with state chaining for consistency validation
+- **handlers.go listReportsHandler** — Fixed broken variable declarations: `reports` was assigned with `=` without prior declaration in scope; `err` was used from wrong scope. Rewrote with proper `var` declarations.
+- **handlers_projects.go** — Added missing `os` import; fixed `nodesConfigPathForProject` call to use `s.` prefix and `strconv.FormatInt` for int64→string conversion.
+- **internal/types/sysfile.go** — Added missing `SlotNum int` and `IsFieldbus bool` fields to `SysFileNode` struct (were in deployed binary but not committed to git).
 
-- [OPTIMIZATION] Memory Operations:
-  - Reduced memory write operations by 32% through optimized entity relationship handling
-  - Improved memory access latency by 40% with enhanced caching mechanisms
-  - Implemented batch memory updates to minimize I/O overhead
+### Commits
 
-- [FIX] Command Queue State Management:
-  - Fixed queue state transitions to prevent re-execution of completed commands
-  - Added atomic operations using threading.Lock for thread safety
-  - Implemented proper worker thread lifecycle management
-  - Added queue depth monitoring and backpressure handling
-  - Resolved memory leaks in command worker cleanup
+| # | Type | Description |
+|---|------|-------------|
+| 1 | feat | Horizontal top nav, NodesPage, colorized logs, double-click tokens, value persistence |
+| 2 | fix | handlers.go listReportsHandler variable scope, handlers_projects.go missing os import, sysfile.go missing struct fields |
 
-- [OPTIMIZATION] Enhanced command queue processing with state management pattern:
-  - Implemented atomic queue operations using threading.Lock
-  - Added queue state tracking (idle/processing)
-  - Optimized worker thread allocation based on queue depth
-  - Reduced processing latency by 40% in benchmark tests
 
-- [FIX] Implemented RPC command logging via signal-slot connection between [`CommandQueue`](src/commander/command_queue.py) and [`LogWriter`](src/commander/log_writer.py):
-  - Added `command_executed` signal emission in `CommandQueue._handle_worker_finished()`
-  - Connected to `LogWriter.log_command_result()` slot
-  - Ensures all RPC command results are properly logged with timestamp, command, and response
-  - Fixes missing log entries for batch-processed commands
-- [FIX] Resolved ValueError crash in command_queue.py by adding specific device response handling for "int from fbc rupi counters" commands from context menus. The fix implements targeted validation for this command format while maintaining the existing processing flow.
-- [IMPROVEMENT] Enhanced error handling in CommandWorker.run() with specific validation for device response formats and improved logging for short responses. Added explicit validation for "int from fbc rupi counters" response pattern to prevent ValueError crashes.
-- [FEATURE] Completed Dual Memory Consolidation Workflow by finalizing the optimization and cleanup of `project_memory` and `global_memory` using Analyze, Optimize, and Document modes. This workflow ensures insights are properly captured, validated, and shared across contexts, with key patterns promoted to global memory for reuse.
+## [v1.1.1] — 2026-06-16
 
-- [FIX] Node resolution: Corrected IP address resolution for hybrid FBC/RPC tokens by implementing fallback logic in [`RpcCommandService.get_token()`](src/commander/services/rpc_command_service.py:58) that allows FBC tokens to be used for RPC commands when no RPC token exists
-- [FEATURE] Dynamic IP extraction from log filenames by scanning directory and file names for IP patterns (e.g., 192-168-0-11) in [`NodeManager._scan_for_dynamic_ips()`](src/commander/node_manager.py:396) and updating token IP addresses accordingly
-- [IMPROVEMENT] Enhanced token type handling with fallback logic and improved validation in [`LogWriter.open_log()`](src/commander/log_writer.py:55) that validates token IP addresses against filename IPs and provides warnings for mismatches
-- [FIX] Fixed log file initialization for context menu actions by ensuring command queue properly passes token information with completion signals and commander window handles command completion with token information
-- [FIX] Fixed command queue re-execution issue where completed commands remained in the queue and were executed again when new commands were added. The fix modifies `CommandQueue.start_processing()` to only process pending commands and implements queue cleanup in `CommandQueue._handle_worker_finished()` to remove completed commands from the queue. This prevents previous commands (e.g., token 162) from re-executing when new commands (e.g., token 182) are triggered.
+### Fixed
 
-- [IMPROVEMENT] Updated memory management workflow documentation in `docs/architecture/memory_management.md` to reflect the improved dual memory consolidation process using `project_memory` and `global_memory` MCP servers.
-- [IMPROVEMENT] Enhanced README.md with a high-level overview of the memory consolidation process, detailing how the system uses dual memory for project-specific and cross-project knowledge.
-- [IMPROVEMENT] Updated documentation workflow to follow the MCP-aligned, command-safe pattern with consistent identity scoping using `document_user`.
-- [IMPROVEMENT] Added sequential reasoning planning using the `sequential_thinking` MCP server for structured documentation updates.
-- [IMPROVEMENT] Incorporated external validation using the `firecrawl_mcp` MCP server to ensure documentation aligns with community standards.
-- [IMPROVEMENT] Updated memory loading, tracking, and persistence steps to use MCP server tools for both project and global memory.
-- [IMPROVEMENT] Finalized memory updates with proper session closure and traceability under the `document_user` identity.
-- [FEATURE] Implemented context menu filtering system to control command visibility based on node type and section. The `ContextMenuFilterService` now manages filtering rules from configuration, allowing for flexible control of context menu items without code changes.
-- [OPTIMIZATION] Removed AP01m command from FBC subclass group context menus through configuration-driven filtering. This optimization reduces clutter and prevents execution of deprecated commands on specific node types.
-- [DOCUMENTATION] Documented the existing functionality for right-click actions on FBC and RPC group nodes in the README.md. This includes the use of `CommanderWindow.process_all_fbc_subgroup_commands` and `process_all_rpc_subgroup_commands` methods, which utilize `NodeManager` to get child log files and `CommandQueue` to dispatch commands with error handling and sequential processing.
-- [FIX] Fixed issue where commands from `.fbc` log files were not displayed in the Telnet terminal. The fix involved removing an explicit `command_queue.start_processing()` call in [`FbcCommandService.queue_fieldbus_command()`](src/commander/services/fbc_command_service.py:53). This change ensures that FBC commands now follow the same processing flow as RPC commands, resulting in their outputs being correctly displayed in the terminal.
-- [FIX] Resolved `UnicodeEncodeError` in logging by configuring log file writing to use UTF-8 encoding, enabling proper handling of Unicode characters such as emojis (e.g., '📝').
-- [REFACTOR] Consolidated Telnet operations and command services into standardized patterns, promoting reusable components to global memory.
-- [FEATURE] Implemented the NetworkSession base class for standardized network operations.
-- [IMPROVEMENT] Standardized error handling with global error codes.
-- [OPTIMIZATION] Optimized the memory graph with a hierarchical service taxonomy.
-- [FIX] Fixed batch token processing in context menus by replacing hardcoded command generation with service method calls in `process_all_fbc_subgroup_commands()` and `process_all_rpc_subgroup_commands()`. This ensures all tokens in a batch are properly processed rather than just the first one.
-- [IMPROVEMENT] Enhanced CHANGELOG.md with detailed technical explanation of the batch token processing fix, including the architectural rationale for using service layer methods instead of direct command queue manipulation. The fix involved modifying `process_all_fbc_subgroup_commands()` to use `fbc_service.queue_fieldbus_command()` and `process_all_rpc_subgroup_commands()` to use `rpc_service.queue_rpc_command()`, which ensures proper command generation, error handling, and logging. This change maintains the batch processing loop structure while leveraging the service layer's capabilities, and removes the need for manual `command_queue.start_processing()` calls since service methods handle that internally.
+- **Template "default" not found** — Report generation failed when no template was specified because the API defaults to `"default"` but no template was seeded in the store. Fixed in `internal/report/generator.go`: when template is `"default"` and not found, fall through with `nil` (use built-in title "LOGReport — {node}"). Custom templates still fail hard if not found. Found via R-LIVE phase.
 
-- [IMPROVEMENT] Composite key handling implemented in LogWriter and FbcCommandService
-- [IMPROVEMENT] Composite key handling resolved ValueError for token ID 162 with protocol 'fbc'
-- [FIX] Resolved TypeError in `TelnetService.status_message_signal` emission:
-  - Modified emit calls in [`telnet_service.py`](src/commander/services/telnet_service.py) at lines 106, 113, 118, 122, 126, and 234 to ensure proper signal parameter passing
+## [v1.1.0] — 2026-06-16
 
-## [2025-08-15] - Memory Optimization
-- **Memory Graph Optimization**: Reduced entity count by 10.1% (228 → 205)
-- **Pattern Promotions**:
-  - HybridTokenResolution: Multi-step token resolution pattern
-  - DynamicIPResolution: IP extraction from filenames pattern
-  - BatchCommandProcessing: Sequential command processing pattern
-- **Documentation**: Updated memory architecture documentation
+### Added
 
-## [Fixed]
-- Fixed log initialization for FBC/RPC commands by implementing composite key (token_id, protocol) handling in LogWriter and FbcCommandService
-- Resolved ValueError for token ID 162 with protocol 'fbc' by correcting key comparison logic
-- [FEATURE] Implemented context menu filtering system to control command visibility based on node type and section. The `ContextMenuFilterService` now manages filtering rules from configuration, allowing for flexible control of context menu items without code changes.
-- [OPTIMIZATION] Removed AP01m command from FBC subclass group context menus through configuration-driven filtering. This optimization reduces clutter and prevents execution of deprecated commands on specific node types.
-- [DOCUMENTATION] Documented the existing functionality for right-click actions on FBC and RPC group nodes in the README.md. This includes the use of `CommanderWindow.process_all_fbc_subgroup_commands` and `process_all_rpc_subgroup_commands` methods, which utilize `NodeManager` to get child log files and `CommandQueue` to dispatch commands with error handling and sequential processing.
-- [FIX] Fixed issue where commands from `.fbc` log files were not displayed in the Telnet terminal. The fix involved removing an explicit `command_queue.start_processing()` call in [`FbcCommandService.queue_fieldbus_command()`](src/commander/services/fbc_command_service.py:53). This change ensures that FBC commands now follow the same processing flow as RPC commands, resulting in their outputs being correctly displayed in the terminal.
-- [FIX] Resolved `UnicodeEncodeError` in logging by configuring log file writing to use UTF-8 encoding, enabling proper handling of Unicode characters such as emojis (e.g., '📝').
-- [REFACTOR] Consolidated Telnet operations and command services into standardized patterns, promoting reusable components to global memory.
-- [FEATURE] Implemented the NetworkSession base class for standardized network operations.
-- [IMPROVEMENT] Standardized error handling with global error codes.
-- [OPTIMIZATION] Optimized the memory graph with a hierarchical service taxonomy.
+- **BsTool Wrapper** — Go wrapper for the proprietary Windows `BsTool.exe` utility. Manages subprocess lifecycle with 10 improvements over the Python original: configurable timeout, structured error types, output encoding detection, line filtering, dry-run mode, graceful shutdown, platform-adaptive executor (Windows real, Linux stub with 501 UNSUPPORTED_PLATFORM), and 96.3% test coverage.
+- **POST /api/v1/bstool/errlog** — New API endpoint for BsTool error log extraction (12th endpoint).
+- **R-LIVE Review Phase** — Mandatory live binary review in dev-cycle loop: reviewer starts binary, curls every endpoint, tests GUI surfaces with real HTTP requests. Auto-re-loop on FAIL with exact failure evidence. Found and fixed StatusBar bug (wrong URL `/api/v1/health` → `/health`, wrong field names `db`/`nodes` → `db_status`/`node_count`).
+- **Creative Integration Testing** — Reviewer doctrine expanded: for any deliverable talking to an external system, reviewer builds a misbehaving mock and tests with real I/O. Mock DNA telnet server built and used to validate Go telnet client (10/12 live tests PASS, 3 edge cases discovered).
+- **`.gitkeep` sentinel** — `web/dist/.gitkeep` committed to prevent empty `//go:embed`; `main.go` startup guard warns if embed contains only `.gitkeep`.
 
-- [FIX] Fixed command queue re-execution issue where completed commands remained in the queue and were executed again when new commands were added. The fix modifies `CommandQueue.start_processing()` to only process pending commands and implements queue cleanup in `CommandQueue._handle_worker_finished()` to remove completed commands from the queue. This prevents previous commands (e.g., token 162) from re-executing when new commands (e.g., token 182) are triggered.
+### Commits (8 additional, 24 total)
 
-- [IMPROVEMENT] Updated memory management workflow documentation in `docs/architecture/memory_management.md` to reflect the improved dual memory consolidation process using `project_memory` and `global_memory` MCP servers.
+| # | Commit | Description |
+|---|--------|-------------|
+| 17 | `feat(bstool)` | BsTool wrapper: client, executor, filter, encoding, errors |
+| 18 | `fix(bstool)` | Nil-slice fix for splitMessages |
+| 19 | `feat(api)` | POST /api/v1/bstool/errlog endpoint + config flags |
+| 20 | `test(bstool)` | Integration tests, 96.3% coverage |
+| 21 | `fix(web)` | StatusBar: wrong URL + field names (found via R-LIVE) |
+| 22 | `fix(embed)` | `.gitkeep` sentinel + startup guard against empty embed |
+| 23 | `fix(report)` | Template "default" not found — non-fatal fallthrough |
+| 24 | `docs` | CHANGELOG, ROADMAP, project_knowledge.json, BLUEPRINT updated |
 
-- [IMPROVEMENT] Enhanced README.md with a high-level overview of the memory consolidation process, detailing how the system uses dual memory for project-specific and cross-project knowledge.
+---
 
-- [IMPROVEMENT] Updated documentation workflow to follow the MCP-aligned, command-safe pattern with consistent identity scoping using `document_user`.自治區外
+## [v1.0.0] — 2026-06-16
 
-- [IMPROVEMENT] Added sequential reasoning planning using the `sequential_thinking` MCP server for structured documentation updates.
+### Initial Go Refactor Release
 
-- [IMPROVEMENT] Incorporated external validation using the `firecrawl_mcp` MCP server to ensure documentation aligns with community standards.
+Complete Go rewrite of the Python LOGReport tool. Single binary with embedded React/TypeScript web UI, REST API, and full Valmet DNA node interaction pipeline.
 
-- [IMPROVEMENT] Updated memory loading, tracking, and persistence steps to use MCP server tools for both project and global memory.
+### Features
 
-- [IMPROVEMENT] Finalized memory updates with proper session closure and traceability under the `document_user` identity.
+- **Telnet Client** — Native Go telnet client for DNA node communication (connect, auth, MOD_LIST, IO_LIST, SYS_INFO, FBC_PRINT, RPC_PRINT)
+- **FBC Parser** — Parse FBC (Fieldbus Configuration) output into typed structs with channel position/type
+- **RPC Parser** — Parse RPC (RUPI Counter) output into typed structs with counter name/value
+- **SysFile Parser** — Parse Valmet DNA .sys binary files into node tree entries (LID, node type, description)
+- **SQLite Store** — Persistent storage for nodes, IO points, reports, and templates with full CRUD
+- **DOCX/JSON Reports** — Generate reports from node scan data in DOCX or JSON format
+- **REST API** — 11 endpoints: health, connect, nodes CRUD, scan, FBC/RPC views, sysfile upload, report generation/download
+- **React Web UI** — Vite + React + TypeScript + Tailwind with AXON dark theme, node browser, IO tables, FBC/RPC grid views, report config/preview/download
+- **Single Binary** — `//go:embed web/dist/*` embeds the production React build into the Go binary; `make build` produces a single deployable artifact
+- **Graceful Shutdown** — SIGINT/SIGTERM handling with configurable timeout
+- **Middleware Stack** — Logging, CORS, content-type enforcement
+- **Unit Tests** — >80% coverage across all internal packages (types, telnet, parser, store, report, api)
+- **Integration Tests** — Full pipeline: telnet→parse→store→report→api→gui
+- **Valmet E2E Harness** — Test framework for real DNA node validation
 
-- [FEATURE] Implemented context menu filtering system to control command visibility based on node type and section. The `ContextMenuFilterService` now manages filtering rules from configuration, allowing for flexible control of context menu items without code changes.
+### Commits (16 total)
 
-- [OPTIMIZATION] Removed AP01m command from FBC subclass group context menus through configuration-driven filtering. This optimization reduces clutter and prevents execution of deprecated commands on specific node types.
+| # | Commit | Description |
+|---|--------|-------------|
+| 1 | `feat: repo init` | Go scaffold, Makefile, CI, docs, agent briefs |
+| 2 | `feat(types)` | Core type definitions: Node, IOPoint, FBCModule, RPCModule, Report, SysFile |
+| 3 | `feat(telnet)` | Native Go telnet client for DNA node communication |
+| 4 | `feat(parser): FBC` | FBC output parser for DNA fieldbus configuration |
+| 5 | `feat(parser): RPC` | RPC counter parser for DNA RUPI counters |
+| 6 | `feat(parser): sysfile` | Sysfile parser for Valmet DNA .sys files |
+| 7 | `feat(store)` | SQLite persistence layer for nodes, IO points, reports |
+| 8 | `feat(report)` | DOCX and JSON report generation from node data |
+| 9 | `feat(api)` | REST API with 11 endpoints + health + graceful shutdown |
+| 10 | `fix(main)` | Wire main.go to start HTTP server with config and graceful shutdown |
+| 11 | `feat(web)` | Vite + React + TypeScript + Tailwind scaffold with AXON dark theme |
+| 12 | `feat(web)` | Node browser, node detail, IO table, layout, error boundary |
+| 13 | `feat(web)` | Report list, report detail, report config, FBC/RPC grid views |
+| 14 | `feat(embed)` | Single-binary with embedded web UI + REST API |
+| 15 | `test(coverage)` | Unit test coverage >80% across 5/6 packages (82% total) |
+| 16 | `test(integration)` | Full pipeline integration tests + Valmet E2E harness |
 
-- [DOCUMENTATION] Documented the existing functionality for right-click actions on FBC and RPC group nodes in the README.md. This includes the use of `CommanderWindow.process_all_fbc_subgroup_commands` and `process_all_rpc_subgroup_commands` methods, which utilize `NodeManager` to get child log files and `CommandQueue` to dispatch commands with error handling and sequential processing.
+---
 
-- [FIX] Fixed issue where commands from `.fbc` log files were not displayed in the Telnet terminal. The fix involved removing an explicit `command_queue.start_processing()` call in [`FbcCommandService.queue_fieldbus_command()`](src/commander/services/fbc_command_service.py:53). This change ensures that FBC commands now follow the same processing flow as RPC commands, resulting in their outputs being correctly displayed in the terminal.
+## [v0.1.0] — 2026-06-15
 
-- [FIX] Resolved `UnicodeEncodeError` in logging by configuring log file writing to use UTF-8 encoding, enabling proper handling of Unicode characters such as emojis (e.g., '📝').
+### Added
+- Initial repository scaffold
+- Go module (`go.mod`) with module path `github.com/falke-ai-circuit/LOGReport`
+- Makefile with build, test, release, web-build, clean targets
+- AGENTS.md with agent delegation rules and commit conventions
+- CLAUDE.md with project overview, build/run instructions, architecture diagram
+- project_knowledge.json with hot cache, architecture map, and gotchas tracking
+- BLUEPRINT.md with full operational blueprint (16-commit sequence, API spec, package structure)
+- ROADMAP.md with phase overview and dependency graph
+- CI workflow (`.github/workflows/ci.yml`) — Go test + lint + build on push
+- Release workflow (`.github/workflows/release.yml`) — goreleaser on tag
+- Agent briefs (`.github/agents/`) — ANALYST, ARCHITECT, CODER, REVIEWER, VALMET
+- `.gitignore` — build/, web/dist/, binaries, venv, pycache
+- README.md with project overview, quick start, API endpoints, architecture diagram
+- LICENSE (MIT)
+- CONTRIBUTING.md with conventional commits, PR template, review requirements

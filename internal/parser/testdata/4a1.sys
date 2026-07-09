@@ -1,0 +1,87 @@
+set XD_HW_BUS=A
+set XD_HW_SWITCH=0
+
+set XD_HW_BOND=DNA_PB1
+
+set XD_HW_ADDR=4a1
+set XD_HW_TOKEN=37
+set XD_IP_ADDR=192.168.0.37
+set XD_HW_MCAST=239.0.171.0
+set XD_NETMASK=0.0.0.0
+
+set XD_MCLOCK=XD+
+set XD_IGNORE_SIGNALS=ON
+set XD_DISK=
+set XD_STDIO=
+
+set XD_DEBUG=1
+set XD_NCU_PROG=
+
+set PATH=D:\DNA\Shared\Runtime;%PATH%
+set STARTER_BACKUP_CMD=D:\DNA\Shared\Runtime\BsTool.exe
+set STARTER_BACKUP_DIR=:s:AB01
+set STARTER_BACKUP_HOST=192.168.0.45
+set STARTER_BACKUP_TRUNCATE=1
+set STARTER_BACKUP_TIME=3,7;15:00;60
+
+PROGRAMFILE=@dna_win_programs
+
+//##############################################################################
+// NCU2
+
+NCU2
+set XD_STDIO=
+
+AUTOSTART=YES
+PRIORITY=REALTIME
+
+PROGRAM=D:\DNA\Shared\ncu2\<NCU2_PROGRAM>
+TITLE=NCU2
+
+//##############################################################################
+// A1O9 OPS Server
+
+Slot 3
+
+AUTOSTART=YES
+PRIORITY=REALTIME
+STARTDELAY=1
+
+DIRECTORY=D:\dna\OA\use\cpu
+PROGRAM=D:\dna\OA\use\program\<CDMGR_PROGRAM>
+TITLE=A1O9 OPS
+PARAMETERS=-ntcpu cdmgr.cpu -modify_event_areas 1
+
+//##############################################################################
+// A1O9 OPS Client for dna user
+
+Slot 4
+
+AUTOSTART=LOGON
+PRIORITY=NORMAL
+STARTDELAY=1
+
+USERNAME=dna
+BACKUPFILES=qemgr.conf
+
+DIRECTORY=D:\dna\OA\use\cpu
+PROGRAM=D:\dna\OA\use\client\<QEMGR_PROGRAM>
+TITLE=OPS Client for dna
+DEPENDENCIES=3
+
+//##############################################################################
+// A1O9 OPS Client for Administrator user
+
+Slot 5
+
+AUTOSTART=LOGONNO
+PRIORITY=NORMAL
+STARTDELAY=1
+
+USERNAME=Administrator
+BACKUPFILES=qemgr.conf
+
+DIRECTORY=D:\dna\OA\use\cpu
+PROGRAM=D:\dna\OA\use\client\<QEMGR_PROGRAM>
+TITLE=OPS Client for Administrator
+DEPENDENCIES=3

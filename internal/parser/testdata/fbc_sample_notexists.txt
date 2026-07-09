@@ -1,0 +1,12 @@
+[2024-01-15 10:32:00]
+print from fbc io structure 1620000
+FBC agent 162
+
+ PIC    5    6    7    8  sum
+-------------------------------
+  0   AI8  BI8  BO8  BI8   4
+  1   Not Exists
+  2   Not Exists
+  3   AI8  BI8  BO8  BI8   4
+
+Total sum: 8 I/O-units, 32 Channels (16 input, 16 output)

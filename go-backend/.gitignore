@@ -1,0 +1,12 @@
+
+# Build output
+dist/
+LOGReporter
+LOGReporter.exe
+server
+
+# Embedded asset copies (generated — do not commit)
+internal/embedfs/web/dist/
+cmd/server/resources/
+
+# Keep resources dir but not contents (real BsTool.exe not committed)

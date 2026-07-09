@@ -1,0 +1,14 @@
+[2025-10-12 12:12:34]
+Command executed: print from fbc rupi counters 1620000
+Getting FIELD BUS error counters from RUPI(8344) from FBC agent 1620000
+
+ PIC    5    6    7    8    9   10   11   12   13   14   15   16  sum
+-----------------------------------------------------------------------
+  0     0    0    0    0    0    0    0    0    0    0    0    0    0
+  1     0    0    0    0    0    0    0    0    0    0    0    0    0
+  2     0    0    0    0    0    0    0    0    0    0    0    0    0
+  3     0    0    0    0    0    0    0    0    0    0    0    0    0
+  4     0    0    0    0    0    0    0    0    0    0    0    0    0
+  5     0    0    0    0    0    0    0    0    0    0    0    0    0
+
+Total sum: 0 counters

@@ -1,167 +1,113 @@
-# Commander Module Development Roadmap
+# ROADMAP — LOGReport v1.0.0
 
-**Version:** 1.0  
-**Created:** 2025-06-08  
-**Timeline:** 2025-06-10 to 2025-07-05  
+## Phase Overview
 
-## Phase 1: Core Architecture Implementation (2025-06-10 to 2025-06-19)
-```mermaid
-gantt
-    title Phase 1: Core Architecture
-    dateFormat  YYYY-MM-DD
-    section GUI Framework
-    Dual-Pane Layout           :active, 2025-06-10, 3d
-    Node Tree Component        : 2025-06-13, 3d
-    Session Tab System         : 2025-06-16, 3d
-    
-    section Backend Services
-    Node Config Loader         : 2025-06-10, 2d
-    Session Manager API        : 2025-06-12, 4d
-    Log Writer Service         : 2025-06-16, 3d
+| Phase | Scope | Agents | Deliverable | Status |
+|-------|-------|--------|-------------|--------|
+| **0** | Repo Init | Coder (OpenHands) | go.mod, Makefile, AGENTS.md, CLAUDE.md, CI, README, LICENSE | ✅ Complete |
+| **1** | Analyst Audit | Analyst | feasibility-audit.md — deep audit of Python codebase | ✅ Complete |
+| **2** | Architect Design | Architect | architecture-blueprint.md, commit-sequence.md, api-spec.md | ✅ Complete |
+| **3** | Core Types | Coder | internal/types/ — Node, IOPoint, FBCModule, RPCModule, Report, SysFile | ✅ Complete |
+| **4** | Telnet Client | Coder | internal/telnet/ — connect, auth, MOD_LIST, IO_LIST, SYS_INFO | ✅ Complete |
+| **5** | FBC Parser | Coder | internal/parser/fbc.go — parse FBC output → typed structs | ✅ Complete |
+| **6** | RPC Parser | Coder | internal/parser/rpc.go — parse RPC output → typed structs | ✅ Complete |
+| **7** | SysFile Parser | Coder | internal/parser/sysfile.go — parse .sys binary → node tree | ✅ Complete |
+| **8** | SQLite Store | Coder | internal/store/ — schema, CRUD, migrations | ✅ Complete |
+| **9** | Report Generator | Coder | internal/report/ — template engine, DOCX/JSON output | ✅ Complete |
+| **10** | REST API + Health | Coder | internal/api/ — net/http mux, /api/v1/* handlers, /health | ✅ Complete |
+| **11** | Web UI Scaffold | Coder | web/ — Vite + React + TypeScript + Tailwind, AXON dark theme | ✅ Complete |
+| **12** | Web UI Node View | Coder | web/ — node browser, IO list table, FBC/RPC views | ✅ Complete |
+| **13** | Web UI Report View | Coder | web/ — report config, preview, download | ✅ Complete |
+| **14** | Embed Integration | Coder | //go:embed web/dist/*, Makefile npm build + go build | ✅ Complete |
+| **15** | Unit Tests | Coder | internal/*_test.go across all packages, >80% coverage | ✅ Complete |
+| **16** | Integration Tests | Coder | test/ — full pipeline: telnet→parse→store→report→api→gui | ✅ Complete |
+| **17** | Docs + Release | Coder | README, CONTRIBUTING, CHANGELOG, git tag v1.0.0 | ✅ Complete |
+| **18** | BsTool Wrapper | Coder | internal/bstool/ — Go wrapper for BsTool.exe, 96.3% coverage | ✅ Complete |
+| **19** | BsTool API | Coder | POST /api/v1/bstool/errlog endpoint + config flags | ✅ Complete |
+| **20** | BsTool Integration | Coder | Integration tests, platform-adaptive executor | ✅ Complete |
+| **R** | R-LIVE Review | Reviewer | Live binary review: start binary, curl all endpoints, test GUI, auto-re-loop | ✅ Complete |
+| **V** | Valmet E2E | Valmet | Real DNA node testing, LightRAG cross-ref, fieldbus validation | ⏳ Pending |
+| **F** | Final Review | Reviewer | Full test suite, regression probes, all gates | ⏳ Pending |
+
+---
+
+## Dependency Graph
+
+```
+00 REPO INIT
+  │
+  ▼
+01 ANALYST AUDIT ──► 02 ARCHITECT DESIGN
+                        │
+                        ▼
+                  03 CORE TYPES ─────────────────────────────────────┐
+                    │                                                │
+                    ├──► 04 TELNET ──► 05 FBC ──► 06 RPC ──► 07 SYSFILE
+                    │       │            │          │           │
+                    │       └────────────┴──────────┴───────────┘
+                    │                    │
+                    │                    ▼
+                    ├──► 08 SQLITE ◄─────┘ (needs parsed types)
+                    │       │
+                    │       ▼
+                    ├──► 09 REPORT GEN (needs store + types)
+                    │       │
+                    │       ▼
+                    ├──► 10 REST API (needs all above)
+                    │       │
+                    │       ▼
+                    ├──► 11 WEB SCAFFOLD ──► 12 NODE VIEW ──► 13 REPORT VIEW
+                    │                                                │
+                    │       ┌────────────────────────────────────────┘
+                    │       ▼
+                    ├──► 14 EMBED (needs web/dist + go build)
+                    │       │
+                    │       ▼
+                    ├──► 15 UNIT TESTS (needs all internal/)
+                    │       │
+                    │       ▼
+                    ├──► 16 INTEGRATION (needs full binary)
+                    │       │
+                    │       ▼
+                    ├──► 17 DOCS + RELEASE ✅ v1.0.0
+                    │
+                    ▼
+              V VALMET E2E ──► F FINAL REVIEW
 ```
 
-### 👥 Task Breakdown: Core Architecture
+---
 
-1. **Interface Framework**
-   - [ ] Implement dual-pane resizable layout (30/70 split)
-   - [ ] Create collapsible node tree widget
-   - [ ] Design session tab container with persistent state
+## Timeline
 
-2. **Node Management System**
-   - [ ] Parse and validate nodes.json configuration
-   - [ ] Render node hierarchy with status indicators
-   - [ ] Implement context-sensitive token display
-   - [ ] Create node CRUD operations UI
+| Phase | Est. Time | Status |
+|-------|-----------|--------|
+| 0-17 | 17 turns | ✅ Complete — v1.0.0 released |
+| V | 1 turn | ⏳ Pending — Valmet E2E validation |
+| F | 1 turn | ⏳ Pending — Final review |
 
-3. **Session Management**
-   - [ ] Session registry service
-   - [ ] Protocol connection routing
-   - [ ] Core event bus system
+**v1.0.0 delivered: 17 commits, single binary, embedded web UI, REST API, >80% test coverage.**
 
-## Phase 2: Session Implementation (2025-06-20 to 2025-06-28)
-```mermaid
-gantt
-    title Phase 2: Session Implementation
-    dateFormat  YYYY-MM-DD
-    section Telnet
-    Protocol Handler      :active, 2025-06-20, 3d
-    Command Processing    : 2025-06-23, 2d
-    Console UI            : 2025-06-25, 2d
-    
-    section VNC
-    VNC Embedding         : 2025-06-21, 3d
-    Clipboard Capture     : 2025-06-24, 3d
-    OCR Service           : 2025-06-27, 2d
-    
-    section FTP/TFTP
-    File Tree UI        : 2025-06-22, 2d
-    Transfer Protocol   : 2025-06-24, 3d
-    File Preview        : 2025-06-27, 2d
-```
+---
 
-### 🖥️ Task Breakdown: Session Implementation
+## Post-v1.0.0 Roadmap
 
-1. **Telnet Module**
-   - [ ] Telnet client with TLS support
-   - [ ] Command parser with token substitution
-   - [ ] ANSI color rendering console
-   - [ ] Command history management
+### Phase V — Valmet E2E Validation (Pending)
+- Real DNA node connectivity testing
+- LightRAG cross-reference validation
+- Fieldbus configuration verification
+- Performance benchmarks on production hardware
 
-2. **VNC Module**
-   - [ ] Embedded VNC viewer component
-   - [ ] Clipboard synchronization
-   - [ ] Screenshot capture to clipboard
-   - [ ] OCR text extraction service
+### Phase F — Final Review (Pending)
+- Full regression test suite
+- Security audit (no hardcoded secrets, input validation)
+- Documentation completeness check
+- Binary size optimization
 
-3. **FTP/TFTP Module**
-   - [ ] Remote file tree explorer
-   - [ ] Secure file transfer handlers
-   - [ ] Text file preview component
-   - [ ] Content comparison tools
-
-## Phase 3: Log Integration & Security (2025-06-29 to 2025-07-05)
-```mermaid
-gantt
-    title Phase 3: Log Integration & Security
-    dateFormat  YYYY-MM-DD
-    section Log Handling
-    LSR Formatter         :active, 2025-06-29, 2d
-    Auto-Header System    : 2025-07-01, 2d
-    Streaming Writer      : 2025-07-03, 2d
-    
-    section Security
-    Credential Vault      : 2025-06-30, 3d
-    Session Encryption    : 2025-07-03, 3d
-    Input Sanitization    : 2025-07-06, 2d
-```
-
-### 🔐 Task Breakdown: Log & Security
-
-1. **Log Integration**
-   - [ ] LSR-compliant formatter service
-   - [ ] Log writing API for all protocols
-   - [ ] Log rotation manager
-   - [ ] Progress tracking indicators
-
-2. **Security Implementation**
-   - [ ] AES-256 credential storage
-   - [ ] TLS 1.3 for Telnet/FTP
-   - [ ] SSH tunneling for VNC
-   - [ ] Command input sanitization
-   - [ ] Session token rotation
-
-## Milestones & Deliverables
-```mermaid
-pie
-    title Phase Completion Weighting
-    "Phase 1" : 35
-    "Phase 2" : 45
-    "Phase 3" : 20
-```
-
-### 🎯 Acceptance Criteria
-1. **MVP Release (2025-06-24):**
-   - Working Telnet session with logging
-   - Basic node tree implementation
-   - Core command processing
-   
-2. **Feature Complete (2025-07-03):**
-   - All three session types functional
-   - Log writing to all destinations
-   - Security implementation
-   
-3. **RC Release (2025-07-05):**
-   - Full test coverage
-   - Performance benchmarks met
-   - Documentation complete
-
-## Dependency Management
-| Component          | Dependencies                     | Resolution Plan              |
-|--------------------|----------------------------------|------------------------------|
-| VNC OCR Processing | Tesseract 5.2+                   | Include in package installer |
-| TLS Implementation | PyOpenSSL 3.0+                   | Add to requirements          |
-| FTP Client         | ftplib (stdlib)                  | Use standard library         |
-| GUI Framework      | PyQt6 6.5+                       | Pin in requirements          |
-
-## Risk Management
-1. **Protocol Compatibility**: Will implement adapter pattern for VNC
-2. **Performance Concerns**: Added code profiling points
-3. **OCR Accuracy**: Added fallback to manual selection
-4. **Security Validation**: Penetration testing scheduled
-
-## Measurement Plan
-1. **Quality Metrics**:
-   - Test coverage ≥ 85%
-   - Lint score: 9.5/10
-   - Static analysis: zero critical issues
-   
-2. **Performance Metrics**:
-   - Telnet response: < 200ms
-   - VNC capture: < 800ms
-   - FTP transfer: < 1MB/s
-
-3. **Adoption Tracking**:
-   - Session success rate
-   - Log retention compliance
-   - Connection error ratios
-```
+### Future Enhancements (Unplanned)
+- **Pure-Go SQLite** — Replace CGo sqlite3 with a pure-Go driver for easier cross-compilation
+- **gRPC API** — Add gRPC endpoint alongside REST for agent-to-agent communication
+- **Report Templates** — User-customizable DOCX templates via web UI
+- **Multi-Node Reports** — Aggregate reports spanning multiple DNA nodes
+- **Historical Snapshots** — Time-series storage of IO point values for trend analysis
+- **Docker Image** — Official container image for deployment
+- **Helm Chart** — Kubernetes deployment manifest

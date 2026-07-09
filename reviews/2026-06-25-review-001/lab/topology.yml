@@ -1,0 +1,36 @@
+name: logreport-test-lab
+topology:
+  nodes:
+    # LOGReport Go app — the system under test
+    logreport:
+      kind: linux
+      image: golang:1.25-alpine
+      binds:
+        - ../../../../logreport-bin:/app/logreport-bin
+        - ../../../../logreport.db:/app/logreport.db
+        - ../fixtures/logs:/app/test-logs
+      ports:
+        - 8642:8080
+      cmd: "/app/logreport-bin --port 8080 --db-path /app/logreport.db"
+      exec:
+        - cmd: chmod +x /app/logreport-bin
+
+    # Mock DNA node — simulates Valmet DNA telnet server with FBC/RPC protocol
+    mock-dna-node:
+      kind: linux
+      image: python:3.12-slim
+      binds:
+        - ../mocks/dna_telnet_mock.py:/server.py
+      cmd: "python /server.py --port 23"
+
+    # Karate test runner with Chrome for browser tests
+    karate:
+      kind: linux
+      image: karatelabs/karate-chrome:latest
+      binds:
+        - ../:/tests
+        - ../../results:/target/karate-reports
+
+  links:
+    - endpoints: ["logreport:eth1", "mock-dna-node:eth1"]
+    - endpoints: ["karate:eth1", "logreport:eth1"]

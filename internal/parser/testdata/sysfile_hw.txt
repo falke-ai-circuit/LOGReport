@@ -1,0 +1,53 @@
+// HW     LID           PARAMETER          COMMENT
+
+:e:hw:161 AP01		pxe:sys-csg2	// AP01 PCS
+:e:hw:162 AP01_m2	-               // FBC2
+:e:hw:163 AP01_m3       -               // FBC3
+
+:e:hw:181 AP02_main	pxe:sys-csg2	// AP02 Main PCS
+:e:hw:182 AP02_m2	-               // FBC2
+:e:hw:183 AP02_m3       -               // FBC3
+
+:e:hw:381 AP02_reserve	pxe:sys-csg2	// AP02 Reserve PCS
+:e:hw:382 AP02_r2	-               // FBC2
+:e:hw:383 AP02_r3       -               // FBC3
+
+:e:hw:1a1 AP03_main	pxe:sys-csg2	// AP03 Main PCS
+:e:hw:1a2 AP03_m2	-               // FBC2
+:e:hw:1a3 AP03_m3       -               // FBC3
+
+:e:hw:3a1 AP03_reserve	pxe:sys-csg2	// AP03 Reserve PCS
+:e:hw:3a2 AP03_r2	-               // FBC2
+:e:hw:3a3 AP03_r3       -               // FBC3
+
+:e:hw:1c1 AP04		pxe:sys-csg2	// AP04 PCS
+:e:hw:1c2 AP04_m2	-               // FBC2
+:e:hw:1c3 AP04_m3       -               // FBC3
+
+:e:hw:1e1 AP05		pxe:sys-csg2	// AP05 PCS
+:e:hw:1e2 AP05_m2	-               // FBC2
+:e:hw:1e3 AP05_m3       -               // FBC3
+
+:e:hw:201 AP06		pxe:sys-csg2	// AP06 PCS
+:e:hw:202 AP06_m2	-               // FBC2
+:e:hw:203 AP06_m3       -               // FBC3
+
+:e:hw:221 AP07_main	pxe:sys-csg2	// AP07 Main PCS
+:e:hw:222 AP07_m2	-               // FBC2
+
+:e:hw:421 AP07_reserve	pxe:sys-csg2	// AP07 Reserve PCS
+:e:hw:422 AP07_r2	-               // FBC2
+
+:e:hw:501 AL01		pxe:sys-csg2	// AL01 Node
+:e:hw:502 AL01_t1	-               // LIS Token 1
+:e:hw:503 AL01_t2       -               // LIS Token 2
+
+:e:hw:511 AL02		pxe:sys-csg2	// AL02 Node
+:e:hw:512 AL02_t1	-               // LIS Token 1
+
+:e:hw:521 AL03		pxe:sys-csg2	// AL03 Node
+
+:e:hw:531 AL08		pxe:sys-csg2	// AL08 Node
+:e:hw:532 AL08_t1	-               // LIS Token 1
+:e:hw:533 AL08_t2       -               // LIS Token 2
+:e:hw:534 AL08_t3       -               // LIS Token 3
