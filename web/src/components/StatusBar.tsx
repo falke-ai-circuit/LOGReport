@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Activity, Server, Database, Cpu, FolderOpen } from 'lucide-react';
+import { Activity, Server, Database, Cpu, FolderOpen, Loader2 } from 'lucide-react';
 import { useActiveProject, useProjects } from '../hooks/useActiveProject';
+import type { QueueStatusResponse } from '../types/api';
 
 interface HealthStatus {
   status: string;
@@ -14,6 +15,7 @@ export default function StatusBar() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
   const { activeProjectId, activeLogRoot } = useActiveProject();
   const { projects } = useProjects();
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
@@ -46,6 +48,47 @@ export default function StatusBar() {
       clearInterval(interval);
     };
   }, []);
+
+  // Poll queue status to show currently running command in the status bar
+  // Faster when active (1s), slower when idle (5s) to reduce requests
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    async function pollQueue() {
+      try {
+        const res = await fetch('/api/v1/commandqueue/status');
+        if (!res.ok) return;
+        const data: QueueStatusResponse = await res.json();
+        setQueueStatus(data);
+      } catch {
+        // ignore
+      }
+    }
+
+    const isActive = queueStatus && (queueStatus.total > 0 || queueStatus.state === 'running' || queueStatus.state === 'paused');
+    interval = setInterval(pollQueue, isActive ? 1000 : 5000);
+    pollQueue();
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [queueStatus?.state, queueStatus?.total]);
+
+  // Build current command label
+  const currentCmd = queueStatus?.commands?.[queueStatus.current];
+  const cmdLabel = currentCmd
+    ? (() => {
+        const parts: string[] = [];
+        parts.push(`${(currentCmd.type || '').toUpperCase()}`);
+        if (currentCmd.node_name) parts.push(currentCmd.node_name);
+        if (currentCmd.token_id) parts.push(`token ${currentCmd.token_id}`);
+        return parts.join(' ');
+      })()
+    : '';
+
+  const isRunning = queueStatus?.state === 'running';
+  const isPaused = queueStatus?.state === 'paused';
+  const hasQueue = queueStatus && queueStatus.total > 0;
 
   return (
     <div style={{
@@ -85,6 +128,30 @@ export default function StatusBar() {
               {health.db_status}
             </span>
           </>
+        )}
+        {/* Current queue command — always visible when queue is active */}
+        {hasQueue && (isRunning || isPaused) && (
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: isRunning ? 'var(--accent)' : '#f59e0b',
+            fontWeight: 500,
+          }}>
+            {isRunning && <Loader2 size={11} className="spin" />}
+            {isPaused && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />}
+            {queueStatus.current + 1}/{queueStatus.total}: {cmdLabel} — {queueStatus.remaining} remaining
+          </span>
+        )}
+        {hasQueue && queueStatus?.state === 'done' && (
+          <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            ✓ Queue complete — {queueStatus.total} commands
+          </span>
+        )}
+        {hasQueue && queueStatus?.state === 'idle' && (
+          <span style={{ color: 'var(--text-muted)' }}>
+            Queue: {queueStatus.total} commands ready
+          </span>
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

@@ -367,22 +367,22 @@ func TestFilterOutput(t *testing.T) {
 		{
 			name:     "texitoggleure artifact",
 			input:    "some texitoggleure data here",
-			expected: "some data here",
+			expected: "some  data here", // texitoggleure removed, spaces around it remain
 		},
 		{
-			name:     "multiple spaces",
+			name:     "multiple spaces preserved (ASCII table formatting)",
 			input:    "hello    world		tab",
-			expected: "hello worldtab", // tabs (\x09) are removed by control char filter before space collapse
+			expected: "hello    worldtab", // tabs (\x09) removed; spaces preserved for table alignment
 		},
 		{
-			name:     "leading whitespace after newline",
+			name:     "leading whitespace after newline preserved (ASCII table formatting)",
 			input:    "line1\n    indented line\n  another",
-			expected: "line1\nindented line\nanother",
+			expected: "line1\n    indented line\n  another", // whitespace preserved for table column alignment
 		},
 		{
 			name:     "combined artifacts",
 			input:    "\x1b[1mHeader\x1b[0m\n    texitoggleure  \x00data\x1b[31m\x1b[0m\n  more",
-			expected: "Header\ndata\nmore",
+			expected: "Header\n      data\n  more", // texitoggleure removed, spaces preserved (4 from indent + 2 after texitoggleure = 6)
 		},
 		{
 			name:     "ansi clear line code",

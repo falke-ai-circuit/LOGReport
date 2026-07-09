@@ -195,11 +195,16 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/commandqueue/status", s.handleQueueStatus)
 	mux.HandleFunc("POST /api/v1/commandqueue/batch", s.handleQueueBatch)
 	mux.HandleFunc("POST /api/v1/commandqueue/batch-node", s.handleQueueBatchNode)
+	mux.HandleFunc("POST /api/v1/commandqueue/remove", s.handleQueueRemove)
+	mux.HandleFunc("POST /api/v1/commandqueue/reorder", s.handleQueueReorder)
+	mux.HandleFunc("POST /api/v1/commandqueue/clear", s.handleQueueClear)
+	mux.HandleFunc("POST /api/v1/commandqueue/restart", s.handleQueueRestart)
 
 	// Log files
 	mux.HandleFunc("GET /api/v1/logs/{nodeName}", s.handleListLogs)
 	mux.HandleFunc("GET /api/v1/logs/{nodeName}/{fileName}", s.handleReadLog)
 	mux.HandleFunc("POST /api/v1/logs/{nodeName}", s.handleWriteLog)
+	mux.HandleFunc("POST /api/v1/logs/save", s.handleLogSave)
 
 	// Log root directory scanning
 	mux.HandleFunc("GET /api/v1/logs/list", s.handleListLogRoot)

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -174,6 +173,8 @@ type Server struct {
 	logRootDir   string                 // Commander: root dir for log files
 	lisdiagConns map[string]*lisdiag.Client // cached LisDiag connections
 	lisdiagMu    sync.Mutex                // protects lisdiagConns
+	circuitBreaker *commandqueue.CircuitBreaker // Commander: protects against cascading failures
+	version      string                    // build version (injected via ldflags)
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.
@@ -188,7 +189,13 @@ func NewServer(s *store.Store, cfg *server.Config, embedFS embed.FS, bstoolClien
 		commandQueue: commandqueue.NewQueue(nil, nil),
 		logRootDir:   "logs",
 		lisdiagConns: make(map[string]*lisdiag.Client),
+		circuitBreaker: commandqueue.NewCircuitBreaker(),
 	}
+}
+
+// SetVersion sets the build version string (injected via ldflags in main.go).
+func (s *Server) SetVersion(v string) {
+	s.version = v
 }
 
 // logRoot returns the log root directory, ensuring it exists.
@@ -215,6 +222,10 @@ func (s *Server) StartTime() time.Time {
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	h := server.GetHealth(true, s.startTime)
+	// Override version with the build-injected version if set
+	if s.version != "" {
+		h.Version = s.version
+	}
 	// Override node_count with nodesconfig count (actual configured nodes, not SQLite scan nodes)
 	if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
 		h.NodeCount = len(configs)
@@ -1144,8 +1155,12 @@ func (s *Server) getReportHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			w.Header().Set("Content-Type", contentType)
+			disposition := "inline"
+			if rpt.Format == types.FormatDOCX || rpt.Format == types.FormatJSON {
+				disposition = "attachment"
+			}
 			w.Header().Set("Content-Disposition",
-				fmt.Sprintf(`inline; filename="%s"`, filepath.Base(rpt.FilePath)))
+				fmt.Sprintf(`%s; filename="%s"`, disposition, filepath.Base(rpt.FilePath)))
 			http.ServeFile(w, r, rpt.FilePath)
 			return
 		}
@@ -1195,6 +1210,7 @@ type bstoolErrLogRequest struct {
 	// one-shot TCPTransport and uses it for this request.
 	TCPHost string `json:"tcp_host,omitempty"`
 	TCPPort int    `json:"tcp_port,omitempty"`
+	NodeIP  string `json:"node_ip,omitempty"` // IP address for log file naming
 }
 
 func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
@@ -1276,34 +1292,22 @@ func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
 		}
 		output := sb.String()
 
-		// Look up IP from nodes.json
-		ipAddress := ""
-		if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
-			for _, c := range configs {
-				if c.Name == req.ServerName || extractStationNameFromConfig(c.Name) == req.ServerName {
-					ipAddress = c.IPAddress
-					break
+		// Look up IP from nodes.json, or use node_ip from request
+		ipAddress := req.NodeIP
+		if ipAddress == "" {
+			if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+				for _, c := range configs {
+					if c.Name == req.ServerName || extractStationNameFromConfig(c.Name) == req.ServerName {
+						ipAddress = c.IPAddress
+						break
+					}
 				}
 			}
 		}
 
 		// Auto-set log root
-		lr := s.logRoot()
-		if lr == "" || lr == "logs" {
-			if !globalSettings.loaded {
-				s.initSettings()
-			}
-			st := getSettings()
-			if st.LogRoot != "" {
-				lr = st.LogRoot
-			} else if runtime.GOOS == "windows" {
-				lr = "C:\\temp\\logreport-output"
-			} else {
-				lr = "/tmp/logreport-output"
-			}
-			s.SetLogRoot(lr)
-			os.MkdirAll(lr, 0755)
-		}
+		lr := s.resolveLogRoot()
+		os.MkdirAll(lr, 0755)
 
 		lw := logwriter.New(lr)
 		if err := lw.WriteOutputWithIP(req.ServerName, "LOG", "", output, ipAddress); err != nil {

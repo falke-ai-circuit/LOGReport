@@ -12,14 +12,18 @@ export interface BsToolPanelProps {
   pendingServerName?: string | null;
   onServerNameConsumed?: () => void;
   currentNodeName?: string;
+  pendingNodeIp?: string | null;
   onOutputChange?: (output: string) => void;
+  onExecutionComplete?: () => void;
 }
 
 export default function BsToolPanel({
   pendingServerName,
   onServerNameConsumed,
   currentNodeName,
+  pendingNodeIp,
   onOutputChange,
+  onExecutionComplete,
 }: BsToolPanelProps) {
   const [bstoolPath, setBstoolPath] = useState(() => localStorage.getItem('bstoolPath') || '');
   const [commLine, setCommLine] = useState(() => localStorage.getItem('bstoolCommLine') || 'AB01');
@@ -51,7 +55,7 @@ export default function BsToolPanel({
 
   // ─── Execute via WebSocket ───────────────────────────────────
 
-  async function executeBsTool(srvName: string) {
+  async function executeBsTool(srvName: string, nodeIp?: string) {
     if (!srvName) {
       setError('Server name is required');
       return;
@@ -79,6 +83,7 @@ export default function BsToolPanel({
             } else if (msg.type === 'done') {
               appendOutput(`[Done — exit code: ${msg.exit_code ?? 0}]`);
               setExecuting(false);
+              onExecutionComplete?.();
             } else if (msg.type === 'error' && msg.message) {
               setError(msg.message);
               appendOutput(`[ERROR] ${msg.message}`);
@@ -91,29 +96,29 @@ export default function BsToolPanel({
 
         ws.onerror = () => {
           // Fall back to REST
-          executeRest(srvName);
+          executeRest(srvName, nodeIp);
         };
 
         ws.onopen = () => {
-          const msg: BsToolWSMessage = { action: 'execute', server_name: srvName };
+          const msg: BsToolWSMessage = { action: 'execute', server_name: srvName, node_ip: nodeIp };
           ws.send(JSON.stringify(msg));
         };
       } else {
-        const msg: BsToolWSMessage = { action: 'execute', server_name: srvName };
+        const msg: BsToolWSMessage = { action: 'execute', server_name: srvName, node_ip: nodeIp };
         wsRef.current.send(JSON.stringify(msg));
       }
     } catch {
       // Fall back to REST
-      executeRest(srvName);
+      executeRest(srvName, nodeIp);
     }
   }
 
-  async function executeRest(srvName: string) {
+  async function executeRest(srvName: string, nodeIp?: string) {
     try {
       const res = await fetch('/api/v1/bstool/errlog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ server_name: srvName }),
+        body: JSON.stringify({ server_name: srvName, tcp_host: '', tcp_port: 0, node_ip: nodeIp }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ message: 'BsTool failed' }));
@@ -124,6 +129,7 @@ export default function BsToolPanel({
         appendOutput(data.raw_output);
       }
       appendOutput(`[Done — exit code: ${data.exit_code ?? 0}]`);
+      onExecutionComplete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'BsTool execution failed');
       appendOutput(`[ERROR] ${err instanceof Error ? err.message : 'BsTool failed'}`);
@@ -137,11 +143,11 @@ export default function BsToolPanel({
   useEffect(() => {
     if (pendingServerName) {
       setServerName(pendingServerName);
-      executeBsTool(pendingServerName);
+      executeBsTool(pendingServerName, pendingNodeIp || undefined);
       onServerNameConsumed?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingServerName]);
+  }, [pendingServerName, pendingNodeIp]);
 
   // ─── Auto-scroll ─────────────────────────────────────────────
 
@@ -165,9 +171,10 @@ export default function BsToolPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token_type: 'BSTOOL',
+          token_type: 'LOG',
           token_id: 'errlog',
           output: outputText,
+          node_ip: pendingNodeIp || '',
         }),
       });
       if (!res.ok) throw new Error('Write failed');
@@ -254,7 +261,7 @@ export default function BsToolPanel({
           value={serverName}
           onChange={(e) => setServerName(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') executeBsTool(serverName);
+            if (e.key === 'Enter') executeBsTool(serverName, pendingNodeIp || undefined);
           }}
           style={{
             flex: 1,
@@ -271,7 +278,7 @@ export default function BsToolPanel({
         <button
           className="btn btn-primary"
           style={{ fontSize: '12px', padding: '4px 12px' }}
-          onClick={() => executeBsTool(serverName)}
+          onClick={() => executeBsTool(serverName, pendingNodeIp || undefined)}
           disabled={executing || !serverName.trim()}
         >
           {executing ? (

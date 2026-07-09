@@ -372,6 +372,8 @@ func (sm *SessionManager) GetSession(sessionID string) (*Session, bool) {
 }
 
 // GetOutput returns the accumulated output buffer for a session.
+// The output is already filtered when stored in the buffer (by SendCommand),
+// so we return it directly without re-filtering to avoid double-processing.
 func (sm *SessionManager) GetOutput(sessionID string) (string, error) {
 	sm.mu.RLock()
 	sess, ok := sm.sessions[sessionID]
@@ -382,7 +384,7 @@ func (sm *SessionManager) GetOutput(sessionID string) (string, error) {
 
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
-	return FilterOutput(sess.outputBuffer.String()), nil
+	return sess.outputBuffer.String(), nil
 }
 
 // ClearOutput resets the output buffer for a session.

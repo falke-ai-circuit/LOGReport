@@ -222,6 +222,17 @@ const (
 	CmdGetLogData uint16 = 0x1F // 31  — retrieve log data chunk
 	CmdACK        uint16 = 0x06 // 6   — acknowledge (handshake)
 	CmdNACK       uint16 = 0x15 // 21  — negative acknowledge (handshake retry)
+
+	// File system commands (from BsTool.exe disassembly + live BU verification 2026-06-30)
+	CmdHandshake  uint16 = 0x000C // handshake — send 3x, BU responds param=0x02CC
+	CmdFileOpen   uint16 = 0x0000 // open file on remote BU
+	CmdFileClose  uint16 = 0x0001 // close file handle
+	CmdFileRead   uint16 = 0x0002 // read file chunk (param=chunk size, default 448)
+	CmdReadDir    uint16 = 0x0014 // open directory listing (returns dir context handle in param)
+	CmdGetDirEntry uint16 = 0x0016 // get next directory entry (pass response param as cursor; stop when param=0)
+	CmdGetHWByIP  uint16 = 0x0066 // get hardware info by IP address
+	CmdSendCmd    uint16 = 0x000A // zzSendCmd — generic command send
+	CmdFileInit   uint16 = 0x0005 // file system init
 )
 
 // ─── Error State Codes ───────────────────────────────────────────────────────

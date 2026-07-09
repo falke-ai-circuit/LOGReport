@@ -1,5 +1,50 @@
 # Changelog
 
+## [v3.9.12] — 2026-07-07
+
+### Added
+
+- **Remote BU scan: BsTool.exe subprocess fallback** — When the native Go TCP protocol fails (returns 0 files or error), the scan-nodes handler now falls back to running `BsTool.exe -ls` and `BsTool.exe -cat` as subprocesses. This guarantees compatibility with any BU that BsTool.exe supports. The subprocess inherits the parent environment (critical: `COMMUNICATION_TYPES` system env var must be present) and adds `COMMUNICATION_LINE`. Working directory is set to BsTool.exe's location.
+- **Remote BU scan: reconnect before each file operation** — Updated `FileTransport.ListDir` and `ReadFile` to reconnect (close + fresh handshake) before each operation, matching BsTool.exe's `zzInitTcpLineIO` behavior.
+- **New file: `internal/bstool/subprocess.go`** — `SubprocessRetrieveSysFiles`, `subprocessListDir`, `subprocessCatFile`, `parseListOutput` functions.
+
+### Fixed
+
+- **Remote BU scan now works on Vegas VM** — The native Go TCP protocol returns `param=0` for READ_DIR on this BU (buc_16.20.exe), but BsTool.exe subprocess successfully lists and retrieves 35 .sys files → 99 NodeConfigs. The subprocess fallback bridges the gap.
+- **Environment variable inheritance** — `exec.Command.Env` was replacing the entire environment instead of appending. Fixed: `cmd.Env = append(os.Environ(), "COMMUNICATION_LINE=...")` to inherit system env vars like `COMMUNICATION_TYPES`.
+
+## [v3.9.11] — 2026-07-07
+
+### Added
+
+- **Settings: Node Filter** — New `node_filter` field in Settings page. Comma-separated station prefixes to include/exclude. Examples: `AP,AL` = only AP+AL stations, `AP,AL,-AL08` = AP+AL except AL08, `-A1O,-B1O` = all except A1O+B1O. Leave empty for all nodes. Applied during scan-nodes for both local_dir and remote_bu methods.
+
+### Fixed
+
+- **Scan nodes: remote_bu is default** — `scan_method` defaults to `remote_bu` (BsTool TCP). No automatic fallback to local directory. User selects method in Settings.
+- **Scan nodes: hostname support** — BU host field accepts hostnames (e.g. `localhost`, `bu.internal.example.com`), not just IP addresses. TCP transport uses `net.Dial` which resolves hostnames.
+- **Scan nodes: commLine default** — Communication line defaults to `AB01` if not set in settings.
+
+## [v3.9.10] — 2026-07-07
+
+### Fixed
+
+- **Version display** — Health endpoint now returns the build-injected version (via `main.version` ldflag) instead of hardcoded "1.0.0". CLI `--version` prints `LOGReport v3.9.10 (windows/amd64)`. Frontend StatusBar and Dashboard show the real version from health API.
+- **Commander: command input visibility** — Changed `overflow: hidden` to `overflow: auto` on the tab content container so the TelnetTerminal command input bar is always visible at the bottom and not clipped.
+- **Commander: Log Viewer hint text** — Updated from "Double-click a file" to "Click a file" to match the new single-click behavior.
+
+## [v3.9.9] — 2026-07-07
+
+### Added
+
+- **Settings: Scan Method toggle** — New `scan_method` setting in Settings page with dropdown: "Remote BU (BsTool TCP Protocol)" (default) or "Local Directory (.sys files on disk)". No automatic fallback between methods — the selected method is used exclusively.
+- **Nodes page: Clear Nodes button** — Two-word button "Clear Nodes" in the Nodes page toolbar that removes all detected node configs from the project with a confirmation dialog.
+
+### Fixed
+
+- **Double .log files** — LOG-type tokens were creating duplicate tree entries and duplicate files on disk because `buildFileName` for LOG type doesn't include token ID (`{station}_{ip}.log`), so multiple LOG tokens produced identical filenames. Now deduplicated: one LOG file per station+IP combination. Fixed in `BuildTree`, `BuildFileTree` (3 locations), and `createLogStructure`.
+- **Commander: single-click opens files** — Clicking on .li/.fbc/.rpc/.log files in the Commander node tree now opens file content on the right side (Log Viewer tab) immediately, instead of requiring a double-click.
+
 ## [v3.9.3] — 2026-06-29
 
 ### Fixed

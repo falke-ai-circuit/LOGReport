@@ -5,6 +5,7 @@ package commandqueue
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -267,6 +268,202 @@ func (q *Queue) Reset() {
 	q.state = QueueIdle
 }
 
+// EnrichedStatus returns queue state with progress tracking fields.
+type EnrichedStatus struct {
+	Current   int             `json:"current"`
+	Total     int             `json:"total"`
+	State     string          `json:"state"`
+	Commands  []QueuedCommand `json:"commands"`
+	Percentage float64        `json:"percentage"`
+	Remaining  int            `json:"remaining"`
+	Message    string         `json:"message"`
+}
+
+// EnrichedStatus returns the current queue state plus progress tracking
+// fields: percentage complete, remaining count, and a human-readable message.
+func (q *Queue) EnrichedStatus() EnrichedStatus {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	total := len(q.commands)
+	current := q.current
+	state := q.state
+
+	var percentage float64
+	var remaining int
+	if total > 0 {
+		percentage = float64(current) / float64(total) * 100
+		if state == QueueRunning {
+			remaining = total - current - 1
+		} else {
+			remaining = total - current
+		}
+		if remaining < 0 {
+			remaining = 0
+		}
+	}
+
+	message := buildProgressMessage(current, total, state, q.commands)
+
+	cmds := make([]QueuedCommand, total)
+	copy(cmds, q.commands)
+
+	return EnrichedStatus{
+		Current:    current,
+		Total:      total,
+		State:      string(state),
+		Commands:   cmds,
+		Percentage: percentage,
+		Remaining:  remaining,
+		Message:    message,
+	}
+}
+
+// buildProgressMessage creates a human-readable progress string.
+func buildProgressMessage(current, total int, state QueueState, cmds []QueuedCommand) string {
+	if total == 0 {
+		return "Queue empty"
+	}
+	if state == QueueIdle && current == 0 {
+		return "Queue ready"
+	}
+	if state == QueueDone {
+		return "Queue complete"
+	}
+	if state == QueuePaused {
+		if current < total {
+			return fmt.Sprintf("Paused at %d/%d (%s on %s)", current, total, cmds[current].Type, cmds[current].NodeName)
+		}
+		return "Paused"
+	}
+	if state == QueueRunning && current < total {
+		cmd := cmds[current]
+		return fmt.Sprintf("Executing %s on %s token %s (%d/%d)", cmd.Type, cmd.NodeName, cmd.TokenID, current+1, total)
+	}
+	return fmt.Sprintf("%d/%d complete", current, total)
+}
+
+// Remove removes a pending command by ID. Returns false if not found or
+// not pending (already executed/running). Does not affect running queue.
+func (q *Queue) Remove(id string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	for i := q.current; i < len(q.commands); i++ {
+		if q.commands[i].ID == id && q.commands[i].Status == StatusPending {
+			q.commands = append(q.commands[:i], q.commands[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// Reorder moves a pending command from one position to another among pending
+// commands. Indices are absolute positions in the full command slice.
+// Returns false if either index is out of range, refers to an already-
+// executed command, or the queue is running.
+func (q *Queue) Reorder(fromIdx int, toIdx int) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.state == QueueRunning {
+		return false
+	}
+	if fromIdx < q.current || fromIdx >= len(q.commands) {
+		return false
+	}
+	if toIdx < q.current || toIdx >= len(q.commands) {
+		return false
+	}
+	if fromIdx == toIdx {
+		return true
+	}
+	if q.commands[fromIdx].Status != StatusPending {
+		return false
+	}
+
+	cmd := q.commands[fromIdx]
+	// Remove from source
+	q.commands = append(q.commands[:fromIdx], q.commands[fromIdx+1:]...)
+	// Insert at target (adjust if target shifted due to removal)
+	if fromIdx < toIdx {
+		toIdx-- // the slice shifted left
+	}
+	// Re-insert at target position
+	q.commands = append(q.commands[:toIdx], append([]QueuedCommand{cmd}, q.commands[toIdx:]...)...)
+	return true
+}
+
+// Restart resets all completed/failed/cancelled commands back to pending
+// and resets the cursor to 0, allowing the queue to be re-run. Only allowed
+// when the queue is idle or done (not while running or paused).
+func (q *Queue) Restart() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.state == QueueRunning || q.state == QueuePaused {
+		return
+	}
+
+	for i := range q.commands {
+		q.commands[i].Status = StatusPending
+		q.commands[i].Error = ""
+		q.commands[i].StartedAt = nil
+		q.commands[i].FinishedAt = nil
+		q.commands[i].Output = ""
+	}
+	q.current = 0
+	q.paused = false
+	q.cancelled = false
+	q.cancelCh = nil
+	q.state = QueueIdle
+}
+
+// ClearPending removes all pending commands but preserves the history of
+// completed/failed/cancelled commands. Only allowed when not running.
+func (q *Queue) ClearPending() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.state == QueueRunning {
+		return
+	}
+
+	// Keep commands up to current (executed ones) — remove the rest
+	if q.current >= len(q.commands) {
+		return
+	}
+	q.commands = q.commands[:q.current]
+}
+
+// InsertAt inserts a command at a specific position among pending commands.
+// index is an absolute position in the full command slice. If index is
+// beyond the slice length, the command is appended. Returns false if the
+// queue is running or index refers to an already-executed slot.
+func (q *Queue) InsertAt(cmd QueuedCommand, index int) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.state == QueueRunning {
+		return false
+	}
+	if index < q.current {
+		return false
+	}
+	if cmd.Status == "" {
+		cmd.Status = StatusPending
+	}
+
+	if index >= len(q.commands) {
+		q.commands = append(q.commands, cmd)
+		return true
+	}
+
+	// Insert at position
+	q.commands = append(q.commands[:index], append([]QueuedCommand{cmd}, q.commands[index:]...)...)
+	return true
+}
+
 // AddBatchFromNodesLISDiag generates LISDIAG telnet commands for LIS tokens.
 // Uses the "io" command which combines irb (received) + orb (transmitted) in
 // a single output — reverse-engineered from FUN_00406530 in LisDiag.exe.
@@ -311,8 +508,42 @@ func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPass
 // LIS tokens are handled based on lisMode: "rsu" generates RSU6 commands
 // via DIA, "lisdiag" generates telnet commands for LisDiag on port 4321.
 func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, sm *telnet.SessionManager, lisMode string) {
+	// Reorder tokens to match the tree display order: FBC first (sorted by TokenID),
+	// then RPC (sorted), then LOG, then LIS, then FTP.
+	// This ensures queue items appear in the same order as the node tree.
+	groupOrder := []types.TokenType{types.TokenFBC, types.TokenRPC, types.TokenLOG, types.TokenLIS, types.TokenFTP}
 	for _, node := range configs {
+		// Group tokens by type
+		grouped := make(map[types.TokenType][]types.Token)
 		for _, tok := range node.Tokens {
+			grouped[tok.TokenType] = append(grouped[tok.TokenType], tok)
+		}
+		// Sort within each group by TokenID
+		for _, gt := range grouped {
+			sort.Slice(gt, func(i, j int) bool {
+				return gt[i].TokenID < gt[j].TokenID
+			})
+		}
+		// Build ordered token list matching tree display
+		orderedTokens := make([]types.Token, 0)
+		for _, tt := range groupOrder {
+			orderedTokens = append(orderedTokens, grouped[tt]...)
+		}
+		// Include any tokens not in standard group order (e.g. custom types)
+		for tt, toks := range grouped {
+			found := false
+			for _, gt := range groupOrder {
+				if gt == tt {
+					found = true
+					break
+				}
+			}
+			if !found {
+				orderedTokens = append(orderedTokens, toks...)
+			}
+		}
+
+		for _, tok := range orderedTokens {
 			var cmd string
 			var cmdType CommandType
 
@@ -324,8 +555,14 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 				cmd = telnet.RPCPrint(tok.TokenID)
 				cmdType = CmdRPC
 			case types.TokenLOG:
-				cmd = fmt.Sprintf("print from log structure %s0000", tok.TokenID)
-				cmdType = CmdLOG
+				// LOG tokens use BsTool errlog (not telnet "print from log structure")
+				q.Add(QueuedCommand{
+					ID:        fmt.Sprintf("%s-LOG-%s", node.Name, tok.TokenID),
+					Type:      CmdBsTool, NodeName: node.Name, TokenID: tok.TokenID,
+					Command: "errlog", Status: StatusPending,
+					IPAddress: node.IPAddress,
+				})
+				continue
 			case types.TokenLIS:
 				if lisMode == "lisdiag" {
 					// LISDIAG path: generate telnet commands for LisDiag

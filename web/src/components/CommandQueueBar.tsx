@@ -62,9 +62,34 @@ export default function CommandQueueBar({ status: externalStatus }: CommandQueue
     }
   }
 
-  // Don't render if no queue activity
+  // Always render the bar — user needs to see queue status and controls
+  // even when idle (shows "Queue: N commands ready" or "No commands queued")
   if (!status || (status.total === 0 && status.state === 'idle')) {
-    return null;
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '6px 12px',
+          backgroundColor: 'var(--bg-elevated)',
+          borderTop: '1px solid var(--border)',
+          fontSize: '12px',
+          minHeight: '36px',
+        }}
+      >
+        <span
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--text-muted)',
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ color: 'var(--text-muted)' }}>No commands queued</span>
+      </div>
+    );
   }
 
   const stateColor =

@@ -18,8 +18,8 @@ func TestWriteAndReadLog(t *testing.T) {
 		t.Fatalf("WriteOutput failed: %v", err)
 	}
 
-	// Verify file exists — station-based nesting: {dir}/AP01m/FBC/AP01m_unknown-ip_162.fbc
-	path := filepath.Join(dir, "AP01m", "FBC", "AP01m_unknown-ip_162.fbc")
+	// Verify file exists — station-based nesting: {dir}/_LOG/AP01m/FBC/AP01m_unknown-ip_162.fbc
+	path := filepath.Join(dir, "_LOG", "AP01m", "FBC", "AP01m_unknown-ip_162.fbc")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected log file to exist at %s: %v", path, err)
 	}
@@ -125,8 +125,8 @@ func TestLISFilename(t *testing.T) {
 		t.Fatalf("WriteOutputWithIP for LIS failed: %v", err)
 	}
 
-	// Expected: {dir}/AL01/LIS/AL01_127-0-0-1_exe1.lis
-	path := filepath.Join(dir, "AL01", "LIS", "AL01_127-0-0-1_exe1.lis")
+	// Expected: {dir}/_LOG/AL01/LIS/AL01_127-0-0-1_exe1.lis
+	path := filepath.Join(dir, "_LOG", "AL01", "LIS", "AL01_127-0-0-1_exe1.lis")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected LIS file at %s: %v", path, err)
 	}
@@ -156,7 +156,7 @@ func TestLISAllExeFiles(t *testing.T) {
 
 	// Verify all 6 files exist
 	for exe := 1; exe <= 6; exe++ {
-		path := filepath.Join(dir, "AL01", "LIS", fmt.Sprintf("AL01_127-0-0-1_exe%d.lis", exe))
+		path := filepath.Join(dir, "_LOG", "AL01", "LIS", fmt.Sprintf("AL01_127-0-0-1_exe%d.lis", exe))
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("expected exe%d file at %s: %v", exe, path, err)
 		}

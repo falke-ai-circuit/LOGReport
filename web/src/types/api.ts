@@ -231,6 +231,7 @@ export interface BsToolWSMessage {
   action: 'execute';
   server_name: string;
   command?: string;
+  node_ip?: string;
 }
 
 export interface BsToolWSResponse {
@@ -260,6 +261,9 @@ export interface QueueStatusResponse {
   total: number;
   state: string; // "idle", "running", "paused", "done"
   commands: QueuedCommand[];
+  percentage?: number;
+  remaining?: number;
+  message?: string;
 }
 
 export interface QueueAddRequest {
@@ -267,6 +271,7 @@ export interface QueueAddRequest {
   node_name: string;
   token_id: string;
   command: string;
+  ip_address?: string;
 }
 
 export interface QueueBatchRequest {

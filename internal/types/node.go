@@ -65,7 +65,8 @@ type Token struct {
 	TokenID   string    `json:"token_id"`
 	TokenType TokenType `json:"token_type"`
 	Port      int       `json:"port"`
-	Protocol  string    `json:"protocol"` // "telnet" or "ftp"
+	Protocol    string    `json:"protocol"`              // "telnet" or "ftp"
+	FieldbusType string  `json:"fieldbus_type,omitempty"` // CIO, MIO, PROFIBUS, IBC (FBC tokens only)
 }
 
 // NodeConfig represents the full nodes.json entry (node + all tokens).

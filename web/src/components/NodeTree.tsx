@@ -63,16 +63,17 @@ const STATUS_COLORS: Record<string, string> = {
 // In "nodes" colorMode: token = expected file not on disk = red
 // In "commander" colorMode: file = content-based, token = expected but not on disk = red
 function fileColor(node: TreeNodeData, _colorMode?: string): string {
-  // Token type = expected file that may or may not exist on disk
+  // Token type = expected file that doesn't exist on disk yet
+  // Use muted/gray — NOT red. Red means "command executed but file is empty".
   if (node.type === 'token') {
-    return 'var(--error)'; // red — file doesn't exist on disk yet
+    return 'var(--text-muted)'; // gray — expected but not yet created
   }
   // File type = actually on disk, color by content
   if (node.type === 'file') {
     if (node.line_count === undefined || node.line_count === null) {
       return 'var(--text-muted)'; // gray — unknown status
     }
-    if (node.line_count === 0) return 'var(--error)'; // red — exists but empty (no data collected)
+    if (node.line_count === 0) return 'var(--error)'; // red — exists but empty (command ran but no data)
     if (node.line_count < 10) return '#f59e0b'; // yellow — low content
     return 'var(--success)'; // green — has content
   }
@@ -122,10 +123,11 @@ export default function NodeTree({
       const params: string[] = [];
       if (activeLogRoot) params.push(`log_root=${encodeURIComponent(activeLogRoot)}`);
       params.push(`project_id=${projectId}`);
-      // Commander mode: hide missing files (only show what's on disk)
-      if (context === 'commander') {
-        params.push('hide_missing=true');
-      }
+      // Commander mode: show all nodes (files on disk + expected token placeholders).
+      // Backend hardcodes hideMissing=false — sending the param is harmless but unnecessary.
+      // if (context === 'commander') {
+      //   params.push('hide_missing=true');
+      // }
       const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
       const url = `/api/v1/nodesconfig/tree${queryStr}`;
       const res = await fetch(url);
@@ -161,6 +163,7 @@ export default function NodeTree({
 
   // Track previous queue state to detect transitions (e.g. running → done)
   const prevQueueStateRef = useRef<string | null>(null);
+  const prevCurrentRef = useRef<number>(-1);
 
   // Poll queue status — always poll at 1s when queue has commands,
   // so color changes and pulse markers update in real time.
@@ -185,7 +188,12 @@ export default function NodeTree({
         if (prevState === 'running' && data.state === 'idle') {
           setTimeout(() => fetchTree(), 500);
         }
+        // Reload tree when current command index advances (each command completes)
+        if (data.state === 'running' && prevCurrentRef.current >= 0 && data.current > prevCurrentRef.current) {
+          setTimeout(() => fetchTree(), 300);
+        }
         prevQueueStateRef.current = data.state;
+        prevCurrentRef.current = data.current;
       } catch {
         // ignore
       }
@@ -624,22 +632,52 @@ function TreeBranch({
 
   // Check if this file/token matches the active command (from queue or single exec)
   if (node.type === 'file' || node.type === 'token') {
-    // Queue-based execution check
+    // Build the command key for this specific file/token node
+    const stationMatch = (cmd: { node_name: string; token_id: string; type: string }) => {
+      return parentNode?.name === cmd.node_name ||
+        parentNode?.name?.startsWith(cmd.node_name) ||
+        cmd.node_name.startsWith(parentNode?.name || '');
+    };
+
+    // Check if this file matches any completed command → green
+    if (completedCommands) {
+      // Build possible command keys for this file/token
+      // Queue stores type as "fbc", "rpc", "bstool" — map bstool → log section
+      const sectionLower = node.section_type?.toLowerCase() || '';
+      const possibleTypes = sectionLower === 'log' ? ['bstool', 'log'] : [sectionLower];
+      // Try matching with parentNode name (station) and also check if any
+      // completed command has a node_name that starts with or matches the station
+      const parentName = parentNode?.name || '';
+      for (const ptype of possibleTypes) {
+        const fileCmdKey = `${parentName}:${node.token_id}:${ptype}`;
+        if (completedCommands.has(fileCmdKey)) {
+          nodeColor = 'var(--success)';
+        }
+      }
+      // Also try prefix matching — queue node_name might be "AP01_m2" while
+      // tree station is "AP01m" (extractStationName strips suffix differently)
+      if (nodeColor !== 'var(--success)') {
+        completedCommands.forEach((key: string) => {
+          const parts = key.split(':');
+          if (parts.length >= 3 && parts[1] === node.token_id && parts[2] === possibleTypes[0]) {
+            const cmdNodeName = parts[0];
+            if (parentName === cmdNodeName ||
+                parentName.startsWith(cmdNodeName) ||
+                cmdNodeName.startsWith(parentName)) {
+              nodeColor = 'var(--success)';
+            }
+          }
+        });
+      }
+    }
+
+    // Queue-based execution check — override with active command status
     if (activeCommand) {
-      const cmdKey = `${activeCommand.node_name}:${activeCommand.token_id}:${activeCommand.type}`;
-      const stationMatch = parentNode?.name === activeCommand.node_name ||
-        parentNode?.name?.startsWith(activeCommand.node_name) ||
-        activeCommand.node_name.startsWith(parentNode?.name || '');
-      const nodeMatch = node.token_id === activeCommand.token_id && stationMatch;
+      const nodeMatch = node.token_id === activeCommand.token_id && stationMatch(activeCommand);
       if (nodeMatch) {
         nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
         if (activeCommand.status === 'running') {
           isActive = true;
-        }
-      }
-      if (completedCommands && completedCommands.has(cmdKey)) {
-        if (nodeMatch) {
-          nodeColor = 'var(--success)';
         }
       }
     }
@@ -790,11 +828,11 @@ function TreeBranch({
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  backgroundColor: 'var(--accent)',
+                  backgroundColor: '#008a00',
                   flexShrink: 0,
                   marginLeft: '2px',
                   animation: 'pulse 1s ease-in-out infinite',
-                  boxShadow: '0 0 4px var(--accent)',
+                  boxShadow: '0 0 6px #008a00',
                 }}
               />
             )}
@@ -815,11 +853,11 @@ function TreeBranch({
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: 'var(--accent)',
+              backgroundColor: '#008a00',
               flexShrink: 0,
               marginLeft: '2px',
               animation: 'pulse 1s ease-in-out infinite',
-              boxShadow: '0 0 4px var(--accent)',
+              boxShadow: '0 0 6px #008a00',
             }}
           />
         )}
@@ -835,8 +873,8 @@ function TreeBranch({
           {node.name}
         </span>
 
-        {/* Extra info */}
-        {node.ip && (
+        {/* Extra info — only show IP on station-level nodes, not on files */}
+        {node.ip && node.type === 'node' && (
           <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px' }}>
             ({node.ip})
           </span>

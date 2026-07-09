@@ -15,6 +15,7 @@ export interface TelnetTerminalProps {
   pendingCommand?: string | null;
   onCommandSent?: () => void;
   onOutputChange?: (output: string) => void;
+  externalLog?: string[];
 }
 
 // Client-side command resolver (matching telnet_commands.py)
@@ -38,6 +39,7 @@ export default function TelnetTerminal({
   pendingCommand,
   onCommandSent,
   onOutputChange,
+  externalLog,
 }: TelnetTerminalProps) {
   const [host, setHost] = useState(() => localStorage.getItem('telnetHost') || '');
   const [port, setPort] = useState(() => {
@@ -416,26 +418,54 @@ export default function TelnetTerminal({
       )}
 
       {/* Terminal output */}
-      <pre
-        ref={outputRef}
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          margin: 0,
-          padding: '12px',
-          backgroundColor: 'var(--bg-primary)',
-          color: 'var(--text-primary)',
-          fontFamily: 'Courier New, monospace',
-          fontSize: '12px',
-          lineHeight: '1.5',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
-      >
-        {output.length === 0
-          ? 'Terminal output will appear here...\n'
-          : output.join('\n')}
-      </pre>
+      {(() => {
+        const allLines: { text: string; color?: string }[] = [];
+        // WebSocket output lines
+        for (const line of output) {
+          allLines.push({ text: line });
+        }
+        // External log lines (from context-menu commands via REST)
+        for (const line of (externalLog || [])) {
+          let color: string | undefined;
+          const trimmed = line.trim();
+          if (trimmed.startsWith('Error') || trimmed.startsWith('[ERROR') || trimmed.startsWith('ERROR')) {
+            color = '#ef4444';
+          } else if (trimmed.startsWith('>')) {
+            color = '#f59e0b';
+          } else if (trimmed.startsWith('Getting') || trimmed.startsWith('Display') || trimmed.startsWith('print from')) {
+            color = '#f59e0b';
+          } else {
+            color = '#22c55e';
+          }
+          allLines.push({ text: line, color });
+        }
+        return (
+          <pre
+            ref={outputRef}
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              margin: 0,
+              padding: '12px',
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+              fontFamily: 'Courier New, monospace',
+              fontSize: '12px',
+              lineHeight: '1.5',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {allLines.length === 0
+              ? 'Terminal output will appear here...\n'
+              : allLines.map((line, i) => (
+                  <div key={i} style={line.color ? { color: line.color } : undefined}>
+                    {line.text || '\u00A0'}
+                  </div>
+                ))}
+          </pre>
+        );
+      })()}
 
       {/* Command input */}
       <div

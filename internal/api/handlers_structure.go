@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
@@ -20,32 +19,17 @@ import (
 // it creates: {logRoot}/{stationName}/{tokenType}/{filename}
 // Files are created empty (0 bytes) so the tree shows them with red color.
 //
-// POST /api/v1/nodesconfig/create-structure?project_id=N
-// Body: {"log_root": "C:\	emp\\logreport-output"} (optional, uses project or settings if empty)
+// POST /api/v1/nodesconfig/create-structure
+// Body: {"log_root": "C:\\temp\\logreport-output"} (optional, uses settings if empty)
 func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		LogRoot   string `json:"log_root"`
-		ProjectID int    `json:"project_id"`
+		LogRoot string `json:"log_root"`
 	}
 	// Body is optional — ignore decode errors
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	// Also check query param for project_id
-	if req.ProjectID == 0 {
-		if pidStr := r.URL.Query().Get("project_id"); pidStr != "" {
-			if pid, err := strconv.Atoi(pidStr); err == nil {
-				req.ProjectID = pid
-			}
-		}
-	}
-
 	// Determine log root
 	logRoot := req.LogRoot
-	if logRoot == "" && req.ProjectID > 0 {
-		if proj, err := s.store.GetProject(int64(req.ProjectID)); err == nil && proj != nil {
-			logRoot = proj.LogRoot
-		}
-	}
 	if logRoot == "" {
 		if !globalSettings.loaded {
 			s.initSettings()
@@ -75,8 +59,7 @@ func (s *Server) handleCreateLogStructure(w http.ResponseWriter, r *http.Request
 }
 
 // handleDeleteLogStructure deletes the entire _LOG folder structure at the
-// given log root. This allows the user to recreate the structure from scratch
-// if it gets messed up.
+// given log root. This allows the user to recreate the structure from scratch.
 //
 // DELETE /api/v1/nodesconfig/delete-structure
 // Body: {"log_root": "C:\\Ships\\TEST_SHIP"} (optional, uses project's log_root)
@@ -89,7 +72,6 @@ func (s *Server) handleDeleteLogStructure(w http.ResponseWriter, r *http.Request
 
 	logRoot := req.LogRoot
 	if logRoot == "" {
-		// Try to resolve from project
 		if req.ProjectID > 0 {
 			if proj, err := s.store.GetProject(int64(req.ProjectID)); err == nil && proj != nil {
 				logRoot = proj.LogRoot
@@ -109,71 +91,29 @@ func (s *Server) handleDeleteLogStructure(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Delete station directories inside logRoot, preserving nodes.json
-	// Structure: {logRoot}/{station}/{type}/files, {logRoot}/nodes.json
-	// Also check for old _LOG wrapper structure
-	oldLogDir := filepath.Join(logRoot, "_LOG")
-	useOldStructure := false
-	if _, err := os.Stat(oldLogDir); err == nil {
-		// _LOG directory exists — use old structure (delete entire _LOG)
-		useOldStructure = true
-	}
+	logDir := filepath.Join(logRoot, "_LOG")
 
-	if useOldStructure {
-		// Old structure: delete entire _LOG dir, preserve nodes.json
-		nodesJSONPath := filepath.Join(oldLogDir, "nodes.json")
-		var nodesBackup []byte
-		if data, err := os.ReadFile(nodesJSONPath); err == nil {
-			nodesBackup = data
-		}
-		if err := os.RemoveAll(oldLogDir); err != nil {
-			writeError(w, http.StatusInternalServerError, "delete_error",
-				fmt.Sprintf("failed to delete _LOG directory: %v", err))
-			return
-		}
-		if len(nodesBackup) > 0 {
-			_ = os.MkdirAll(oldLogDir, 0755)
-			_ = os.WriteFile(nodesJSONPath, nodesBackup, 0644)
-		}
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"deleted":  true,
-			"log_root": logRoot,
-			"log_dir":  oldLogDir,
-			"message":  "_LOG directory deleted successfully",
-		})
-		return
-	}
-
-	// New structure: delete station directories only, preserve nodes.json and other files
-	entries, err := os.ReadDir(logRoot)
-	if err != nil {
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"deleted":   false,
 			"log_root":  logRoot,
-			"message":   "log root directory does not exist",
+			"message":   "_LOG directory does not exist",
+			"log_dir":   logDir,
 		})
 		return
 	}
 
-	deletedCount := 0
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue // Skip files (nodes.json, etc.)
-		}
-		// Delete station directories (everything that's a directory)
-		dirPath := filepath.Join(logRoot, entry.Name())
-		if err := os.RemoveAll(dirPath); err != nil {
-			log.Printf("delete-structure: failed to delete %s: %v", dirPath, err)
-			continue
-		}
-		deletedCount++
+	if err := os.RemoveAll(logDir); err != nil {
+		writeError(w, http.StatusInternalServerError, "delete_error",
+			fmt.Sprintf("failed to delete _LOG directory: %v", err))
+		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"deleted":       true,
-		"log_root":      logRoot,
-		"deleted_count": deletedCount,
-		"message":       "station directories deleted successfully",
+		"deleted":  true,
+		"log_root": logRoot,
+		"log_dir":  logDir,
+		"message":  "_LOG directory deleted successfully",
 	})
 }
 
@@ -209,8 +149,7 @@ func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, 
 	}
 
 	// Determine log root folder name (default: _LOG, configurable in Settings)
-	// If LogRootName is empty, files go directly in {logRoot}/{station}/{type}/
-	logRootName := ""
+	logRootName := "_LOG"
 	if !globalSettings.loaded {
 		s.initSettings()
 	}
@@ -232,22 +171,24 @@ func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, 
 		}
 
 		for tokenType, tokens := range tokenTypes {
-			// Create directory: {logRoot}/{station}/{tokenType}/ or {logRoot}/{logRootName}/{station}/{tokenType}/
-			var dir string
-			if logRootName != "" {
-				dir = filepath.Join(logRoot, logRootName, stationName, strings.ToLower(tokenType))
-			} else {
-				dir = filepath.Join(logRoot, stationName, strings.ToLower(tokenType))
-			}
+			// Create directory: {logRoot}/{_LOG}/{station}/{tokenType}/
+			dir := filepath.Join(logRoot, logRootName, stationName, strings.ToLower(tokenType))
 			if mkErr := os.MkdirAll(dir, 0755); mkErr != nil {
 				log.Printf("create-structure: mkdir %s: %v", dir, mkErr)
 				continue
 			}
 			createdDirs++
 
-			// Create empty file for each token
+			// Create empty file for each token (deduplicate LOG — one file per station)
+			seenLog := make(map[string]bool)
 			for _, tok := range tokens {
 				fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
+				if tokenType == "LOG" {
+					if seenLog[fileName] {
+						continue
+					}
+					seenLog[fileName] = true
+				}
 				filePath := filepath.Join(dir, fileName)
 				// Only create if file doesn't exist (don't overwrite existing files)
 				if _, statErr := os.Stat(filePath); statErr == nil {
@@ -272,16 +213,13 @@ func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, 
 // FBC: {station}_{ip}_{token}.fbc
 // RPC: {station}_{ip}_{token}.rpc
 // LOG: {station}_{ip}.log (no token ID in filename)
-// LIS: {station}_{ip}_exe1.lis (representative, actual files are exe1-exe6)
+// LIS: {station}_{ip}_{token}.lis
 func buildLogFileName(stationName, ip, tokenType, tokenID string) string {
 	ipFmt := formatIPForLog(ip)
 	ext := logFileExtension(tokenType)
 
 	if tokenType == "LOG" {
 		return fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
-	}
-	if tokenType == "LIS" {
-		return fmt.Sprintf("%s_%s_exe1%s", stationName, ipFmt, ext)
 	}
 	return fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
 }
