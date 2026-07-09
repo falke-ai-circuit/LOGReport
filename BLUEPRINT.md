@@ -1,6 +1,41 @@
 # LOGReport Refactor — Operational Blueprint
 ## Go Single-Binary + Embedded Web UI + REST API
 
+---
+
+> ## RECONCILIATION BLOCK (2026-07-09 — Architect)
+>
+> **Reconciled against:** main branch commit 15482c42 (merged from dev-cycle-logreport-20260615)
+> **Method:** G-RECON live probes (git, file counts, route extraction, embed path verification, store type verification)
+>
+> ### Design Intent → Actual State
+>
+> | Item | Blueprint Says | Actual on Main | Status |
+> |------|---------------|----------------|--------|
+> | Scope | Report pipeline only, Commander excluded | Report pipeline + Commander + BsTool + LisDiag | RESOLVED — Commander was added back (scope gap analysis 2026-06-25) |
+> | Store | SQLite | JSON file-based (no SQLite, no CGo) | RESOLVED — migration completed 2026-06-30 |
+> | Endpoints | 12 | 73 `/api/v1/*` + `/health` + `/` = 75 total | RESOLVED — grew with Commander, Queue, Projects, Settings, Logs, Scan |
+> | Packages | Not specified | 15 internal packages | RESOLVED — added browser, lisdiag |
+> | Embed path | `web/dist/` | `//go:embed all:web/dist-new-flat` | RESOLVED — directory renamed |
+> | Frontend | Not specified | 67 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4 | RESOLVED |
+> | Version | 1.1.1 | v3.9.12 (per CHANGELOG) | RESOLVED |
+>
+> ### Open Drift Items (NOT resolved)
+>
+> 1. **BUILD-BREAKING: Vite outDir mismatch** — `vite.config.ts` outputs to `dist-new` but `embed.go` and `server.go` expect `dist-new-flat`. Fresh `make build` produces empty embed → GUI 404s.
+> 2. **Stale comments:** `server.go` line 23 + 123 say "11 routes" (actual: 75). `main.go` line 39 says "Open the SQLite store" (actual: JSON). Makefile clean removes `web/dist/` (actual: `web/dist-new-flat/`).
+> 3. **Dead code:** `go-backend/` is a Go 1.19 module from earlier iteration. Should be removed.
+> 4. **Barnacles:** 13 .py scripts in repo root from Python era. 2 .exe files. Should be cleaned.
+> 5. **God File:** `handlers_commander.go` is 2,684 LOC — candidate for domain split.
+> 6. **God Component:** `NodesPage.tsx` is 1,389 LOC — candidate for component extraction.
+>
+> **Note:** A prior restructuring (2026-07-03/04) addressed items 2, 5, and 6 locally but was never committed to git. The local repo was subsequently gutted. The restructure does not exist on any branch.
+>
+> The original blueprint sections below are preserved as historical design intent.
+> See CHANGELOG.md for the actual evolution of the project.
+
+---
+
 **Version:** 1.1.1
 **Ratified:** 2026-06-15
 **Last Updated:** 2026-06-16

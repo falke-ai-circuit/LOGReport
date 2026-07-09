@@ -30,7 +30,7 @@ Then open `http://localhost:8080` for the web UI, or use the REST API at `/api/v
 │                                                                    │
 │  ┌────────────────────┐  ┌──────────────────────────────────┐   │
 │  │  EMBEDDED WEB UI     │  │  REST API + WebSocket             │   │
-│  │  React/TypeScript   │  │  /api/v1/* (67 endpoints)         │   │
+│  │  React/TypeScript   │  │  /api/v1/* (73 endpoints)         │   │
 │  │  Vite + Tailwind    │  │  2 WebSocket endpoints            │   │
 │  │  AXON dark theme    │  │  JSON request/response            │   │
 │  └────────┬───────────┘  └──────────────┬───────────────────┘   │
@@ -46,7 +46,7 @@ Then open `http://localhost:8080` for the web UI, or use the REST API at `/api/v
 │                         │                                          │
 │                         ▼                                          │
 │  ┌──────────────────────────────────────────────────────────┐     │
-│  │              CORE ENGINE (13 internal packages)           │     │
+│  │              CORE ENGINE (15 internal packages)           │     │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────────────┐   │     │
 │  │  │ Telnet   │ │ Parser  │ │ Store   │ │ Report Gen   │   │     │
 │  │  │ Client   │ │ FBC/RPC │ │ (JSON)  │ │ DOCX/JSON/PDF│   │     │
@@ -55,10 +55,10 @@ Then open `http://localhost:8080` for the web UI, or use the REST API at `/api/v
 │  │  │ BsTool   │ │ CmdQueue│ │ Nodes   │ │ SysLoader    │   │     │
 │  │  │ TCP/RE   │ │ Sequencer│ │ Config  │ │ .sys parser  │   │     │
 │  │  └─────────┘ └─────────┘ └─────────┘ └──────────────┘   │     │
-│  │  ┌─────────┐ ┌─────────┐                                 │     │
-│  │  │ LogFile  │ │ LogWriter│                                │     │
-│  │  │ Scanner  │ │ Per-node │                                │     │
-│  │  └─────────┘ └─────────┘                                 │     │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────────────┐   │     │
+│  │  │ LogFile  │ │ LogWriter│ │ LisDiag │ │ Browser      │   │     │
+│  │  │ Scanner  │ │ Per-node │ │ Client  │ │ Auto-launch  │   │     │
+│  │  └─────────┘ └─────────┘ └─────────┘ └──────────────┘   │     │
 │  └──────────────────────────────────────────────────────────┘     │
 │                                                                    │
 │  STORE: JSON file-based (no SQLite, no CGo)                        │
@@ -68,14 +68,18 @@ Then open `http://localhost:8080` for the web UI, or use the REST API at `/api/v
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Package Layout (13 internal packages + cmd + root)
+### Package Layout (15 internal packages + cmd + root)
 
 ```
 cmd/logreport/          # Main entry point, banner, flag parsing
+cmd/bstool-debug/       # BsTool protocol debug utilities (3 variants)
+cmd/bstool-mitm/        # BsTool MITM tool for protocol reverse engineering
 internal/
-  api/                  # HTTP handlers (67 endpoints), middleware, WebSocket, server
+  api/                  # HTTP handlers (73 endpoints), middleware, WebSocket, server
+  browser/              # Auto-launch browser for headless hosts
   bstool/               # BsTool wrapper + native TCP transport (RE'd protocol)
-  commandqueue/         # Sequential command execution with pause/resume/cancel
+  commandqueue/         # Sequential command execution with pause/resume/cancel/clear/reorder
+  lisdiag/              # LISDIAG telnet client for remote LIS frame capture
   logfile/              # Log root directory scanner (.fbc/.rpc/.log/.lis)
   logwriter/            # Per-node log file writer
   nodesconfig/          # nodes.json loader, tree builder, station naming
@@ -90,7 +94,7 @@ embed.go                # //go:embed all:web/dist-new-flat (package assets)
 web/                    # React/TypeScript frontend (Vite + Tailwind)
 ```
 
-### API Endpoints (67 registered routes)
+### API Endpoints (73 registered routes)
 
 **Health & Connectivity:**
 - `GET /health` — version, uptime, DB status, node count
@@ -118,7 +122,7 @@ web/                    # React/TypeScript frontend (Vite + Tailwind)
 - `GET /api/v1/sysfiles/parse` — parse .sys files in a directory
 - `GET /api/v1/sysfiles/scan` — scan directory for .sys files
 - `POST /api/v1/sysfiles/parse-multi` — parse multiple .sys files
-- `POST /api/v1/sysfiles/scan-nodes` — scan nodes via DIA debugger using systemtest node_list
+- `POST /api/v1/sysfiles/scan-nodes` — scan nodes via DIA debugger or BsTool TCP
 
 **BsTool:**
 - `POST /api/v1/bstool/errlog` — BsTool error log extraction
@@ -139,6 +143,10 @@ web/                    # React/TypeScript frontend (Vite + Tailwind)
 - `POST /api/v1/commandqueue/pause` — pause queue
 - `POST /api/v1/commandqueue/resume` — resume queue
 - `POST /api/v1/commandqueue/cancel` — cancel queue
+- `POST /api/v1/commandqueue/clear` — clear all commands from queue
+- `POST /api/v1/commandqueue/remove` — remove specific command from queue
+- `POST /api/v1/commandqueue/reorder` — reorder commands in queue
+- `POST /api/v1/commandqueue/restart` — restart queue execution
 - `GET /api/v1/commandqueue/status` — queue status
 - `POST /api/v1/commandqueue/batch` — batch add commands
 - `POST /api/v1/commandqueue/batch-node` — batch add commands for a node
@@ -157,6 +165,7 @@ web/                    # React/TypeScript frontend (Vite + Tailwind)
 - `GET /api/v1/logs/{nodeName}` — list log files for a node
 - `GET /api/v1/logs/{nodeName}/{fileName}` — read log file content
 - `POST /api/v1/logs/{nodeName}` — write log file
+- `POST /api/v1/logs/save` — save log file content
 - `GET /api/v1/logs/list` — list log root directory
 - `GET /api/v1/logs/files` — list all log files
 - `GET /api/v1/logs/content` — get log file content by path
@@ -181,7 +190,7 @@ web/                    # React/TypeScript frontend (Vite + Tailwind)
 - `POST /api/v1/projects/{id}/nodes` — save project-scoped nodes config
 
 **Settings:**
-- `GET /api/v1/settings` — read settings (DIA host/port, BsTool host/port, log root, output dir)
+- `GET /api/v1/settings` — read settings (DIA host/port, BsTool host/port, log root, output dir, scan method, node filter)
 - `POST /api/v1/settings` — save settings
 
 **Directory Browsing:**
