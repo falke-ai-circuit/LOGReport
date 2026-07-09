@@ -22,7 +22,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist-new',
+    outDir: 'dist-new-flat',
     assetsDir: 'assets',
   },
 });

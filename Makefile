@@ -51,5 +51,5 @@ release: clean build
 # Clean
 clean:
 	rm -f ./logreport
-	rm -rf web/dist/
+	rm -rf web/dist-new-flat/
 	rm -rf build/

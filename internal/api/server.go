@@ -20,10 +20,10 @@ import (
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
-	// Register all 11 routes using Go 1.22+ method patterns
+	// Register all routes using Go 1.22+ method patterns
 	s.registerRoutes(mux)
 
-	// Register static file server for embedded web/dist/
+	// Register static file server for embedded web/dist-new-flat/
 	// API routes take priority (registered first), then static fallback
 	s.registerStaticFiles(mux)
 
@@ -120,7 +120,7 @@ func (s *Server) registerStaticFiles(mux *http.ServeMux) {
 	})
 }
 
-// registerRoutes sets up all 11 API endpoints on the given mux.
+// registerRoutes sets up all API endpoints on the given mux.
 func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// 1. Health (also registered at /api/v1/health for frontend compatibility)
 	mux.HandleFunc("GET /health", s.healthHandler)

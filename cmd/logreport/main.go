@@ -36,7 +36,7 @@ func main() {
 	// Parse command-line flags
 	cfg := server.ParseFlags()
 
-	// Open the SQLite store
+	// Open the JSON file-based store
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open database: %v\n", err)
