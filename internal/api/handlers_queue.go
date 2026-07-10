@@ -704,13 +704,16 @@ func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) 
 	if idx := strings.Index(stationName, "_"); idx > 0 {
 		stationName = stationName[:idx]
 	}
+	_ = stationName // kept for potential future filtering
 
-	// Search for matching .dia files in BU using BsTool
+	// Search for matching .dia files in BU using BsTool.
+	// The technician creates files named like: AL01_192-168-0-11_181_exe1.dia
+	// The tokenID (e.g. "181_exe1") uniquely identifies the file.
 	ft := bstool.NewFileTransport(bstoolHost, bstoolPort, 15*time.Second)
 	defer ft.Close()
 
 	commLine := "s"
-	pattern := fmt.Sprintf("*%s*exe%d*.dia", stationName, exeNum)
+	pattern := fmt.Sprintf("*%s*.dia", cmd.TokenID)
 	entries, err := ft.ListDir(commLine, pattern)
 
 	var fileContent []byte
@@ -741,22 +744,19 @@ func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) 
 	return content, nil
 }
 
-// executeLISDiag executes a single LISDIAG command by connecting to the
-// LisDiag telnet server on the node's IP at port 4321. Each command opens
-// a fresh connection, authenticates, sends the command, captures output,
-// writes to .lis log file, and closes. This is safe because LisDiag is
-// read-only (doesn't modify shared memory or interfere with PCS).
+// executeLISDiag executes a LISDiag command by connecting to the LisDiag
+// telnet server. The connection target is cmd.IPAddress (the AL station IP)
+// — a port proxy on the VM redirects AL_station_IP:4321 to localhost:4321
+// where LisDiag.exe listens.
 //
-// The command sequence for a full LIS capture is:
-//   exe N → irb (channel) → orb (channel)
-// The executor receives one command at a time. For "exe N" commands,
-// the output is minimal (just sets the channel). For "irb"/"orb" commands,
-// the output contains frame data with timestamps.
+// For "exe N" commands (batch mode), the executor automatically follows with
+// "io N-1" and writes ONLY the io output (frame data) to the .lis file.
+// For standalone commands (from the LisDiag tab), it sends the command as-is.
 func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) {
-	// LisDiag runs on the same machine as LOGReport (the PCS station),
-	// not on the AL station. Use DIAHost from settings, not cmd.IPAddress.
 	st := getSettings()
-	host := st.DIAHost
+	// Connect to the AL station's IP on port 4321 — port proxy redirects
+	// to localhost where LisDiag.exe runs.
+	host := cmd.IPAddress
 	if host == "" {
 		host = "127.0.0.1"
 	}
@@ -764,7 +764,6 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 	// Default port and password
 	port := 4321
 	password := cmd.LISDiagPwd
-	// If no password from queue, check settings
 	if password == "" {
 		password = st.LISDiagPassword
 	}
@@ -777,7 +776,6 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 	s.lisdiagMu.Unlock()
 
 	if cached == nil {
-		// Create new connection
 		cached = lisdiag.NewClient(host, port, password)
 		if err := cached.Connect(10 * time.Second); err != nil {
 			return "", fmt.Errorf("lisdiag connect %s:%d: %w", host, port, err)
@@ -788,7 +786,50 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 		log.Printf("lisdiag: connected to %s:%d (cached)", host, port)
 	}
 
-	// Send the command and capture output
+	// Combined exe+io mode: if command starts with "exe ", send exe N then
+	// io N-1, write ONLY the io output to the .lis file.
+	if strings.HasPrefix(cmd.Command, "exe ") {
+		var exeNum int
+		fmt.Sscanf(cmd.Command, "exe %d", &exeNum)
+		channel := exeNum - 1
+
+		// Send "exe N" — sets the channel, minimal output
+		_, _ = cached.SendCommand(cmd.Command, 10*time.Second)
+
+		// Send "io N-1" — produces the actual frame data
+		ioCmd := lisdiag.IOCommand(channel)
+		output, err := cached.SendCommand(ioCmd, 15*time.Second)
+		if err != nil {
+			// Connection might be stale — close cache and retry once
+			s.lisdiagMu.Lock()
+			delete(s.lisdiagConns, connKey)
+			s.lisdiagMu.Unlock()
+			cached.Close()
+
+			cached = lisdiag.NewClient(host, port, password)
+			if err2 := cached.Connect(10 * time.Second); err2 != nil {
+				return output, fmt.Errorf("lisdiag connect %s:%d (retry): %w", host, port, err2)
+			}
+			s.lisdiagMu.Lock()
+			s.lisdiagConns[connKey] = cached
+			s.lisdiagMu.Unlock()
+			// Re-send exe then io on the fresh connection
+			_, _ = cached.SendCommand(cmd.Command, 10*time.Second)
+			output, err = cached.SendCommand(ioCmd, 15*time.Second)
+			if err != nil {
+				return output, err
+			}
+		}
+
+		// Write ONLY the io output to .lis log file
+		lw := logwriter.New(s.resolveLogRoot())
+		if err := lw.WriteOutputWithIP(cmd.NodeName, "LIS", cmd.TokenID, output, cmd.IPAddress); err != nil {
+			log.Printf("lisdiag: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+		}
+		return output, nil
+	}
+
+	// Standalone command (from LisDiag tab) — send and write as before
 	output, err := cached.SendCommand(cmd.Command, 15*time.Second)
 	if err != nil {
 		// Connection might be stale — close cache and retry once
@@ -797,7 +838,6 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 		s.lisdiagMu.Unlock()
 		cached.Close()
 
-		// Retry with fresh connection
 		cached = lisdiag.NewClient(host, port, password)
 		if err2 := cached.Connect(10 * time.Second); err2 != nil {
 			return output, fmt.Errorf("lisdiag connect %s:%d (retry): %w", host, port, err2)
@@ -813,8 +853,7 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 
 	// Write output to .lis log file
 	lw := logwriter.New(s.resolveLogRoot())
-	tokenType := "LIS"
-	if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, output, cmd.IPAddress); err != nil {
+	if err := lw.WriteOutputWithIP(cmd.NodeName, "LIS", cmd.TokenID, output, cmd.IPAddress); err != nil {
 		log.Printf("lisdiag: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
 	}
 
