@@ -600,6 +600,12 @@ func extractTokenIDFromName(filename, sectionType string) string {
 	}
 	parts := strings.Split(base, "_")
 	if len(parts) >= 3 {
+		// For LIS/RSU/DIA files: {station}_{ip-hyphens}_{tokenID}_exe{N}
+		// tokenID is the last two segments joined: "181_exe2"
+		// Check if the last segment is "exeN" pattern
+		if strings.HasPrefix(parts[len(parts)-1], "exe") {
+			return parts[len(parts)-2] + "_" + parts[len(parts)-1]
+		}
 		return parts[len(parts)-1]
 	}
 	return base
