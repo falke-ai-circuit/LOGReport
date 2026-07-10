@@ -245,7 +245,9 @@ export default function CommanderLayout() {
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       case 'lisdiag_run': {
-        // Queue both LisDiag "exe N" and "io N-1" commands sequentially
+        // Queue a single combined "exe N" command — the backend executor
+        // automatically sends "exe N" then "io N-1" and writes the io output
+        // to the .lis file. No need to queue io separately.
         const exeNumMatch = tokenId.match(/_exe(\d+)/);
         const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
         const baseTokenID = tokenId.split('_exe')[0] || tokenId;
@@ -254,32 +256,28 @@ export default function CommanderLayout() {
         // Without this, all output goes to a single file without _exe suffix.
         const tokenIDWithExe = `${baseTokenID}_exe${exeNum}`;
         const exeCmd = `exe ${exeNum}`;
-        const ioCmd = `io ${exeNum - 1}`;
-        // Fetch LisDiag password and DIAHost from settings
+        // Fetch LisDiag password from settings
         let lisdiagPwd = '';
-        let diaHost = '127.0.0.1';
         try {
           const settingsRes = await fetch('/api/v1/settings');
           const settingsData = await settingsRes.json();
           lisdiagPwd = settingsData?.settings?.lisdiag_password || '';
-          diaHost = settingsData?.settings?.dia_host || '127.0.0.1';
         } catch {}
-        // LisDiag runs on the same machine as LOGReport (DIAHost/localhost),
-        // NOT on the AL station. Proxy all AL station IPs to localhost.
+        // LisDiag connects to the AL station IP (cmd.IPAddress) which the
+        // port proxy on the VM redirects to localhost where LisDiag.exe runs.
         setLisdiagTarget({
-          ip: diaHost,
+          ip: nodeIp,
           node: nodeName,
           tokenID: tokenIDWithExe,
           password: lisdiagPwd,
           exeNum,
-          commands: [exeCmd, ioCmd],
+          commands: [exeCmd],
         });
         setActiveTab('lisdiag');
-        setTerminalLog(prev => [...prev, `> ${exeCmd} (LisDiag ${baseTokenID} exe${exeNum} queued)`, `> ${ioCmd} (LisDiag IO ${baseTokenID} exe${exeNum} queued)`]);
+        setTerminalLog(prev => [...prev, `> ${exeCmd} (LisDiag ${baseTokenID} exe${exeNum} queued — backend sends exe+io)`]);
         setActiveExecFile(`${nodeName}:${tokenIDWithExe}:lisdiag`);
         try {
-          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp }) });
-          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: ioCmd, ip_address: nodeIp }) });
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp, lisdiag_pwd: lisdiagPwd }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
