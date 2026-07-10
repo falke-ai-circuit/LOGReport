@@ -386,7 +386,6 @@ export default function NodeTree({
         if (lisMode === 'lisdiag') {
           return [
             { icon: <Play size={14} />, label: `Run LisDiag ${tokenId} exe${exeNum}`, action: 'lisdiag_run' },
-            { icon: <Play size={14} />, label: `Run LisDiag IO ${tokenId} exe${exeNum}`, action: 'lisdiag_io' },
             ...fileMgmtItems,
           ];
         }

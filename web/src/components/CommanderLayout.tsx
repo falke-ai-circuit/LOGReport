@@ -245,11 +245,12 @@ export default function CommanderLayout() {
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       case 'lisdiag_run': {
-        // Queue a single LisDiag "exe N" command
+        // Queue both LisDiag "exe N" and "io N-1" commands sequentially
         const exeNumMatch = tokenId.match(/_exe(\d+)/);
         const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
         const baseTokenID = tokenId.split('_exe')[0] || tokenId;
-        const cmd = `exe ${exeNum}`;
+        const exeCmd = `exe ${exeNum}`;
+        const ioCmd = `io ${exeNum - 1}`;
         // Fetch LisDiag password from settings
         let lisdiagPwd = '';
         try {
@@ -263,50 +264,22 @@ export default function CommanderLayout() {
           tokenID: tokenId,
           password: lisdiagPwd,
           exeNum,
-          commands: [cmd],
+          commands: [exeCmd, ioCmd],
         });
         setActiveTab('lisdiag');
-        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag ${baseTokenID} exe${exeNum} queued)`]);
+        setTerminalLog(prev => [...prev, `> ${exeCmd} (LisDiag ${baseTokenID} exe${exeNum} queued)`, `> ${ioCmd} (LisDiag IO ${baseTokenID} exe${exeNum} queued)`]);
         setActiveExecFile(`${nodeName}:${tokenId}:lisdiag`);
         try {
-          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: exeCmd, ip_address: nodeIp }) });
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: ioCmd, ip_address: nodeIp }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
-      case 'lisdiag_io': {
-        // Queue a single LisDiag "io N-1" command
-        const exeNumMatch = tokenId.match(/_exe(\d+)/);
-        const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
-        const baseTokenID = tokenId.split('_exe')[0] || tokenId;
-        const channel = exeNum - 1;
-        const cmd = `io ${channel}`;
-        // Fetch LisDiag password from settings
-        let lisdiagPwd = '';
-        try {
-          const settingsRes = await fetch('/api/v1/settings');
-          const settingsData = await settingsRes.json();
-          lisdiagPwd = settingsData?.settings?.lisdiag_password || '';
-        } catch {}
-        setLisdiagTarget({
-          ip: nodeIp,
-          node: nodeName,
-          tokenID: tokenId,
-          password: lisdiagPwd,
-          exeNum,
-          commands: [cmd],
-        });
-        setActiveTab('lisdiag');
-        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag IO ${baseTokenID} exe${exeNum} queued)`]);
-        setActiveExecFile(`${nodeName}:${tokenId}:lisdiag`);
-        try {
-          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+      case 'lisdiag_io':
+        // No-op: merged into lisdiag_run (exe N + io N-1 queued together)
         break;
-      }
       case 'rsu_trace': {
         // Queue rx+tx RSU trace commands for one exe
         const exeNumMatch = tokenId.match(/_exe(\d+)/);

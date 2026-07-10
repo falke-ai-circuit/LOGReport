@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
 	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
@@ -71,14 +72,9 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 			return s.executeLISDiag(cmd)
 		}
 
-		// DiagLis commands are placeholders for manual capture — no actual command to execute
+		// DiagLis: fetch .dia file from BU via BsTool (technician created it via DiagLis GUI)
 		if cmd.Type == commandqueue.CmdDiagLis {
-			lw := logwriter.New(s.resolveLogRoot())
-			tokenType := "DIA"
-			if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, "", cmd.IPAddress); err != nil {
-				log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
-			}
-			return "", nil
+			return s.executeDiagLis(cmd)
 		}
 
 		// BsTool commands go through the BsTool client (TCP or subprocess)
@@ -247,14 +243,9 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 			return s.executeLISDiag(cmd)
 		}
 
-		// DiagLis commands are placeholders for manual capture — no actual command to execute
+		// DiagLis: fetch .dia file from BU via BsTool (technician created it via DiagLis GUI)
 		if cmd.Type == commandqueue.CmdDiagLis {
-			lw := logwriter.New(s.resolveLogRoot())
-			tokenType := "DIA"
-			if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, "", cmd.IPAddress); err != nil {
-				log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
-			}
-			return "", nil
+			return s.executeDiagLis(cmd)
 		}
 
 		// BsTool commands go through the BsTool client (TCP or subprocess)
@@ -684,6 +675,71 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// executeDiagLis fetches a .dia file from the BU via BsTool file transport.
+// The technician runs DiagLis GUI on the BU, which generates .dia files in the
+// BU directory. This method searches for a matching file by station name and
+// exe number, reads its content, and writes it to the local _LOG DIA directory.
+// If no file is found in BU, it writes an empty file (technician may not have
+// created it yet) but does NOT fail — the queue continues.
+func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) {
+	st := getSettings()
+	bstoolHost := st.BsToolHost
+	if bstoolHost == "" {
+		bstoolHost = "127.0.0.1"
+	}
+	bstoolPort := st.BsToolPort
+	if bstoolPort == 0 {
+		bstoolPort = 1516
+	}
+
+	// Parse exe number from token ID (format: "181_exe1")
+	exeNum := 0
+	if idx := strings.Index(cmd.TokenID, "_exe"); idx >= 0 {
+		fmt.Sscanf(cmd.TokenID[idx+4:], "%d", &exeNum)
+	}
+
+	// Build station name for search — strip _Remote_monitor suffix if present
+	stationName := cmd.NodeName
+	if idx := strings.Index(stationName, "_"); idx > 0 {
+		stationName = stationName[:idx]
+	}
+
+	// Search for matching .dia files in BU using BsTool
+	ft := bstool.NewFileTransport(bstoolHost, bstoolPort, 15*time.Second)
+	defer ft.Close()
+
+	commLine := "s"
+	pattern := fmt.Sprintf("*%s*exe%d*.dia", stationName, exeNum)
+	entries, err := ft.ListDir(commLine, pattern)
+
+	var fileContent []byte
+	if err != nil {
+		log.Printf("diaglis: BsTool ListDir failed (host=%s:%d pattern=%s): %v", bstoolHost, bstoolPort, pattern, err)
+	} else if len(entries) == 0 {
+		log.Printf("diaglis: no .dia file found in BU matching %s (node=%s exe=%d)", pattern, cmd.NodeName, exeNum)
+	} else {
+		// Read the first matching file
+		fileContent, err = ft.ReadFile(commLine, entries[0].Name)
+		if err != nil {
+			log.Printf("diaglis: failed to read %s from BU: %v", entries[0].Name, err)
+		} else {
+			log.Printf("diaglis: fetched %s from BU (%d bytes)", entries[0].Name, len(fileContent))
+		}
+	}
+
+	// Write content (or empty if not found) to local log directory
+	lw := logwriter.New(s.resolveLogRoot())
+	tokenType := "DIA"
+	content := ""
+	if fileContent != nil {
+		content = string(fileContent)
+	}
+	if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, content, cmd.IPAddress); err != nil {
+		log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+	}
+	return content, nil
+}
+
 // executeLISDiag executes a single LISDIAG command by connecting to the
 // LisDiag telnet server on the node's IP at port 4321. Each command opens
 // a fresh connection, authenticates, sends the command, captures output,
@@ -696,6 +752,14 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 // the output is minimal (just sets the channel). For "irb"/"orb" commands,
 // the output contains frame data with timestamps.
 func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) {
+	// LisDiag runs on the same machine as LOGReport (the PCS station),
+	// not on the AL station. Use DIAHost from settings, not cmd.IPAddress.
+	st := getSettings()
+	host := st.DIAHost
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
 	// Default port and password
 	port := 4321
 	password := cmd.LISDiagPwd
@@ -703,22 +767,22 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 		password = "password" // fallback default from .sys config
 	}
 
-	// Reuse cached LisDiag connection if available (same IP+port+password)
-	connKey := fmt.Sprintf("%s:%d:%s", cmd.IPAddress, port, password)
+	// Reuse cached LisDiag connection if available (same host+port+password)
+	connKey := fmt.Sprintf("%s:%d:%s", host, port, password)
 	s.lisdiagMu.Lock()
 	cached := s.lisdiagConns[connKey]
 	s.lisdiagMu.Unlock()
 
 	if cached == nil {
 		// Create new connection
-		cached = lisdiag.NewClient(cmd.IPAddress, port, password)
+		cached = lisdiag.NewClient(host, port, password)
 		if err := cached.Connect(10 * time.Second); err != nil {
-			return "", fmt.Errorf("lisdiag connect %s:%d: %w", cmd.IPAddress, port, err)
+			return "", fmt.Errorf("lisdiag connect %s:%d: %w", host, port, err)
 		}
 		s.lisdiagMu.Lock()
 		s.lisdiagConns[connKey] = cached
 		s.lisdiagMu.Unlock()
-		log.Printf("lisdiag: connected to %s:%d (cached)", cmd.IPAddress, port)
+		log.Printf("lisdiag: connected to %s:%d (cached)", host, port)
 	}
 
 	// Send the command and capture output
@@ -731,9 +795,9 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 		cached.Close()
 
 		// Retry with fresh connection
-		cached = lisdiag.NewClient(cmd.IPAddress, port, password)
+		cached = lisdiag.NewClient(host, port, password)
 		if err2 := cached.Connect(10 * time.Second); err2 != nil {
-			return output, fmt.Errorf("lisdiag connect %s:%d (retry): %w", cmd.IPAddress, port, err2)
+			return output, fmt.Errorf("lisdiag connect %s:%d (retry): %w", host, port, err2)
 		}
 		s.lisdiagMu.Lock()
 		s.lisdiagConns[connKey] = cached
