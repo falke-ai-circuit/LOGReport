@@ -6,8 +6,8 @@ import NodeTree from './NodeTree';
 import CommandQueueBar from './CommandQueueBar';
 import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 import type { TreeNodeData, QueueStatusResponse, NodeConfig } from '../types/api';
-import ColorizedLog from './ColorizedLog';
-import NodesTabContent from './NodesTabContent';
+import { ColorizedLog } from './ColorizedLog';
+import { NodesTabContent } from './NodesTabContent';
 
 export default function NodesPage() {
   const { activeProjectId, activeLogRoot } = useActiveProject();
