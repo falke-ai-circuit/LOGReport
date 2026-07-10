@@ -135,24 +135,27 @@ func (c *Client) SendCommand(command string, timeout time.Duration) (string, err
 
 // readUntil reads text until the given prompt string appears.
 // Returns all text read (excluding the prompt itself) or error on timeout.
+// Uses byte-by-byte reading because LisDiag's prompt "AL01:1(0)>> " has no
+// trailing newline — ReadString('\n') would block forever waiting for one.
 func (c *Client) readUntil(prompt string, timeout time.Duration) (string, error) {
 	_ = c.conn.SetReadDeadline(time.Now().Add(timeout))
 	var sb strings.Builder
+	buf := make([]byte, 1)
 
 	for {
-		line, err := c.reader.ReadString('\n')
-		sb.WriteString(line)
-
-		if strings.Contains(line, prompt) {
-			// Found the prompt — return everything before it
-			result := sb.String()
-			idx := strings.LastIndex(result, prompt)
-			if idx >= 0 {
-				result = result[:idx]
+		n, err := c.conn.Read(buf)
+		if n > 0 {
+			sb.Write(buf[:n])
+			// Check if the prompt appeared in the accumulated text
+			if strings.Contains(sb.String(), prompt) {
+				result := sb.String()
+				idx := strings.LastIndex(result, prompt)
+				if idx >= 0 {
+					result = result[:idx]
+				}
+				return strings.TrimRight(result, "\r\n"), nil
 			}
-			return strings.TrimRight(result, "\r\n"), nil
 		}
-
 		if err != nil {
 			return sb.String(), err
 		}

@@ -653,12 +653,13 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 
 	s.commandQueue.Reset()
 	lisMode := getSettings().LISMode
+	lisdiagPwd := getSettings().LISDiagPassword
 	if strings.EqualFold(req.TokenType, "LISDiag") {
 		// Explicit LISDiag request — always use LISDiag path
-		s.commandQueue.AddBatchFromNodesLISDiag(filtered, "password")
+		s.commandQueue.AddBatchFromNodesLISDiag(filtered, lisdiagPwd)
 	} else if strings.EqualFold(req.TokenType, "LIS") && lisMode == "lisdiag" {
 		// LIS mode is set to lisdiag in settings — route LIS tokens through LISDiag
-		s.commandQueue.AddBatchFromNodesLISDiag(filtered, "password")
+		s.commandQueue.AddBatchFromNodesLISDiag(filtered, lisdiagPwd)
 	} else if strings.EqualFold(req.TokenType, "LIS") && lisMode == "diaglis" {
 		// DiagLIS mode — manual capture, generate placeholder commands via AddBatchFromNodes
 		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM, lisMode, getSettings().LISExeCount)
