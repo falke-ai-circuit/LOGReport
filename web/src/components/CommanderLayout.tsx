@@ -355,6 +355,16 @@ export default function CommanderLayout() {
         break;
       case 'clear_logs':
         break;
+      case 'queue_restart':
+        fetch('/api/v1/commandqueue/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+          .then(() => setTreeReloadKey((k) => k + 1))
+          .catch(err => console.error('queue restart error:', err));
+        break;
+      case 'queue_clear':
+        fetch('/api/v1/commandqueue/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+          .then(() => setTreeReloadKey((k) => k + 1))
+          .catch(err => console.error('queue clear error:', err));
+        break;
       case 'erase_file': {
         const filePath = node.file_path || '';
         const tokenId = node.token_id || '';
@@ -533,7 +543,7 @@ export default function CommanderLayout() {
           title="Queue all print commands for all nodes (does NOT auto-start)"
         >
           {printing ? <Loader2 size={12} className="spin" /> : <Printer size={12} />}
-          All Logs
+          All Logs Queue
         </button>
         {(queueStatus?.state === 'idle' || queueStatus?.state === 'done') && queueStatus?.total > 0 && (
           <button
@@ -585,26 +595,23 @@ export default function CommanderLayout() {
             </button>
           </>
         )}
-        {queueStatus && queueStatus.total > 0 && (queueStatus.state === 'idle' || queueStatus.state === 'done') && (
-          <>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-              onClick={handleQueueRestart}
-              title="Restart — reset all commands to pending"
-            >
-              <RotateCcw size={12} /> Restart
-            </button>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-              onClick={handleQueueClear}
-              title="Clear pending commands"
-            >
-              <Trash2 size={12} /> Clear
-            </button>
-          </>
-        )}
+        {/* Clear + Restart always visible */}
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          onClick={handleQueueRestart}
+          title="Restart — reset all commands to pending"
+        >
+          <RotateCcw size={12} /> Restart
+        </button>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          onClick={handleQueueClear}
+          title="Clear pending commands"
+        >
+          <Trash2 size={12} /> Clear
+        </button>
       </div>
 
       {/* No project state */}

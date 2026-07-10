@@ -15,6 +15,7 @@ import {
   RefreshCw,
   FolderPlus,
   Edit3,
+  RotateCcw,
 } from 'lucide-react';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 import { useActiveProject } from '../hooks/useActiveProject';
@@ -288,6 +289,8 @@ export default function NodeTree({
         { icon: <Printer size={14} />, label: `Print All RPC Tokens for ${node.name}`, action: 'rpc_print_all' },
         { icon: <Printer size={14} />, label: lisNodeLabel, action: 'lis_print_all' },
         { icon: <Server size={14} />, label: `Print All LOG Tokens for ${node.name}`, action: 'bstool_errlog' },
+        { icon: <RotateCcw size={14} />, label: `Restart Queue`, action: 'queue_restart' },
+        { icon: <Trash2 size={14} />, label: `Clear Queue`, action: 'queue_clear' },
       ];
     }
 
