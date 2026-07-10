@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Server, ScanLine, Loader2, FileText, Folder, Printer, ListChecks, Edit2, Save, Clipboard, Play, Pause, Square, Trash2, RotateCcw } from 'lucide-react';
+import { Terminal, Server, ScanLine, Loader2, FileText, Folder, Printer, ListChecks, Edit2, Save, Clipboard, Play, Pause, Square, Trash2, RotateCcw, Network } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
 import ScanTab from './ScanTab';
 import QueueTab from './QueueTab';
+import LisDiagTab from './LisDiagTab';
 import CommandQueueBar from './CommandQueueBar';
 import { useActiveProject, useProjects } from '../hooks/useActiveProject';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 
-type Tab = 'telnet' | 'bstool' | 'scan' | 'logviewer' | 'queue';
+type Tab = 'debugger' | 'lisdiag' | 'bstool' | 'scan' | 'logviewer' | 'queue';
 
 function stripNodeSuffix(name: string): string {
   return name.replace(/[mr]$/, '');
@@ -47,7 +48,8 @@ export default function CommanderLayout() {
   const { projects } = useProjects();
   const navigate = useNavigate();
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
-  const [activeTab, setActiveTab] = useState<Tab>('telnet');
+  const [activeTab, setActiveTab] = useState<Tab>('debugger');
+  const [lisdiagTarget, setLisdiagTarget] = useState<{ ip: string; node: string; tokenID: string; password: string; exeNum: number; commands: string[] } | null>(null);
   const [selectedNode, setSelectedNode] = useState<TreeNodeData | null>(null);
   const [, setSelectedToken] = useState<TreeNodeData | null>(null);
   const [currentToken, setCurrentToken] = useState('');
@@ -246,10 +248,25 @@ export default function CommanderLayout() {
         // Queue a single LisDiag "exe N" command
         const exeNumMatch = tokenId.match(/_exe(\d+)/);
         const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
-        const baseTokenId = tokenId.split('_exe')[0] || tokenId;
+        const baseTokenID = tokenId.split('_exe')[0] || tokenId;
         const cmd = `exe ${exeNum}`;
-        setActiveTab('queue');
-        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag ${baseTokenId} exe${exeNum} queued)`]);
+        // Fetch LisDiag password from settings
+        let lisdiagPwd = '';
+        try {
+          const settingsRes = await fetch('/api/v1/settings');
+          const settingsData = await settingsRes.json();
+          lisdiagPwd = settingsData?.settings?.lisdiag_password || '';
+        } catch {}
+        setLisdiagTarget({
+          ip: nodeIp,
+          node: nodeName,
+          tokenID: tokenId,
+          password: lisdiagPwd,
+          exeNum,
+          commands: [cmd],
+        });
+        setActiveTab('lisdiag');
+        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag ${baseTokenID} exe${exeNum} queued)`]);
         setActiveExecFile(`${nodeName}:${tokenId}:lisdiag`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
@@ -262,11 +279,26 @@ export default function CommanderLayout() {
         // Queue a single LisDiag "io N-1" command
         const exeNumMatch = tokenId.match(/_exe(\d+)/);
         const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
-        const baseTokenId = tokenId.split('_exe')[0] || tokenId;
+        const baseTokenID = tokenId.split('_exe')[0] || tokenId;
         const channel = exeNum - 1;
         const cmd = `io ${channel}`;
-        setActiveTab('queue');
-        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag IO ${baseTokenId} exe${exeNum} queued)`]);
+        // Fetch LisDiag password from settings
+        let lisdiagPwd = '';
+        try {
+          const settingsRes = await fetch('/api/v1/settings');
+          const settingsData = await settingsRes.json();
+          lisdiagPwd = settingsData?.settings?.lisdiag_password || '';
+        } catch {}
+        setLisdiagTarget({
+          ip: nodeIp,
+          node: nodeName,
+          tokenID: tokenId,
+          password: lisdiagPwd,
+          exeNum,
+          commands: [cmd],
+        });
+        setActiveTab('lisdiag');
+        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag IO ${baseTokenID} exe${exeNum} queued)`]);
         setActiveExecFile(`${nodeName}:${tokenId}:lisdiag`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
@@ -412,7 +444,8 @@ export default function CommanderLayout() {
   }, []);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'telnet', label: 'Telnet', icon: <Terminal size={14} /> },
+    { id: 'debugger', label: 'Debugger', icon: <Terminal size={14} /> },
+    { id: 'lisdiag', label: 'LisDiag', icon: <Network size={14} /> },
     { id: 'bstool', label: 'BsTool', icon: <Server size={14} /> },
     { id: 'scan', label: 'Scan', icon: <ScanLine size={14} /> },
     { id: 'logviewer', label: 'Log Viewer', icon: <FileText size={14} /> },
@@ -619,10 +652,26 @@ export default function CommanderLayout() {
             ))}
           </div>
           <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-            {activeTab === 'telnet' && (
+            {activeTab === 'debugger' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <TelnetTerminal currentToken={currentToken} currentTokenType={currentTokenType} currentNodeName={currentNodeName} pendingCommand={pendingCommand} onCommandSent={() => setPendingCommand(null)} externalLog={terminalLog} />
               </div>
+            )}
+            {activeTab === 'lisdiag' && (
+              lisdiagTarget ? (
+                <LisDiagTab
+                  targetIP={lisdiagTarget.ip}
+                  targetNode={lisdiagTarget.node}
+                  tokenID={lisdiagTarget.tokenID}
+                  password={lisdiagTarget.password}
+                  exeNum={lisdiagTarget.exeNum}
+                  commands={lisdiagTarget.commands}
+                />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  Right-click an AL node LIS file and select "Run LisDiag" to open the LisDiag terminal.
+                </div>
+              )
             )}
             {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => { setPendingServerName(null); setPendingNodeIp(null); }} currentNodeName={currentNodeName} pendingNodeIp={pendingNodeIp} onExecutionComplete={() => setTreeReloadKey((k) => k + 1)} />}
             {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={activeLogRoot || localStorage.getItem('logRoot') || ''} />}

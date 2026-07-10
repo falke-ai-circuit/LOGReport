@@ -13,6 +13,7 @@ interface SettingsData {
   output_dir: string;
   lis_mode: string;
   lis_exe_count: number;
+  lisdiag_password: string;
   scan_method: string;
   node_filter: string;
 }
@@ -211,6 +212,15 @@ export default function SettingsPage() {
             value={settings.lis_exe_count || 6}
             onChange={(e) => updateField('lis_exe_count', parseInt(e.target.value) || 6)}
             placeholder="6"
+            style={inputStyle}
+          />
+        </FormField>
+        <FormField label="LisDiag Password" hint="Access code for LisDiag telnet auth on AL stations (leave empty if no password configured)">
+          <input
+            type="password"
+            value={settings.lisdiag_password || ''}
+            onChange={(e) => updateField('lisdiag_password', e.target.value)}
+            placeholder="(no password)"
             style={inputStyle}
           />
         </FormField>
