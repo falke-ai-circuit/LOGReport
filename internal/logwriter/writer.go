@@ -83,8 +83,12 @@ func fileExtension(tokenType string) string {
 		return ".fbc"
 	case "RPC":
 		return ".rpc"
+	case "RSU":
+		return ".rsu"
 	case "LIS":
 		return ".lis"
+	case "DIA":
+		return ".dia"
 	default:
 		return ".log"
 	}
@@ -106,8 +110,8 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	switch strings.ToUpper(tokenType) {
 	case "LOG":
 		fileName = fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
-	case "LIS":
-		// tokenID for LIS is like "102_exe1" — we want just the exe part
+	case "LIS", "RSU", "DIA":
+		// tokenID for LIS/RSU/DIA is like "102_exe1" — we want just the exe part
 		// Extract exe number from tokenID (format: {tokenID}_exe{N})
 		exeNum := extractExeNum(tokenID)
 		if exeNum > 0 {

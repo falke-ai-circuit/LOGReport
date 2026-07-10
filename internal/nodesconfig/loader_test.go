@@ -113,7 +113,7 @@ func TestSaveToFile(t *testing.T) {
 
 func TestBuildTree(t *testing.T) {
 	configs, _ := LoadFromBytes([]byte(sampleNodesJSON))
-	tree := BuildTree(configs)
+	tree := BuildTree(configs, "")
 
 	if tree == nil {
 		t.Fatal("expected non-nil tree")
@@ -188,7 +188,7 @@ func TestBuildTree(t *testing.T) {
 }
 
 func TestBuildTreeEmpty(t *testing.T) {
-	tree := BuildTree(nil)
+	tree := BuildTree(nil, "")
 	if tree == nil {
 		t.Fatal("expected non-nil tree for nil input")
 	}

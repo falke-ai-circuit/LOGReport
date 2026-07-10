@@ -27,6 +27,7 @@ type Settings struct {
 	LISMode           string `json:"lis_mode"`    // LIS capture method: "rsu" (RSU6 via DIA), "lisdiag" (telnet port 4321), "diaglis" (manual)
 	ScanMethod        string `json:"scan_method"` // Node scan method: "remote_bu" (BsTool TCP, default), "local_dir" (local .sys files)
 	NodeFilter        string `json:"node_filter"` // Comma-separated station prefixes to include/exclude (e.g. "AP,AL" or "AP,AL,-A1O,-B1O")
+	LISExeCount       int    `json:"lis_exe_count"` // number of exe channels (default: 6)
 }
 
 // defaultSettings returns platform-appropriate defaults.
@@ -46,6 +47,7 @@ func defaultSettings() Settings {
 		BUDir:       buDir,
 		LISMode:     "rsu",       // default: RSU6 via DIA (requires RSU6 hardware)
 		ScanMethod:  "remote_bu", // default: BsTool TCP remote BU
+		LISExeCount: 6,
 	}
 }
 
@@ -118,6 +120,9 @@ func (s *Server) initSettings() {
 	}
 	if st.LISMode == "" {
 		st.LISMode = def.LISMode
+	}
+	if st.LISExeCount == 0 {
+		st.LISExeCount = def.LISExeCount
 	}
 	if st.ScanMethod == "" {
 		st.ScanMethod = def.ScanMethod
@@ -206,6 +211,9 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.LISMode == "" {
 		req.LISMode = def.LISMode
+	}
+	if req.LISExeCount == 0 {
+		req.LISExeCount = def.LISExeCount
 	}
 	if req.ScanMethod == "" {
 		req.ScanMethod = def.ScanMethod

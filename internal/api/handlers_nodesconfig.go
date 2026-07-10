@@ -341,9 +341,9 @@ func (s *Server) handleGetNodesConfigTree(w http.ResponseWriter, r *http.Request
 
 	var tree *types.TreeNode
 	if logRoot != "" {
-		tree = nodesconfig.BuildFileTree(configs, logRoot, hideMissing)
+		tree = nodesconfig.BuildFileTree(configs, logRoot, hideMissing, getSettings().LISMode)
 	} else {
-		tree = nodesconfig.BuildTree(configs)
+		tree = nodesconfig.BuildTree(configs, getSettings().LISMode)
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"tree":     tree,

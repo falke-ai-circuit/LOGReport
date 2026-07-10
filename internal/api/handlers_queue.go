@@ -71,6 +71,16 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 			return s.executeLISDiag(cmd)
 		}
 
+		// DiagLis commands are placeholders for manual capture — no actual command to execute
+		if cmd.Type == commandqueue.CmdDiagLis {
+			lw := logwriter.New(s.resolveLogRoot())
+			tokenType := "DIA"
+			if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, "", cmd.IPAddress); err != nil {
+				log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+			}
+			return "", nil
+		}
+
 		// BsTool commands go through the BsTool client (TCP or subprocess)
 		if cmd.Type == commandqueue.CmdBsTool {
 			return s.executeBsToolQueued(cmd)
@@ -161,9 +171,24 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		// otherwise fall back to settings or default. The frontend calls /logs/setroot
 		// when a project is selected, so s.logRoot() should be the project's log_root.
 		lw := logwriter.New(s.resolveLogRoot())
+		// Map command types to logwriter types
 		tokenType := string(cmd.Type)
-		if tokenType == "" {
-			tokenType = "raw"
+		switch cmd.Type {
+		case commandqueue.CmdLIS, commandqueue.CmdRSU, commandqueue.CmdDiagLis:
+			// RSU→RSU directory, LISDiag→LIS directory, DiagLis→DIA directory
+			if cmd.Type == commandqueue.CmdRSU {
+				tokenType = "RSU"
+			} else if cmd.Type == commandqueue.CmdDiagLis {
+				tokenType = "DIA"
+			} else if cmd.Type == commandqueue.CmdLIS {
+				tokenType = "LIS"
+			}
+		case commandqueue.CmdLISDiag:
+			tokenType = "LIS"
+		default:
+			if tokenType == "" {
+				tokenType = "raw"
+			}
 		}
 		if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, output, cmd.IPAddress); err != nil {
 			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
@@ -220,6 +245,16 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		// not through the DIA session on port 1234.
 		if cmd.Type == commandqueue.CmdLISDiag {
 			return s.executeLISDiag(cmd)
+		}
+
+		// DiagLis commands are placeholders for manual capture — no actual command to execute
+		if cmd.Type == commandqueue.CmdDiagLis {
+			lw := logwriter.New(s.resolveLogRoot())
+			tokenType := "DIA"
+			if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, "", cmd.IPAddress); err != nil {
+				log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+			}
+			return "", nil
 		}
 
 		// BsTool commands go through the BsTool client (TCP or subprocess)
@@ -293,9 +328,24 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		output := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
 
 		lw := logwriter.New(s.resolveLogRoot())
+		// Map command types to logwriter types
 		tokenType := string(cmd.Type)
-		if tokenType == "" {
-			tokenType = "raw"
+		switch cmd.Type {
+		case commandqueue.CmdLIS, commandqueue.CmdRSU, commandqueue.CmdDiagLis:
+			// RSU→RSU directory, LISDiag→LIS directory, DiagLis→DIA directory
+			if cmd.Type == commandqueue.CmdRSU {
+				tokenType = "RSU"
+			} else if cmd.Type == commandqueue.CmdDiagLis {
+				tokenType = "DIA"
+			} else if cmd.Type == commandqueue.CmdLIS {
+				tokenType = "LIS"
+			}
+		case commandqueue.CmdLISDiag:
+			tokenType = "LIS"
+		default:
+			if tokenType == "" {
+				tokenType = "raw"
+			}
 		}
 		if err := lw.WriteOutputWithIP(cmd.NodeName, tokenType, cmd.TokenID, output, cmd.IPAddress); err != nil {
 			log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
@@ -535,7 +585,7 @@ func (s *Server) handleQueueBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.commandQueue.Reset()
-	s.commandQueue.AddBatchFromNodes(req.Configs, req.SessionID, s.telnetSM, getSettings().LISMode)
+	s.commandQueue.AddBatchFromNodes(req.Configs, req.SessionID, s.telnetSM, getSettings().LISMode, getSettings().LISExeCount)
 	_, total, _ := s.commandQueue.Status()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -619,17 +669,10 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 		// LIS mode is set to lisdiag in settings — route LIS tokens through LISDiag
 		s.commandQueue.AddBatchFromNodesLISDiag(filtered, "password")
 	} else if strings.EqualFold(req.TokenType, "LIS") && lisMode == "diaglis" {
-		// DiagLIS mode — manual capture, skip queue generation
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"batch_added": true,
-			"node_name":   req.NodeName,
-			"token_type":  req.TokenType,
-			"total":       0,
-			"message":     "DiagLIS mode: capture manually via DiagLIS GUI, then import files",
-		})
-		return
+		// DiagLIS mode — manual capture, generate placeholder commands via AddBatchFromNodes
+		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM, lisMode, getSettings().LISExeCount)
 	} else {
-		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM, lisMode)
+		s.commandQueue.AddBatchFromNodes(filtered, "", s.telnetSM, lisMode, getSettings().LISExeCount)
 	}
 	_, total, _ := s.commandQueue.Status()
 

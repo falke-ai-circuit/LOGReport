@@ -243,7 +243,7 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 
 	// AddBatchFromNodes uses telnet.SessionManager but we only pass nil —
 	// it just needs the configs to generate commands, the SM is only for execution.
-	q.AddBatchFromNodes(configs, "", nil, "rsu")
+	q.AddBatchFromNodes(configs, "", nil, "rsu", 6)
 
 	_, total, _ := q.Status()
 	// FBC(1) + RPC(1) + LOG(1) + LIS(1 token × 6 exe × 2 rx/tx = 12) = 15 commands
@@ -270,13 +270,13 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 			}
 		}
 	}
-	if !types_found[CmdFBC] || !types_found[CmdRPC] || !types_found[CmdLOG] || !types_found[CmdLIS] {
-		t.Errorf("expected FBC, RPC, LOG, LIS command types, got %v", types_found)
+	if !types_found[CmdFBC] || !types_found[CmdRPC] || !types_found[CmdBsTool] || !types_found[CmdRSU] {
+		t.Errorf("expected FBC, RPC, BsTool, RSU command types, got %v", types_found)
 	}
-	// Verify LIS commands: 12 total (6 exe × 2 rx/tx), tokenID format "999_exeN"
+	// Verify RSU commands: 12 total (6 exe × 2 rx/tx), tokenID format "999_exeN"
 	lisCount := 0
 	for _, c := range cmds {
-		if c.Type == CmdLIS {
+		if c.Type == CmdRSU {
 			lisCount++
 			// Verify command is rx-trace or tx-trace
 			if !strings.Contains(c.Command, "print from rsu rx-trace") &&
@@ -290,7 +290,7 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 		}
 	}
 	if lisCount != 12 {
-		t.Errorf("expected 12 LIS commands (6 exe × 2 rx/tx), got %d", lisCount)
+		t.Errorf("expected 12 RSU commands (6 exe × 2 rx/tx), got %d", lisCount)
 	}
 }
 
@@ -307,7 +307,7 @@ func TestQueueAddBatchLISDiagMode(t *testing.T) {
 		},
 	}
 
-	q.AddBatchFromNodes(configs, "", nil, "lisdiag")
+	q.AddBatchFromNodes(configs, "", nil, "lisdiag", 6)
 
 	_, total, _ := q.Status()
 	// LISDiag: exe×6 + io×6 = 12 commands (io combines irb+orb)

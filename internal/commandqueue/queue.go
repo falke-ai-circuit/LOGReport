@@ -25,6 +25,8 @@ const (
 	CmdBsTool  CommandType = "bstool"
 	CmdRaw     CommandType = "raw"
 	CmdLISDiag CommandType = "lisdiag"
+	CmdRSU     CommandType = "rsu"
+	CmdDiagLis CommandType = "diaglis"
 )
 
 // CommandStatus represents the execution state of a queued command.
@@ -507,7 +509,7 @@ func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPass
 // node, for each token, generate the appropriate print command.
 // LIS tokens are handled based on lisMode: "rsu" generates RSU6 commands
 // via DIA, "lisdiag" generates telnet commands for LisDiag on port 4321.
-func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, sm *telnet.SessionManager, lisMode string) {
+func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, sm *telnet.SessionManager, lisMode string, lisExeCount int) {
 	// Reorder tokens to match the tree display order: FBC first (sorted by TokenID),
 	// then RPC (sorted), then LOG, then LIS, then FTP.
 	// This ensures queue items appear in the same order as the node tree.
@@ -571,7 +573,7 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 					if password == "" {
 						password = "password"
 					}
-					for exeNum := 1; exeNum <= 6; exeNum++ {
+					for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
 						channel := exeNum - 1
 						tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
 						q.Add(QueuedCommand{
@@ -589,9 +591,24 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 					}
 					continue
 				}
+				if lisMode == "diaglis" {
+					// DiagLIS mode: manual capture — generate placeholder commands that just create empty files
+					// The technician captures via DiagLis GUI and imports the files manually
+					for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
+						tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
+						q.Add(QueuedCommand{
+							ID: fmt.Sprintf("%s-DiagLis-%s-exe%d", node.Name, tok.TokenID, exeNum),
+							Type: CmdDiagLis, NodeName: node.Name, TokenID: tokenIDWithExe,
+							Command: fmt.Sprintf("diaglis placeholder exe%d", exeNum),
+							Status: StatusPending,
+							IPAddress: node.IPAddress,
+						})
+					}
+					continue
+				}
 				// RSU6 path (default): generate rx+tx trace commands for each exe
 				rsuid := tok.TokenID + "0000"
-				for exeNum := 1; exeNum <= 6; exeNum++ {
+				for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
 					channel := exeNum - 1
 					// TokenID encodes exe number: "162_exe1" so logwriter writes to
 					// {station}_{ip}_{tokenID}_exe{N}.lis
@@ -599,7 +616,7 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 					// rx-trace command
 					q.Add(QueuedCommand{
 						ID:        fmt.Sprintf("%s-LIS-%s-exe%d-rx", node.Name, tok.TokenID, exeNum),
-						Type:      CmdLIS,
+						Type:      CmdRSU,
 						NodeName:  node.Name,
 						TokenID:   tokenIDWithExe,
 						Command:   fmt.Sprintf("print from rsu rx-trace %s %d", rsuid, channel),
@@ -609,7 +626,7 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 					// tx-trace command
 					q.Add(QueuedCommand{
 						ID:        fmt.Sprintf("%s-LIS-%s-exe%d-tx", node.Name, tok.TokenID, exeNum),
-						Type:      CmdLIS,
+						Type:      CmdRSU,
 						NodeName:  node.Name,
 						TokenID:   tokenIDWithExe,
 						Command:   fmt.Sprintf("print from rsu tx-trace %s %d", rsuid, channel),

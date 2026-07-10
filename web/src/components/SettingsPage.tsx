@@ -12,6 +12,7 @@ interface SettingsData {
   communication_line: string;
   output_dir: string;
   lis_mode: string;
+  lis_exe_count: number;
   scan_method: string;
   node_filter: string;
 }
@@ -201,6 +202,17 @@ export default function SettingsPage() {
             <option value="lisdiag">LisDiag Telnet (direct, no RSU6 needed)</option>
             <option value="diaglis">DiagLIS Manual (skip automated capture)</option>
           </select>
+        </FormField>
+        <FormField label="LIS Exe Count" hint="Number of Exe channels per LIS token (default: 6). Files are named exe1 through exeN.">
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={settings.lis_exe_count || 6}
+            onChange={(e) => updateField('lis_exe_count', parseInt(e.target.value) || 6)}
+            placeholder="6"
+            style={inputStyle}
+          />
         </FormField>
       </SettingsSection>
 
