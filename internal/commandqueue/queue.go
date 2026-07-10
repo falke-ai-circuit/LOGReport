@@ -52,6 +52,7 @@ type QueuedCommand struct {
 	Error      string        `json:"error,omitempty"`
 	IPAddress  string        `json:"ip_address,omitempty"`
 	LISDiagPwd string        `json:"lisdiag_pwd,omitempty"` // password for LisDiag telnet auth
+	ExtraData  string        `json:"extra_data,omitempty"`  // secondary command (e.g. tx-trace for combined RSU)
 	StartedAt  *time.Time    `json:"started_at,omitempty"`
 	FinishedAt *time.Time    `json:"finished_at,omitempty"`
 }
@@ -600,32 +601,24 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 					}
 					continue
 				}
-				// RSU6 path (default): generate rx+tx trace commands for each exe
+				// RSU6 path (default): generate combined rx+tx trace command for each exe
 				rsuid := tok.TokenID + "0000"
 				for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
 					channel := exeNum - 1
 					// TokenID encodes exe number: "162_exe1" so logwriter writes to
 					// {station}_{ip}_{tokenID}_exe{N}.lis
 					tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
-					// rx-trace command
+					// Combined command: executor sends rx-trace (primary) then
+					// tx-trace (ExtraData) and writes combined output to .rsu file.
 					q.Add(QueuedCommand{
-						ID:        fmt.Sprintf("%s-LIS-%s-exe%d-rx", node.Name, tok.TokenID, exeNum),
+						ID:        fmt.Sprintf("%s-LIS-%s-exe%d", node.Name, tok.TokenID, exeNum),
 						Type:      CmdRSU,
 						NodeName:  node.Name,
 						TokenID:   tokenIDWithExe,
 						Command:   fmt.Sprintf("print from rsu rx-trace %s %d", rsuid, channel),
 						Status:    StatusPending,
 						IPAddress: node.IPAddress,
-					})
-					// tx-trace command
-					q.Add(QueuedCommand{
-						ID:        fmt.Sprintf("%s-LIS-%s-exe%d-tx", node.Name, tok.TokenID, exeNum),
-						Type:      CmdRSU,
-						NodeName:  node.Name,
-						TokenID:   tokenIDWithExe,
-						Command:   fmt.Sprintf("print from rsu tx-trace %s %d", rsuid, channel),
-						Status:    StatusPending,
-						IPAddress: node.IPAddress,
+						ExtraData: fmt.Sprintf("print from rsu tx-trace %s %d", rsuid, channel),
 					})
 				}
 				continue // Already added commands above, skip the generic Add below

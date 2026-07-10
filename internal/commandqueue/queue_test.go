@@ -246,9 +246,9 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 	q.AddBatchFromNodes(configs, "", nil, "rsu", 6)
 
 	_, total, _ := q.Status()
-	// FBC(1) + RPC(1) + LOG(1) + LIS(1 token × 6 exe × 2 rx/tx = 12) = 15 commands
-	if total != 15 {
-		t.Fatalf("expected 15 commands (FBC+RPC+LOG+LIS 6exe×2), got %d", total)
+	// FBC(1) + RPC(1) + LOG(1) + LIS(1 token × 6 exe × 1 combined rx+tx = 6) = 9 commands
+	if total != 9 {
+		t.Fatalf("expected 9 commands (FBC+RPC+LOG+LIS 6exe×1 combined), got %d", total)
 	}
 
 	cmds := q.Commands()
@@ -273,15 +273,18 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 	if !types_found[CmdFBC] || !types_found[CmdRPC] || !types_found[CmdBsTool] || !types_found[CmdRSU] {
 		t.Errorf("expected FBC, RPC, BsTool, RSU command types, got %v", types_found)
 	}
-	// Verify RSU commands: 12 total (6 exe × 2 rx/tx), tokenID format "999_exeN"
+	// Verify RSU commands: 6 total (combined rx+tx per exe), tokenID format "999_exeN"
 	lisCount := 0
 	for _, c := range cmds {
 		if c.Type == CmdRSU {
 			lisCount++
-			// Verify command is rx-trace or tx-trace
-			if !strings.Contains(c.Command, "print from rsu rx-trace") &&
-				!strings.Contains(c.Command, "print from rsu tx-trace") {
-				t.Errorf("unexpected LIS command: %s", c.Command)
+			// Verify primary command is rx-trace
+			if !strings.Contains(c.Command, "print from rsu rx-trace") {
+				t.Errorf("unexpected RSU primary command: %s", c.Command)
+			}
+			// Verify ExtraData contains tx-trace
+			if !strings.Contains(c.ExtraData, "print from rsu tx-trace") {
+				t.Errorf("expected ExtraData to contain tx-trace, got: %s", c.ExtraData)
 			}
 			// Verify tokenID has _exeN suffix
 			if !strings.Contains(c.TokenID, "_exe") {
@@ -289,8 +292,8 @@ func TestQueueAddBatchFromNodes(t *testing.T) {
 			}
 		}
 	}
-	if lisCount != 12 {
-		t.Errorf("expected 12 RSU commands (6 exe × 2 rx/tx), got %d", lisCount)
+	if lisCount != 6 {
+		t.Errorf("expected 6 RSU commands (combined rx+tx per exe), got %d", lisCount)
 	}
 }
 
@@ -310,33 +313,26 @@ func TestQueueAddBatchLISDiagMode(t *testing.T) {
 	q.AddBatchFromNodes(configs, "", nil, "lisdiag", 6)
 
 	_, total, _ := q.Status()
-	// LISDiag: exe×6 + io×6 = 12 commands (io combines irb+orb)
-	if total != 12 {
-		t.Fatalf("expected 12 LISDiag commands (6 exe + 6 io), got %d", total)
+	// LISDiag: 6 combined exe commands (executor sends exe N then io N-1)
+	if total != 6 {
+		t.Fatalf("expected 6 LISDiag commands (combined exe+io), got %d", total)
 	}
 
 	cmds := q.Commands()
-	ioCount := 0
 	exeCount := 0
 	for _, c := range cmds {
 		if c.Type != CmdLISDiag {
 			t.Errorf("expected CmdLISDiag type, got %s", c.Type)
 		}
-		if strings.Contains(c.Command, "io ") {
-			ioCount++
-		}
 		if strings.HasPrefix(c.Command, "exe ") {
 			exeCount++
 		}
-		// Verify no separate irb/orb commands
-		if strings.Contains(c.Command, "irb ") || strings.Contains(c.Command, "orb ") {
-			t.Errorf("found separate irb/orb command in io mode: %s", c.Command)
+		// Verify no separate io commands (merged into exe)
+		if strings.Contains(c.Command, "io ") {
+			t.Errorf("found separate io command in combined mode: %s", c.Command)
 		}
 	}
 	if exeCount != 6 {
 		t.Errorf("expected 6 exe commands, got %d", exeCount)
-	}
-	if ioCount != 6 {
-		t.Errorf("expected 6 io commands, got %d", ioCount)
 	}
 }

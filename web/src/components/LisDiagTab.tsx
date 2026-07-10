@@ -33,7 +33,7 @@ export default function LisDiagTab({
   const [ipAddress, setIpAddress] = useState(targetIP || '127.0.0.1');
   const [port, setPort] = useState(4321);
   const [pwdInput, setPwdInput] = useState(password);
-  const [connState, setConnState] = useState<ConnState>('connecting');
+  const [connState, setConnState] = useState<ConnState>('idle');
   const [sessionLog, setSessionLog] = useState<string[]>([]);
   const [cmdInput, setCmdInput] = useState('');
   const [polling, setPolling] = useState(false);
@@ -119,19 +119,28 @@ export default function LisDiagTab({
   // ─── Initial session setup ─────────────────────────────────────
 
   useEffect(() => {
-    setSessionLog([
-      `[${timestamp()}] LisDiag session — ${targetNode} (${targetIP}:4321)`,
-      `[${timestamp()}] Token: ${tokenID}, Exe: ${exeNum}`,
-      `[${timestamp()}] Password: ${password ? 'configured' : 'none (no auth)'}`,
-      `[${timestamp()}] Commands: ${commands.join(', ')}`,
-      '',
-    ]);
-    seenCommandIds.current = new Set();
-    seenStatuses.current = new Map();
-    setConnState('connecting');
-    fetchQueueStatus();
-    const interval = setInterval(fetchQueueStatus, 2000);
-    return () => clearInterval(interval);
+    if (commands.length > 0) {
+      setSessionLog([
+        `[${timestamp()}] LisDiag session — ${targetNode} (${targetIP}:4321)`,
+        `[${timestamp()}] Token: ${tokenID}, Exe: ${exeNum}`,
+        `[${timestamp()}] Password: ${password ? 'configured' : 'none (no auth)'}`,
+        `[${timestamp()}] Commands: ${commands.join(', ')}`,
+        '',
+      ]);
+      seenCommandIds.current = new Set();
+      seenStatuses.current = new Map();
+      setConnState('connecting');
+      fetchQueueStatus();
+      const interval = setInterval(fetchQueueStatus, 2000);
+      return () => clearInterval(interval);
+    } else {
+      // No target — show ready state, don't auto-poll
+      setSessionLog([
+        `[${timestamp()}] LisDiag terminal ready`,
+        `[${timestamp()}] Enter IP and port, then click Connect to start a session.`,
+        '',
+      ]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetIP, targetNode, tokenID, password, exeNum, commands]);
 
@@ -145,7 +154,7 @@ export default function LisDiagTab({
 
   // ─── Connect button handler (visual only) ──────────────────────
 
-  function handleConnect() {
+  async function handleConnect() {
     if (connState === 'connected' || connState === 'authenticated') {
       setConnState('idle');
       appendLog(`[${timestamp()}] Disconnected`);
@@ -153,8 +162,37 @@ export default function LisDiagTab({
     }
     setConnState('connecting');
     appendLog(`[${timestamp()}] Connecting to ${ipAddress}:${port}...`);
-    // Trigger a poll to check queue status
-    fetchQueueStatus();
+    try {
+      // Test connection by sending a harmless command through the queue
+      const res = await fetch('/api/v1/commandqueue/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'lisdiag',
+          node_name: targetNode || 'manual',
+          token_id: tokenID || 'manual',
+          command: '\n',  // empty command just to test connection
+          ip_address: ipAddress,
+          lisdiag_pwd: pwdInput || undefined,
+        }),
+      });
+      if (res.ok) {
+        setConnState('connected');
+        appendLog(`[${timestamp()}] Connected to ${ipAddress}:${port}`);
+        // Start the queue to process the test command
+        fetch('/api/v1/commandqueue/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        }).catch(() => {});
+      } else {
+        setConnState('failed');
+        appendLog(`[${timestamp()}] !! Connection failed: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      setConnState('failed');
+      appendLog(`[${timestamp()}] !! Connection error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // ─── Send command ───────────────────────────────────────────────

@@ -147,6 +147,42 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 		// 1. Clear the session output buffer before sending
 		_ = s.telnetSM.ClearOutput(sessionID)
 
+		// RSU combined mode: send rx-trace (primary), collect output,
+		// then send tx-trace (ExtraData), collect output, combine both.
+		if cmd.Type == commandqueue.CmdRSU && cmd.ExtraData != "" {
+			// Send primary command (rx-trace)
+			if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
+				sess, ok := s.telnetSM.GetSession(sessionID)
+				if ok && sess != nil {
+					sess.Connected = false
+				}
+				return "", err
+			}
+			rxOutput := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
+
+			// Send secondary command (tx-trace)
+			_ = s.telnetSM.ClearOutput(sessionID)
+			if err := s.telnetSM.SendCommand(sessionID, cmd.ExtraData); err != nil {
+				sess, ok := s.telnetSM.GetSession(sessionID)
+				if ok && sess != nil {
+					sess.Connected = false
+				}
+				return rxOutput, err
+			}
+			txOutput := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
+
+			// Combine outputs
+			combinedOutput := rxOutput + "\n" + txOutput
+
+			// Write combined output to .rsu file
+			lw := logwriter.New(s.resolveLogRoot())
+			if err := lw.WriteOutputWithIP(cmd.NodeName, "RSU", cmd.TokenID, combinedOutput, cmd.IPAddress); err != nil {
+				log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+			}
+
+			return combinedOutput, nil
+		}
+
 		// 2. Send the command
 		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
 			// Command failed — mark session as needing reconnect for next command
@@ -308,6 +344,43 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 		}
 
 		_ = s.telnetSM.ClearOutput(sessionID)
+
+		// RSU combined mode: send rx-trace (primary), collect output,
+		// then send tx-trace (ExtraData), collect output, combine both.
+		if cmd.Type == commandqueue.CmdRSU && cmd.ExtraData != "" {
+			// Send primary command (rx-trace)
+			if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
+				sess, ok := s.telnetSM.GetSession(sessionID)
+				if ok && sess != nil {
+					sess.Connected = false
+				}
+				return "", err
+			}
+			rxOutput := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
+
+			// Send secondary command (tx-trace)
+			_ = s.telnetSM.ClearOutput(sessionID)
+			if err := s.telnetSM.SendCommand(sessionID, cmd.ExtraData); err != nil {
+				sess, ok := s.telnetSM.GetSession(sessionID)
+				if ok && sess != nil {
+					sess.Connected = false
+				}
+				return rxOutput, err
+			}
+			txOutput := waitForOutput(s.telnetSM, sessionID, 10*time.Second, 2*time.Second, s.commandQueue.CancelCh())
+
+			// Combine outputs
+			combinedOutput := rxOutput + "\n" + txOutput
+
+			// Write combined output to .rsu file
+			lw := logwriter.New(s.resolveLogRoot())
+			if err := lw.WriteOutputWithIP(cmd.NodeName, "RSU", cmd.TokenID, combinedOutput, cmd.IPAddress); err != nil {
+				log.Printf("commandqueue: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
+			}
+
+			return combinedOutput, nil
+		}
+
 		if err := s.telnetSM.SendCommand(sessionID, cmd.Command); err != nil {
 			sess, ok := s.telnetSM.GetSession(sessionID)
 			if ok && sess != nil {

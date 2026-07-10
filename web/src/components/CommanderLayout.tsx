@@ -287,7 +287,7 @@ export default function CommanderLayout() {
         // No-op: merged into lisdiag_run (exe N + io N-1 queued together)
         break;
       case 'rsu_trace': {
-        // Queue rx+tx RSU trace commands for one exe
+        // Queue combined rx+tx RSU trace command for one exe
         const exeNumMatch = tokenId.match(/_exe(\d+)/);
         const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
         const baseTokenId = tokenId.split('_exe')[0] || tokenId;
@@ -295,11 +295,10 @@ export default function CommanderLayout() {
         const rxCmd = `print from rsu rx-trace ${baseTokenId}0000 ${channel}`;
         const txCmd = `print from rsu tx-trace ${baseTokenId}0000 ${channel}`;
         setActiveTab('queue');
-        setTerminalLog(prev => [...prev, `> ${rxCmd} (queued)`, `> ${txCmd} (queued)`]);
+        setTerminalLog(prev => [...prev, `> ${rxCmd} + ${txCmd} (queued as combined command)`]);
         setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
         try {
-          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: rxCmd, ip_address: nodeIp }) });
-          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: txCmd, ip_address: nodeIp }) });
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: rxCmd, ip_address: nodeIp, extra_data: txCmd }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
@@ -644,20 +643,14 @@ export default function CommanderLayout() {
               </div>
             )}
             {activeTab === 'lisdiag' && (
-              lisdiagTarget ? (
-                <LisDiagTab
-                  targetIP={lisdiagTarget.ip}
-                  targetNode={lisdiagTarget.node}
-                  tokenID={lisdiagTarget.tokenID}
-                  password={lisdiagTarget.password}
-                  exeNum={lisdiagTarget.exeNum}
-                  commands={lisdiagTarget.commands}
-                />
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '13px' }}>
-                  Right-click an AL node LIS file and select "Run LisDiag" to open the LisDiag terminal.
-                </div>
-              )
+              <LisDiagTab
+                targetIP={lisdiagTarget?.ip || ''}
+                targetNode={lisdiagTarget?.node || ''}
+                tokenID={lisdiagTarget?.tokenID || ''}
+                password={lisdiagTarget?.password || ''}
+                exeNum={lisdiagTarget?.exeNum || 0}
+                commands={lisdiagTarget?.commands || []}
+              />
             )}
             {activeTab === 'bstool' && <BsToolPanel pendingServerName={pendingServerName} onServerNameConsumed={() => { setPendingServerName(null); setPendingNodeIp(null); }} currentNodeName={currentNodeName} pendingNodeIp={pendingNodeIp} onExecutionComplete={() => setTreeReloadKey((k) => k + 1)} />}
             {activeTab === 'scan' && <ScanTab selectedNode={selectedNode} logRoot={activeLogRoot || localStorage.getItem('logRoot') || ''} />}
