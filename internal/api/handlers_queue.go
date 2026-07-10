@@ -709,25 +709,37 @@ func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) 
 	// Search for matching .dia files in BU using BsTool.
 	// The technician creates files named like: AL01_192-168-0-11_181_exe1.dia
 	// The tokenID (e.g. "181_exe1") uniquely identifies the file.
+	// BsTool READ_DIR may not support complex wildcard patterns like *181_exe1*.dia,
+	// so we list ALL .dia files and filter in Go for an exact match.
 	ft := bstool.NewFileTransport(bstoolHost, bstoolPort, 15*time.Second)
 	defer ft.Close()
 
 	commLine := "s"
-	pattern := fmt.Sprintf("*%s*.dia", cmd.TokenID)
-	entries, err := ft.ListDir(commLine, pattern)
+	entries, err := ft.ListDir(commLine, "*.dia")
 
 	var fileContent []byte
 	if err != nil {
-		log.Printf("diaglis: BsTool ListDir failed (host=%s:%d pattern=%s): %v", bstoolHost, bstoolPort, pattern, err)
-	} else if len(entries) == 0 {
-		log.Printf("diaglis: no .dia file found in BU matching %s (node=%s exe=%d)", pattern, cmd.NodeName, exeNum)
+		log.Printf("diaglis: BsTool ListDir failed (host=%s:%d pattern=*.dia): %v", bstoolHost, bstoolPort, err)
 	} else {
-		// Read the first matching file
-		fileContent, err = ft.ReadFile(commLine, entries[0].Name)
-		if err != nil {
-			log.Printf("diaglis: failed to read %s from BU: %v", entries[0].Name, err)
+		// Filter entries: find the one whose name contains the tokenID
+		// tokenID is like "181_exe1" — the filename should be AL02_192-168-1-12_181_exe1.dia
+		var matchedEntry *bstool.DirEntry
+		for i := range entries {
+			if strings.Contains(entries[i].Name, cmd.TokenID) {
+				matchedEntry = &entries[i]
+				break
+			}
+		}
+		if matchedEntry == nil {
+			log.Printf("diaglis: no .dia file matching tokenID=%s in %d BU entries (node=%s exe=%d)",
+				cmd.TokenID, len(entries), cmd.NodeName, exeNum)
 		} else {
-			log.Printf("diaglis: fetched %s from BU (%d bytes)", entries[0].Name, len(fileContent))
+			fileContent, err = ft.ReadFile(commLine, matchedEntry.Name)
+			if err != nil {
+				log.Printf("diaglis: failed to read %s from BU: %v", matchedEntry.Name, err)
+			} else {
+				log.Printf("diaglis: fetched %s from BU (%d bytes)", matchedEntry.Name, len(fileContent))
+			}
 		}
 	}
 
