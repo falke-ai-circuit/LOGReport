@@ -471,7 +471,10 @@ func (q *Queue) InsertAt(cmd QueuedCommand, index int) bool {
 // a single output — reverse-engineered from FUN_00406530 in LisDiag.exe.
 // Per LIS token: exe×6 + io×6 = 12 commands total (down from 18 with separate
 // irb+orb). Each io output contains both received and transmitted frames.
-func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPassword string) {
+func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPassword string, lisExeCount int) {
+	if lisExeCount <= 0 {
+		lisExeCount = 6
+	}
 	for _, node := range configs {
 		port, password := lisdiag.ParseParameters(node.LISDiagParams)
 		if password == "" {
@@ -481,7 +484,7 @@ func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPass
 
 		for _, tok := range node.Tokens {
 			if tok.TokenType == types.TokenLIS {
-				for exeNum := 1; exeNum <= 6; exeNum++ {
+				for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
 					channel := exeNum - 1
 					tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
 					// exe N — set channel
