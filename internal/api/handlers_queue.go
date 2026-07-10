@@ -763,9 +763,11 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 	// Default port and password
 	port := 4321
 	password := cmd.LISDiagPwd
+	// If no password from queue, check settings
 	if password == "" {
-		password = "password" // fallback default from .sys config
+		password = st.LISDiagPassword
 	}
+	// If still empty, no auth needed (LisDiag started without -x flag)
 
 	// Reuse cached LisDiag connection if available (same host+port+password)
 	connKey := fmt.Sprintf("%s:%d:%s", host, port, password)

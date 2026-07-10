@@ -569,10 +569,9 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 				if lisMode == "lisdiag" {
 					// LISDIAG path: generate telnet commands for LisDiag
 					// Uses "io" command which combines irb+orb in one output
+					// Password: try node's LISDiagParams first, then empty (no auth)
 					_, password := lisdiag.ParseParameters(node.LISDiagParams)
-					if password == "" {
-						password = "password"
-					}
+					// Don't fallback to "password" — empty means no auth needed
 					for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
 						channel := exeNum - 1
 						tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
