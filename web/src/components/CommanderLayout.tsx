@@ -242,6 +242,97 @@ export default function CommanderLayout() {
           setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
+      case 'lisdiag_run': {
+        // Queue a single LisDiag "exe N" command
+        const exeNumMatch = tokenId.match(/_exe(\d+)/);
+        const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
+        const baseTokenId = tokenId.split('_exe')[0] || tokenId;
+        const cmd = `exe ${exeNum}`;
+        setActiveTab('queue');
+        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag ${baseTokenId} exe${exeNum} queued)`]);
+        setActiveExecFile(`${nodeName}:${tokenId}:lisdiag`);
+        try {
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'lisdiag_io': {
+        // Queue a single LisDiag "io N-1" command
+        const exeNumMatch = tokenId.match(/_exe(\d+)/);
+        const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
+        const baseTokenId = tokenId.split('_exe')[0] || tokenId;
+        const channel = exeNum - 1;
+        const cmd = `io ${channel}`;
+        setActiveTab('queue');
+        setTerminalLog(prev => [...prev, `> ${cmd} (LisDiag IO ${baseTokenId} exe${exeNum} queued)`]);
+        setActiveExecFile(`${nodeName}:${tokenId}:lisdiag`);
+        try {
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'rsu_trace': {
+        // Queue rx+tx RSU trace commands for one exe
+        const exeNumMatch = tokenId.match(/_exe(\d+)/);
+        const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
+        const baseTokenId = tokenId.split('_exe')[0] || tokenId;
+        const channel = exeNum - 1;
+        const rxCmd = `print from rsu rx-trace ${baseTokenId}0000 ${channel}`;
+        const txCmd = `print from rsu tx-trace ${baseTokenId}0000 ${channel}`;
+        setActiveTab('queue');
+        setTerminalLog(prev => [...prev, `> ${rxCmd} (queued)`, `> ${txCmd} (queued)`]);
+        setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
+        try {
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: rxCmd, ip_address: nodeIp }) });
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: txCmd, ip_address: nodeIp }) });
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'rsu_status': {
+        // Queue RSU status command for one exe
+        const baseTokenId = tokenId.split('_exe')[0] || tokenId;
+        const cmd = `print from rsu status ${baseTokenId}0000`;
+        setActiveTab('queue');
+        setTerminalLog(prev => [...prev, `> ${cmd} (queued)`]);
+        setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
+        try {
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'lis_print_all': {
+        // Batch all LIS commands for the node (same as batch-node with token_type LIS)
+        setActiveTab('queue');
+        setTerminalLog(prev => [...prev, `> Batch LIS print all for ${nodeName}`]);
+        try {
+          await fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) });
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
+      case 'diaglis_import': {
+        // Queue a diaglis placeholder command
+        const exeNumMatch = tokenId.match(/_exe(\d+)/);
+        const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
+        const cmd = `diaglis placeholder exe${exeNum}`;
+        setActiveTab('queue');
+        setTerminalLog(prev => [...prev, `> ${cmd} (queued)`]);
+        try {
+          await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'diaglis', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          setTreeReloadKey((k) => k + 1);
+        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+        break;
+      }
       case 'open_file':
         handleDoubleClickFile(node);
         break;

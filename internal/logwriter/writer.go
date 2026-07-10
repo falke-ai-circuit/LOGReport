@@ -99,7 +99,7 @@ func fileExtension(tokenType string) string {
 // Filename patterns:
 //   FBC/RPC: {stationName}_{ipFormatted}_{tokenID}.{ext}
 //   LOG:     {stationName}_{ipFormatted}.log (no tokenID)
-//   LIS:     {stationName}_{ipFormatted}_exe{N}.lis (tokenID contains _exe{N} suffix)
+//   LIS:     {stationName}_{ipFormatted}_{tokenID}_exe{N}.lis (tokenID contains _exe{N} suffix)
 func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	ext := fileExtension(tokenType)
 	ipFmt := formatIP(ip)
@@ -111,11 +111,12 @@ func (lw *LogWriter) logPath(nodeName, tokenType, tokenID, ip string) string {
 	case "LOG":
 		fileName = fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
 	case "LIS", "RSU", "DIA":
-		// tokenID for LIS/RSU/DIA is like "102_exe1" — we want just the exe part
-		// Extract exe number from tokenID (format: {tokenID}_exe{N})
+		// tokenID format: "{baseTokenID}_exe{N}" (e.g. "181_exe1")
+		// Filename: {station}_{ip}_{baseTokenID}_exe{N}.{ext}
 		exeNum := extractExeNum(tokenID)
+		baseTokenID := extractBaseTokenID(tokenID)
 		if exeNum > 0 {
-			fileName = fmt.Sprintf("%s_%s_exe%d%s", stationName, ipFmt, exeNum, ext)
+			fileName = fmt.Sprintf("%s_%s_%s_exe%d%s", stationName, ipFmt, baseTokenID, exeNum, ext)
 		} else {
 			// Fallback: use tokenID as-is
 			fileName = fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
@@ -138,6 +139,16 @@ func extractExeNum(tokenID string) int {
 	var n int
 	fmt.Sscanf(numStr, "%d", &n)
 	return n
+}
+
+// extractBaseTokenID extracts the base tokenID from a tokenID like "181_exe1" → "181".
+// If no "_exe" suffix is found, returns the full tokenID unchanged.
+func extractBaseTokenID(tokenID string) string {
+	idx := strings.Index(tokenID, "_exe")
+	if idx < 0 {
+		return tokenID
+	}
+	return tokenID[:idx]
 }
 
 // nodeDir returns the directory path for a node's logs, creating it if needed.

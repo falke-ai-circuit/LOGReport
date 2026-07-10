@@ -119,14 +119,14 @@ func TestLISFilename(t *testing.T) {
 	dir := t.TempDir()
 	lw := New(dir)
 
-	// LIS tokenID format: "102_exe1" — should produce {station}_{ip}_exe1.lis
+	// LIS tokenID format: "102_exe1" — should produce {station}_{ip}_{tokenID}_exe1.lis
 	err := lw.WriteOutputWithIP("AL01", "LIS", "102_exe1", "lis frame data", "127.0.0.1")
 	if err != nil {
 		t.Fatalf("WriteOutputWithIP for LIS failed: %v", err)
 	}
 
-	// Expected: {dir}/_LOG/AL01/LIS/AL01_127-0-0-1_exe1.lis
-	path := filepath.Join(dir, "_LOG", "AL01", "LIS", "AL01_127-0-0-1_exe1.lis")
+	// Expected: {dir}/_LOG/AL01/LIS/AL01_127-0-0-1_102_exe1.lis
+	path := filepath.Join(dir, "_LOG", "AL01", "LIS", "AL01_127-0-0-1_102_exe1.lis")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected LIS file at %s: %v", path, err)
 	}
@@ -156,7 +156,7 @@ func TestLISAllExeFiles(t *testing.T) {
 
 	// Verify all 6 files exist
 	for exe := 1; exe <= 6; exe++ {
-		path := filepath.Join(dir, "_LOG", "AL01", "LIS", fmt.Sprintf("AL01_127-0-0-1_exe%d.lis", exe))
+		path := filepath.Join(dir, "_LOG", "AL01", "LIS", fmt.Sprintf("AL01_127-0-0-1_102_exe%d.lis", exe))
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("expected exe%d file at %s: %v", exe, path, err)
 		}
@@ -179,6 +179,26 @@ func TestExtractExeNum(t *testing.T) {
 		got := extractExeNum(tt.tokenID)
 		if got != tt.expected {
 			t.Errorf("extractExeNum(%q) = %d, want %d", tt.tokenID, got, tt.expected)
+		}
+	}
+}
+
+func TestExtractBaseTokenID(t *testing.T) {
+	tests := []struct {
+		tokenID  string
+		expected string
+	}{
+		{"181_exe1", "181"},
+		{"102_exe6", "102"},
+		{"501_exe3", "501"},
+		{"102", "102"},
+		{"", ""},
+		{"_exe2", ""},
+	}
+	for _, tt := range tests {
+		got := extractBaseTokenID(tt.tokenID)
+		if got != tt.expected {
+			t.Errorf("extractBaseTokenID(%q) = %q, want %q", tt.tokenID, got, tt.expected)
 		}
 	}
 }
