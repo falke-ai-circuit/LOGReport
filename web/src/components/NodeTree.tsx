@@ -106,8 +106,17 @@ export default function NodeTree({
     parentNode?: TreeNodeData;
   } | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
+  const [lisMode, setLisMode] = useState<string>('rsu');
   const menuRef = useRef<HTMLDivElement>(null);
   const { activeLogRoot } = useActiveProject();
+
+  // Fetch lis_mode from settings for context menu adaptation
+  useEffect(() => {
+    fetch('/api/v1/settings')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.settings?.lis_mode) setLisMode(data.settings.lis_mode); })
+      .catch(() => {});
+  }, []);
 
   // Fetch tree (now includes log_root + project_id to get project-scoped tree)
   const fetchTree = useCallback(async () => {
@@ -268,11 +277,16 @@ export default function NodeTree({
         ];
       }
       // Commander mode: print commands
+      const lisNodeLabel = lisMode === 'diaglis'
+        ? `Import All DiagLis Files for ${node.name}`
+        : lisMode === 'lisdiag'
+        ? `Run All LisDiag Commands for ${node.name}`
+        : `Print All RSU Traces for ${node.name}`;
       return [
         { icon: <Printer size={14} />, label: `Execute All Print Commands for ${node.name}`, action: 'print_all' },
         { icon: <Printer size={14} />, label: `Print All FBC Tokens for ${node.name}`, action: 'fbc_print_all' },
         { icon: <Printer size={14} />, label: `Print All RPC Tokens for ${node.name}`, action: 'rpc_print_all' },
-        { icon: <Printer size={14} />, label: `Print All LIS RSU Traces for ${node.name}`, action: 'lis_print_all' },
+        { icon: <Printer size={14} />, label: lisNodeLabel, action: 'lis_print_all' },
         { icon: <Server size={14} />, label: `Print All LOG Tokens for ${node.name}`, action: 'bstool_errlog' },
       ];
     }
@@ -295,9 +309,14 @@ export default function NodeTree({
           { icon: <Trash2 size={14} />, label: `Clear All LOG Files for ${nodeName}`, action: 'clear_logs' },
         ];
       }
-      if (sectionType === 'LIS') {
+      if (sectionType === 'LIS' || sectionType === 'RSU' || sectionType === 'DIA') {
+        const lisGroupLabel = lisMode === 'diaglis'
+          ? `Import All DiagLis Files for ${nodeName}`
+          : lisMode === 'lisdiag'
+          ? `Run All LisDiag Commands for ${nodeName}`
+          : `Print All RSU Traces for ${nodeName}`;
         return [
-          { icon: <Printer size={14} />, label: `Print All LIS RSU Traces for ${nodeName}`, action: 'lis_print_all' },
+          { icon: <Printer size={14} />, label: lisGroupLabel, action: 'lis_print_all' },
         ];
       }
       return [
@@ -353,12 +372,26 @@ export default function NodeTree({
           ...fileMgmtItems,
         ];
       }
-      if (sectionType === 'LIS') {
+      if (sectionType === 'LIS' || sectionType === 'RSU' || sectionType === 'DIA') {
         // Parse exe number from filename (e.g. "AL01_192-168-1-171_102_exe3.lis" → 3)
         const exeMatch = node.name?.match(/exe(\d+)/i);
         const exeNum = exeMatch ? parseInt(exeMatch[1], 10) : 1;
+        if (lisMode === 'diaglis') {
+          return [
+            { icon: <FileText size={14} />, label: `Import DiagLis File for exe${exeNum}`, action: 'diaglis_import' },
+            ...fileMgmtItems,
+          ];
+        }
+        if (lisMode === 'lisdiag') {
+          return [
+            { icon: <Play size={14} />, label: `Run LisDiag exe${exeNum}`, action: 'lisdiag_run' },
+            { icon: <Play size={14} />, label: `Run LisDiag IO exe${exeNum}`, action: 'lisdiag_io' },
+            ...fileMgmtItems,
+          ];
+        }
+        // rsu mode (default)
         return [
-          { icon: <Printer size={14} />, label: `Print All LIS RSU Traces for this node`, action: 'lis_print_all' },
+          { icon: <Printer size={14} />, label: `Print All RSU Traces for this node`, action: 'lis_print_all' },
           { icon: <Play size={14} />, label: `Print RSU Trace (rx+tx) Exe${exeNum}`, action: 'rsu_trace' },
           { icon: <Server size={14} />, label: `Print RSU Status Exe${exeNum}`, action: 'rsu_status' },
           ...fileMgmtItems,
