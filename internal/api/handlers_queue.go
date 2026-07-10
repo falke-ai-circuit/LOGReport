@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
 	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
@@ -684,14 +683,6 @@ func (s *Server) handleQueueBatchNode(w http.ResponseWriter, r *http.Request) {
 // created it yet) but does NOT fail — the queue continues.
 func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) {
 	st := getSettings()
-	bstoolHost := st.BsToolHost
-	if bstoolHost == "" {
-		bstoolHost = "127.0.0.1"
-	}
-	bstoolPort := st.BsToolPort
-	if bstoolPort == 0 {
-		bstoolPort = 1516
-	}
 
 	// Parse exe number from token ID (format: "181_exe1")
 	exeNum := 0
@@ -706,41 +697,28 @@ func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) 
 	}
 	_ = stationName // kept for potential future filtering
 
-	// Search for matching .dia files in BU using BsTool.
-	// The technician creates files named like: AL01_192-168-0-11_181_exe1.dia
-	// The tokenID (e.g. "181_exe1") uniquely identifies the file.
-	// BsTool READ_DIR may not support complex wildcard patterns like *181_exe1*.dia,
-	// so we list ALL .dia files and filter in Go for an exact match.
-	ft := bstool.NewFileTransport(bstoolHost, bstoolPort, 15*time.Second)
-	defer ft.Close()
-
-	commLine := "s"
-	entries, err := ft.ListDir(commLine, "*.dia")
+	// Fetch .dia file from the BU directory on the local filesystem.
+	// The technician creates files named like: AL02_192-168-1-12_181_exe1.dia
+	// using the DiagLis GUI, which saves them in the BU directory (C:\dna\CA\bu).
+	// The BU (buc_16.20.exe) does NOT serve .dia files through its TCP protocol
+	// — READ_DIR with *.dia returns param=0, FILE_OPEN returns handle=0.
+	// The .dia files are on the local disk in the bu_dir, so we read them directly.
+	buDir := st.BUDir
+	if buDir == "" {
+		buDir = "C:\\dna\\CA\\bu"
+	}
+	// Construct expected filename: {station}_{ip-hyphens}_{tokenID}.dia
+	// tokenID already includes _exe{N}, e.g. "181_exe1"
+	ipHyphens := strings.ReplaceAll(cmd.IPAddress, ".", "-")
+	expectedName := fmt.Sprintf("%s_%s_%s.dia", stationName, ipHyphens, cmd.TokenID)
+	filePath := filepath.Join(buDir, expectedName)
 
 	var fileContent []byte
+	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Printf("diaglis: BsTool ListDir failed (host=%s:%d pattern=*.dia): %v", bstoolHost, bstoolPort, err)
+		log.Printf("diaglis: read %s from local BU dir failed: %v (node=%s exe=%d)", filePath, err, cmd.NodeName, exeNum)
 	} else {
-		// Filter entries: find the one whose name contains the tokenID
-		// tokenID is like "181_exe1" — the filename should be AL02_192-168-1-12_181_exe1.dia
-		var matchedEntry *bstool.DirEntry
-		for i := range entries {
-			if strings.Contains(entries[i].Name, cmd.TokenID) {
-				matchedEntry = &entries[i]
-				break
-			}
-		}
-		if matchedEntry == nil {
-			log.Printf("diaglis: no .dia file matching tokenID=%s in %d BU entries (node=%s exe=%d)",
-				cmd.TokenID, len(entries), cmd.NodeName, exeNum)
-		} else {
-			fileContent, err = ft.ReadFile(commLine, matchedEntry.Name)
-			if err != nil {
-				log.Printf("diaglis: failed to read %s from BU: %v", matchedEntry.Name, err)
-			} else {
-				log.Printf("diaglis: fetched %s from BU (%d bytes)", matchedEntry.Name, len(fileContent))
-			}
-		}
+		log.Printf("diaglis: fetched %s from local BU dir (%d bytes)", filePath, len(fileContent))
 	}
 
 	// Write content (or empty if not found) to local log directory
