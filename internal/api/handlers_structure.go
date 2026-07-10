@@ -171,37 +171,80 @@ func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, 
 		}
 
 		for tokenType, tokens := range tokenTypes {
-			// Create directory: {logRoot}/{_LOG}/{station}/{tokenType}/
-			dir := filepath.Join(logRoot, logRootName, stationName, strings.ToLower(tokenType))
+			// Determine subfolder name: for LIS, use mode-aware dir name (rsu/lis/dia)
+			subFolder := strings.ToLower(tokenType)
+			if tokenType == "LIS" {
+				subFolder = lisDirName(st.LISMode)
+			}
+			// Create directory: {logRoot}/{_LOG}/{station}/{subFolder}/
+			dir := filepath.Join(logRoot, logRootName, stationName, subFolder)
 			if mkErr := os.MkdirAll(dir, 0755); mkErr != nil {
 				log.Printf("create-structure: mkdir %s: %v", dir, mkErr)
 				continue
 			}
 			createdDirs++
 
-			// Create empty file for each token (deduplicate LOG — one file per station)
+			// Create empty file for each token
+			// LOG: one file per station (deduplicate)
+			// LIS: exe1-exeN files per token (deduplicate by tokenID)
+			// FBC/RPC: one file per token
 			seenLog := make(map[string]bool)
+			seenLisToken := make(map[string]bool)
 			for _, tok := range tokens {
-				fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
 				if tokenType == "LOG" {
+					fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
 					if seenLog[fileName] {
 						continue
 					}
 					seenLog[fileName] = true
+					filePath := filepath.Join(dir, fileName)
+					if _, statErr := os.Stat(filePath); statErr == nil {
+						continue
+					}
+					if wErr := os.WriteFile(filePath, []byte{}, 0644); wErr != nil {
+						log.Printf("create-structure: write %s: %v", filePath, wErr)
+						continue
+					}
+					createdFiles++
+					createdPaths = append(createdPaths, filePath)
+				} else if tokenType == "LIS" {
+					// Deduplicate by tokenID
+					if seenLisToken[tok.TokenID] {
+						continue
+					}
+					seenLisToken[tok.TokenID] = true
+					// Generate exe1-exeN files
+					exeCount := st.LISExeCount
+					if exeCount <= 0 {
+						exeCount = 6
+					}
+					for exeNum := 1; exeNum <= exeCount; exeNum++ {
+						fileName := buildLogFileNameWithExe(stationName, ip, tok.TokenID, exeNum, st.LISMode)
+						filePath := filepath.Join(dir, fileName)
+						if _, statErr := os.Stat(filePath); statErr == nil {
+							continue
+						}
+						if wErr := os.WriteFile(filePath, []byte{}, 0644); wErr != nil {
+							log.Printf("create-structure: write %s: %v", filePath, wErr)
+							continue
+						}
+						createdFiles++
+						createdPaths = append(createdPaths, filePath)
+					}
+				} else {
+					// FBC/RPC: one file per token
+					fileName := buildLogFileName(stationName, ip, tokenType, tok.TokenID)
+					filePath := filepath.Join(dir, fileName)
+					if _, statErr := os.Stat(filePath); statErr == nil {
+						continue
+					}
+					if wErr := os.WriteFile(filePath, []byte{}, 0644); wErr != nil {
+						log.Printf("create-structure: write %s: %v", filePath, wErr)
+						continue
+					}
+					createdFiles++
+					createdPaths = append(createdPaths, filePath)
 				}
-				filePath := filepath.Join(dir, fileName)
-				// Only create if file doesn't exist (don't overwrite existing files)
-				if _, statErr := os.Stat(filePath); statErr == nil {
-					// File already exists — skip
-					continue
-				}
-
-				if wErr := os.WriteFile(filePath, []byte{}, 0644); wErr != nil {
-					log.Printf("create-structure: write %s: %v", filePath, wErr)
-					continue
-				}
-				createdFiles++
-				createdPaths = append(createdPaths, filePath)
 			}
 		}
 	}
@@ -213,7 +256,7 @@ func (s *Server) createLogStructure(logRoot string) (createdDirs, createdFiles, 
 // FBC: {station}_{ip}_{token}.fbc
 // RPC: {station}_{ip}_{token}.rpc
 // LOG: {station}_{ip}.log (no token ID in filename)
-// LIS: {station}_{ip}_{token}.lis
+// LIS: {station}_{ip}_{token}_exe{N}.{ext} where N=1..lisExeCount and ext depends on lisMode
 func buildLogFileName(stationName, ip, tokenType, tokenID string) string {
 	ipFmt := formatIPForLog(ip)
 	ext := logFileExtension(tokenType)
@@ -222,6 +265,43 @@ func buildLogFileName(stationName, ip, tokenType, tokenID string) string {
 		return fmt.Sprintf("%s_%s%s", stationName, ipFmt, ext)
 	}
 	return fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
+}
+
+// buildLogFileNameWithExe creates the filename for LIS tokens with exe suffix.
+// LIS: {station}_{ip}_{token}_exe{N}.{ext}
+func buildLogFileNameWithExe(stationName, ip, tokenID string, exeNum int, lisMode string) string {
+	ipFmt := formatIPForLog(ip)
+	ext := lisExtension(lisMode)
+	if exeNum > 0 {
+		return fmt.Sprintf("%s_%s_%s_exe%d%s", stationName, ipFmt, tokenID, exeNum, ext)
+	}
+	return fmt.Sprintf("%s_%s_%s%s", stationName, ipFmt, tokenID, ext)
+}
+
+// lisExtension returns the file extension based on lisMode.
+// rsu→.rsu, diaglis→.dia, lisdiag/empty→.lis
+func lisExtension(lisMode string) string {
+	switch strings.ToLower(lisMode) {
+	case "rsu":
+		return ".rsu"
+	case "diaglis":
+		return ".dia"
+	default:
+		return ".lis"
+	}
+}
+
+// lisDirName returns the subfolder name for LIS files based on lisMode.
+// rsu→"rsu", diaglis→"dia", lisdiag/empty→"lis"
+func lisDirName(lisMode string) string {
+	switch strings.ToLower(lisMode) {
+	case "rsu":
+		return "rsu"
+	case "diaglis":
+		return "dia"
+	default:
+		return "lis"
+	}
 }
 
 func formatIPForLog(ip string) string {
