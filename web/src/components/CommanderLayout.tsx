@@ -291,7 +291,7 @@ export default function CommanderLayout() {
         const exeNumMatch = tokenId.match(/_exe(\d+)/);
         const exeNum = exeNumMatch ? parseInt(exeNumMatch[1], 10) : 1;
         const baseTokenId = tokenId.split('_exe')[0] || tokenId;
-        const channel = exeNum - 1;
+        const channel = exeNum;
         const rxCmd = `print from rsu rx-trace ${baseTokenId}0000 ${channel}`;
         const txCmd = `print from rsu tx-trace ${baseTokenId}0000 ${channel}`;
         setActiveTab('queue');

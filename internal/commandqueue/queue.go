@@ -604,7 +604,7 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 				// RSU6 path (default): generate combined rx+tx trace command for each exe
 				rsuid := tok.TokenID + "0000"
 				for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
-					channel := exeNum - 1
+					channel := exeNum
 					// TokenID encodes exe number: "162_exe1" so logwriter writes to
 					// {station}_{ip}_{tokenID}_exe{N}.lis
 					tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)

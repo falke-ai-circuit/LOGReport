@@ -851,6 +851,7 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 
 	// Combined exe+io mode: if command starts with "exe ", send exe N then
 	// io N-1, write ONLY the io output to the .lis file.
+	// LisDiag io is 0-indexed: exe1=io 0, exe2=io 1, ..., exe6=io 5.
 	if strings.HasPrefix(cmd.Command, "exe ") {
 		var exeNum int
 		fmt.Sscanf(cmd.Command, "exe %d", &exeNum)
