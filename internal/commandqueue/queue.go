@@ -476,10 +476,16 @@ func (q *Queue) AddBatchFromNodesLISDiag(configs []types.NodeConfig, defaultPass
 		lisExeCount = 6
 	}
 	for _, node := range configs {
-		port, password := lisdiag.ParseParameters(node.LISDiagParams)
-		if password == "" {
-			password = defaultPassword
-		}
+		port, nodePassword := lisdiag.ParseParameters(node.LISDiagParams)
+		// Settings password is the authority. If empty (no auth configured
+		// in settings), use empty — do NOT fall back to node's -x password
+		// from the .sys scan. This allows local testing where LisDiag is
+		// started without -x even though the .sys file has -x password.
+		// If settings password is set, it overrides node params.
+		// If settings password is empty AND node has -x, the operator must
+		// set the password in settings to match.
+		password := defaultPassword
+		_ = nodePassword // kept for potential future use
 		_ = port
 
 		for _, tok := range node.Tokens {
@@ -572,9 +578,11 @@ func (q *Queue) AddBatchFromNodes(configs []types.NodeConfig, sessionID string, 
 				if lisMode == "lisdiag" {
 					// LISDIAG path: generate telnet commands for LisDiag
 					// Uses "io" command which combines irb+orb in one output
-					// Password: try node's LISDiagParams first, then empty (no auth)
-					_, password := lisdiag.ParseParameters(node.LISDiagParams)
-					// Don't fallback to "password" — empty means no auth needed
+					// Password: use empty (no auth) — settings password is
+					// handled by the batch-node handler which calls
+					// AddBatchFromNodesLISDiag. This path is for AddBatchFromNodes
+					// which doesn't have access to settings password.
+					password := "" // no auth for local testing
 					for exeNum := 1; exeNum <= lisExeCount; exeNum++ {
 						channel := exeNum - 1
 						tokenIDWithExe := fmt.Sprintf("%s_exe%d", tok.TokenID, exeNum)
