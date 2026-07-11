@@ -94,10 +94,12 @@ describe('App', () => {
 
   it('renders navigation links', async () => {
     renderApp();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Nodes')).toBeInTheDocument();
-    expect(screen.getByText('Reports')).toBeInTheDocument();
-    expect(screen.getByText('SysFile')).toBeInTheDocument();
+    // Use getAllByText since some text appears in both nav and page content
+    expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Nodes').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Commander').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Reports').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
   });
 
   it('shows 404 page for unknown routes', async () => {

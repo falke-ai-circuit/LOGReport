@@ -86,7 +86,7 @@ describe('ReportConfig', () => {
   it('renders without crashing', () => {
     mockNodesAndReport();
     renderComponent();
-    expect(screen.getByText('Generate Report')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Generate Report' })).toBeInTheDocument();
   });
 
   it('fetches /api/v1/nodes on mount', async () => {
@@ -114,7 +114,7 @@ describe('ReportConfig', () => {
       expect(screen.getByText('Select a node...')).toBeInTheDocument();
     });
     // Select a node to see options
-    const select = screen.getByRole('combobox');
+    const select = screen.getAllByRole('combobox')[1];
     expect(select).toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe('ReportConfig', () => {
     });
 
     // Select a node
-    const select = screen.getByRole('combobox');
+    const select = screen.getAllByRole('combobox')[1];
     await userEvent.selectOptions(select, '192.168.1.10');
 
     // Submit
@@ -237,7 +237,7 @@ describe('ReportConfig', () => {
       expect(screen.getByText('Select a node...')).toBeInTheDocument();
     });
 
-    const select = screen.getByRole('combobox');
+    const select = screen.getAllByRole('combobox')[1];
     await userEvent.selectOptions(select, '192.168.1.10');
 
     await userEvent.click(screen.getByRole('button', { name: 'Generate Report' }));
@@ -278,7 +278,7 @@ describe('ReportConfig', () => {
       expect(screen.getByText('Select a node...')).toBeInTheDocument();
     });
 
-    const select = screen.getByRole('combobox');
+    const select = screen.getAllByRole('combobox')[1];
     await userEvent.selectOptions(select, '192.168.1.10');
 
     await userEvent.click(screen.getByRole('button', { name: 'Generate Report' }));

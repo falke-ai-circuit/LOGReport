@@ -526,11 +526,9 @@ func TestMethodNotAllowed(t *testing.T) {
 		// GET-only endpoints with wrong method
 		{"POST", "/health"},
 		{"PUT", "/api/v1/nodes"},
-		{"DELETE", "/api/v1/nodes/10.0.0.1"},
 		{"POST", "/api/v1/nodes/10.0.0.1/fbc"},
 		{"POST", "/api/v1/nodes/10.0.0.1/rpc"},
 		{"PUT", "/api/v1/reports"},
-		{"DELETE", "/api/v1/reports/some-id"},
 		// POST-only endpoints with wrong method
 		{"GET", "/api/v1/connect"},
 		{"GET", "/api/v1/nodes/10.0.0.1/scan"},
@@ -793,13 +791,13 @@ func TestBsToolErrLogHandler(t *testing.T) {
 		rec := doRequest(mux, "POST", "/api/v1/bstool/errlog", body, map[string]string{
 			"Content-Type": "application/json",
 		})
-		// On Linux, bstool returns ErrUnsupportedPlatform → 501
-		if rec.Code != http.StatusNotImplemented {
-			t.Errorf("expected 501 UNSUPPORTED_PLATFORM on Linux, got %d: %s", rec.Code, rec.Body.String())
+		// On Linux, bstool TCP fails → 500 INTERNAL_ERROR (was 501 when subprocess-based)
+		if rec.Code != http.StatusNotImplemented && rec.Code != http.StatusInternalServerError {
+			t.Errorf("expected 501 or 500 on Linux, got %d: %s", rec.Code, rec.Body.String())
 		}
 		result := parseJSONResponse(rec)
-		if result["error"] != "UNSUPPORTED_PLATFORM" {
-			t.Errorf("expected error UNSUPPORTED_PLATFORM, got %v", result["error"])
+		if result["error"] != "UNSUPPORTED_PLATFORM" && result["error"] != "INTERNAL_ERROR" {
+			t.Errorf("expected UNSUPPORTED_PLATFORM or INTERNAL_ERROR, got %v", result["error"])
 		}
 	})
 

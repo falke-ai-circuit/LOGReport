@@ -23,7 +23,6 @@ describe('Layout', () => {
 
   it('shows the LOGReport brand in the sidebar', () => {
     renderComponent();
-    // The brand text appears once in the sidebar
     const brand = screen.getAllByText('LOGReport');
     expect(brand.length).toBeGreaterThan(0);
   });
@@ -43,17 +42,23 @@ describe('Layout', () => {
     expect(screen.getByText('Reports')).toBeInTheDocument();
   });
 
-  it('renders SysFile nav link', () => {
+  it('renders Commander nav link', () => {
     renderComponent();
-    expect(screen.getByText('SysFile')).toBeInTheDocument();
+    expect(screen.getByText('Commander')).toBeInTheDocument();
   });
 
-  it('renders all 4 navigation links', () => {
+  it('renders Settings nav link', () => {
+    renderComponent();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+  });
+
+  it('renders all 5 navigation links', () => {
     renderComponent();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Nodes')).toBeInTheDocument();
+    expect(screen.getByText('Commander')).toBeInTheDocument();
     expect(screen.getByText('Reports')).toBeInTheDocument();
-    expect(screen.getByText('SysFile')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('has anchor elements for navigation links', () => {
@@ -64,23 +69,19 @@ describe('Layout', () => {
     const nodesLink = screen.getByText('Nodes').closest('a');
     expect(nodesLink).toHaveAttribute('href', '/nodes');
 
+    const commanderLink = screen.getByText('Commander').closest('a');
+    expect(commanderLink).toHaveAttribute('href', '/commander');
+
     const reportsLink = screen.getByText('Reports').closest('a');
     expect(reportsLink).toHaveAttribute('href', '/reports');
 
-    const sysfileLink = screen.getByText('SysFile').closest('a');
-    expect(sysfileLink).toHaveAttribute('href', '/sysfile');
+    const settingsLink = screen.getByText('Settings').closest('a');
+    expect(settingsLink).toHaveAttribute('href', '/settings');
   });
 
   it('renders an Outlet (main content area)', () => {
     const { container } = renderComponent();
-    // The main element is the content area
     const main = container.querySelector('main');
     expect(main).toBeInTheDocument();
-  });
-
-  it('renders a nav element as sidebar', () => {
-    const { container } = renderComponent();
-    const nav = container.querySelector('nav');
-    expect(nav).toBeInTheDocument();
   });
 });

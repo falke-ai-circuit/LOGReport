@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import ReportList from '../ReportList';
 
+// Mock useActiveProject hook to avoid extra fetch calls
+vi.mock('../../hooks/useActiveProject', () => ({
+  useActiveProject: () => ({ activeProjectId: 1, selectProject: vi.fn(), activeLogRoot: '/tmp/logs', selectLogRoot: vi.fn() }),
+  useProjects: () => ({ projects: [{ id: 1, project_number: 'TEST', ship_name: 'Ship', log_root: '/tmp/logs', status: 'active', created_at: '', updated_at: '' }] }),
+}));
+
 const mockReports = {
   reports: [
     {
