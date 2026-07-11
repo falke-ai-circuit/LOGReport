@@ -95,11 +95,32 @@ func (c *Client) Connect(timeout time.Duration) error {
 	return nil
 }
 
-// Close closes the connection.
+// Close closes the connection gracefully.
+// LisDiag.exe (VS2005 C++ binary) crashes if the TCP socket is closed
+// while it's still writing its goodbye response to a "q" command.
+// Fix: send "q", drain any response (short timeout), then close.
+// This gives LisDiag time to process the quit and flush its output
+// before we close our end of the socket.
 func (c *Client) Close() {
 	if c.conn != nil {
-		// Send quit command before closing
+		// Send quit command
 		fmt.Fprintf(c.conn, "q\r\n")
+
+		// Drain any response for up to 500ms — gives LisDiag time to
+		// process the quit and write any cleanup/goodbye output.
+		// Without this, the immediate conn.Close() sends a TCP RST
+		// while LisDiag is still writing → access violation crash.
+		_ = c.conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+		drainBuf := make([]byte, 1024)
+		for {
+			n, err := c.conn.Read(drainBuf)
+			if n == 0 || err != nil {
+				break
+			}
+			// Keep reading until LisDiag closes its end or timeout
+		}
+
+		// Now safe to close — LisDiag has processed the quit
 		c.conn.Close()
 		c.conn = nil
 	}
