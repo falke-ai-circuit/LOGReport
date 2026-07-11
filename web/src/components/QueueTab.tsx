@@ -28,6 +28,8 @@ const typeColors: Record<string, string> = {
   lis: '#ec4899',
   lisdiag: '#ec4899',
   bstool: '#06b6d4',
+  rsu: '#f97316',
+  diaglis: '#a855f7',
   raw: '#6b7280',
 };
 
@@ -38,6 +40,8 @@ const typeLabels: Record<string, string> = {
   lis: 'LIS',
   lisdiag: 'LISDiag',
   bstool: 'BsTool',
+  rsu: 'RSU',
+  diaglis: 'DiagLis',
   raw: 'RAW',
 };
 
@@ -52,6 +56,8 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; cmdId: string; cmdStatus: string } | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState('order');
+  const [filterBy, setFilterBy] = useState('all');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -227,6 +233,33 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
     return pendingIdx;
   };
 
+  // Sort/filter — view-only, preserves original indices for reorder
+  const sortedFilteredCommands = commands
+    .map((cmd, originalIdx) => ({ cmd, originalIdx }))
+    .filter(({ cmd }) => {
+      if (filterBy === 'all') return true;
+      // Status filters
+      if (['pending', 'running', 'completed', 'failed'].includes(filterBy)) {
+        return cmd.status === filterBy;
+      }
+      // Type filters
+      return cmd.type === filterBy;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'type':
+          return (typeLabels[a.cmd.type] || a.cmd.type).localeCompare(typeLabels[b.cmd.type] || b.cmd.type);
+        case 'status':
+          return a.cmd.status.localeCompare(b.cmd.status);
+        case 'node':
+          return (a.cmd.node_name || '').localeCompare(b.cmd.node_name || '');
+        case 'token':
+          return (a.cmd.token_id || '').localeCompare(b.cmd.token_id || '');
+        default:
+          return 0; // 'order' — keep original
+      }
+    });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
       {/* Toolbar */}
@@ -318,12 +351,57 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
             <option value="log">LOG</option>
             <option value="lis">LIS</option>
             <option value="bstool">BsTool</option>
+            <option value="rsu">RSU</option>
+            <option value="diaglis">DiagLis</option>
           </select>
           <input type="text" placeholder="Node name (e.g. AP01m)" value={addNode} onChange={(e) => setAddNode(e.target.value)} style={{ fontSize: '11px', padding: '4px 8px', width: '120px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }} />
           <input type="text" placeholder="Token ID" value={addToken} onChange={(e) => setAddToken(e.target.value)} style={{ fontSize: '11px', padding: '4px 8px', width: '80px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }} />
           <input type="text" placeholder="Command (e.g. print from fbc io structure 1620000)" value={addCommand} onChange={(e) => setAddCommand(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddCommand()} style={{ fontSize: '11px', padding: '4px 8px', flex: 1, minWidth: '200px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }} />
           <button className="btn btn-primary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={handleAddCommand} disabled={loading || !addCommand.trim()}>Queue</button>
           <button className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => setShowAddForm(false)}>Cancel</button>
+        </div>
+      )}
+
+      {/* Sort/filter bar */}
+      {commands.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ fontSize: '10px', padding: '2px 6px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }}
+          >
+            <option value="order">Order</option>
+            <option value="type">Type</option>
+            <option value="status">Status</option>
+            <option value="node">Node</option>
+            <option value="token">Token</option>
+          </select>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Filter:</span>
+          <select
+            value={filterBy}
+            onChange={(e) => setFilterBy(e.target.value)}
+            style={{ fontSize: '10px', padding: '2px 6px', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }}
+          >
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="running">Running</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+            <option value="fbc">FBC</option>
+            <option value="rpc">RPC</option>
+            <option value="bstool">BsTool</option>
+            <option value="rsu">RSU</option>
+            <option value="lis">LIS</option>
+            <option value="lisdiag">LISDiag</option>
+            <option value="diaglis">DiagLis</option>
+            <option value="log">LOG</option>
+          </select>
+          {filterBy !== 'all' && (
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+              Showing {sortedFilteredCommands.length} of {commands.length} commands
+            </span>
+          )}
         </div>
       )}
 
@@ -335,8 +413,12 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
             <p>No commands queued.</p>
             <p style={{ fontSize: '11px', marginTop: '4px' }}>Right-click a node/token/file in the tree, or use Add to queue a command manually.</p>
           </div>
+        ) : sortedFilteredCommands.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontSize: '12px' }}>
+            <p>No commands match the current filter.</p>
+          </div>
         ) : (
-          commands.map((cmd, idx) => {
+          sortedFilteredCommands.map(({ cmd, originalIdx: idx }) => {
             const isPending = cmd.status === 'pending';
             const isRunning = cmd.status === 'running';
             const pendingIdx = getPendingIndex(idx);
