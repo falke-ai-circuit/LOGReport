@@ -1,9 +1,6 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -108,35 +105,19 @@ func contentTypeMiddleware(next http.Handler) http.Handler {
 			}
 
 			// Require application/json for all other POST/PUT/PATCH
-			// but be lenient: if Content-Type is missing or form-urlencoded,
-			// try to parse the body as JSON. If it parses, accept it.
+			// If Content-Type is missing or wrong, reject with 415.
+			// Exception: allow empty bodies through (some POST endpoints
+			// don't need a body).
 			if !strings.HasPrefix(ct, "application/json") {
-				// Check if body is empty — allow empty bodies through
 				if r.ContentLength == 0 {
 					next.ServeHTTP(w, r)
 					return
 				}
-				// Try to peek at the body and parse as JSON
-				body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1MB limit
-				if err != nil {
-					writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{
-						"error":   "unsupported_media_type",
-						"message": "Content-Type must be application/json",
-					})
-					return
-				}
-				// Restore body for downstream handler
-				r.Body = io.NopCloser(bytes.NewReader(body))
-				r.Header.Set("Content-Type", "application/json")
-				// If body parses as JSON, accept it; otherwise reject
-				var test interface{}
-				if json.Unmarshal(body, &test) != nil {
-					writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{
-						"error":   "unsupported_media_type",
-						"message": "Content-Type must be application/json",
-					})
-					return
-				}
+				writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{
+					"error":   "unsupported_media_type",
+					"message": "Content-Type must be application/json",
+				})
+				return
 			}
 		}
 		next.ServeHTTP(w, r)

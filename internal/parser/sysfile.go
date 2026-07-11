@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
@@ -133,6 +134,9 @@ func parseSysFileScanner(scanner *bufio.Scanner) (*SysFileResult, error) {
 			// Flush previous slot if any
 			flushSlot(currentSlot, result)
 			currentSlot = &slotBuilder{}
+			if n, err := strconv.Atoi(m[1]); err == nil {
+				currentSlot.slotNum = n
+			}
 			continue
 		}
 
@@ -193,6 +197,7 @@ func flushSlot(sb *slotBuilder, result *SysFileResult) {
 type slotBuilder struct {
 	title   string
 	program string
+	slotNum int
 }
 
 // build converts accumulated slot attributes into a SysFileNode.
@@ -226,11 +231,12 @@ func (sb *slotBuilder) build() *types.SysFileNode {
 	}
 
 	return &types.SysFileNode{
-		LID:         lid,
-		Name:        name,
-		Type:        nodeType,
-		Program:     sb.program,
-		IsFieldbus:  isFieldbus,
+		LID:          lid,
+		Name:         name,
+		Type:         nodeType,
+		Program:      sb.program,
+		SlotNum:      sb.slotNum,
+		IsFieldbus:   isFieldbus,
 		FieldbusType: fieldbusType,
 	}
 }

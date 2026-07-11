@@ -21,7 +21,7 @@ import (
 // (for lisdiag commands) and LOG files (for BsTool errlog).
 var nodeTypeToTokenTypes = map[string][]types.TokenType{
 	"PCS":      {types.TokenFBC, types.TokenRPC}, // PCS fieldbus slots
-	"LIS":      {types.TokenLIS, types.TokenLOG}, // AL stations: LIS files + LOG for BsTool errlog
+	"LIS":      {types.TokenLIS},                 // AL stations: LIS files only (LOG is for PCS CPU slots)
 	"DIA":      {types.TokenLOG},
 	"NETWATCH": {types.TokenLOG},
 	"MAINT":    {types.TokenLOG},
@@ -152,6 +152,13 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				continue
 			}
 
+			// Skip LISDIAG_CODE programs — diagnostic monitor slots (e.g.
+			// AL03_Remote_monitor) are not LIS link stations and should not
+			// produce token entries.
+			if strings.Contains(sfn.Program, "LISDIAG_CODE") {
+				continue
+			}
+
 			node, exists := nodeMap[lid+"_"+ipAddr]
 			if !exists {
 				node = &types.NodeConfig{
@@ -168,7 +175,10 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 
 			// Calculate token ID based on slot number
 			tokenID := sysFileToken
-			slotNum := extractSlotNumber(lid)
+			slotNum := sfn.SlotNum
+			if slotNum <= 0 {
+				slotNum = extractSlotNumber(lid)
+			}
 			if slotNum > 1 {
 				tokenID = offsetToken(sysFileToken, slotNum-1)
 			}
@@ -515,6 +525,10 @@ func processSysFileResult(result *parser.SysFileResult, sysPath string, nodeMap 
 		if nodeType == "UNKNOWN" {
 			continue
 		}
+		// Skip LISDIAG_CODE programs — diagnostic monitor slots
+		if strings.Contains(sfn.Program, "LISDIAG_CODE") {
+			continue
+		}
 
 		node, exists := nodeMap[lid+"_"+ipAddr]
 		if !exists {
@@ -530,7 +544,10 @@ func processSysFileResult(result *parser.SysFileResult, sysPath string, nodeMap 
 		}
 
 		tokenID := sysFileToken
-		slotNum := extractSlotNumber(lid)
+		slotNum := sfn.SlotNum
+		if slotNum <= 0 {
+			slotNum = extractSlotNumber(lid)
+		}
 		if slotNum > 1 {
 			tokenID = offsetToken(sysFileToken, slotNum-1)
 		}

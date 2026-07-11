@@ -288,9 +288,18 @@ func (c *Client) ReadUntilPromptContextWithTimeout(timeout time.Duration) (strin
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				select {
 				case <-ctx.Done():
+					c.conn.SetReadDeadline(time.Time{})
 					return string(response), ctx.Err()
 				default:
-					if time.Since(lastDataTime) > timeout/2 {
+					// If we've been idle for more than the full timeout
+					// without receiving a prompt, return what we have.
+					// This handles servers that send data then go silent
+					// without a prompt (e.g. auth failure messages).
+					// Use the full timeout (not half) to avoid premature
+					// returns when the server is slow but still within
+					// the timeout window.
+					if timeout > 0 && time.Since(lastDataTime) >= timeout {
+						c.conn.SetReadDeadline(time.Time{})
 						return string(response), nil
 					}
 					continue
