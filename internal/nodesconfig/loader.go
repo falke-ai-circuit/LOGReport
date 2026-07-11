@@ -582,14 +582,17 @@ func countLines(path string) int {
 }
 
 // fileStatus returns a color status based on line count.
+// - "idle" = green (enough content, command executed and content is correct)
+// - "warning" = orange (content too short, command executed but content is erroneous)
+// - "muted" = grey (empty file, no command executed yet)
 func fileStatus(lineCount int) string {
 	if lineCount == 0 {
-		return "error"
+		return "muted" // grey — empty, no command executed
 	}
-	if lineCount < 10 {
-		return "warning"
+	if lineCount < 3 {
+		return "warning" // orange — content too short (erroneous)
 	}
-	return "idle"
+	return "idle" // green — command executed, content is correct
 }
 
 // extractTokenIDFromName extracts the token ID from a filename.

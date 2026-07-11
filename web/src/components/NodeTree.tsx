@@ -55,28 +55,27 @@ const STATUS_COLORS: Record<string, string> = {
   warning: '#f59e0b',
 };
 
-// File color based purely on file existence on disk:
-// - green: file exists and has content (line_count > 0)
-// - red: file doesn't exist on disk (token type = expected but not created yet)
-// - red: file exists but empty (line_count === 0) — structure created but no data collected
-// - yellow: file exists but has very low content (line_count < 10)
-// - green: file exists with content (line_count >= 10)
-// In "nodes" colorMode: token = expected file not on disk = red
-// In "commander" colorMode: file = content-based, token = expected but not on disk = red
+// File color based on file content (line count):
+// - grey: file empty (0 lines) — no command executed yet, or command produced nothing
+// - orange: file has content but too few lines — command executed but content is erroneous/insufficient
+// - green: file has content with enough lines — command executed and content is correct
+// Minimum line threshold: 3 lines (header takes 2-3 lines, so real content = 3+)
+// Token type (not on disk) = grey — expected but not yet created
+const MIN_CONTENT_LINES = 3;
+
 function fileColor(node: TreeNodeData, _colorMode?: string): string {
   // Token type = expected file that doesn't exist on disk yet
-  // Use muted/gray — NOT red. Red means "command executed but file is empty".
   if (node.type === 'token') {
-    return 'var(--text-muted)'; // gray — expected but not yet created
+    return 'var(--text-muted)'; // grey — expected but not yet created
   }
   // File type = actually on disk, color by content
   if (node.type === 'file') {
     if (node.line_count === undefined || node.line_count === null) {
-      return 'var(--text-muted)'; // gray — unknown status
+      return 'var(--text-muted)'; // grey — unknown status
     }
-    if (node.line_count === 0) return 'var(--error)'; // red — exists but empty (command ran but no data)
-    if (node.line_count < 10) return '#f59e0b'; // yellow — low content
-    return 'var(--success)'; // green — has content
+    if (node.line_count === 0) return 'var(--text-muted)'; // grey — empty, no command executed
+    if (node.line_count < MIN_CONTENT_LINES) return '#f97316'; // orange — content too short (erroneous)
+    return 'var(--success)'; // green — command executed, content is correct
   }
   return 'var(--text-muted)';
 }
@@ -109,6 +108,7 @@ export default function NodeTree({
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
   const [lisMode, setLisMode] = useState<string>('rsu');
   const menuRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { activeLogRoot } = useActiveProject();
 
   // Fetch lis_mode from settings for context menu adaptation
@@ -126,6 +126,8 @@ export default function NodeTree({
       setLoading(false);
       return;
     }
+    // Save scroll position before re-fetching tree
+    const savedScroll = scrollRef.current?.scrollTop ?? 0;
     setLoading(true);
     setError(null);
     try {
@@ -147,8 +149,9 @@ export default function NodeTree({
       }
       const data = await res.json();
       setTree(data.tree);
-      // Auto-expand root children
-      if (data.tree?.children) {
+      // Auto-expand root children ONLY on first load (when expandedNodes is empty)
+      // Don't reset expansion state on subsequent fetches (prevents scroll jump)
+      if (data.tree?.children && expandedNodes.size === 0) {
         const ids = new Set<string>(data.tree.children.map((c: TreeNodeData) => c.name));
         // Also auto-expand sections within each node
         for (const child of data.tree.children) {
@@ -164,6 +167,12 @@ export default function NodeTree({
       setError(err instanceof Error ? err.message : 'Failed to load node tree');
     } finally {
       setLoading(false);
+      // Restore scroll position after tree update
+      requestAnimationFrame(() => {
+        if (scrollRef.current && savedScroll > 0) {
+          scrollRef.current.scrollTop = savedScroll;
+        }
+      });
     }
   }, [projectId, context, activeLogRoot]);
 
@@ -475,7 +484,7 @@ export default function NodeTree({
 
 
       {/* Tree body */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
         {loading && (
           <div style={{ textAlign: 'center', padding: '24px' }}>
             <Loader2
