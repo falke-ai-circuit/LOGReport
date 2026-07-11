@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Server, ScanLine, Loader2, FileText, Folder, Printer, ListChecks, Edit2, Save, Clipboard, Play, Pause, Square, Trash2, RotateCcw, Network } from 'lucide-react';
+import { Terminal, Server, ScanLine, Loader2, FileText, Folder, Printer, ListChecks, Edit2, Save, Clipboard, Play, Pause, Square, Trash2, RotateCcw, Network, AlertCircle } from 'lucide-react';
 import NodeTree from './NodeTree';
 import TelnetTerminal from './TelnetTerminal';
 import BsToolPanel from './BsToolPanel';
@@ -430,6 +430,10 @@ export default function CommanderLayout() {
     await fetch('/api/v1/commandqueue/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     setTreeReloadKey((k) => k + 1);
   }, []);
+  const handleQueueRetryFailed = useCallback(async () => {
+    await fetch('/api/v1/commandqueue/retry-failed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    setTreeReloadKey((k) => k + 1);
+  }, []);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'debugger', label: 'Debugger', icon: <Terminal size={14} /> },
@@ -601,6 +605,16 @@ export default function CommanderLayout() {
         >
           <RotateCcw size={12} /> Restart
         </button>
+        {queueStatus?.commands?.some(c => c.status === 'failed') && (queueStatus?.state === 'idle' || queueStatus?.state === 'done') && (
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', borderColor: '#f59e0b' }}
+            onClick={handleQueueRetryFailed}
+            title="Retry only failed commands"
+          >
+            <AlertCircle size={12} /> Retry Failed
+          </button>
+        )}
         <button
           className="btn btn-ghost"
           style={{ fontSize: '12px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}

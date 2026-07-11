@@ -422,6 +422,44 @@ func (q *Queue) Restart() {
 	q.state = QueueIdle
 }
 
+// RetryFailed resets only failed commands back to pending and adjusts
+// the cursor so the queue can re-run just the failed ones.
+// Only allowed when the queue is idle or done (not while running or paused).
+func (q *Queue) RetryFailed() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.state == QueueRunning || q.state == QueuePaused {
+		return 0
+	}
+
+	retried := 0
+	for i := range q.commands {
+		if q.commands[i].Status == StatusFailed {
+			q.commands[i].Status = StatusPending
+			q.commands[i].Error = ""
+			q.commands[i].StartedAt = nil
+			q.commands[i].FinishedAt = nil
+			q.commands[i].Output = ""
+			retried++
+		}
+	}
+
+	// Move cursor back to first pending command
+	for i, cmd := range q.commands {
+		if cmd.Status == StatusPending {
+			q.current = i
+			break
+		}
+	}
+
+	q.paused = false
+	q.cancelled = false
+	q.cancelCh = nil
+	q.state = QueueIdle
+	return retried
+}
+
 // ClearPending removes all pending commands but preserves the history of
 // completed/failed/cancelled commands. Only allowed when not running.
 func (q *Queue) ClearPending() {

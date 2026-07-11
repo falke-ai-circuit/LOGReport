@@ -149,6 +149,13 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
     } catch { /* ignore */ }
   };
 
+  const handleRetryFailed = async () => {
+    try {
+      await fetch('/api/v1/commandqueue/retry-failed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      setTimeout(fetchStatus, 200);
+    } catch { /* ignore */ }
+  };
+
   // Close context menu on outside click
   useEffect(() => {
     if (!contextMenu) return;
@@ -206,6 +213,7 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
   const state = status?.state || 'idle';
   const commands = status?.commands || [];
   const pendingCmds = commands.filter(c => c.status === 'pending');
+  const failedCmds = commands.filter(c => c.status === 'failed');
   const currentIdx = status?.current || 0;
   const remaining = status?.remaining ?? (status ? status.total - currentIdx - 1 : 0);
   const percentage = status?.percentage ?? (status && status.total > 0 ? Math.round((currentIdx / status.total) * 100) : 0);
@@ -272,6 +280,11 @@ export default function QueueTab({ onQueueChange }: QueueTabProps) {
         {commands.length > 0 && (state === 'idle' || state === 'done') && (
           <button className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={handleRestart} title="Restart — reset all commands to pending">
             <RotateCcw size={12} /> Restart
+          </button>
+        )}
+        {failedCmds.length > 0 && (state === 'idle' || state === 'done') && (
+          <button className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', borderColor: '#f59e0b' }} onClick={handleRetryFailed} title={`Retry ${failedCmds.length} failed command${failedCmds.length !== 1 ? 's' : ''}`}>
+            <AlertCircle size={12} /> Retry Failed ({failedCmds.length})
           </button>
         )}
         <button className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => setShowAddForm(!showAddForm)}>

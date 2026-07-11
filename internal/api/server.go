@@ -199,6 +199,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/commandqueue/reorder", s.handleQueueReorder)
 	mux.HandleFunc("POST /api/v1/commandqueue/clear", s.handleQueueClear)
 	mux.HandleFunc("POST /api/v1/commandqueue/restart", s.handleQueueRestart)
+	mux.HandleFunc("POST /api/v1/commandqueue/retry-failed", s.handleQueueRetryFailed)
 
 	// Log files
 	mux.HandleFunc("GET /api/v1/logs/{nodeName}", s.handleListLogs)

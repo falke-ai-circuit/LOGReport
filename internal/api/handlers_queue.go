@@ -60,10 +60,9 @@ func (s *Server) handleQueueStart(w http.ResponseWriter, r *http.Request) {
 	// after timeout or errors). Matches Python sequential_command_processor.py
 	// behavior: if connection lost, reconnect and retry.
 	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
-		// Circuit breaker: check before executing each command
-		if !s.circuitBreaker.AllowExecution() {
-			return "", fmt.Errorf("circuit breaker open")
-		}
+		// Circuit breaker blocking removed — failed commands no longer block
+		// subsequent commands. RecordFailure/RecordSuccess still called via
+		// cbExecutor wrapper for potential future use.
 
 		// LISDIAG commands go through a separate telnet connection to port 4321,
 		// not through the DIA session on port 1234.
@@ -267,10 +266,9 @@ func (s *Server) handleQueueResume(w http.ResponseWriter, r *http.Request) {
 
 	// Re-create the executor with auto-reconnect (same as handleQueueStart)
 	executor := func(cmd commandqueue.QueuedCommand) (string, error) {
-		// Circuit breaker: check before executing each command
-		if !s.circuitBreaker.AllowExecution() {
-			return "", fmt.Errorf("circuit breaker open")
-		}
+		// Circuit breaker blocking removed — failed commands no longer block
+		// subsequent commands. RecordFailure/RecordSuccess still called via
+		// cbExecutor wrapper for potential future use.
 
 		// LISDIAG commands go through a separate telnet connection to port 4321,
 		// not through the DIA session on port 1234.
@@ -516,6 +514,17 @@ func (s *Server) handleQueueRestart(w http.ResponseWriter, r *http.Request) {
 	s.commandQueue.Restart()
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"restarted": true,
+	})
+}
+
+// handleQueueRetryFailed resets only failed commands back to pending.
+// POST /api/v1/commandqueue/retry-failed
+func (s *Server) handleQueueRetryFailed(w http.ResponseWriter, r *http.Request) {
+	s.circuitBreaker.Reset()
+	retried := s.commandQueue.RetryFailed()
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"retried": retried,
+		"reset":   true,
 	})
 }
 
