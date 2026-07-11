@@ -30,7 +30,7 @@ Then open `http://localhost:8080` for the web UI, or use the REST API at `/api/v
 │                                                                    │
 │  ┌────────────────────┐  ┌──────────────────────────────────┐   │
 │  │  EMBEDDED WEB UI     │  │  REST API + WebSocket             │   │
-│  │  React/TypeScript   │  │  /api/v1/* (73 endpoints)         │   │
+│  │  React/TypeScript   │  │  /api/v1/* (74 endpoints)         │  │
 │  │  Vite + Tailwind    │  │  2 WebSocket endpoints            │   │
 │  │  AXON dark theme    │  │  JSON request/response            │   │
 │  └────────┬───────────┘  └──────────────┬───────────────────┘   │
@@ -75,7 +75,7 @@ cmd/logreport/          # Main entry point, banner, flag parsing
 cmd/bstool-debug/       # BsTool protocol debug utilities (3 variants)
 cmd/bstool-mitm/        # BsTool MITM tool for protocol reverse engineering
 internal/
-  api/                  # HTTP handlers (73 endpoints), middleware, WebSocket, server
+  api/                  # HTTP handlers (74 endpoints), middleware, WebSocket, server
   browser/              # Auto-launch browser for headless hosts
   bstool/               # BsTool wrapper + native TCP transport (RE'd protocol)
   commandqueue/         # Sequential command execution with pause/resume/cancel/clear/reorder
@@ -94,7 +94,7 @@ embed.go                # //go:embed all:web/dist-new-flat (package assets)
 web/                    # React/TypeScript frontend (Vite + Tailwind)
 ```
 
-### API Endpoints (73 registered routes)
+### API Endpoints (74 registered routes)
 
 **Health & Connectivity:**
 - `GET /health` — version, uptime, DB status, node count
@@ -149,7 +149,7 @@ web/                    # React/TypeScript frontend (Vite + Tailwind)
 - `POST /api/v1/commandqueue/restart` — restart queue execution
 - `GET /api/v1/commandqueue/status` — queue status
 - `POST /api/v1/commandqueue/batch` — batch add commands
-- `POST /api/v1/commandqueue/batch-node` — batch add commands for a node
+- `POST /api/v1/commandqueue/batch-node` — batch add commands for a specific node
 
 **Nodes Config:**
 - `GET /api/v1/nodesconfig` — get nodes.json configuration

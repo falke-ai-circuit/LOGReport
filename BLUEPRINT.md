@@ -3,33 +3,41 @@
 
 ---
 
-> ## RECONCILIATION BLOCK (2026-07-09 — Architect)
+> ## RECONCILIATION BLOCK (2026-07-11 — Architect)
 >
-> **Reconciled against:** main branch commit 15482c42 (merged from dev-cycle-logreport-20260615)
+> **Reconciled against:** main branch commit fd48f854 (post-LisDiag feature cycle)
 > **Method:** G-RECON live probes (git, file counts, route extraction, embed path verification, store type verification)
+> **Prior reconciliation:** 2026-07-09 at commit feda78db — all 12 drift items fixed and HELD (no regressions)
 >
 > ### Design Intent → Actual State
 >
-> | Item | Blueprint Says | Actual on Main | Status |
-> |------|---------------|----------------|--------|
-> | Scope | Report pipeline only, Commander excluded | Report pipeline + Commander + BsTool + LisDiag | RESOLVED — Commander was added back (scope gap analysis 2026-06-25) |
+> | Item | Blueprint Says | Actual on Main (fd48f854) | Status |
+> |------|---------------|--------------------------|--------|
+> | Scope | Report pipeline only, Commander excluded | Report pipeline + Commander + BsTool + LisDiag | RESOLVED — Commander added back, LisDiag added 2026-07-11 |
 > | Store | SQLite | JSON file-based (no SQLite, no CGo) | RESOLVED — migration completed 2026-06-30 |
-> | Endpoints | 12 | 73 `/api/v1/*` + `/health` + `/` = 75 total | RESOLVED — grew with Commander, Queue, Projects, Settings, Logs, Scan |
+> | Endpoints | 12 | 74 `/api/v1/*` + `/health` + `/` = 76 total | RESOLVED — grew with Commander, Queue, Projects, Settings, Logs, Scan, LisDiag |
 > | Packages | Not specified | 15 internal packages | RESOLVED — added browser, lisdiag |
 > | Embed path | `web/dist/` | `//go:embed all:web/dist-new-flat` | RESOLVED — directory renamed |
-> | Frontend | Not specified | 67 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4 | RESOLVED |
+> | Vite outDir | Not specified | `dist-new-flat` (matches embed) | RESOLVED — fixed in feda78db |
+> | Frontend | Not specified | 70 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4 | RESOLVED |
 > | Version | 1.1.1 | v3.9.12 (per CHANGELOG) | RESOLVED |
+> | Go files | Not specified | 69 non-test + 42 test = 111 (16,717 LOC) | RESOLVED |
 >
-> ### Open Drift Items (NOT resolved)
+> ### Open Drift Items
 >
-> 1. **BUILD-BREAKING: Vite outDir mismatch** — `vite.config.ts` outputs to `dist-new` but `embed.go` and `server.go` expect `dist-new-flat`. Fresh `make build` produces empty embed → GUI 404s.
-> 2. **Stale comments:** `server.go` line 23 + 123 say "11 routes" (actual: 75). `main.go` line 39 says "Open the SQLite store" (actual: JSON). Makefile clean removes `web/dist/` (actual: `web/dist-new-flat/`).
-> 3. **Dead code:** `go-backend/` is a Go 1.19 module from earlier iteration. Should be removed.
-> 4. **Barnacles:** 13 .py scripts in repo root from Python era. 2 .exe files. Should be cleaned.
-> 5. **God File:** `handlers_commander.go` is 2,684 LOC — candidate for domain split.
-> 6. **God Component:** `NodesPage.tsx` is 1,389 LOC — candidate for component extraction.
+> 1. **handlers.go God File (1,374 LOC):** 28 functions spanning nodes, reports, sysfile parsing, BsTool error log. Candidate for domain-based split.
+> 2. **Makefile stale comments:** `web-build` and `go-build` target comments say "web/dist/" but actual path is "web/dist-new-flat/". Cosmetic — build commands work correctly.
 >
-> **Note:** A prior restructuring (2026-07-03/04) addressed items 2, 5, and 6 locally but was never committed to git. The local repo was subsequently gutted. The restructure does not exist on any branch.
+> ### Resolved Drift Items (all HELD at fd48f854 — no regressions)
+>
+> 1. ~~BUILD-BREAKING: Vite outDir mismatch~~ — FIXED (feda78db): changed to `dist-new-flat`.
+> 2. ~~Stale comments~~ — FIXED (feda78db): server.go, main.go, Makefile clean, embed.go all corrected.
+> 3. ~~Dead code go-backend/~~ — FIXED (feda78db): deleted.
+> 4. ~~Barnacles~~ — FIXED (feda78db): 13 .py + 2 .exe → scripts/archive/, 10 .md → docs/archive/.
+> 5. ~~handlers_commander.go 2684 LOC God File~~ — FIXED (feda78db): split to 95 LOC + 5 domain files.
+> 6. ~~NodesPage.tsx 1389 LOC God Component~~ — FIXED (feda78db): split to 489 LOC + 2 extracted components.
+>
+> **Note:** A prior restructuring (2026-07-03/04) addressed items 2, 5, and 6 locally but was never committed to git. The local repo was subsequently gutted. The restructure was redone and committed as feda78db on 2026-07-09. 11 LisDiag feature commits then landed on main (feda78db → fd48f854). This reconciliation brings docs in sync with fd48f854.
 >
 > The original blueprint sections below are preserved as historical design intent.
 > See CHANGELOG.md for the actual evolution of the project.

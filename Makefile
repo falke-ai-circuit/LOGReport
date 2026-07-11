@@ -17,11 +17,11 @@ LDFLAGS = -X main.version=$(VERSION)
 # Single command: build frontend + backend into one self-contained binary
 build: web-build go-build
 
-# Build React frontend → web/dist/ (gitignored)
+# Build React frontend → web/dist-new-flat/ (gitignored)
 web-build:
 	cd web && npm ci && npm run build
 
-# Build Go binary with embedded web/dist/ and version stamp
+# Build Go binary with embedded web/dist-new-flat/ and version stamp
 go-build:
 	$(GOBUILD) -ldflags "$(LDFLAGS)" -o logreport ./cmd/logreport/
 

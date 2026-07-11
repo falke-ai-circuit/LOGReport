@@ -28,7 +28,7 @@ Then open `http://localhost:8080` for the web UI, or use the REST API at `/api/v
 │                                                              │
 │  ┌────────────────────┐  ┌──────────────────────────────┐  │
 │  │  EMBEDDED WEB UI    │  │  REST API + WebSocket         │  │
-│  │  React/TypeScript   │  │  /api/v1/* (73 endpoints)     │  │
+│  │  React/TypeScript   │  │  /api/v1/* (74 endpoints)     │  │
 │  │  Vite + Tailwind    │  │  2 WebSocket endpoints        │  │
 │  │  AXON dark theme    │  │  JSON request/response        │  │
 │  └────────┬───────────┘  └──────────────┬───────────────┘  │
@@ -72,14 +72,23 @@ Single binary, embedded web UI, REST API. No separate server process. `./logrepo
 
 - **Store:** JSON file-based (in-memory maps backed by JSON files with atomic writes). No SQLite, no CGo.
 - **Embed:** `//go:embed all:web/dist-new-flat` in embed.go. Server reads via `fs.Sub(s.embedFS, "web/dist-new-flat")`.
-- **Routes:** 73 `/api/v1/*` endpoints + `/health` + `/` SPA fallback = 75 registered routes.
+- **Vite outDir:** `dist-new-flat` (matches embed — build pipeline correct).
+- **Routes:** 74 `/api/v1/*` endpoints + `/health` + `/` SPA fallback = 76 registered routes.
 - **Packages:** 15 internal packages (api, browser, bstool, commandqueue, lisdiag, logfile, logwriter, nodesconfig, parser, report, server, store, sysloader, telnet, types).
 - **Go version:** 1.22 (go.mod).
-- **Frontend:** 67 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4, 13 test files (Vitest).
+- **Go files:** 69 non-test + 42 test = 111 total (16,717 LOC).
+- **Frontend:** 70 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4, 13 test files (Vitest).
 
 ## Known Issues
 
-- **Vite outDir mismatch:** `vite.config.ts` outputs to `dist-new` but `embed.go` and `server.go` expect `dist-new-flat`. Fresh `make build` produces a binary with an empty embed — GUI 404s. Fix: change `outDir` in vite.config.ts to `dist-new-flat`.
-- **Stale comments:** `server.go` says "11 routes" (actual: 75). `main.go` says "Open the SQLite store" (actual: JSON). Makefile clean target removes `web/dist/` (actual: `web/dist-new-flat/`).
-- **Dead code:** `go-backend/` directory is a Go 1.19 module from an earlier iteration (module `github.com/goranjovic55/LOGReport`). Should be removed.
-- **Barnacles:** 13 .py scripts in repo root (upload_v*.py, test_*.py, verify_*.py, debug_*.py) from Python era. Should be moved to `scripts/` or deleted.
+- **handlers.go God File:** `handlers.go` is 1,374 LOC with 28 functions spanning nodes, reports, sysfile parsing, and BsTool error log. Candidate for domain-based split.
+- **Makefile stale comments:** `web-build` and `go-build` target comments say "web/dist/" but actual embed path is "web/dist-new-flat/". Cosmetic — build commands work correctly.
+
+## Resolved Issues (2026-07-09, commit feda78db)
+
+- ~~Vite outDir mismatch~~ — FIXED: changed to `dist-new-flat`.
+- ~~Stale comments~~ — FIXED: server.go, main.go, Makefile clean target, embed.go all corrected.
+- ~~Dead code go-backend/~~ — FIXED: deleted (35 files).
+- ~~Barnacles~~ — FIXED: 13 .py + 2 .exe moved to scripts/archive/, 10 .md moved to docs/archive/.
+- ~~handlers_commander.go 2684 LOC~~ — FIXED: split into 5 domain files (95 LOC stub + 5 files).
+- ~~NodesPage.tsx 1389 LOC~~ — FIXED: split into 3 files (489 LOC root + 2 components).
