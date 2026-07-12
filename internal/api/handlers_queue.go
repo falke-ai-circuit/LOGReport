@@ -843,13 +843,30 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 	}
 	// If still empty, no auth needed (LisDiag started without -x flag)
 
-	// Reuse cached LisDiag connection if available (same host+port+password)
+	// LisDiag.exe is a single-connection telnet server — it crashes if
+	// a second connection arrives while the first is still open.
+	// Close any cached connection with a DIFFERENT connKey before opening
+	// a new one. Same-key connections are reused (same AL station).
 	connKey := fmt.Sprintf("%s:%d:%s", host, port, password)
 	s.lisdiagMu.Lock()
 	cached := s.lisdiagConns[connKey]
 	s.lisdiagMu.Unlock()
 
 	if cached == nil {
+		// Close ALL other cached connections (different AL station IPs)
+		// before opening a new one — LisDiag.exe handles one client at a time.
+		s.lisdiagMu.Lock()
+		for key, conn := range s.lisdiagConns {
+			if key != connKey {
+				conn.Close()
+				delete(s.lisdiagConns, key)
+			}
+		}
+		s.lisdiagMu.Unlock()
+
+		// Small delay to let LisDiag.exe clean up after the previous close
+		time.Sleep(200 * time.Millisecond)
+
 		cached = lisdiag.NewClient(host, port, password)
 		if err := cached.Connect(10 * time.Second); err != nil {
 			return "", fmt.Errorf("lisdiag connect %s:%d: %w", host, port, err)
