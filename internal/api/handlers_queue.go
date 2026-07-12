@@ -826,12 +826,11 @@ func (s *Server) executeDiagLis(cmd commandqueue.QueuedCommand) (string, error) 
 // For standalone commands (from the LisDiag tab), it sends the command as-is.
 func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) {
 	st := getSettings()
-	// Connect to the DIA host (from settings) on port 4321.
-	// The port proxy on the VM redirects 0.0.0.0:4321 → 127.0.0.1:14321
-	// where LisDiag.exe listens. We use dia_host (typically 127.0.0.1)
-	// instead of the AL station IP because the AL station IPs are remote
-	// — the port proxy only handles connections to local IPs.
-	host := st.DIAHost
+	// Connect to the AL station's IP on port 4321.
+	// In production, LisDiag.exe runs on the PCS station and listens on
+	// the AL station's actual IP. For testing on Vegas, secondary IPs are
+	// added to the adapter and a port proxy redirects to localhost:14321.
+	host := cmd.IPAddress
 	if host == "" {
 		host = "127.0.0.1"
 	}
