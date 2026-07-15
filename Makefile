@@ -56,18 +56,14 @@ clean:
 
 # Cross-compile for Windows (requires GOOS=GOARCH env vars)
 # Build x86 (32-bit) for Windows Server 2003
+# NOTE: No PE version patching — Go's default subsystem 6.1 works on Server 2003.
+#       The fix-pe-version.py script corrupted OS/Image versions and triggered AV on Win11.
 release-x86: web-build
 	GOOS=windows GOARCH=386 $(GOBUILD) -ldflags "$(LDFLAGS)" -o logreport-x86.exe ./cmd/logreport/
-	python3 scripts/fix-pe-version.py logreport-x86.exe
 
 # Build x64 (64-bit) for Windows Server 2003/2008+
 release-x64: web-build
 	GOOS=windows GOARCH=amd64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o logreport-x64.exe ./cmd/logreport/
-	python3 scripts/fix-pe-version.py logreport-x64.exe
 
 # Build both x86 + x64
 release-all: release-x86 release-x64
-
-# Fix PE version on existing binary (without rebuilding)
-fix-pe:
-	python3 scripts/fix-pe-version.py logreport-x86.exe logreport-x64.exe
