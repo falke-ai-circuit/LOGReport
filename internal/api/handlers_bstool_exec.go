@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 )
@@ -49,6 +50,13 @@ func (s *Server) executeBsToolErrLog(ctx context.Context, serverName string, _ s
 		}
 		if st.BsToolPort > 0 {
 			tcpOpts = append(tcpOpts, bstool.WithTCPPort(st.BsToolPort))
+		}
+		if st.BsToolTimeout > 0 {
+			timeoutMs := st.BsToolTimeout
+			if timeoutMs < 5000 {
+				timeoutMs = 5000
+			}
+			tcpOpts = append(tcpOpts, bstool.WithTCPTimeout(time.Duration(timeoutMs)*time.Millisecond))
 		}
 		tcp := bstool.NewTCPTransport(tcpOpts...)
 		defer tcp.Close()

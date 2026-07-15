@@ -28,6 +28,19 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
   const [reportType, setReportType] = useState<'survey' | 'drydock'>('survey');
   const [projects, setProjects] = useState<Array<{ id: number; project_number: string; ship_name: string }>>([]);
 
+  // Appearance settings
+  const [fontFamily, setFontFamily] = useState('Courier');
+  const [fontSize, setFontSize] = useState(10);
+  const [lineSpacing, setLineSpacing] = useState(12);
+  const [marginMM, setMarginMM] = useState(20);
+  const [wrapWidth, setWrapWidth] = useState(80);
+  const [includeFBC, setIncludeFBC] = useState(true);
+  const [includeRPC, setIncludeRPC] = useState(true);
+  const [includeLOG, setIncludeLOG] = useState(true);
+  const [includeLIS, setIncludeLIS] = useState(true);
+  const [showHeader, setShowHeader] = useState(true);
+  const [showLogo, setShowLogo] = useState(true);
+
   // Submission state
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -149,6 +162,20 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
         if (title) (body.options as Record<string, unknown>).title = title;
         if (author) (body.options as Record<string, unknown>).author = author;
       }
+      // Appearance settings
+      body.appearance = {
+        font_family: fontFamily,
+        font_size: fontSize,
+        line_spacing: lineSpacing,
+        margin_mm: marginMM,
+        wrap_width: wrapWidth,
+        include_fbc: includeFBC,
+        include_rpc: includeRPC,
+        include_log: includeLOG,
+        include_lis: includeLIS,
+        show_header: showHeader,
+        show_logo: showLogo,
+      };
 
       const res = await fetch('/api/v1/reports/generate', {
         method: 'POST',
@@ -397,6 +424,70 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
               style={inputStyle}
               placeholder="Author name"
             />
+          </div>
+
+          {/* Report Appearance Settings */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
+            <label style={{ ...labelStyle, fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>Report Appearance</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
+              <div>
+                <label style={labelStyle}>Font Family</label>
+                <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} style={inputStyle}>
+                  <option value="Courier">Courier (monospace)</option>
+                  <option value="Helvetica">Helvetica (sans-serif)</option>
+                  <option value="Times">Times (serif)</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Font Size</label>
+                <select value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} style={inputStyle}>
+                  {[8, 9, 10, 11, 12, 14].map((s) => <option key={s} value={s}>{s}pt</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Line Spacing</label>
+                <select value={lineSpacing} onChange={(e) => setLineSpacing(Number(e.target.value))} style={inputStyle}>
+                  {[8, 10, 12, 14, 16, 18, 20].map((s) => <option key={s} value={s}>{s}pt</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Page Margin (mm)</label>
+                <select value={marginMM} onChange={(e) => setMarginMM(Number(e.target.value))} style={inputStyle}>
+                  {[10, 15, 20, 25, 30].map((m) => <option key={m} value={m}>{m}mm</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Wrap Width (chars)</label>
+                <select value={wrapWidth} onChange={(e) => setWrapWidth(Number(e.target.value))} style={inputStyle}>
+                  {[60, 70, 80, 90, 100, 120].map((w) => <option key={w} value={w}>{w}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* File type filters */}
+            <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
+              {[
+                { label: 'FBC', state: includeFBC, set: setIncludeFBC },
+                { label: 'RPC', state: includeRPC, set: setIncludeRPC },
+                { label: 'LOG', state: includeLOG, set: setIncludeLOG },
+                { label: 'LIS', state: includeLIS, set: setIncludeLIS },
+              ].map(({ label, state, set }) => (
+                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={state} onChange={(e) => set(e.target.checked)} style={{ cursor: 'pointer' }} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {/* Header + Logo toggles */}
+            <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showHeader} onChange={(e) => setShowHeader(e.target.checked)} style={{ cursor: 'pointer' }} />
+                Page Header/Footer
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} style={{ cursor: 'pointer' }} />
+                Valmet Logo on Title Page
+              </label>
+            </div>
           </div>
 
           {/* Submit error */}

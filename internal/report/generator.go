@@ -81,7 +81,7 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 	case types.FormatPDF:
 		// PDF without log_root: generate from SQLite data
 		scanEntries := ioPointsToScanEntries(node, ioPoints)
-		filePath, err = generatePDF(reportID, "", scanEntries)
+		filePath, err = generatePDF(reportID, "", scanEntries, cfg.Appearance)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("report: generate %s: %w", cfg.Format, err)
@@ -161,7 +161,7 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 	case types.FormatDOCX:
 		filePath, err = generateDOCXFromLogs(cfg, scanEntries, reportID)
 	case types.FormatPDF:
-		filePath, err = generatePDF(reportID, cfg.LogRoot, scanEntries)
+		filePath, err = generatePDF(reportID, cfg.LogRoot, scanEntries, cfg.Appearance)
 	case types.FormatJSON:
 		filePath, err = generateJSONFromLogs(cfg, scanEntries, reportID)
 	default:

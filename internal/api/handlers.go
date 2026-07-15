@@ -864,13 +864,14 @@ func (s *Server) parseSysfileHandler(w http.ResponseWriter, r *http.Request) {
 // ─── Handler 9: POST /api/v1/reports/generate ───────────────────
 
 type generateReportRequest struct {
-	NodeAddresses []string       `json:"node_addresses"`
-	Format        string         `json:"format"`
-	Template      string         `json:"template"`
-	LogRoot       string         `json:"log_root"`
-	ReportType    string         `json:"report_type,omitempty"`
-	ProjectID     int64          `json:"project_id,omitempty"`
-	Options       *reportOptions `json:"options"`
+	NodeAddresses []string              `json:"node_addresses"`
+	Format        string               `json:"format"`
+	Template      string               `json:"template"`
+	LogRoot       string               `json:"log_root"`
+	ReportType    string               `json:"report_type,omitempty"`
+	ProjectID     int64                `json:"project_id,omitempty"`
+	Options       *reportOptions       `json:"options"`
+	Appearance    *types.ReportAppearance `json:"appearance,omitempty"`
 }
 
 type reportOptions struct {
@@ -948,6 +949,7 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 				LogRoot:     req.LogRoot,
 				ReportType:  req.ReportType,
 				ProjectID:   req.ProjectID,
+				Appearance:  req.Appearance,
 			}
 			rpt, err := report.GenerateReport(cfg, s.store)
 			if err != nil {
@@ -1036,6 +1038,7 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 			NodeAddress: addr,
 			Format:      format,
 			Template:    template,
+			Appearance:  req.Appearance,
 		}
 		rpt, err := report.GenerateReport(cfg, s.store)
 		if err != nil {

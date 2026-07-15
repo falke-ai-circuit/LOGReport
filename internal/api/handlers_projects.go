@@ -173,7 +173,8 @@ func (s *Server) deleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 
 // generateProjectReportRequest is the JSON body for the project report endpoint.
 type generateProjectReportRequest struct {
-	Format string `json:"format"` // "pdf" or "docx" (default: "pdf")
+	Format    string                  `json:"format"`    // "pdf" or "docx" (default: "pdf")
+	Appearance *types.ReportAppearance `json:"appearance,omitempty"` // font/layout settings (optional)
 }
 
 func (s *Server) generateProjectReportHandler(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +220,7 @@ func (s *Server) generateProjectReportHandler(w http.ResponseWriter, r *http.Req
 		Format:      format,
 		LogRoot:     p.LogRoot,
 		Title:       fmt.Sprintf("%s_%s — Log Report", p.ProjectNumber, p.ShipName),
+		Appearance:  req.Appearance,
 	}
 
 	rpt, err := report.GenerateReport(cfg, s.store)

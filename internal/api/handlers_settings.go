@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 )
@@ -31,6 +32,7 @@ type Settings struct {
 	NodeFilter        string `json:"node_filter"` // Comma-separated station prefixes to include/exclude (e.g. "AP,AL" or "AP,AL,-A1O,-B1O")
 	LISExeCount       int    `json:"lis_exe_count"` // number of exe channels (default: 6)
 	LISDiagPassword   string `json:"lisdiag_password"` // password for LisDiag telnet auth (empty = no password)
+	BsToolTimeout     int    `json:"bstool_timeout"`   // TCP timeout in milliseconds (default: 5000, min: 5000)
 }
 
 // defaultSettings returns platform-appropriate defaults.
@@ -52,6 +54,7 @@ func defaultSettings() Settings {
 		ScanMethod:  "remote_bu", // default: BsTool TCP remote BU
 		LISExeCount: 6,
 		LISDiagPassword: "", // empty = no auth
+		BsToolTimeout: 5000, // 5 seconds (minimum)
 	}
 }
 
@@ -201,6 +204,13 @@ func newBsToolClientFromSettings(st Settings) *bstool.Client {
 		}
 		if st.BsToolPort > 0 {
 			tcpOpts = append(tcpOpts, bstool.WithTCPPort(st.BsToolPort))
+		}
+		if st.BsToolTimeout > 0 {
+			timeoutMs := st.BsToolTimeout
+			if timeoutMs < 5000 {
+				timeoutMs = 5000 // enforce minimum
+			}
+			tcpOpts = append(tcpOpts, bstool.WithTCPTimeout(time.Duration(timeoutMs)*time.Millisecond))
 		}
 		tcp := bstool.NewTCPTransport(tcpOpts...)
 		return bstool.NewClient(bstool.WithTCPTransport(tcp))

@@ -16,6 +16,7 @@ interface SettingsData {
   lisdiag_password: string;
   scan_method: string;
   node_filter: string;
+  bstool_timeout: number;
 }
 
 export default function SettingsPage() {
@@ -149,6 +150,16 @@ export default function SettingsPage() {
             value={settings.bstool_port}
             onChange={(e) => updateField('bstool_port', parseInt(e.target.value) || 0)}
             placeholder="1516"
+            style={inputStyle}
+          />
+        </FormField>
+        <FormField label="BsTool TCP Timeout (ms)" hint="TCP timeout for BsTool communication in milliseconds. Minimum 5000. Default 5000.">
+          <input
+            type="number"
+            value={settings.bstool_timeout || 5000}
+            onChange={(e) => updateField('bstool_timeout', Math.max(5000, parseInt(e.target.value) || 5000))}
+            placeholder="5000"
+            min={5000}
             style={inputStyle}
           />
         </FormField>
