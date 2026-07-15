@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
@@ -27,7 +26,11 @@ func (s *Server) executeBsToolErrLog(ctx context.Context, serverName string, _ s
 		st = s.getSettingsForProject(s.activeProjectID)
 	}
 
-	// Try BsTool.exe subprocess first if configured
+	// BsTool.exe subprocess disabled — Windows 11 AV/SmartScreen flags
+	// binaries that call CreateProcess on external executables.
+	// Use TCP transport instead. To re-enable, set scan_method=local_exe
+	// and uncomment the subprocess block below.
+	/*
 	if isLocalExeMode(st) {
 		exePath := resolveBsToolPath(st)
 		if exePath != "" {
@@ -42,6 +45,7 @@ func (s *Server) executeBsToolErrLog(ctx context.Context, serverName string, _ s
 			log.Printf("bstool: subprocess failed, falling back to TCP: %v", err)
 		}
 	}
+	*/
 
 	// Fall back to TCP
 	if st.BsToolHost != "" {

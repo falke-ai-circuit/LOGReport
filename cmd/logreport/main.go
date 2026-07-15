@@ -9,7 +9,6 @@ import (
 
 	assets "github.com/falke-ai-circuit/LOGReport"
 	"github.com/falke-ai-circuit/LOGReport/internal/api"
-	"github.com/falke-ai-circuit/LOGReport/internal/browser"
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/server"
 	"github.com/falke-ai-circuit/LOGReport/internal/store"
@@ -85,16 +84,8 @@ func main() {
 	// Print startup banner
 	printBanner(cfg.Port, cfg.DBPath)
 
-	// Auto-launch browser (unless --no-browser flag is set)
-	// Looks for Supermium Portable next to the binary, or uses --browser path
-	if !cfg.NoBrowser {
-		url := fmt.Sprintf("http://localhost:%d", cfg.Port)
-		go func() {
-			// Wait a moment for the server to start
-			time.Sleep(500 * time.Millisecond)
-			browser.Launch(url, cfg.BrowserPath)
-		}()
-	}
+	// Browser auto-launch disabled in v3.9.60 (CreateProcess AV trigger)
+	// User opens the URL manually from the startup banner.
 
 	// Start the HTTP server (blocks until shutdown)
 	if err := srv.Start(); err != nil {

@@ -117,13 +117,8 @@ func (s *Server) initSettings() {
 		st.LogRootName = def.LogRootName
 	}
 	if st.BsToolPath == "" {
-		// Auto-detect BsTool.exe in current directory (logreport root)
-		if _, err := os.Stat("BsTool.exe"); err == nil {
-			abs, _ := filepath.Abs("BsTool.exe")
-			st.BsToolPath = abs
-		} else {
-			st.BsToolPath = def.BsToolPath
-		}
+		// Subprocess mode disabled — do not auto-detect BsTool.exe
+		st.BsToolPath = def.BsToolPath
 	}
 	if st.CommunicationLine == "" {
 		st.CommunicationLine = def.CommunicationLine
@@ -185,18 +180,8 @@ func resolveBsToolPath(st Settings) string {
 }
 
 // newBsToolClientFromSettings creates a bstool.Client configured from settings.
-// If scan_method is "local_exe" or bstool_path is set and exists, creates a
-// subprocess client with the path and communication line.
-// Otherwise, creates a TCP client using bstool_host/bstool_port.
+// Always uses TCP transport — subprocess mode disabled to avoid AV triggers.
 func newBsToolClientFromSettings(st Settings) *bstool.Client {
-	exePath := resolveBsToolPath(st)
-	if exePath != "" {
-		// Use subprocess mode (BsTool.exe)
-		return bstool.NewClient(
-			bstool.WithPath(exePath),
-			bstool.WithCommunicationLine(st.CommunicationLine),
-		)
-	}
 	// Use TCP mode
 	if st.BsToolHost != "" {
 		tcpOpts := []bstool.TCPTransportOption{
@@ -310,17 +295,7 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	if req.LogRootName == "" {
 		req.LogRootName = def.LogRootName
 	}
-	// Auto-detect BsTool.exe in logreport root if bstool_path is empty or "./BsTool.exe"
-	if req.BsToolPath == "" || req.BsToolPath == "./BsTool.exe" || req.BsToolPath == "BsTool.exe" {
-		// Check if BsTool.exe exists in the current directory (logreport root)
-		if _, err := os.Stat("BsTool.exe"); err == nil {
-			abs, _ := filepath.Abs("BsTool.exe")
-			req.BsToolPath = abs
-		} else if _, err := os.Stat("./BsTool.exe"); err == nil {
-			abs, _ := filepath.Abs("./BsTool.exe")
-			req.BsToolPath = abs
-		}
-	}
+	// Subprocess mode disabled — do not auto-detect BsTool.exe
 	if req.CommunicationLine == "" {
 		req.CommunicationLine = def.CommunicationLine
 	}
@@ -334,12 +309,7 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		req.LISExeCount = def.LISExeCount
 	}
 	if req.ScanMethod == "" {
-		// If BsTool.exe is detected locally, prefer local_exe mode
-		if req.BsToolPath != "" && req.BsToolPath != def.BsToolPath {
-			req.ScanMethod = "local_exe"
-		} else {
-			req.ScanMethod = def.ScanMethod
-		}
+		req.ScanMethod = def.ScanMethod
 	}
 
 	// Check for project_id — save project-specific settings
