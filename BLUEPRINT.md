@@ -3,32 +3,35 @@
 
 ---
 
-> ## RECONCILIATION BLOCK (2026-07-11 — Architect)
+> ## RECONCILIATION BLOCK (2026-07-15 — Coder)
 >
-> **Reconciled against:** main branch commit fd48f854 (post-LisDiag feature cycle)
-> **Method:** G-RECON live probes (git, file counts, route extraction, embed path verification, store type verification)
-> **Prior reconciliation:** 2026-07-09 at commit feda78db — all 12 drift items fixed and HELD (no regressions)
+> **Reconciled against:** main branch commit d40bdea2 (v3.9.58) + docs commit 411a429a
+> **Method:** G-RECON live probes (git log, file counts, LOC, route extraction, package list, handler LOC)
+> **Prior reconciliation:** 2026-07-11 at commit fd48f854 (v3.9.12) — all drift items HELD (no regressions)
 >
 > ### Design Intent → Actual State
 >
-> | Item | Blueprint Says | Actual on Main (fd48f854) | Status |
+> | Item | Blueprint Says | Actual on Main (d40bdea2) | Status |
 > |------|---------------|--------------------------|--------|
-> | Scope | Report pipeline only, Commander excluded | Report pipeline + Commander + BsTool + LisDiag | RESOLVED — Commander added back, LisDiag added 2026-07-11 |
+> | Scope | Report pipeline only, Commander excluded | Report pipeline + Commander + BsTool + LisDiag + Project-Specific Settings | RESOLVED — Commander added back, LisDiag added 2026-07-11, project settings added 2026-07-15 |
 > | Store | SQLite | JSON file-based (no SQLite, no CGo) | RESOLVED — migration completed 2026-06-30 |
-> | Endpoints | 12 | 74 `/api/v1/*` + `/health` + `/` = 76 total | RESOLVED — grew with Commander, Queue, Projects, Settings, Logs, Scan, LisDiag |
-> | Packages | Not specified | 15 internal packages | RESOLVED — added browser, lisdiag |
+> | Endpoints | 12 | 74 `/api/v1/*` + `/health` + `/` = 76 total | RESOLVED — grew with Commander, Queue, Projects, Settings (incl. project-specific), Logs, Scan, LisDiag |
+> | Packages | Not specified | 15 internal packages | RESOLVED — api, browser, bstool, commandqueue, lisdiag, logfile, logwriter, nodesconfig, parser, report, server, store, sysloader, telnet, types |
 > | Embed path | `web/dist/` | `//go:embed all:web/dist-new-flat` | RESOLVED — directory renamed |
 > | Vite outDir | Not specified | `dist-new-flat` (matches embed) | RESOLVED — fixed in feda78db |
-> | Frontend | Not specified | 70 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4 | RESOLVED |
-> | Version | 1.1.1 | v3.9.12 (per CHANGELOG) | RESOLVED |
-> | Go files | Not specified | 69 non-test + 42 test = 111 (16,717 LOC) | RESOLVED |
+> | Frontend | Not specified | 79 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4 | RESOLVED |
+> | Version | 1.1.1 | v3.9.58 (per CHANGELOG) | RESOLVED |
+> | Go files | Not specified | 70 non-test + 53 test = 123 (37,011 LOC) | RESOLVED |
+> | Scan methods | Not specified | 3: remote_bu (TCP), local_dir (.sys on disk), local_exe (BsTool.exe subprocess) | RESOLVED — local_exe added v3.9.56 |
+> | BsTool execution | Not specified | Subprocess-first, TCP-fallback via executeBsToolErrLog() | RESOLVED — added v3.9.56 |
+> | Project settings | Not specified | SettingsJSON on Project, GET/POST /api/v1/settings?project_id=X, mergeSettings() overlay | RESOLVED — added v3.9.57 |
 >
 > ### Open Drift Items
 >
-> 1. **handlers.go God File (1,374 LOC):** 28 functions spanning nodes, reports, sysfile parsing, BsTool error log. Candidate for domain-based split.
+> 1. **handlers.go God File (1,350 LOC):** 28 functions spanning nodes, reports, sysfile parsing, BsTool error log. Candidate for domain-based split. (Was 1,374 at fd48f854 — shrank slightly.)
 > 2. **Makefile stale comments:** `web-build` and `go-build` target comments say "web/dist/" but actual path is "web/dist-new-flat/". Cosmetic — build commands work correctly.
 >
-> ### Resolved Drift Items (all HELD at fd48f854 — no regressions)
+> ### Resolved Drift Items (all HELD at d40bdea2 — no regressions)
 >
 > 1. ~~BUILD-BREAKING: Vite outDir mismatch~~ — FIXED (feda78db): changed to `dist-new-flat`.
 > 2. ~~Stale comments~~ — FIXED (feda78db): server.go, main.go, Makefile clean, embed.go all corrected.
@@ -37,7 +40,7 @@
 > 5. ~~handlers_commander.go 2684 LOC God File~~ — FIXED (feda78db): split to 95 LOC + 5 domain files.
 > 6. ~~NodesPage.tsx 1389 LOC God Component~~ — FIXED (feda78db): split to 489 LOC + 2 extracted components.
 >
-> **Note:** A prior restructuring (2026-07-03/04) addressed items 2, 5, and 6 locally but was never committed to git. The local repo was subsequently gutted. The restructure was redone and committed as feda78db on 2026-07-09. 11 LisDiag feature commits then landed on main (feda78db → fd48f854). This reconciliation brings docs in sync with fd48f854.
+> **Note:** A prior restructuring (2026-07-03/04) addressed items 2, 5, and 6 locally but was never committed to git. The local repo was subsequently gutted. The restructure was redone and committed as feda78db on 2026-07-09. 11 LisDiag feature commits landed (feda78db → fd48f854). 12 more commits then landed (fd48f854 → d40bdea2) covering: LisDiag crash fixes, test suite expansion (+11 test files), node detection improvements, BsTool subprocess support, project-specific settings, TCP timeout fix, and active exe listing in .lis files. This reconciliation brings docs in sync with d40bdea2 (v3.9.58).
 >
 > The original blueprint sections below are preserved as historical design intent.
 > See CHANGELOG.md for the actual evolution of the project.
@@ -103,7 +106,7 @@
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │              CORE ENGINE                              │   │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ │   │
-│  │  │ Telnet   │ │ FBC/RPC  │ │ SQLite   │ │ Report  │ │   │
+│  │  │ Telnet   │ │ FBC/RPC  │ │ JSON     │ │ Report  │ │   │
 │  │  │ Client   │ │ Parser   │ │ Store    │ │ Gen     │ │   │
 │  │  └──────────┘ └──────────┘ └──────────┘ └─────────┘ │   │
 │  └──────────────────────────────────────────────────────┘   │

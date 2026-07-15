@@ -1,5 +1,13 @@
 # 📋 Context Menu System Blueprint
 
+<!-- RECONCILIATION NOTE (2026-07-15 — Coder)
+     This blueprint describes the ORIGINAL Python-era context menu system (PyQt5).
+     In the Go implementation, context menus are handled in NodeTree.tsx (React/TypeScript).
+     Queue actions (clear, restart, retry-failed) are available in context menus.
+     Context menu sends commands through the command queue API, not direct execution.
+     This document is preserved as historical design reference only.
+-->
+
 <!-- METADATA -->
 metadata: {
   created_date: "2025-10-08_172500",

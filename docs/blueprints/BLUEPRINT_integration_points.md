@@ -1,5 +1,16 @@
 # 🔗 Integration Points Blueprint
 
+<!-- RECONCILIATION NOTE (2026-07-15 — Coder)
+     This blueprint describes the ORIGINAL Python-era integration points (PyQt5 signals).
+     The Go implementation uses REST API + WebSocket for all component integration:
+     - UI ↔ Services: React fetch/WebSocket to Go REST handlers
+     - Service ↔ Service: Direct Go function calls within internal/ packages
+     - Data: JSON file-based store (internal/store/)
+     - External: BsTool (subprocess-first, TCP-fallback), Telnet (native Go), LisDiag (native Go TCP)
+     - Project-specific settings: SettingsJSON on Project struct, mergeSettings() overlay
+     This document is preserved as historical design reference only.
+-->
+
 <!-- METADATA -->
 metadata: {
   created_date: "2025-10-08_173000",

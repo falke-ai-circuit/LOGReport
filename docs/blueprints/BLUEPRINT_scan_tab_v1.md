@@ -1,7 +1,17 @@
 # BLUEPRINT: Scan Tab Implementation v1.0
 
-**Status**: Draft - Awaiting User Approval  
-**Date**: 2025-10-14  
+<!-- RECONCILIATION NOTE (2026-07-15 — Coder)
+     This blueprint describes the ORIGINAL Python-era scan tab design (PyQt5).
+     The Go implementation has evolved significantly:
+     - Scan methods: remote_bu (BsTool TCP, default), local_dir (.sys on disk), local_exe (BsTool.exe subprocess, v3.9.56)
+     - Node detection: case-insensitive XdSysUsed matching, node filter (AP,AL,BP,BL) after XdSysUsed
+     - isFieldbusLID() distinguishes CPU slots from fieldbus slots for correct token generation
+     - Scan results saved to backend store, not just displayed in UI
+     This document is preserved as historical design reference only.
+-->
+
+**Status**: Superseded by Go implementation (v3.9.58)
+**Date**: 2025-10-14
 **Feature**: Scan Tab for FBC File Content Analysis and Live Comparison
 
 ---

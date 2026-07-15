@@ -1,5 +1,16 @@
 # 🔧 BsTool Integration Blueprint
 
+<!-- RECONCILIATION NOTE (2026-07-15 — Coder)
+     This blueprint describes the ORIGINAL Python-era BsTool integration design.
+     The Go implementation has evolved significantly beyond this design:
+     - BsTool is now a native Go TCP client (internal/bstool/) using reverse-engineered protocol
+     - BsTool.exe subprocess support added (v3.9.56, local_exe scan method)
+     - Subprocess-first, TCP-fallback via executeBsToolErrLog() in handlers_bstool_exec.go
+     - TCP timeout minimum raised to 5s (v3.9.57, was 1516ms serial-era default)
+     - COMMUNICATION_LINE env var passed to subprocess
+     This document is preserved as historical design reference only.
+-->
+
 <!-- METADATA -->
 metadata: {
   created_date: "2025-10-08_172000",

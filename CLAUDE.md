@@ -76,8 +76,8 @@ Single binary, embedded web UI, REST API. No separate server process. `./logrepo
 - **Routes:** 74 `/api/v1/*` endpoints + `/health` + `/` SPA fallback = 76 registered routes.
 - **Packages:** 15 internal packages (api, browser, bstool, commandqueue, lisdiag, logfile, logwriter, nodesconfig, parser, report, server, store, sysloader, telnet, types).
 - **Go version:** 1.22 (go.mod).
-- **Go files:** 69 non-test + 42 test = 111 total (16,717 LOC).
-- **Frontend:** 70 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4, 13 test files (Vitest).
+- **Go files:** 70 non-test + 53 test = 123 total (37,011 LOC).
+- **Frontend:** 79 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4, 14 test files (Vitest).
 - **Scan methods:** `remote_bu` (BsTool TCP protocol, default), `local_dir` (.sys files on disk), `local_exe` (BsTool.exe subprocess — auto-detected in LOGReport root, added v3.9.56).
 - **BsTool execution:** Subprocess-first, TCP-fallback. Shared `executeBsToolErrLog()` in `handlers_bstool_exec.go`. BsTool.exe auto-detected in LOGReport root on startup.
 - **BsTool TCP timeout:** Minimum 5s (raised from 1516ms serial-era default in v3.9.57).
@@ -88,7 +88,7 @@ Single binary, embedded web UI, REST API. No separate server process. `./logrepo
 
 ## Known Issues
 
-- **handlers.go God File:** `handlers.go` is 1,374 LOC with 28 functions spanning nodes, reports, sysfile parsing, and BsTool error log. Candidate for domain-based split.
+- **handlers.go God File:** `handlers.go` is 1,350 LOC with 28 functions spanning nodes, reports, sysfile parsing, and BsTool error log. Candidate for domain-based split.
 - **Makefile stale comments:** `web-build` and `go-build` target comments say "web/dist/" but actual embed path is "web/dist-new-flat/". Cosmetic — build commands work correctly.
 
 ## Resolved Issues (2026-07-09, commit feda78db)
