@@ -1,5 +1,65 @@
 # Changelog
 
+## [v3.9.58] — 2026-07-15
+
+### Added
+
+- **LisDiag: active exe listing in .lis files** — Before each `exe N` + `io` command sequence, LisDiag now sends a bare `exe` (no number) command first. The response (listing all active exes on the RSU) is captured and included in each .lis file output. Each .lis file now contains two sections: `=== Active Exes ===` (the bare `exe` response) and `=== IO Output (exe N) ===` (the per-exe io frame data). This makes the actual RSU hardware exe count visible in every .lis file for diagnostics.
+
+### Commits
+
+- `d40bdea2` feat: send 'exe' (no number) before 'exe N' to include active exe listing in .lis output
+
+## [v3.9.57] — 2026-07-15
+
+### Added
+
+- **Project-specific settings** — `SettingsJSON` field added to `Project` struct (`internal/types/project.go`). `GET /api/v1/settings?project_id=X` and `POST` endpoints in `internal/api/handlers_settings.go` allow loading/saving per-project settings. `mergeSettings()` overlays project-specific values over global defaults. `getSettingsForProject()` helper provides project-aware settings to all backend handlers. Allows different `lis_mode` (rsu vs lisdiag), `bu_dir`, `bstool_host`, `node_filter`, etc. per project. `Server.activeProjectID` tracks currently selected project. BsTool exec handler uses project-specific settings when available.
+
+### Fixed
+
+- **AP token structure** — `isFieldbusLID()` helper distinguishes CPU slots (`_main`/`_reserve` → LOG only, LID 161) from fieldbus slots (`_m2`/`_m3`/`_r2`/`_r3` → FBC+RPC, LID 162/163). Result: 2 FBC + 2 RPC per AP station (was incorrectly 3+3). CPU slots no longer generate spurious FBC/RPC files.
+- **AL token structure** — AL station `nodeType` now maps to `{TokenLIS, TokenLOG}`. AL stations get 501 (LIS) + 501 (LOG) → 6 .lis files + 1 .log file. The .log file is needed for BsTool errlog (PCS startup log) in addition to .lis files.
+- **BsTool TCP timeout** — Default 1516ms serial-era timeout was too short for LAN/WAN TCP. `sendBlock`/`recvBlock` now use minimum 5s deadline. Initial dial timeout increased to 5s. This was the root cause of TCP BsTool failures in production.
+
+### Commits
+
+- `5ab172e3` fix: correct token structure + project-specific settings + TCP timeout
+
+## [v3.9.56] — 2026-07-14
+
+### Added
+
+- **BsTool.exe subprocess support** — `local_exe` scan method added as alternative to `remote_bu` (TCP). When `BsTool.exe` is auto-detected in the LOGReport root directory on startup, settings auto-switch to `local_exe`. Subprocess-first, TCP-fallback approach: the shared `executeBsToolErrLog()` helper (in new file `internal/api/handlers_bstool_exec.go`) tries subprocess first, falls back to TCP if subprocess fails or BsTool.exe is not found. Used by REST errlog, WebSocket errlog, and queue executor. `bstool_path` and `communication_line` from settings are wired to all BsTool calls. BsTool.exe v8.26 verified (same protocol as our reverse-engineered TCP implementation).
+
+### Commits
+
+- `ed0ef76a` feat: BsTool.exe subprocess support + auto-detect in logreport root
+
+## [v3.9.55] — 2026-07-14
+
+### Fixed
+
+- **Settings/Config tab removed from navigation** — The standalone Settings tab was removed from the main navigation (`Layout.tsx`). Settings access is now through project-specific settings API. Frontend rebuilt (`dist-new-flat`).
+- **LIDMapping test** — Fixed to include BL/BP entries (14 LID types, not 12). Context menu IP fallback from parent node. LisDiag IP fallback from `nodesconfig` when `cmd.IP` is empty.
+- **XdSysUsed filter chain verified** — Confirmed with real `nodes.zip` data. Node filter `AP,AL,BP,BL` verified: 70 configs, no A1O1/OPS/ALP.
+
+### Commits
+
+- `a3414c45` fix: remove Settings/Config tab, rebuild frontend, fix LIDMapping test
+
+## [v3.9.54] — 2026-07-14
+
+### Fixed
+
+- **LisDiag: `io` command without number** — Now sends `io` without a channel number (was `io N`). Shows all frames (at least 5) instead of limiting to 1-2. The `exe N` command already selects the channel, so the number on `io` was redundant and restrictive.
+- **Case-insensitive XdSysUsed matching** — `.sys` files like `101.SYS` (uppercase) were being dropped because the `activeSysPaths` map had `101.sys` (lowercase). Now matches regardless of case.
+- **Node filter applied after XdSysUsed filtering** — The `node_filter` setting (e.g. `AP,AL,BP,BL`) is now applied in the scan-nodes endpoint after XdSysUsed filtering, not before. This ensures only active nodes matching the filter are included. Verified on Vegas VM: 70 configs with `AL,BL,AP,BP` filter. All AL01-AL16 present with correct IPs and tokens.
+
+### Commits
+
+- `beda681a` fix: io without number + case-insensitive XdSysUsed matching + node filter
+
 ## [v3.9.12] — 2026-07-07
 
 ### Added

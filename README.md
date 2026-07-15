@@ -191,7 +191,9 @@ web/                    # React/TypeScript frontend (Vite + Tailwind)
 
 **Settings:**
 - `GET /api/v1/settings` — read settings (DIA host/port, BsTool host/port, log root, output dir, scan method, node filter)
+- `GET /api/v1/settings?project_id=X` — read project-specific settings (overlays global defaults)
 - `POST /api/v1/settings` — save settings
+- `POST /api/v1/settings?project_id=X` — save project-specific settings
 
 **Directory Browsing:**
 - `GET /api/v1/browse` — browse directory for path selection
@@ -230,6 +232,36 @@ make run PORT=9000      # Build and run on custom port
 - **Target:** Windows VM (Valmet DNA environment) — cross-compiled LOGReport.exe
 - **Cross-compile:** `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o LOGReport.exe ./cmd/logreport/`
 - **No CGo required** — store is JSON file-based, pure Go stdlib
+
+## Recent Changes (v3.9.54–v3.9.58)
+
+### v3.9.58 — LisDiag Active Exe Listing
+- Before each `exe N` + `io` sequence, LisDiag now sends bare `exe` (no number) first
+- Each .lis file now contains `=== Active Exes ===` section + `=== IO Output (exe N) ===` section
+- Makes actual RSU hardware exe count visible in every .lis file
+
+### v3.9.57 — Token Structure Fixes + Project-Specific Settings + TCP Timeout
+- **AP token fix**: `isFieldbusLID()` distinguishes CPU slots (_main/_reserve → LOG only) from fieldbus slots (_m2/_m3/_r2/_r3 → FBC+RPC). Result: 2 FBC + 2 RPC per AP station (was 3+3).
+- **AL token fix**: AL stations now get LIS + LOG tokens → 6 .lis files + 1 .log file
+- **Project-specific settings**: `SettingsJSON` field on `Project` struct, `GET/POST /api/v1/settings?project_id=X`, `mergeSettings()` overlay, `getSettingsForProject()` helper
+- **BsTool TCP timeout**: minimum raised to 5s (was 1.5s serial-era default — too short for TCP)
+
+### v3.9.56 — BsTool.exe Subprocess Support
+- `local_exe` scan method: run BsTool.exe as subprocess (auto-detected in LOGReport root)
+- Subprocess-first, TCP-fallback via shared `executeBsToolErrLog()` helper
+- New file: `internal/api/handlers_bstool_exec.go`
+
+### v3.9.55 — Frontend Rebuild + LIDMapping Fix
+- Settings/Config tab removed from navigation (settings now per-project)
+- LIDMapping test fixed: 14 LID types (BL/BP included)
+- XdSysUsed filter chain verified with real nodes.zip data
+
+### v3.9.54 — Node Detection Improvements
+- Case-insensitive XdSysUsed matching (uppercase .SYS files no longer dropped)
+- Node filter (AP,AL,BP,BL) applied after XdSysUsed filtering
+- LisDiag `io` command sent without number (shows all frames, ≥5)
+
+See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## License
 

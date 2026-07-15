@@ -1,7 +1,7 @@
 {
   "project": "LOGReport",
-  "version": "v3.9.0",
-  "last_updated": "2026-06-29T18:30:00Z",
+  "version": "v3.9.58",
+  "last_updated": "2026-07-15T00:00:00Z",
   "hot_cache": [
     {
       "key": "binary_name",
@@ -119,6 +119,41 @@
       "key": "sysfile_node_fields",
       "value": "SlotNum int, IsFieldbus bool",
       "note": "Added to SysFileNode in internal/types/sysfile.go for CPU/fieldbus slot distinction"
+    },
+    {
+      "key": "scan_methods",
+      "value": "remote_bu, local_dir, local_exe",
+      "note": "remote_bu = BsTool TCP (default), local_dir = .sys on disk, local_exe = BsTool.exe subprocess (added v3.9.56, auto-detected in LOGReport root)"
+    },
+    {
+      "key": "bstool_execution",
+      "value": "subprocess-first, TCP-fallback",
+      "note": "Shared executeBsToolErrLog() in handlers_bstool_exec.go. Used by REST errlog, WebSocket errlog, queue executor. BsTool.exe auto-detected in LOGReport root on startup."
+    },
+    {
+      "key": "bstool_tcp_timeout",
+      "value": "5s minimum",
+      "note": "Raised from 1516ms serial-era default in v3.9.57. sendBlock/recvBlock use min 5s deadline. Initial dial timeout 5s."
+    },
+    {
+      "key": "project_specific_settings",
+      "value": "SettingsJSON on Project struct, GET/POST /api/v1/settings?project_id=X",
+      "note": "mergeSettings() overlays project over global. getSettingsForProject() helper. Allows per-project lis_mode, bu_dir, bstool_host, node_filter. Added v3.9.57."
+    },
+    {
+      "key": "node_detection",
+      "value": "case-insensitive XdSysUsed, node filter after XdSysUsed, isFieldbusLID()",
+      "note": "XdSysUsed matching is case-insensitive (101.SYS = 101.sys). Node filter (AP,AL,BP,BL) applied after XdSysUsed. isFieldbusLID() distinguishes CPU (_main/_reserve) from fieldbus (_m2/_m3/_r2/_r3). Added v3.9.54-v3.9.57."
+    },
+    {
+      "key": "token_structure",
+      "value": "AP=1LOG+2FBC+2RPC, AL=LIS+LOG, A1O/A1A/B1O/B1A=LOG only",
+      "note": "AP CPU slots → LOG only (LID 161). AP fieldbus slots → FBC+RPC (LID 162/163). AL → 501(LIS)+501(LOG) = 6 .lis + 1 .log. Fixed v3.9.57."
+    },
+    {
+      "key": "lisdiag_lis_format",
+      "value": "=== Active Exes === + === IO Output (exe N) ===",
+      "note": "Bare 'exe' sent before each 'exe N' + 'io' sequence. Active exe listing included in every .lis file. 'io' sent without number (shows all frames, ≥5). Added v3.9.58."
     }
   ],
   "architecture": {
@@ -466,6 +501,41 @@
     }
   ],
   "recent_changes": [
+    {
+      "version": "v3.9.58",
+      "date": "2026-07-15",
+      "summary": "LisDiag: bare 'exe' (no number) sent before each 'exe N' + 'io' sequence. Active exe listing captured and included in each .lis file as '=== Active Exes ===' section. Each .lis now has two sections: active exes + IO output. Makes RSU hardware exe count visible in every .lis file.",
+      "commits": ["d40bdea2"],
+      "files": ["internal/lisdiag/"]
+    },
+    {
+      "version": "v3.9.57",
+      "date": "2026-07-15",
+      "summary": "Token structure fixes: AP CPU slots (_main/_reserve) → LOG only via isFieldbusLID(), fieldbus slots (_m2/_m3/_r2/_r3) → FBC+RPC. Result: 2 FBC + 2 RPC per AP (was 3+3). AL stations → LIS + LOG (6 .lis + 1 .log). BsTool TCP timeout minimum raised to 5s (was 1516ms). Project-specific settings: SettingsJSON on Project struct, GET/POST /api/v1/settings?project_id=X, mergeSettings() overlay, getSettingsForProject() helper.",
+      "commits": ["5ab172e3"],
+      "files": ["internal/types/project.go", "internal/api/handlers_settings.go", "internal/bstool/transport_tcp.go", "internal/sysloader/"]
+    },
+    {
+      "version": "v3.9.56",
+      "date": "2026-07-14",
+      "summary": "BsTool.exe subprocess support: local_exe scan method, auto-detect BsTool.exe in LOGReport root, subprocess-first TCP-fallback via executeBsToolErrLog() in handlers_bstool_exec.go. bstool_path + communication_line wired from settings to all BsTool calls.",
+      "commits": ["ed0ef76a"],
+      "files": ["internal/api/handlers_bstool_exec.go", "internal/api/handlers.go", "internal/bstool/"]
+    },
+    {
+      "version": "v3.9.55",
+      "date": "2026-07-14",
+      "summary": "Settings/Config tab removed from navigation. Frontend rebuilt. LIDMapping test fixed (14 LID types including BL/BP). XdSysUsed filter chain verified with real nodes.zip data (70 configs). Context menu IP fallback from parent node. LisDiag IP fallback from nodesconfig.",
+      "commits": ["a3414c45"],
+      "files": ["web/src/components/Layout.tsx", "internal/sysloader/sysloader_refit_test.go"]
+    },
+    {
+      "version": "v3.9.54",
+      "date": "2026-07-14",
+      "summary": "Node detection improvements: case-insensitive XdSysUsed matching (101.SYS = 101.sys), node filter (AP,AL,BP,BL) applied after XdSysUsed filtering, LisDiag 'io' command sent without number (shows all frames ≥5). Verified on Vegas: 70 configs, all AL01-AL16 present.",
+      "commits": ["beda681a"],
+      "files": ["internal/sysloader/", "internal/lisdiag/", "internal/api/handlers.go"]
+    },
     {
       "version": "v1.1.2-test",
       "date": "2026-06-24",

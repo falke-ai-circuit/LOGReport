@@ -78,6 +78,13 @@ Single binary, embedded web UI, REST API. No separate server process. `./logrepo
 - **Go version:** 1.22 (go.mod).
 - **Go files:** 69 non-test + 42 test = 111 total (16,717 LOC).
 - **Frontend:** 70 .tsx/.ts files, React 18 + Vite 5 + Tailwind 4, 13 test files (Vitest).
+- **Scan methods:** `remote_bu` (BsTool TCP protocol, default), `local_dir` (.sys files on disk), `local_exe` (BsTool.exe subprocess — auto-detected in LOGReport root, added v3.9.56).
+- **BsTool execution:** Subprocess-first, TCP-fallback. Shared `executeBsToolErrLog()` in `handlers_bstool_exec.go`. BsTool.exe auto-detected in LOGReport root on startup.
+- **BsTool TCP timeout:** Minimum 5s (raised from 1516ms serial-era default in v3.9.57).
+- **Project-specific settings:** `SettingsJSON` on `Project` struct. `GET/POST /api/v1/settings?project_id=X`. `mergeSettings()` overlays project over global. `getSettingsForProject()` helper.
+- **Node detection:** XdSysUsed filter is case-insensitive. Node filter (AP,AL,BP,BL) applied after XdSysUsed. `isFieldbusLID()` distinguishes CPU (_main/_reserve → LOG) from fieldbus (_m2/_m3/_r2/_r3 → FBC+RPC) slots.
+- **Token structure:** AP = 1 LOG (CPU) + 2 FBC + 2 RPC (fieldbus). AL = LIS + LOG (6 .lis + 1 .log). A1O/A1A/B1O/B1A = LOG only.
+- **LisDiag .lis format:** Each file contains `=== Active Exes ===` (bare `exe` response) + `=== IO Output (exe N) ===` (per-exe io frames). `io` sent without number (shows all frames).
 
 ## Known Issues
 
