@@ -64,7 +64,7 @@ const mockQueueStatus = {
   ],
 };
 
-function mockFetchImpl(url: any, options?: any) {
+function mockFetchImpl(url: any, _options?: any) {
   if (url?.includes('/nodesconfig/tree')) {
     return Promise.resolve({
       ok: true,

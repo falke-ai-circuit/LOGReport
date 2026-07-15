@@ -832,6 +832,17 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 	// added to the adapter and a port proxy redirects to localhost:14321.
 	host := cmd.IPAddress
 	if host == "" {
+		// Fallback: look up the node's IP from nodesconfig
+		if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+			for _, c := range configs {
+				if c.Name == cmd.NodeName && c.IPAddress != "" {
+					host = c.IPAddress
+					break
+				}
+			}
+		}
+	}
+	if host == "" {
 		host = "127.0.0.1"
 	}
 

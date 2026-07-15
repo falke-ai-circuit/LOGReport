@@ -157,8 +157,8 @@ export default function CommanderLayout() {
   const handleContextAction = useCallback(async (action: string, node: TreeNodeData, _parentNode?: TreeNodeData) => {
     let nodeName = node.name || currentNodeName;
     const tokenId = node.token_id || '';
-    // Extract IP from the tree node or from the filename
-    let nodeIp = node.ip || '';
+    // Extract IP from the tree node, parent node, or from the filename
+    let nodeIp = node.ip || _parentNode?.ip || '';
     if (!nodeIp && (node.type === 'token' || node.type === 'file') && node.file_name) {
       const parts = node.file_name.split('_');
       if (parts.length >= 2) {
