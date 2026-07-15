@@ -86,21 +86,37 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 				tokenTypes = []types.TokenType{types.TokenLOG}
 			}
 
-			node, exists := nodeMap[lid+"_"+ipAddr]
-			if !exists {
-				node = &types.NodeConfig{
-					Name:      lid,
-					IPAddress: ipAddr,
+			// When ipAddr is empty (from _sys file), merge with existing node by LID
+			var node *types.NodeConfig
+			var nodeKey string
+			if ipAddr == "" {
+				for k, v := range nodeMap {
+					if strings.HasPrefix(k, lid+"_") && v.Name == lid {
+						node = v
+						nodeKey = k
+						break
+					}
 				}
-				nodeMap[lid+"_"+ipAddr] = node
-				nodeOrder = append(nodeOrder, lid+"_"+ipAddr)
 			}
-
+			if node == nil {
+				nodeKey = lid + "_" + ipAddr
+				var exists bool
+				node, exists = nodeMap[nodeKey]
+				if !exists {
+					node = &types.NodeConfig{
+						Name:      lid,
+						IPAddress: ipAddr,
+					}
+					nodeMap[nodeKey] = node
+					nodeOrder = append(nodeOrder, nodeKey)
+				}
+			}
 			if node.IPAddress == "" && ipAddr != "" {
 				node.IPAddress = ipAddr
 			}
 
 			tokenID := entry.HWAddr
+
 			if tokenID == "" {
 				tokenID = strings.ReplaceAll(lid, " ", "_")
 			}
@@ -478,14 +494,30 @@ func processSysFileResult(result *parser.SysFileResult, sysPath string, nodeMap 
 			tokenTypes = []types.TokenType{types.TokenLOG}
 		}
 
-		node, exists := nodeMap[lid+"_"+ipAddr]
-		if !exists {
-			node = &types.NodeConfig{
-				Name:      lid,
-				IPAddress: ipAddr,
+		// When ipAddr is empty (from _sys file), merge with existing node by LID
+		var node *types.NodeConfig
+		var nodeKey string
+		if ipAddr == "" {
+			for k, v := range nodeMap {
+				if strings.HasPrefix(k, lid+"_") && v.Name == lid {
+					node = v
+					nodeKey = k
+					break
+				}
 			}
-			nodeMap[lid+"_"+ipAddr] = node
-			*nodeOrder = append(*nodeOrder, lid+"_"+ipAddr)
+		}
+		if node == nil {
+			nodeKey = lid + "_" + ipAddr
+			var exists bool
+			node, exists = nodeMap[nodeKey]
+			if !exists {
+				node = &types.NodeConfig{
+					Name:      lid,
+					IPAddress: ipAddr,
+				}
+				nodeMap[nodeKey] = node
+				*nodeOrder = append(*nodeOrder, nodeKey)
+			}
 		}
 		if node.IPAddress == "" && ipAddr != "" {
 			node.IPAddress = ipAddr
