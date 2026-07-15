@@ -1242,39 +1242,14 @@ func (s *Server) handleBsToolErrLog(w http.ResponseWriter, r *http.Request) {
 		opts = append(opts, bstool.WithMask(req.Mask))
 	}
 
-	// Use settings for BsTool TCP connection if not overridden
-	if req.TCPHost == "" {
-		if !globalSettings.loaded {
-			s.initSettings()
-		}
-		st := getSettings()
-		if st.BsToolHost != "" {
-			req.TCPHost = st.BsToolHost
-		}
-		if req.TCPPort == 0 && st.BsToolPort > 0 {
-			req.TCPPort = st.BsToolPort
-		}
+	// Use settings for BsTool connection
+	if !globalSettings.loaded {
+		s.initSettings()
 	}
+	_ = getSettings() // settings are read by executeBsToolErrLog
 
-	// 5. Execute
-	// If tcp_host is specified, use a one-shot TCP transport for this request.
-	// Otherwise, use the default client (subprocess, SSH, or pre-configured TCP).
-	var result *bstool.ErrLogResult
-	var err error
-	if req.TCPHost != "" {
-		tcpOpts := []bstool.TCPTransportOption{
-			bstool.WithTCPHost(req.TCPHost),
-		}
-		if req.TCPPort > 0 {
-			tcpOpts = append(tcpOpts, bstool.WithTCPPort(req.TCPPort))
-		}
-		tcp := bstool.NewTCPTransport(tcpOpts...)
-		defer tcp.Close()
-		tcpClient := bstool.NewClient(bstool.WithTCPTransport(tcp))
-		result, err = tcpClient.ErrLog(r.Context(), req.ServerName, opts...)
-	} else {
-		result, err = s.bstoolClient.ErrLog(r.Context(), req.ServerName, opts...)
-	}
+	// Execute via shared helper (handles subprocess/TCP fallback)
+	result, err := s.executeBsToolErrLog(r.Context(), req.ServerName, req.NodeIP)
 	if err != nil {
 		mapBstoolErrorToHTTP(w, err)
 		return

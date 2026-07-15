@@ -465,14 +465,16 @@ func (s *Server) handleScanNodes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Scan method: "remote_bu" (default) uses BsTool TCP, "local_dir" uses local BU directory.
+	// "local_exe" uses BsTool.exe subprocess (same as local_dir for .sys file scanning,
+	// but also indicates that errlog should use subprocess instead of TCP).
 	// The user selects this in Settings — no automatic fallback.
 	scanMethod := st.ScanMethod
 	if scanMethod == "" {
 		scanMethod = "remote_bu"
 	}
 
-	// Step 1: If scan method is local_dir, read .sys files from the local BU directory.
-	if scanMethod == "local_dir" {
+	// Step 1: If scan method is local_dir or local_exe, read .sys files from the local BU directory.
+	if scanMethod == "local_dir" || scanMethod == "local_exe" {
 		buConfigs := tryLoadSysFromBUDir(buDir)
 		if len(buConfigs) > 0 {
 			// Apply XdSysUsed filtering from local filesystem too.

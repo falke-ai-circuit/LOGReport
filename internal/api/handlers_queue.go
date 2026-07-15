@@ -567,9 +567,10 @@ func (s *Server) handleLogSave(w http.ResponseWriter, r *http.Request) {
 
 // executeBsToolQueued runs a BsTool errlog command through the queue.
 // On error, writes an empty file so the tree shows it as red (command ran, no data).
-// On success, writes output to .log files via logwriter.
+// executeBsToolQueued runs a BsTool errlog command through the queue.
+// Uses the shared executeBsToolErrLog helper which handles subprocess/TCP fallback.
 func (s *Server) executeBsToolQueued(cmd commandqueue.QueuedCommand) (string, error) {
-	result, err := s.bstoolClient.ErrLog(context.Background(), cmd.NodeName)
+	result, err := s.executeBsToolErrLog(context.Background(), cmd.NodeName, cmd.IPAddress)
 	if err != nil {
 		// Write empty file so tree shows it as red (command ran, no data)
 		ipAddress := cmd.IPAddress

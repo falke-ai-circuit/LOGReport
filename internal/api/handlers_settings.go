@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 )
 
 // Settings holds runtime-configurable settings persisted to settings.json.
@@ -112,7 +114,13 @@ func (s *Server) initSettings() {
 		st.LogRootName = def.LogRootName
 	}
 	if st.BsToolPath == "" {
-		st.BsToolPath = def.BsToolPath
+		// Auto-detect BsTool.exe in current directory (logreport root)
+		if _, err := os.Stat("BsTool.exe"); err == nil {
+			abs, _ := filepath.Abs("BsTool.exe")
+			st.BsToolPath = abs
+		} else {
+			st.BsToolPath = def.BsToolPath
+		}
 	}
 	if st.CommunicationLine == "" {
 		st.CommunicationLine = def.CommunicationLine
@@ -127,7 +135,12 @@ func (s *Server) initSettings() {
 		st.LISExeCount = def.LISExeCount
 	}
 	if st.ScanMethod == "" {
-		st.ScanMethod = def.ScanMethod
+		// If BsTool.exe detected locally, prefer local_exe
+		if st.BsToolPath != "" && st.BsToolPath != def.BsToolPath {
+			st.ScanMethod = "local_exe"
+		} else {
+			st.ScanMethod = def.ScanMethod
+		}
 	}
 
 	globalSettings.settings = st
@@ -144,6 +157,60 @@ func getSettings() Settings {
 	globalSettings.mu.Lock()
 	defer globalSettings.mu.Unlock()
 	return globalSettings.settings
+}
+
+// resolveBsToolPath returns the BsTool.exe path from settings, auto-detecting
+// from the logreport root directory if bstool_path is "./BsTool.exe" or empty.
+// On Windows, checks: logreport root (.), ./BsTool.exe, ./bstool/BsTool.exe.
+func resolveBsToolPath(st Settings) string {
+	path := st.BsToolPath
+	if path == "" {
+		return ""
+	}
+	// If relative path like "./BsTool.exe", resolve against cwd
+	if path == "./BsTool.exe" || path == "BsTool.exe" {
+		if _, err := os.Stat(path); err == nil {
+			abs, _ := filepath.Abs(path)
+			return abs
+		}
+		return ""
+	}
+	if _, err := os.Stat(path); err == nil {
+		return path
+	}
+	return ""
+}
+
+// newBsToolClientFromSettings creates a bstool.Client configured from settings.
+// If scan_method is "local_exe" or bstool_path is set and exists, creates a
+// subprocess client with the path and communication line.
+// Otherwise, creates a TCP client using bstool_host/bstool_port.
+func newBsToolClientFromSettings(st Settings) *bstool.Client {
+	exePath := resolveBsToolPath(st)
+	if exePath != "" {
+		// Use subprocess mode (BsTool.exe)
+		return bstool.NewClient(
+			bstool.WithPath(exePath),
+			bstool.WithCommunicationLine(st.CommunicationLine),
+		)
+	}
+	// Use TCP mode
+	if st.BsToolHost != "" {
+		tcpOpts := []bstool.TCPTransportOption{
+			bstool.WithTCPHost(st.BsToolHost),
+		}
+		if st.BsToolPort > 0 {
+			tcpOpts = append(tcpOpts, bstool.WithTCPPort(st.BsToolPort))
+		}
+		tcp := bstool.NewTCPTransport(tcpOpts...)
+		return bstool.NewClient(bstool.WithTCPTransport(tcp))
+	}
+	return bstool.NewClient()
+}
+
+// isLocalExeMode returns true if settings indicate BsTool.exe subprocess should be used.
+func isLocalExeMode(st Settings) bool {
+	return st.ScanMethod == "local_exe" || resolveBsToolPath(st) != ""
 }
 
 // saveSettings persists settings to disk and applies runtime changes.
@@ -202,8 +269,16 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	if req.LogRootName == "" {
 		req.LogRootName = def.LogRootName
 	}
-	if req.BsToolPath == "" {
-		req.BsToolPath = def.BsToolPath
+	// Auto-detect BsTool.exe in logreport root if bstool_path is empty or "./BsTool.exe"
+	if req.BsToolPath == "" || req.BsToolPath == "./BsTool.exe" || req.BsToolPath == "BsTool.exe" {
+		// Check if BsTool.exe exists in the current directory (logreport root)
+		if _, err := os.Stat("BsTool.exe"); err == nil {
+			abs, _ := filepath.Abs("BsTool.exe")
+			req.BsToolPath = abs
+		} else if _, err := os.Stat("./BsTool.exe"); err == nil {
+			abs, _ := filepath.Abs("./BsTool.exe")
+			req.BsToolPath = abs
+		}
 	}
 	if req.CommunicationLine == "" {
 		req.CommunicationLine = def.CommunicationLine
@@ -218,7 +293,12 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		req.LISExeCount = def.LISExeCount
 	}
 	if req.ScanMethod == "" {
-		req.ScanMethod = def.ScanMethod
+		// If BsTool.exe is detected locally, prefer local_exe mode
+		if req.BsToolPath != "" && req.BsToolPath != def.BsToolPath {
+			req.ScanMethod = "local_exe"
+		} else {
+			req.ScanMethod = def.ScanMethod
+		}
 	}
 
 	// Apply log_root immediately

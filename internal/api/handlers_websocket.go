@@ -295,8 +295,8 @@ func (s *Server) bstoolWSHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			// Execute BsTool errlog
-			result, err := s.bstoolClient.ErrLog(r.Context(), msg.ServerName)
+			// Execute BsTool errlog — use settings to choose subprocess or TCP
+			result, err := s.executeBsToolErrLog(r.Context(), msg.ServerName, msg.NodeIP)
 			if err != nil {
 				// Write empty file so tree shows it as red (command ran, no data)
 				ipAddress := msg.NodeIP
