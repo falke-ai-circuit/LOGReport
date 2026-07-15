@@ -1,0 +1,17 @@
+{
+  "dia_host": "127.0.0.1",
+  "dia_port": 1234,
+  "bstool_host": "127.0.0.1",
+  "bstool_port": 1516,
+  "log_root": "",
+  "logroot_name": "",
+  "bstool_path": "",
+  "communication_line": "",
+  "output_dir": "",
+  "bu_dir": "/dna/CA/bu",
+  "lis_mode": "rsu",
+  "scan_method": "remote_bu",
+  "node_filter": "",
+  "lis_exe_count": 6,
+  "lisdiag_password": ""
+}

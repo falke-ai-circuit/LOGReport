@@ -889,20 +889,47 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 		log.Printf("lisdiag: connected to %s:%d (cached)", host, port)
 	}
 
-	// Combined exe+io mode: if command starts with "exe ", send exe N then
-	// io N-1, write ONLY the io output to the .lis file.
+	// Combined exe+io mode: if command starts with "exe ", send:
+	// 1. "exe" (no number) — lists all active exes, included in .lis output
+	// 2. "exe N" — selects the channel
+	// 3. "io" — produces the actual frame data
+	// The .lis file contains the exe listing followed by the io output.
 	// LisDiag io is 0-indexed: exe1=io 0, exe2=io 1, ..., exe6=io 5.
 	if strings.HasPrefix(cmd.Command, "exe ") {
 		var exeNum int
 		fmt.Sscanf(cmd.Command, "exe %d", &exeNum)
 		channel := exeNum - 1
 
-		// Send "exe N" — sets the channel, minimal output
-		_, _ = cached.SendCommand(cmd.Command, 10*time.Second)
+		// Build a retry helper for the exe+exe N+io sequence
+		sendExeAndIO := func(client *lisdiag.Client) (string, error) {
+			// Step 1: Send "exe" (no number) — lists active exes
+			exeListOutput, _ := client.SendCommand("exe", 10*time.Second)
 
-		// Send "io N-1" — produces the actual frame data
-		ioCmd := lisdiag.IOCommand(channel)
-		output, err := cached.SendCommand(ioCmd, 15*time.Second)
+			// Step 2: Send "exe N" — selects the channel
+			_, _ = client.SendCommand(cmd.Command, 10*time.Second)
+
+			// Step 3: Send "io" — produces the actual frame data
+			ioCmd := lisdiag.IOCommand(channel)
+			ioOutput, err := client.SendCommand(ioCmd, 15*time.Second)
+			if err != nil {
+				return ioOutput, err
+			}
+
+			// Combine: exe listing + io frame data
+			var combined strings.Builder
+			if exeListOutput != "" {
+				combined.WriteString("=== Active Exes ===\n")
+				combined.WriteString(exeListOutput)
+				combined.WriteString("\n")
+			}
+			combined.WriteString("=== IO Output (exe ")
+			combined.WriteString(fmt.Sprintf("%d", exeNum))
+			combined.WriteString(") ===\n")
+			combined.WriteString(ioOutput)
+			return combined.String(), nil
+		}
+
+		output, err := sendExeAndIO(cached)
 		if err != nil {
 			// Connection might be stale — close cache and retry once
 			s.lisdiagMu.Lock()
@@ -917,15 +944,14 @@ func (s *Server) executeLISDiag(cmd commandqueue.QueuedCommand) (string, error) 
 			s.lisdiagMu.Lock()
 			s.lisdiagConns[connKey] = cached
 			s.lisdiagMu.Unlock()
-			// Re-send exe then io on the fresh connection
-			_, _ = cached.SendCommand(cmd.Command, 10*time.Second)
-			output, err = cached.SendCommand(ioCmd, 15*time.Second)
+			// Retry the full exe+exe N+io sequence on fresh connection
+			output, err = sendExeAndIO(cached)
 			if err != nil {
 				return output, err
 			}
 		}
 
-		// Write ONLY the io output to .lis log file
+		// Write combined exe listing + io output to .lis log file
 		lw := logwriter.New(s.resolveLogRoot())
 		if err := lw.WriteOutputWithIP(cmd.NodeName, "LIS", cmd.TokenID, output, cmd.IPAddress); err != nil {
 			log.Printf("lisdiag: failed to write log for %s/%s: %v", cmd.NodeName, cmd.TokenID, err)
