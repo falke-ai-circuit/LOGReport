@@ -138,9 +138,14 @@ func (t *TCPTransport) sendBlock(block *Block) error {
 		return err
 	}
 
-	// Refresh read deadline before each send
+	// Refresh read deadline before each send — use at least 5s for TCP
+	// (the 1516ms serial-era default is too short for remote BU connections)
 	if tcpConn, ok := t.conn.(*net.TCPConn); ok {
-		tcpConn.SetReadDeadline(time.Now().Add(t.timeout))
+		deadline := t.timeout
+		if deadline < 5*time.Second {
+			deadline = 5 * time.Second
+		}
+		tcpConn.SetReadDeadline(time.Now().Add(deadline))
 	}
 
 	_, err = t.conn.Write(wire)
@@ -154,9 +159,13 @@ func (t *TCPTransport) sendBlock(block *Block) error {
 //  3. Extract data_length from header[0x10]
 //  4. Read data_length bytes of payload
 func (t *TCPTransport) recvBlock() (*Block, error) {
-	// Refresh read deadline
+	// Refresh read deadline — use at least 5s for TCP
 	if tcpConn, ok := t.conn.(*net.TCPConn); ok {
-		tcpConn.SetReadDeadline(time.Now().Add(t.timeout))
+		deadline := t.timeout
+		if deadline < 5*time.Second {
+			deadline = 5 * time.Second
+		}
+		tcpConn.SetReadDeadline(time.Now().Add(deadline))
 	}
 
 	// Read 20-byte header
@@ -232,12 +241,14 @@ func (t *TCPTransport) ErrLog(serverName string) (string, error) {
 	//   - Output matches BsTool.exe -errlog AB01 (3403 chars) ✅
 
 	// Phase 1: Connect to BU on control port (1516)
+	// Use a longer timeout for the initial connection (5s instead of 1.5s default)
+	// The 1516ms default is from BsTool.exe's serial-era timeout — too short for TCP LAN/WAN.
 	controlAddr := net.JoinHostPort(t.host, fmt.Sprintf("%d", t.port))
 	if debug {
 		log.Printf("[BSTOOL_DEBUG] Connecting to BU control on %s", controlAddr)
 	}
 
-	controlConn, err := net.DialTimeout("tcp", controlAddr, t.timeout)
+	controlConn, err := net.DialTimeout("tcp", controlAddr, 5*time.Second)
 	if err != nil {
 		return "", fmt.Errorf("bstool tcp: control connect failed: %w", err)
 	}

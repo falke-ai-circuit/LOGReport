@@ -21,6 +21,11 @@ func (s *Server) executeBsToolErrLog(ctx context.Context, serverName string, _ s
 	}
 	st := getSettings()
 
+	// If there's an active project, use project-specific settings
+	if s.activeProjectID > 0 {
+		st = s.getSettingsForProject(s.activeProjectID)
+	}
+
 	// Try BsTool.exe subprocess first if configured
 	if isLocalExeMode(st) {
 		exePath := resolveBsToolPath(st)

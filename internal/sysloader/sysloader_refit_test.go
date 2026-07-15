@@ -397,22 +397,34 @@ PARAMETERS=-cpu ../AL01_10.1_cpu
 	// Expected nodes:
 	// Machine A (161): AP01_main(LOG), AP01_m2(FBC+RPC), AP01_m3(FBC+RPC)
 	// Machine B (181): AP02_main(LOG), AP02_m2(FBC+RPC), AL02(LIS)
-	// Machine C (501): AL01(LIS)
+	// Machine C (501): AL01(LIS + LOG)
 	// AL02_Remote_monitor EXCLUDED (LISDIAG_CODE — diagnostic slot)
 
-	// Verify AL01 is standalone (only LIS token, no FBC/RPC)
+	// Verify AL01 is standalone (LIS + LOG tokens, no FBC/RPC)
 	for _, c := range configs {
 		if c.Name == "AL01" {
-			if len(c.Tokens) != 1 {
-				t.Errorf("AL01 should have exactly 1 token (LIS only), got %d", len(c.Tokens))
+			if len(c.Tokens) != 2 {
+				t.Errorf("AL01 should have exactly 2 tokens (LIS + LOG), got %d", len(c.Tokens))
 			}
-			if c.Tokens[0].TokenType != types.TokenLIS {
-				t.Errorf("AL01 token should be LIS, got %s", c.Tokens[0].TokenType)
+			hasLIS, hasLOG := false, false
+			for _, tok := range c.Tokens {
+				if tok.TokenType == types.TokenLIS {
+					hasLIS = true
+				}
+				if tok.TokenType == types.TokenLOG {
+					hasLOG = true
+				}
+			}
+			if !hasLIS {
+				t.Errorf("AL01 should have LIS token")
+			}
+			if !hasLOG {
+				t.Errorf("AL01 should have LOG token (PCS startup log for BsTool)")
 			}
 			if c.IPAddress != "192.168.1.40" {
 				t.Errorf("AL01 IP: got %s, want 192.168.1.40", c.IPAddress)
 			}
-			t.Logf("  ✓ AL01 standalone: IP=%s token=%s", c.IPAddress, c.Tokens[0].TokenID)
+			t.Logf("  ✓ AL01 standalone: IP=%s tokens=%v", c.IPAddress, c.Tokens)
 		}
 	}
 

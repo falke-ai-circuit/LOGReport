@@ -175,6 +175,7 @@ type Server struct {
 	lisdiagMu    sync.Mutex                // protects lisdiagConns
 	circuitBreaker *commandqueue.CircuitBreaker // Commander: protects against cascading failures
 	version      string                    // build version (injected via ldflags)
+	activeProjectID int64                  // currently selected project (for per-project settings)
 }
 
 // NewServer creates a new API Server with the given store, config, embedded filesystem, and bstool client.

@@ -16,12 +16,15 @@ import (
 )
 
 // nodeTypeToTokenTypes maps a node type string to the token types
-// that should be created for that node.
-// AL stations (LIS type) are PCS-type stations that need both LIS files
-// (for lisdiag commands) and LOG files (for BsTool errlog).
+// that should be created for that node from the _sys file (:e:hw: entries).
+// The _sys file entries are CPU-slot-level — they define which hardware
+// addresses exist. Token type assignment from the _sys file is intentionally
+// empty for PCS because FBC/RPC are determined by slot parsing in .sys files.
+// AL stations (LIS type) need both LIS files (for lisdiag commands) AND
+// LOG files (for the PCS startup log that BsTool processes).
 var nodeTypeToTokenTypes = map[string][]types.TokenType{
-	"PCS":      {types.TokenFBC, types.TokenRPC}, // PCS fieldbus slots
-	"LIS":      {types.TokenLIS},                 // AL stations: LIS files only (LOG is for PCS CPU slots)
+	"PCS":      {}, // PCS: tokens assigned by slot parsing, not _sys entries
+	"LIS":      {types.TokenLIS, types.TokenLOG}, // AL stations: LIS + LOG (PCS startup log for BsTool)
 	"DIA":      {types.TokenLOG},
 	"NETWATCH": {types.TokenLOG},
 	"MAINT":    {types.TokenLOG},
@@ -281,6 +284,26 @@ func offsetToken(base string, offset int) string {
 	return strconv.FormatInt(val, 16)
 }
 
+// isFieldbusLID determines if a PCS LID from the _sys file is a fieldbus
+// slot (needs FBC+RPC) or a CPU slot (LOG only).
+// Fieldbus: AP01_m2, AP01_m3, AP01_r2, AP01_r3 (contains _m or _r followed by a digit)
+// CPU:      AP01_main, AP01_reserve, AP01 (no _m/_r, or _m/_r with no digit)
+func isFieldbusLID(lid string) bool {
+	parts := strings.Split(lid, "_")
+	if len(parts) < 2 {
+		return false // AP01 → CPU
+	}
+	suffix := parts[len(parts)-1]
+	// _m2, _m3, _r2, _r3 → fieldbus (letter + digit)
+	if len(suffix) >= 2 {
+		last := suffix[len(suffix)-1]
+		if last >= '0' && last <= '9' {
+			return true
+		}
+	}
+	return false // _main, _reserve → CPU
+}
+
 // extractStationName derives the station folder name from a node name.
 // Only PCS nodes (AP prefix) get m/r suffix. BU (AB), DIA (AD), ALP (A1A1), OPS (A1O1, B1O1) don't.
 func extractStationName(nodeName string) string {
@@ -490,6 +513,18 @@ func processSysFileResult(result *parser.SysFileResult, sysPath string, nodeMap 
 			continue
 		}
 		tokenTypes := nodeTypeToTokenTypes[nodeType]
+		// For PCS entries from _sys (:e:hw:) without slot info, determine
+		// token types by LID pattern:
+		//   - AP01_main / AP01_reserve → CPU slot → LOG only
+		//   - AP01_m2 / AP01_m3 / AP01_r2 / AP01_r3 → fieldbus → FBC + RPC
+		// This handles old VME systems that only have :e:hw: entries.
+		if nodeType == "PCS" && len(tokenTypes) == 0 {
+			if isFieldbusLID(lid) {
+				tokenTypes = []types.TokenType{types.TokenFBC, types.TokenRPC}
+			} else {
+				tokenTypes = []types.TokenType{types.TokenLOG}
+			}
+		}
 		if len(tokenTypes) == 0 {
 			tokenTypes = []types.TokenType{types.TokenLOG}
 		}

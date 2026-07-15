@@ -90,6 +90,7 @@ func (s *Store) UpdateProject(id int64, p *types.Project) (*types.Project, error
 	existing.ShipName = p.ShipName
 	existing.LogRoot = p.LogRoot
 	existing.NodesConfig = p.NodesConfig
+	existing.SettingsJSON = p.SettingsJSON
 	if p.Status != "" {
 		existing.Status = p.Status
 	}

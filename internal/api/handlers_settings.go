@@ -232,10 +232,39 @@ func saveSettings(st Settings) error {
 }
 
 // handleGetSettings returns the current settings.
-// GET /api/v1/settings
+// GET /api/v1/settings?project_id={id}
+// If project_id is provided, returns project-specific settings merged over
+// global defaults. Otherwise returns global settings.
 func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	if !globalSettings.loaded {
 		s.initSettings()
+	}
+	projectIDStr := r.URL.Query().Get("project_id")
+	if projectIDStr != "" {
+		// Load project-specific settings
+		var projectID int64
+		fmt.Sscanf(projectIDStr, "%d", &projectID)
+		project, err := s.store.GetProject(projectID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "not_found", "project not found")
+			return
+		}
+		// Start with global settings as base, override with project settings
+		st := getSettings()
+		if project.SettingsJSON != "" {
+			var projSettings Settings
+			if err := json.Unmarshal([]byte(project.SettingsJSON), &projSettings); err == nil {
+				st = mergeSettings(st, projSettings)
+			}
+		}
+		// Always use project's log_root if set
+		if project.LogRoot != "" {
+			st.LogRoot = project.LogRoot
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"settings": st,
+		})
+		return
 	}
 	st := getSettings()
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -244,7 +273,9 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSaveSettings updates settings.
-// POST /api/v1/settings
+// POST /api/v1/settings?project_id={id}
+// If project_id is provided, saves settings to the project's SettingsJSON
+// field (project-specific). Otherwise saves to global settings.json.
 func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	var req Settings
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -301,6 +332,40 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check for project_id — save project-specific settings
+	projectIDStr := r.URL.Query().Get("project_id")
+	if projectIDStr != "" {
+		var projectID int64
+		fmt.Sscanf(projectIDStr, "%d", &projectID)
+		project, err := s.store.GetProject(projectID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "not_found", "project not found")
+			return
+		}
+		// Save settings as JSON blob in the project
+		settingsBytes, err := json.Marshal(req)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "save_error", "failed to marshal settings")
+			return
+		}
+		project.SettingsJSON = string(settingsBytes)
+		// Update log_root on the project if changed
+		if req.LogRoot != "" {
+			project.LogRoot = req.LogRoot
+		}
+		if _, err := s.store.UpdateProject(projectID, project); err != nil {
+			writeError(w, http.StatusInternalServerError, "save_error",
+				fmt.Sprintf("failed to save project settings: %v", err))
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"settings": req,
+			"saved":    true,
+		})
+		return
+	}
+
+	// Global settings save
 	// Apply log_root immediately
 	if req.LogRoot != "" {
 		s.logRootDir = req.LogRoot
@@ -318,4 +383,81 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		"settings": req,
 		"saved":    true,
 	})
+}
+
+// mergeSettings overlays project-specific settings over global settings.
+// Non-zero values from proj override global values.
+func mergeSettings(global, proj Settings) Settings {
+	result := global
+	if proj.DIAHost != "" {
+		result.DIAHost = proj.DIAHost
+	}
+	if proj.DIAPort != 0 {
+		result.DIAPort = proj.DIAPort
+	}
+	if proj.BsToolHost != "" {
+		result.BsToolHost = proj.BsToolHost
+	}
+	if proj.BsToolPort != 0 {
+		result.BsToolPort = proj.BsToolPort
+	}
+	if proj.LogRoot != "" {
+		result.LogRoot = proj.LogRoot
+	}
+	if proj.LogRootName != "" {
+		result.LogRootName = proj.LogRootName
+	}
+	if proj.BsToolPath != "" {
+		result.BsToolPath = proj.BsToolPath
+	}
+	if proj.CommunicationLine != "" {
+		result.CommunicationLine = proj.CommunicationLine
+	}
+	if proj.OutputDir != "" {
+		result.OutputDir = proj.OutputDir
+	}
+	if proj.BUDir != "" {
+		result.BUDir = proj.BUDir
+	}
+	if proj.LISMode != "" {
+		result.LISMode = proj.LISMode
+	}
+	if proj.ScanMethod != "" {
+		result.ScanMethod = proj.ScanMethod
+	}
+	if proj.NodeFilter != "" {
+		result.NodeFilter = proj.NodeFilter
+	}
+	if proj.LISExeCount != 0 {
+		result.LISExeCount = proj.LISExeCount
+	}
+	if proj.LISDiagPassword != "" {
+		result.LISDiagPassword = proj.LISDiagPassword
+	}
+	return result
+}
+
+// getSettingsForProject returns settings merged with project-specific overrides.
+// If the project has no SettingsJSON or projectID is 0, returns global settings.
+func (s *Server) getSettingsForProject(projectID int64) Settings {
+	st := getSettings()
+	if projectID == 0 {
+		return st
+	}
+	project, err := s.store.GetProject(projectID)
+	if err != nil || project.SettingsJSON == "" {
+		// Still apply log_root from project if available
+		if err == nil && project.LogRoot != "" {
+			st.LogRoot = project.LogRoot
+		}
+		return st
+	}
+	var projSettings Settings
+	if err := json.Unmarshal([]byte(project.SettingsJSON), &projSettings); err == nil {
+		st = mergeSettings(st, projSettings)
+	}
+	if project.LogRoot != "" {
+		st.LogRoot = project.LogRoot
+	}
+	return st
 }
