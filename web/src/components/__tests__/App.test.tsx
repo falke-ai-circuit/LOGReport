@@ -99,7 +99,6 @@ describe('App', () => {
     expect(screen.getAllByText('Nodes').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Commander').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Reports').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
   });
 
   it('shows 404 page for unknown routes', async () => {

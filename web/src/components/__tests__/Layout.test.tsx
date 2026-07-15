@@ -47,18 +47,12 @@ describe('Layout', () => {
     expect(screen.getByText('Commander')).toBeInTheDocument();
   });
 
-  it('renders Settings nav link', () => {
-    renderComponent();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-  });
-
-  it('renders all 5 navigation links', () => {
+  it('renders all 4 navigation links', () => {
     renderComponent();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Nodes')).toBeInTheDocument();
     expect(screen.getByText('Commander')).toBeInTheDocument();
     expect(screen.getByText('Reports')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('has anchor elements for navigation links', () => {
@@ -74,9 +68,6 @@ describe('Layout', () => {
 
     const reportsLink = screen.getByText('Reports').closest('a');
     expect(reportsLink).toHaveAttribute('href', '/reports');
-
-    const settingsLink = screen.getByText('Settings').closest('a');
-    expect(settingsLink).toHaveAttribute('href', '/settings');
   });
 
   it('renders an Outlet (main content area)', () => {
