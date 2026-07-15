@@ -1,4 +1,4 @@
-.PHONY: build test release clean web-build go-build run dev test-integration vet
+.PHONY: build test release clean web-build go-build run dev test-integration vet release-x86 release-x64 release-all fix-pe
 
 GOCMD=/opt/data/go/bin/go
 GOBUILD=$(GOCMD) build
@@ -53,3 +53,21 @@ clean:
 	rm -f ./logreport
 	rm -rf web/dist-new-flat/
 	rm -rf build/
+
+# Cross-compile for Windows (requires GOOS=GOARCH env vars)
+# Build x86 (32-bit) for Windows Server 2003
+release-x86: web-build
+	GOOS=windows GOARCH=386 $(GOBUILD) -ldflags "$(LDFLAGS)" -o logreport-x86.exe ./cmd/logreport/
+	python3 scripts/fix-pe-version.py logreport-x86.exe
+
+# Build x64 (64-bit) for Windows Server 2003/2008+
+release-x64: web-build
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o logreport-x64.exe ./cmd/logreport/
+	python3 scripts/fix-pe-version.py logreport-x64.exe
+
+# Build both x86 + x64
+release-all: release-x86 release-x64
+
+# Fix PE version on existing binary (without rebuilding)
+fix-pe:
+	python3 scripts/fix-pe-version.py logreport-x86.exe logreport-x64.exe
