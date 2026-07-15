@@ -49,7 +49,7 @@ func LoadSysFiles(dirPath string) ([]types.NodeConfig, error) {
 		if entry.IsDir() {
 			continue
 		}
-		if strings.HasSuffix(strings.ToLower(entry.Name()), ".sys") {
+		if strings.HasSuffix(strings.ToLower(entry.Name()), ".sys") || strings.HasSuffix(strings.ToLower(entry.Name()), "_sys") {
 			sysFiles = append(sysFiles, filepath.Join(dirPath, entry.Name()))
 		}
 	}

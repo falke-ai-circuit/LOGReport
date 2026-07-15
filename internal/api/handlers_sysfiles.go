@@ -716,16 +716,30 @@ func filterLocalSysByXdSysUsed(buDir string, configs []types.NodeConfig) ([]type
 	}
 
 	// Re-scan the BU directory to find which .sys files exist and match.
-	matches, err := filepath.Glob(filepath.Join(buDir, "*.sys"))
+	matches1, err := filepath.Glob(filepath.Join(buDir, "*.sys"))
+	matches2, err2 := filepath.Glob(filepath.Join(buDir, "*_sys"))
+	matches := append(matches1, matches2...)
+	if err != nil {
+		err = err2
+	}
 	if err != nil || len(matches) == 0 {
 		return configs, fmt.Sprintf("Could not scan .sys files in %s: %v (no filtering applied)", buDir, err)
 	}
 
-	// Build set of active .sys file basenames.
+	// Build set of active file basenames.
+	// Match both .sys files (by hw address) and _sys files (by filename from XdSysUsed).
 	activeBases := make(map[string]bool)
+	activeSysFileSet := make(map[string]bool)
+	for _, sf := range activeSysFiles {
+		activeSysFileSet[sf] = true
+	}
 	for _, m := range matches {
 		base := filepath.Base(m)
 		if activeSysPaths[base] {
+			activeBases[base] = true
+		}
+		// Also match _sys files directly by their filename from XdSysUsed
+		if activeSysFileSet[base] {
 			activeBases[base] = true
 		}
 	}
@@ -739,6 +753,23 @@ func filterLocalSysByXdSysUsed(buDir string, configs []types.NodeConfig) ([]type
 	for _, m := range matches {
 		if activeBases[filepath.Base(m)] {
 			activePaths = append(activePaths, m)
+		}
+	}
+	// Also add _sys files from XdSysUsed that exist in the directory
+	for _, sf := range activeSysFiles {
+		p := filepath.Join(buDir, sf)
+		if _, err := os.Stat(p); err == nil {
+			// Check if not already added
+			alreadyAdded := false
+			for _, ap := range activePaths {
+				if ap == p {
+					alreadyAdded = true
+					break
+				}
+			}
+			if !alreadyAdded {
+				activePaths = append(activePaths, p)
+			}
 		}
 	}
 

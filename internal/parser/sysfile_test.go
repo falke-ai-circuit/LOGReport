@@ -410,6 +410,7 @@ func TestParseSysFile_NonexistentFile(t *testing.T) {
 // TestParseSysFile_LIDMapping validates that LIDMapping matches Python sys_file_parser.py:89-102.
 func TestParseSysFile_LIDMapping(t *testing.T) {
 	// Python LID_TYPE_MAPPING from sys_file_parser.py:89-102
+	// Plus Go extensions: BL→LIS, BP→PCS for B-bus redundant stations
 	expected := map[string]string{
 		"AD":   "DIA",
 		"BD":   "DIA",
@@ -417,7 +418,9 @@ func TestParseSysFile_LIDMapping(t *testing.T) {
 		"NW":   "NETWATCH",
 		"AM":   "MAINT",
 		"AL":   "LIS",
+		"BL":   "LIS",
 		"AP":   "PCS",
+		"BP":   "PCS",
 		"A1O":  "OPS",
 		"B1O":  "OPS",
 		"A1A":  "ALP",
