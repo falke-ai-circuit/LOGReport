@@ -712,7 +712,7 @@ func filterLocalSysByXdSysUsed(buDir string, configs []types.NodeConfig) ([]type
 	// Build a map of active .sys file paths.
 	activeSysPaths := make(map[string]bool)
 	for hwAddr := range activeHW {
-		activeSysPaths[hwAddr+".sys"] = true
+		activeSysPaths[strings.ToLower(hwAddr+".sys")] = true
 	}
 
 	// Re-scan the BU directory to find which .sys files exist and match.
@@ -735,7 +735,7 @@ func filterLocalSysByXdSysUsed(buDir string, configs []types.NodeConfig) ([]type
 	}
 	for _, m := range matches {
 		base := filepath.Base(m)
-		if activeSysPaths[base] {
+		if activeSysPaths[strings.ToLower(base)] {
 			activeBases[base] = true
 		}
 		// Also match _sys files directly by their filename from XdSysUsed

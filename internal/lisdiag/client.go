@@ -171,13 +171,11 @@ func (c *Client) readUntil(prompt string, timeout time.Duration) (string, error)
 }
 
 // IOCommand builds an io command for a given channel (exe number).
-// io displays BOTH recently received (irb) AND transmitted (orb) LIS frames
-// with timestamps in a single output. This replaces separate irb+orb calls.
-// channel is 0-indexed (exe1=0, exe2=1, ..., exe6=5).
-// Reverse-engineered: FUN_00406530 in LisDiag.exe reads from both irb and orb
-// ring buffers and outputs them together.
+// Using "io" without a number shows all frames (at least 5) instead of
+// limiting to 1-2 frames with "io N". The exe N command already selects
+// the channel, so io doesn't need the channel number.
 func IOCommand(channel int) string {
-	return fmt.Sprintf("io %d", channel)
+	return "io"
 }
 
 // IRBCommand builds an irb command for a given channel (exe number).

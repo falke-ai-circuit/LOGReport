@@ -222,13 +222,14 @@ func TestLisDiagCloseWithoutConnect(t *testing.T) {
 }
 
 func TestIOCommand(t *testing.T) {
+	// io without a number shows all frames (at least 5)
 	tests := []struct {
 		channel int
 		want    string
 	}{
-		{0, "io 0"},
-		{1, "io 1"},
-		{5, "io 5"},
+		{0, "io"},
+		{1, "io"},
+		{5, "io"},
 	}
 	for _, tt := range tests {
 		got := IOCommand(tt.channel)
