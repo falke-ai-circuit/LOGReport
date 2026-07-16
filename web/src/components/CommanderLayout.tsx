@@ -281,10 +281,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenIDWithExe}:lisdiag`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp, lisdiag_pwd: lisdiagPwd }) });
-          // LisDiag commands always auto-start the queue — the LisDiag tab is a
-          // visual terminal, not a queue management page. The user expects the
-          // command to execute immediately when they right-click → Run LisDiag.
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -327,8 +324,7 @@ export default function CommanderLayout() {
         setTerminalLog(prev => [...prev, `> Batch LIS print all for ${nodeName}`]);
         try {
           await fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) });
-          // LIS batch commands always auto-start — same rationale as lisdiag_run
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -433,11 +429,29 @@ export default function CommanderLayout() {
   }, []);
 
   const handleBatchContextAction = useCallback(async (action: string, nodes: TreeNodeData[]) => {
-    const singleAction = action.replace('batch_', '');
-    for (const node of nodes) {
-      await handleContextAction(singleAction, node);
+    if (action === 'batch_auto_print') {
+      // Auto-detect: route each file to the right command based on section_type
+      for (const node of nodes) {
+        const sectionType = node.section_type || '';
+        if (sectionType === 'FBC') {
+          await handleContextAction('fbc_print', node);
+        } else if (sectionType === 'RPC') {
+          await handleContextAction('rpc_print', node);
+        } else if (sectionType === 'LOG') {
+          await handleContextAction('bstool_errlog', node);
+        } else if (sectionType === 'LIS' || sectionType === 'RSU' || sectionType === 'DIA') {
+          await handleContextAction('rsu_trace', node);
+        }
+      }
+      maybeAutoStart();
+    } else {
+      // Legacy: strip batch_ prefix and call single action for each node
+      const singleAction = action.replace('batch_', '');
+      for (const node of nodes) {
+        await handleContextAction(singleAction, node);
+      }
+      maybeAutoStart();
     }
-    maybeAutoStart();
   }, [handleContextAction, maybeAutoStart]);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [

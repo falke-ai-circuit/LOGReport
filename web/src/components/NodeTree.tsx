@@ -237,20 +237,19 @@ export default function NodeTree({
         setQueueStatus(data);
         onQueueStatusChange?.(data);
 
-        // Detect transition to 'done' or 'idle' → reload tree to pick up new files
+        // Detect when a command completes and reload tree to show updated file colors
         const prevState = prevQueueStateRef.current;
         const prevCurrent = prevCurrentRef.current;
-        const isRunning = data.state === 'running';
         const justFinished = (prevState === 'running' || prevState === null) && (data.state === 'done' || data.state === 'idle');
         
         if (justFinished) {
           // Queue just finished — reload tree to show new file colors
           setTimeout(() => fetchTree(), 500);
         }
-        // Also reload when current command advances (prev was running, now current moved forward)
-        // This catches single-command queues that go pending→running→completed between polls
-        if (!isRunning && prevCurrent !== data.current && data.current > 0) {
-          setTimeout(() => fetchTree(), 500);
+        // Reload tree whenever the command cursor advances — means a command
+        // just completed and we need to show its file color change (grey→green)
+        if (prevCurrent >= 0 && data.current > prevCurrent) {
+          setTimeout(() => fetchTree(), 300);
         }
         // Also reload on transition from running → idle (cancel)
         if (prevState === 'running' && data.state === 'idle') {
@@ -370,10 +369,22 @@ export default function NodeTree({
 
   function getBatchMenuItems() {
     const count = selectedNodesRef.current.size;
+    // Collect selected node data to auto-detect types
+    const selectedData = collectSelectedNodes(tree);
+    const typeCounts: Record<string, number> = {};
+    for (const n of selectedData) {
+      const st = n.section_type || 'unknown';
+      typeCounts[st] = (typeCounts[st] || 0) + 1;
+    }
+    // Build label showing detected types
+    const typeLabels: string[] = [];
+    if (typeCounts['FBC']) typeLabels.push(`${typeCounts['FBC']} FBC`);
+    if (typeCounts['RPC']) typeLabels.push(`${typeCounts['RPC']} RPC`);
+    if (typeCounts['LOG']) typeLabels.push(`${typeCounts['LOG']} LOG`);
+    if (typeCounts['LIS']) typeLabels.push(`${typeCounts['LIS']} LIS`);
+    const typeSummary = typeLabels.join(', ') || `${count} files`;
     return [
-      { icon: <Printer size={14} />, label: `Queue FBC Print for ${count} selected`, action: 'batch_fbc_print' },
-      { icon: <Printer size={14} />, label: `Queue RPC Print for ${count} selected`, action: 'batch_rpc_print' },
-      { icon: <Server size={14} />, label: `Queue BsTool ErrLog for ${count} selected`, action: 'batch_bstool_errlog' },
+      { icon: <Printer size={14} />, label: `Queue Print for ${count} selected (${typeSummary})`, action: 'batch_auto_print' },
     ];
   }
 
