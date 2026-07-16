@@ -234,6 +234,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/projects/{id}", s.deleteProjectHandler)
 	mux.HandleFunc("POST /api/v1/projects/{id}/report", s.generateProjectReportHandler)
 	mux.HandleFunc("GET /api/v1/projects/{id}/export", s.handleExportProject)
+	mux.HandleFunc("POST /api/v1/projects/import", s.handleImportProject)
 
 	// Project-scoped nodes config
 	mux.HandleFunc("GET /api/v1/projects/{id}/nodes", s.handleGetProjectNodes)

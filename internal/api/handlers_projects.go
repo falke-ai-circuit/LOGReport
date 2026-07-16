@@ -392,3 +392,238 @@ func (s *Server) handleExportProject(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("export-project: exported project %d (%s) as %s", id, projectDir, zipName)
 }
+
+// ─── POST /api/v1/projects/import ──────────────────────────────
+
+// handleImportProject accepts a zip file upload, extracts it to a target
+// directory, creates a project in the DB, and parses nodes.json if present.
+// The zip should contain a top-level {project_number}_{ship_name}/ folder
+// with _LOG/, reports/, nodes.json inside (matching the export format).
+//
+// POST /api/v1/projects/import
+// Form fields:
+//   - file: the zip file (multipart upload)
+//   - target_dir: base directory to extract into (optional, defaults to cwd)
+func (s *Server) handleImportProject(w http.ResponseWriter, r *http.Request) {
+	// Limit upload size to 500MB
+	r.Body = http.MaxBytesReader(w, r.Body, 500<<20)
+	if err := r.ParseMultipartForm(500 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			fmt.Sprintf("failed to parse multipart form: %v", err))
+		return
+	}
+
+	// Get target directory (optional)
+	targetDir := r.FormValue("target_dir")
+	if targetDir == "" {
+		targetDir = "."
+	}
+
+	// Get the uploaded file
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			"file field is required (zip file upload)")
+		return
+	}
+	defer file.Close()
+
+	// Save the uploaded zip to a temp file
+	tmpZip, err := os.CreateTemp("", "logreport-import-*.zip")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error",
+			fmt.Sprintf("failed to create temp file: %v", err))
+		return
+	}
+	tmpZipPath := tmpZip.Name()
+	defer os.Remove(tmpZipPath)
+	if _, err := io.Copy(tmpZip, file); err != nil {
+		tmpZip.Close()
+		writeError(w, http.StatusInternalServerError, "internal_error",
+			fmt.Sprintf("failed to save uploaded file: %v", err))
+		return
+	}
+	tmpZip.Close()
+
+	// Open the zip and inspect its structure
+	zipReader, err := zip.OpenReader(tmpZipPath)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			fmt.Sprintf("failed to open zip file: %v", err))
+		return
+	}
+	defer zipReader.Close()
+
+	// Find the top-level folder name (first path component)
+	var topLevelFolder string
+	for _, f := range zipReader.File {
+		parts := splitFilePath(f.Name)
+		if len(parts) > 0 && parts[0] != "" {
+			topLevelFolder = parts[0]
+			break
+		}
+	}
+	if topLevelFolder == "" {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			"zip file appears to be empty or has no top-level folder")
+		return
+	}
+
+	// Derive project_number and ship_name from the folder name
+	// Format: {project_number}_{ship_name}
+	projectNumber, shipName := parseProjectFolderName(topLevelFolder)
+	if projectNumber == "" || shipName == "" {
+		writeError(w, http.StatusBadRequest, "validation_error",
+			fmt.Sprintf("cannot derive project_number and ship_name from folder name %q. Expected format: PROJECT_NUMBER_SHIP_NAME", topLevelFolder))
+		return
+	}
+
+	// Check if a project with the same number+ship already exists
+	existing, _ := s.store.ListProjects()
+	for _, p := range existing {
+		if p.ProjectNumber == projectNumber && p.ShipName == shipName {
+			writeError(w, http.StatusConflict, "already_exists",
+				fmt.Sprintf("project %s_%s already exists (ID: %d). Delete it first or use a different target directory.", projectNumber, shipName, p.ID))
+			return
+		}
+	}
+
+	// Extract the zip to the target directory
+	projectDir := filepath.Join(targetDir, topLevelFolder)
+	for _, f := range zipReader.File {
+		// Prevent zip slip: ensure the destination path stays within targetDir
+		destPath := filepath.Join(targetDir, f.Name)
+		if !isPathWithinDir(destPath, targetDir) {
+			log.Printf("import-project: skipping %s (path traversal detected)", f.Name)
+			continue
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(destPath, 0755)
+			continue
+		}
+
+		// Create parent directories
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			log.Printf("import-project: mkdir %s: %v", filepath.Dir(destPath), err)
+			continue
+		}
+
+		// Extract file
+		src, err := f.Open()
+		if err != nil {
+			log.Printf("import-project: open %s in zip: %v", f.Name, err)
+			continue
+		}
+		dst, err := os.Create(destPath)
+		if err != nil {
+			src.Close()
+			log.Printf("import-project: create %s: %v", destPath, err)
+			continue
+		}
+		_, err = io.Copy(dst, src)
+		dst.Close()
+		src.Close()
+		if err != nil {
+			log.Printf("import-project: copy %s: %v", f.Name, err)
+		}
+	}
+
+	// Read nodes.json if present
+	nodesJSONPath := filepath.Join(projectDir, "nodes.json")
+	nodesConfig := ""
+	if data, err := os.ReadFile(nodesJSONPath); err == nil {
+		nodesConfig = string(data)
+	}
+
+	// Read settings.json if present
+	settingsJSON := ""
+	settingsPath := filepath.Join(projectDir, "settings.json")
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		settingsJSON = string(data)
+	}
+
+	// Create the project in the DB
+	p := &types.Project{
+		ProjectNumber: projectNumber,
+		ShipName:      shipName,
+		LogRoot:       projectDir,
+		NodesConfig:   nodesConfig,
+		SettingsJSON:  settingsJSON,
+		Status:        types.ProjectActive,
+	}
+
+	created, err := s.store.CreateProject(p)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error",
+			fmt.Sprintf("failed to create project: %v", err))
+		return
+	}
+
+	// If nodes.json has content, auto-create _LOG structure
+	if created.LogRoot != "" && nodesConfig != "" && nodesConfig != "[]" {
+		if _, _, _, _, structErr := s.createLogStructure(created.LogRoot); structErr != nil {
+			log.Printf("import-project: auto-create structure at %s: %v", created.LogRoot, structErr)
+		}
+	}
+
+	// If settings.json was imported, apply settings
+	if settingsJSON != "" {
+		var settings map[string]interface{}
+		if err := json.Unmarshal([]byte(settingsJSON), &settings); err == nil {
+			settingsBytes, _ := json.Marshal(settings)
+			_ = settingsBytes // settings are stored in project.SettingsJSON already
+		}
+	}
+
+	log.Printf("import-project: imported %s from %s (%d bytes), project ID: %d, log_root: %s",
+		topLevelFolder, header.Filename, header.Size, created.ID, projectDir)
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"project":        created,
+		"project_folder": projectDir,
+		"extracted_from": header.Filename,
+		"file_count":     len(zipReader.File),
+	})
+}
+
+// splitFilePath splits a zip file path into components using forward slashes.
+func splitFilePath(path string) []string {
+	// Normalize: convert backslashes to forward slashes
+	path = filepath.ToSlash(path)
+	// Remove leading slash
+	path = strings.TrimPrefix(path, "/")
+	if path == "" {
+		return nil
+	}
+	return strings.Split(path, "/")
+}
+
+// parseProjectFolderName extracts project_number and ship_name from a folder
+// name like "V6049A_CELEBRITY_REFLECTION". The first underscore separates
+// the project number from the ship name. Ship names may contain underscores.
+func parseProjectFolderName(folderName string) (projectNumber, shipName string) {
+	idx := strings.Index(folderName, "_")
+	if idx <= 0 {
+		return "", ""
+	}
+	projectNumber = folderName[:idx]
+	shipName = folderName[idx+1:]
+	if shipName == "" {
+		return "", ""
+	}
+	return projectNumber, shipName
+}
+
+// isPathWithinDir checks if destPath is within baseDir (prevents zip slip).
+func isPathWithinDir(destPath, baseDir string) bool {
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return false
+	}
+	absDest, err := filepath.Abs(destPath)
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(absDest, absBase+string(filepath.Separator)) || absDest == absBase
+}

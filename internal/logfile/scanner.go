@@ -160,12 +160,19 @@ func ParseFile(path string) (*FileData, error) {
 
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
-	first := true
+	headerFound := false
 	for scanner.Scan() {
 		line := scanner.Text()
-		if first {
+
+		// Skip leading empty lines before header
+		if !headerFound && strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		// First non-empty line is the header
+		if !headerFound {
 			fd.Header = line
-			first = false
+			headerFound = true
 			if strings.HasPrefix(line, "#") {
 				parts := strings.Fields(line)
 				if len(parts) >= 1 {
@@ -179,6 +186,27 @@ func ParseFile(path string) (*FileData, error) {
 				}
 			}
 			continue
+		}
+
+		// Detect # metadata lines anywhere in the file (not just first line)
+		if strings.HasPrefix(strings.TrimSpace(line), "#") && strings.Contains(line, "|") {
+			// Parse "Node: X | Station: Y | Type: Z | Token: T | Time: ..." format
+			fields := strings.Split(line, "|")
+			for _, field := range fields {
+				field = strings.TrimSpace(field)
+				if strings.HasPrefix(field, "#") {
+					field = strings.TrimPrefix(field, "#")
+					field = strings.TrimSpace(field)
+				}
+				if idx := strings.Index(field, ":"); idx > 0 {
+					key := strings.ToLower(strings.TrimSpace(field[:idx]))
+					val := strings.TrimSpace(field[idx+1:])
+					if key == "node" || key == "station" || key == "type" || key == "token" || key == "time" {
+						fd.Metadata[key] = val
+					}
+				}
+			}
+			// Still add to lines so content is shown
 		}
 
 		if strings.TrimSpace(line) == "END" {

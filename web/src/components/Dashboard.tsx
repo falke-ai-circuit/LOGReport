@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings, Activity, Zap, FileCheck, AlertCircle, Clock, Download } from 'lucide-react';
+import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings, Activity, Zap, FileCheck, AlertCircle, Clock, Download, Upload } from 'lucide-react';
 import { useActiveProject, type Project } from '../hooks/useActiveProject';
 
 interface ProjectsResponse {
@@ -221,6 +221,28 @@ export default function Dashboard() {
     }
   }
 
+  async function handleImportProject(file: File) {
+    setCreating(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/v1/projects/import', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Import failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      await fetchProjects();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to import project');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   function handleEditProject(project: Project) {
     setEditingProject(project);
     setEditLogRoot(project.log_root || '');
@@ -327,6 +349,24 @@ export default function Dashboard() {
             <Plus size={14} />
             New Project
           </button>
+          <label
+            className="btn btn-ghost"
+            style={{ fontSize: '12px', padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent)' }}
+            title="Import project from zip file"
+          >
+            <Upload size={14} />
+            Import
+            <input
+              type="file"
+              accept=".zip"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImportProject(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
         </div>
 
         {/* Create form */}
