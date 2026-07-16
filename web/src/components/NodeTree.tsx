@@ -16,6 +16,7 @@ import {
   FolderPlus,
   Edit3,
   RotateCcw,
+  Search,
 } from 'lucide-react';
 import type { TreeNodeData, QueueStatusResponse } from '../types/api';
 import { useActiveProject } from '../hooks/useActiveProject';
@@ -24,6 +25,7 @@ export interface NodeTreeProps {
   onSelectNode: (node: TreeNodeData) => void;
   onSelectToken: (token: TreeNodeData) => void;
   onContextAction: (action: string, node: TreeNodeData, parentNode?: TreeNodeData) => void;
+  onBatchContextAction?: (action: string, nodes: TreeNodeData[]) => void;
   onDoubleClickFile: (node: TreeNodeData) => void;
   onQueueStatusChange?: (status: QueueStatusResponse | null) => void;
   projectId?: number | null;
@@ -81,10 +83,24 @@ function fileColor(node: TreeNodeData, _colorMode?: string): string {
   return 'var(--text-muted)';
 }
 
+function filterTreeNodes(nodes: TreeNodeData[], filter: string): TreeNodeData[] {
+  if (!filter) return nodes;
+  const lower = filter.toLowerCase();
+  return nodes.filter(node => {
+    if (node.name.toLowerCase().includes(lower)) return true;
+    if (node.children) {
+      const filteredChildren = filterTreeNodes(node.children, filter);
+      if (filteredChildren.length > 0) return true;
+    }
+    return false;
+  });
+}
+
 export default function NodeTree({
   onSelectNode,
   onSelectToken,
   onContextAction,
+  onBatchContextAction,
   onDoubleClickFile,
   onQueueStatusChange,
   projectId,
@@ -106,14 +122,19 @@ export default function NodeTree({
     y: number;
     node: TreeNodeData;
     parentNode?: TreeNodeData;
+    isBatch?: boolean;
+    batchNodes?: TreeNodeData[];
   } | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null);
   const [lisMode, setLisMode] = useState<string>('rsu');
+  const [filterText, setFilterText] = useState('');
+  const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const expandedNodesRef = useRef<Set<string>>(new Set());
   const treeRef = useRef<TreeNodeData | null>(null);
   const hasAutoExpandedRef = useRef<boolean>(false);
+  const selectedNodesRef = useRef<Set<string>>(new Set());
   const { activeLogRoot } = useActiveProject();
 
   // Fetch lis_mode from settings for context menu adaptation
@@ -277,20 +298,77 @@ export default function NodeTree({
 
   // ─── Context menu (context-aware) ─────────────────────────────
 
+  const handleSelectToggle = useCallback((node: TreeNodeData) => {
+    setSelectedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(node.name)) {
+        next.delete(node.name);
+      } else {
+        next.add(node.name);
+      }
+      selectedNodesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedNodes(new Set());
+    selectedNodesRef.current = new Set();
+  }, []);
+
+  function collectSelectedNodes(root: TreeNodeData | null): TreeNodeData[] {
+    if (!root) return [];
+    const result: TreeNodeData[] = [];
+    function traverse(node: TreeNodeData) {
+      if (selectedNodesRef.current.has(node.name)) {
+        result.push(node);
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          traverse(child);
+        }
+      }
+    }
+    if (root.children) {
+      for (const child of root.children) {
+        traverse(child);
+      }
+    }
+    return result;
+  }
+
   function handleContextMenu(e: React.MouseEvent, node: TreeNodeData, parentNode?: TreeNodeData) {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY, node, parentNode });
+    if (selectedNodesRef.current.has(node.name) && selectedNodesRef.current.size > 1) {
+      const selectedData = collectSelectedNodes(tree);
+      setContextMenu({ x: e.clientX, y: e.clientY, node, parentNode, isBatch: true, batchNodes: selectedData });
+    } else {
+      setContextMenu({ x: e.clientX, y: e.clientY, node, parentNode });
+    }
   }
 
   function handleContextAction(action: string) {
     if (contextMenu) {
-      onContextAction(action, contextMenu.node, contextMenu.parentNode);
+      if (contextMenu.isBatch && contextMenu.batchNodes) {
+        onBatchContextAction?.(action, contextMenu.batchNodes);
+      } else {
+        onContextAction(action, contextMenu.node, contextMenu.parentNode);
+      }
       setContextMenu(null);
     }
   }
 
   // ─── Build context menu items based on node type ──────────────
+
+  function getBatchMenuItems() {
+    const count = selectedNodesRef.current.size;
+    return [
+      { icon: <Printer size={14} />, label: `Queue FBC Print for ${count} selected`, action: 'batch_fbc_print' },
+      { icon: <Printer size={14} />, label: `Queue RPC Print for ${count} selected`, action: 'batch_rpc_print' },
+      { icon: <Server size={14} />, label: `Queue BsTool ErrLog for ${count} selected`, action: 'batch_bstool_errlog' },
+    ];
+  }
 
   function getContextmenuItems(node: TreeNodeData, parentNode?: TreeNodeData) {
     // NODE type: station folder
@@ -438,7 +516,7 @@ export default function NodeTree({
 
   // ─── Render ────────────────────────────────────────────────────
 
-  const menuItems = contextMenu ? getContextmenuItems(contextMenu.node, contextMenu.parentNode) : [];
+  const menuItems = contextMenu ? (contextMenu.isBatch ? getBatchMenuItems() : getContextmenuItems(contextMenu.node, contextMenu.parentNode)) : [];
 
   return (
     <div
@@ -469,6 +547,24 @@ export default function NodeTree({
           <RefreshCw size={11} style={{ display: 'inline', marginRight: '4px' }} />
           Refresh
         </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Search size={12} color="var(--text-muted)" />
+          <input
+            type="text"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder="Filter..."
+            style={{
+              fontSize: '11px',
+              padding: '4px 8px',
+              width: '120px',
+              backgroundColor: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
         {onCreateStructure && (
           <button
             className="btn btn-primary"
@@ -528,7 +624,7 @@ export default function NodeTree({
         {!loading && !error && tree && (
           <div style={{ fontSize: '13px', fontFamily: 'var(--font-mono)' }}>
             {tree.children && tree.children.length > 0 ? (
-              tree.children.map((child) => (
+              filterTreeNodes(tree.children, filterText).map((child) => (
                 <TreeBranch
                   key={child.name}
                   node={child}
@@ -546,6 +642,9 @@ export default function NodeTree({
                   colorMode={colorMode}
                   onFileMove={onFileMove}
                   onReloadTree={fetchTree}
+                  selectedNodes={selectedNodes}
+                  onSelectToggle={handleSelectToggle}
+                  onClearSelection={handleClearSelection}
                 />
               ))
             ) : (
@@ -624,6 +723,9 @@ interface TreeBranchProps {
   activeExecFile?: string | null;
   colorMode?: string;
   onFileMove?: (sourcePath: string, targetPath: string) => Promise<void>;
+  selectedNodes?: Set<string>;
+  onSelectToggle?: (node: TreeNodeData) => void;
+  onClearSelection?: () => void;
   onReloadTree?: () => void;
 }
 
@@ -644,14 +746,31 @@ function TreeBranch({
   colorMode,
   onFileMove,
   onReloadTree,
+  selectedNodes,
+  onSelectToggle,
+  onClearSelection,
 }: TreeBranchProps) {
   const isExpanded = expandedNodes.has(node.name);
   const hasChildren = node.children && node.children.length > 0;
   const indent = depth * 16 + 8;
 
   const statusColor = STATUS_COLORS[node.status || 'idle'] || 'var(--text-muted)';
+  const isMultiSelected = !!(selectedNodes?.has(node.name) && (node.type === 'file' || node.type === 'token'));
 
-  function handleClick() {
+  function handleClick(e: React.MouseEvent) {
+    // Ctrl/Cmd+click = toggle multi-select on file/token nodes
+    if ((e.ctrlKey || e.metaKey) && (node.type === 'file' || node.type === 'token')) {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelectToggle?.(node);
+      return;
+    }
+    // Plain click on file/token clears multi-selection
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey && (node.type === 'file' || node.type === 'token')) {
+      if (selectedNodes && selectedNodes.size > 0) {
+        onClearSelection?.();
+      }
+    }
     if (node.type === 'node') {
       onSelectNode(node);
       if (hasChildren) onToggle(node.name);
@@ -846,15 +965,15 @@ function TreeBranch({
           cursor: isDraggable ? 'grab' : 'pointer',
           borderRadius: '4px',
           transition: 'background-color 0.1s ease',
-          backgroundColor: isSelected ? 'rgba(99,102,241,0.15)' : isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
-          fontWeight: isActive || isSelected ? 600 : undefined,
-          borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
+          backgroundColor: isMultiSelected ? 'rgba(99,102,241,0.20)' : isSelected ? 'rgba(99,102,241,0.15)' : isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
+          fontWeight: isActive || isSelected || isMultiSelected ? 600 : undefined,
+          borderLeft: isSelected || isMultiSelected ? '3px solid var(--accent)' : '3px solid transparent',
         }}
         onMouseEnter={(e) => {
-          if (!isSelected && !isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-elevated)';
+          if (!isSelected && !isActive && !isMultiSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-elevated)';
         }}
         onMouseLeave={(e) => {
-          if (!isSelected && !isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+          if (!isSelected && !isActive && !isMultiSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
         }}
       >
         {/* Expand icon */}
@@ -971,6 +1090,9 @@ function TreeBranch({
               colorMode={colorMode}
               onFileMove={onFileMove}
               onReloadTree={onReloadTree}
+              selectedNodes={selectedNodes}
+              onSelectToggle={onSelectToggle}
+              onClearSelection={onClearSelection}
             />
           ))}
         </div>

@@ -73,6 +73,7 @@ export default function CommanderLayout() {
   const [editingFile, setEditingFile] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [savingFile, setSavingFile] = useState(false);
+  const [autoStart, setAutoStart] = useState(false);
 
   // Sync log root to backend when it changes (from shared hook)
   useEffect(() => {
@@ -84,6 +85,12 @@ export default function CommanderLayout() {
       }).catch(() => {});
     }
   }, [activeLogRoot]);
+
+  const maybeAutoStart = useCallback(() => {
+    if (autoStart) {
+      fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+    }
+  }, [autoStart]);
 
   const handleSelectNode = useCallback((node: TreeNodeData) => {
     setSelectedNode(node);
@@ -173,14 +180,17 @@ export default function CommanderLayout() {
     switch (action) {
       case 'print_all':
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName }) })
+          .then(() => maybeAutoStart())
           .catch(err => console.error('batch error:', err));
         break;
       case 'fbc_print_all':
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'FBC' }) })
+          .then(() => maybeAutoStart())
           .catch(err => console.error('fbc batch error:', err));
         break;
       case 'rpc_print_all':
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }) })
+          .then(() => maybeAutoStart())
           .catch(err => console.error('rpc batch error:', err));
         break;
       case 'fbc_print': {
@@ -194,6 +204,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${cleanTokenId}:fbc`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'fbc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
+          maybeAutoStart();
           // NOTE: No treeReloadKey bump — tree refreshes when queue finishes (running→done in NodeTree polling)
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
@@ -208,6 +219,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${cleanTokenId}:rpc`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rpc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
+          maybeAutoStart();
          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -221,6 +233,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${cleanTokenId}:rpc`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rpc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
+          maybeAutoStart();
          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -231,6 +244,7 @@ export default function CommanderLayout() {
         setPendingNodeIp(nodeIp);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'bstool', node_name: stripNodeSuffix(nodeName), token_id: '', command: 'errlog', ip_address: nodeIp }) });
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       case 'lisdiag_run': {
@@ -267,6 +281,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenIDWithExe}:lisdiag`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp, lisdiag_pwd: lisdiagPwd }) });
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -286,6 +301,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: rxCmd, ip_address: nodeIp, extra_data: txCmd }) });
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -298,6 +314,7 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -307,6 +324,7 @@ export default function CommanderLayout() {
         setTerminalLog(prev => [...prev, `> Batch LIS print all for ${nodeName}`]);
         try {
           await fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) });
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -319,6 +337,7 @@ export default function CommanderLayout() {
         setTerminalLog(prev => [...prev, `> ${cmd} (queued)`]);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'diaglis', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
+          maybeAutoStart();
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -359,7 +378,7 @@ export default function CommanderLayout() {
         break;
       }
     }
-  }, [currentNodeName, handleDoubleClickFile, activeProjectId]);
+  }, [currentNodeName, handleDoubleClickFile, activeProjectId, maybeAutoStart]);
 
   // Queue All Logs — batch ALL nodes (FBC + RPC + LOG) into queue (does NOT auto-start)
   const handleQueueAll = useCallback(async () => {
@@ -376,12 +395,13 @@ export default function CommanderLayout() {
       }
       const batchData = await batchRes.json();
       setTerminalLog(prev => [...prev, `[Queue: ${batchData.total} commands queued]`]);
+      maybeAutoStart();
     } catch (err) {
       setTerminalLog(prev => [...prev, 'Queue All Error: ' + (err instanceof Error ? err.message : String(err))]);
     } finally {
       setPrinting(false);
     }
-  }, [activeProjectId]);
+  }, [activeProjectId, maybeAutoStart]);
 
   // Queue controls (inline in top bar)
   // NOTE: No treeReloadKey bumps on queue control actions — tree refreshes
@@ -407,6 +427,14 @@ export default function CommanderLayout() {
   const handleQueueRetryFailed = useCallback(async () => {
     await fetch('/api/v1/commandqueue/retry-failed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   }, []);
+
+  const handleBatchContextAction = useCallback(async (action: string, nodes: TreeNodeData[]) => {
+    const singleAction = action.replace('batch_', '');
+    for (const node of nodes) {
+      await handleContextAction(singleAction, node);
+    }
+    maybeAutoStart();
+  }, [handleContextAction, maybeAutoStart]);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'debugger', label: 'Debugger', icon: <Terminal size={14} /> },
@@ -508,6 +536,10 @@ export default function CommanderLayout() {
           )}
         </div>
         <div style={{ flex: 1 }} />
+        <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }} title="Automatically start queue when a command is added">
+          <input type="checkbox" checked={autoStart} onChange={(e) => setAutoStart(e.target.checked)} style={{ cursor: 'pointer' }} />
+          Auto-start
+        </label>
         {/* Queue controls — inline horizontal */}
         <button
           className="btn btn-primary"
@@ -613,7 +645,7 @@ export default function CommanderLayout() {
       <>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree reloadKey={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} activeExecFile={activeExecFile} />
+          <NodeTree reloadKey={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onBatchContextAction={handleBatchContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} activeExecFile={activeExecFile} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '2px', padding: '0 12px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>

@@ -1,6 +1,16 @@
 # Changelog
 
-## [v3.9.68] — 2026-07-16
+## [v3.9.69] — 2026-07-16
+
+### Added
+
+- **Auto-start toggle** — Checkbox in Commander top bar. When enabled, commands auto-start executing as soon as they're added to the queue. When disabled (default), commands queue up and user presses Start manually.
+- **Node tree filter** — Search input in tree toolbar. Type to filter nodes by name (case-insensitive). Shows only matching nodes and their parents.
+- **Multi-select + batch queue** — Ctrl+click to select multiple file/token nodes. Right-click on the selection to batch-queue FBC Print, RPC Print, or BsTool ErrLog for all selected files. Selected files highlighted with blue background.
+
+### Fixed
+
+- **Queue sort/filter** — Already existed in QueueTab, now visible with filter showing command count.
 
 ### Fixed
 
