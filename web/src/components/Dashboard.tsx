@@ -21,7 +21,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [newProject, setNewProject] = useState({ project_number: '', ship_name: '', log_root: '' });
+  const [newProject, setNewProject] = useState({
+    project_number: '',
+    ship_name: '',
+    log_root: '',
+    dia_host: 'AB01',
+    dia_port: 1234,
+    bu_host: 'AB01',
+    bu_port: 1516,
+    lis_mode: 'rsu',
+    lisdiag_port: 4321,
+    lisdiag_password: '',
+  });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { activeProjectId, selectProject } = useActiveProject();
@@ -75,17 +86,40 @@ export default function Dashboard() {
       const res = await fetch('/api/v1/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProject),
+        body: JSON.stringify({
+          project_number: newProject.project_number,
+          ship_name: newProject.ship_name,
+          log_root: newProject.log_root,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ message: 'Failed' }));
         throw new Error(data.message || `HTTP ${res.status}`);
       }
       const created: { id?: number; log_root?: string } = await res.json().catch(() => ({}));
+
+      // Save settings with the project configuration values
+      await fetch('/api/v1/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dia_host: newProject.dia_host,
+          dia_port: newProject.dia_port,
+          bstool_host: newProject.bu_host,
+          bstool_port: newProject.bu_port,
+          communication_line: newProject.bu_host,
+          lis_mode: newProject.lis_mode,
+          lisdiag_password: newProject.lisdiag_password,
+        }),
+      }).catch(() => {});
+
       setShowCreate(false);
-      setNewProject({ project_number: '', ship_name: '', log_root: '' });
+      setNewProject({
+        project_number: '', ship_name: '', log_root: '',
+        dia_host: 'AB01', dia_port: 1234, bu_host: 'AB01', bu_port: 1516,
+        lis_mode: 'rsu', lisdiag_port: 4321, lisdiag_password: '',
+      });
       await fetchProjects();
-      // Set the new project as active globally (and set its log_root)
       if (created && created.id) {
         selectProject(created.id, created.log_root || newProject.log_root || '');
       }
@@ -212,48 +246,128 @@ export default function Dashboard() {
               borderRadius: '8px',
               padding: '16px',
               marginBottom: '12px',
-              display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap',
-              alignItems: 'flex-end',
             }}
           >
-            <FormField label="Project Number" required>
-              <input
-                type="text"
-                value={newProject.project_number}
-                onChange={(e) => setNewProject({ ...newProject, project_number: e.target.value })}
-                placeholder="T6004"
-                style={inputStyle}
-              />
-            </FormField>
-            <FormField label="Ship Name" required>
-              <input
-                type="text"
-                value={newProject.ship_name}
-                onChange={(e) => setNewProject({ ...newProject, ship_name: e.target.value })}
-                placeholder="ADORA_MEDITERANNEA"
-                style={inputStyle}
-              />
-            </FormField>
-            <FormField label="Log Root">
-              <input
-                type="text"
-                value={newProject.log_root}
-                onChange={(e) => setNewProject({ ...newProject, log_root: e.target.value })}
-                placeholder="C:\dna\CA\bu"
-                style={inputStyle}
-              />
-            </FormField>
-            <button
-              className="btn btn-primary"
-              style={{ fontSize: '12px', padding: '6px 16px' }}
-              onClick={handleCreateProject}
-              disabled={creating}
-            >
-              {creating ? <Loader2 size={14} className="spin" /> : 'Create'}
-            </button>
-            {error && <span style={{ fontSize: '11px', color: 'var(--error)' }}>{error}</span>}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '12px' }}>
+              <FormField label="Project Number" required>
+                <input
+                  type="text"
+                  value={newProject.project_number}
+                  onChange={(e) => setNewProject({ ...newProject, project_number: e.target.value })}
+                  placeholder="T6004"
+                  style={inputStyle}
+                />
+              </FormField>
+              <FormField label="Ship Name" required>
+                <input
+                  type="text"
+                  value={newProject.ship_name}
+                  onChange={(e) => setNewProject({ ...newProject, ship_name: e.target.value })}
+                  placeholder="ADORA_MEDITERANNEA"
+                  style={inputStyle}
+                />
+              </FormField>
+              <FormField label="Log Root">
+                <input
+                  type="text"
+                  value={newProject.log_root}
+                  onChange={(e) => setNewProject({ ...newProject, log_root: e.target.value })}
+                  placeholder="C:\dna\CA\bu"
+                  style={inputStyle}
+                />
+              </FormField>
+            </div>
+            {/* Connection Settings */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>Connection Settings (auto-saved to Settings)</div>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <FormField label="DIA Host">
+                  <select
+                    value={newProject.dia_host}
+                    onChange={(e) => setNewProject({ ...newProject, dia_host: e.target.value })}
+                    style={inputStyle}
+                  >
+                    <option value="AB01">AB01</option>
+                    <option value="AB02">AB02</option>
+                    <option value="AB03">AB03</option>
+                    <option value="127.0.0.1">127.0.0.1 (local)</option>
+                  </select>
+                </FormField>
+                <FormField label="DIA Port">
+                  <select
+                    value={newProject.dia_port}
+                    onChange={(e) => setNewProject({ ...newProject, dia_port: Number(e.target.value) })}
+                    style={inputStyle}
+                  >
+                    <option value={1234}>1234</option>
+                    <option value={1235}>1235</option>
+                  </select>
+                </FormField>
+                <FormField label="BU Host (BsTool)">
+                  <select
+                    value={newProject.bu_host}
+                    onChange={(e) => setNewProject({ ...newProject, bu_host: e.target.value })}
+                    style={inputStyle}
+                  >
+                    <option value="AB01">AB01</option>
+                    <option value="AB02">AB02</option>
+                    <option value="AB03">AB03</option>
+                    <option value="127.0.0.1">127.0.0.1 (local)</option>
+                  </select>
+                </FormField>
+                <FormField label="BU Port">
+                  <select
+                    value={newProject.bu_port}
+                    onChange={(e) => setNewProject({ ...newProject, bu_port: Number(e.target.value) })}
+                    style={inputStyle}
+                  >
+                    <option value={1516}>1516</option>
+                    <option value={1517}>1517</option>
+                  </select>
+                </FormField>
+                <FormField label="LIS Mode">
+                  <select
+                    value={newProject.lis_mode}
+                    onChange={(e) => setNewProject({ ...newProject, lis_mode: e.target.value })}
+                    style={inputStyle}
+                  >
+                    <option value="rsu">RSU6 (via DIA)</option>
+                    <option value="lisdiag">LisDiag (telnet)</option>
+                    <option value="diaglis">DiagLis (manual)</option>
+                  </select>
+                </FormField>
+                <FormField label="LISDiag Port">
+                  <select
+                    value={newProject.lisdiag_port}
+                    onChange={(e) => setNewProject({ ...newProject, lisdiag_port: Number(e.target.value) })}
+                    style={inputStyle}
+                  >
+                    <option value={4321}>4321</option>
+                    <option value={14321}>14321</option>
+                  </select>
+                </FormField>
+                <FormField label="LISDiag Password">
+                  <input
+                    type="password"
+                    value={newProject.lisdiag_password}
+                    onChange={(e) => setNewProject({ ...newProject, lisdiag_password: e.target.value })}
+                    placeholder="(none = no auth)"
+                    style={inputStyle}
+                  />
+                </FormField>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: '12px', padding: '6px 16px' }}
+                onClick={handleCreateProject}
+                disabled={creating}
+              >
+                {creating ? <Loader2 size={14} className="spin" /> : 'Create'}
+              </button>
+              {error && <span style={{ fontSize: '11px', color: 'var(--error)' }}>{error}</span>}
+            </div>
           </div>
         )}
 
