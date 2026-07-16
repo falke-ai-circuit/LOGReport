@@ -42,8 +42,8 @@ var (
 
 // Regex patterns for slot configuration format.
 var (
-	// slotPattern matches "Slot N" lines.
-	slotPattern = regexp.MustCompile(`^Slot\s+(\d+)\s*$`)
+	// slotPattern matches "Slot N" lines (case-insensitive — some .sys files use lowercase "slot").
+	slotPattern = regexp.MustCompile(`(?i)^Slot\s+(\d+)\s*$`)
 
 	// titlePattern matches "TITLE=..." lines, stripping trailing // comments.
 	titlePattern = regexp.MustCompile(`^TITLE=(.+?)(?:\s*//.*)?$`)

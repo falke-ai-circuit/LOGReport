@@ -1,11 +1,12 @@
 # Changelog
 
-## [v3.9.66] — 2026-07-16
+## [v3.9.67] — 2026-07-16
 
 ### Fixed
 
-- **Commander tree scroll stutter eliminated** — Tree no longer refreshes on every queue-add action. Removed 17 unnecessary `setTreeReloadKey` calls from queue-add, queue-start, queue-stop, queue-clear, queue-restart, retry-failed, and batch-queue actions. Tree now refreshes only when: (1) queue finishes (running→done/idle transition detected by NodeTree polling), (2) file operations (erase, save), (3) BsTool direct execution, (4) logRoot change. Also removed per-command tree reload during execution — tree was being refreshed on every command index advance, causing constant re-renders. Scroll position is now fully preserved during manual scrolling.
-- **Settings page nav link restored** — Settings tab was removed from navigation in commit a3414c45 (v3.9.55 era). The /settings route still existed but was unreachable from the UI. Added Settings NavLink back to Layout.tsx.
+- **Case-insensitive slot pattern in .sys parser** — Some .sys files use lowercase `slot 14` instead of `Slot 14`. The parser regex was case-sensitive (`^Slot\s+(\d+)$`), so lowercase `slot` lines were not detected as slot boundaries. This caused the previous slot's TITLE and PROGRAM to be overwritten by the lowercase slot's content, effectively hiding fieldbus slots (e.g. AP02_m3 with FBC_CODE was overwritten by AL02_Remote_monitor with LISDIAG_CODE). Fix: made regex case-insensitive (`(?i)^Slot\s+(\d+)$`). Impact: AP01-AP07 now correctly show 2 FBC files each (was 1). Configs went from 88 to 101 for the production BU backup. AP08/AP09 correctly show 1 FBC (only 1 fieldbus slot in their .sys files).
+- **Commander tree scroll stutter eliminated** — Removed 17 unnecessary `setTreeReloadKey` calls from queue-add/control actions. Tree now refreshes only when queue finishes (running→done/idle), file operations, BsTool direct execution, or logRoot change. Removed per-command tree reload during execution.
+- **Settings page nav link restored** — Settings tab was removed from navigation in commit a3414c45. Added Settings NavLink back to Layout.tsx.
 
 ## [v3.9.58] — 2026-07-15
 
