@@ -37,15 +37,18 @@ type ReportAppearance struct {
 
 // ReportConfig holds the parameters for generating a report.
 type ReportConfig struct {
-	NodeAddress string           `json:"node_address"`
-	Format      ReportFormat     `json:"format"`
-	Template    string           `json:"template"`
-	Title       string           `json:"title"`
-	Author      string           `json:"author"`
-	LogRoot     string           `json:"log_root"`              // root directory for log files (optional)
-	ReportType  string           `json:"report_type,omitempty"` // "survey" or "drydock"
-	ProjectID   int64            `json:"project_id,omitempty"`  // associated project
-	Appearance  *ReportAppearance `json:"appearance,omitempty"`  // font/layout settings (optional)
+	NodeAddress   string           `json:"node_address"`
+	Format        ReportFormat     `json:"format"`
+	Template      string          `json:"template"`
+	Title         string           `json:"title"`
+	Author        string           `json:"author"`
+	LogRoot       string           `json:"log_root"`              // root directory for log files (optional)
+	ReportType    string           `json:"report_type,omitempty"` // "survey" or "drydock"
+	ProjectID     int64            `json:"project_id,omitempty"`  // associated project
+	ProjectNumber string           `json:"project_number,omitempty"` // e.g. "T6004"
+	ShipName      string           `json:"ship_name,omitempty"`    // e.g. "ADORA MEDITERANNEA"
+	OutputDir     string           `json:"output_dir,omitempty"`   // directory for report output (defaults to temp)
+	Appearance    *ReportAppearance `json:"appearance,omitempty"`  // font/layout settings (optional)
 }
 
 // Report represents a generated report record stored in the database.

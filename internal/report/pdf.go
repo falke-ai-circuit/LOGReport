@@ -2,6 +2,8 @@ package report
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -203,8 +205,12 @@ func nodeGroups(entries []ScanEntry) ([]string, map[string][]ScanEntry) {
 // - File subheadings (Helvetica-Bold 11pt, #6A1B9A)
 // - Body content (Courier 10pt, leading 12, wrapped to 80 chars)
 // - Page breaks after each node section
-func generatePDF(reportID, logRoot string, scanEntries []ScanEntry, appearance *types.ReportAppearance) (string, error) {
-	filePath := outputPath(reportID, ".pdf")
+func generatePDF(cfg *types.ReportConfig, reportID, logRoot string, scanEntries []ScanEntry, appearance *types.ReportAppearance) (string, error) {
+	filePath := outputPathForConfig(cfg, reportID, ".pdf")
+	// Ensure output directory exists
+	if dir := filepath.Dir(filePath); dir != "" {
+		os.MkdirAll(dir, 0755)
+	}
 	appearance = applyAppearance(appearance)
 
 	pdf := gofpdf.New("P", "mm", "A4", "")

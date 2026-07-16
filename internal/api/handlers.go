@@ -927,6 +927,19 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Load project info for report filename
+	var projectNumber, shipName, outputDir string
+	if req.ProjectID > 0 {
+		if p, err := s.store.GetProject(req.ProjectID); err == nil && p != nil {
+			projectNumber = p.ProjectNumber
+			shipName = p.ShipName
+			// Output to project root (parent of log_root)
+			if p.LogRoot != "" {
+				outputDir = filepath.Dir(p.LogRoot)
+			}
+		}
+	}
+
 	// PDF/DOCX/JSON with log_root: skip scan data check, generate from log files
 	if (format == types.FormatPDF || format == types.FormatDOCX || format == types.FormatJSON) && req.LogRoot != "" {
 		// Use "*" as default node address for log-root reports
@@ -943,13 +956,16 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 		var generatedReports []*types.Report
 		for _, addr := range addresses {
 			cfg := types.ReportConfig{
-				NodeAddress: addr,
-				Format:      format,
-				Template:    template,
-				LogRoot:     req.LogRoot,
-				ReportType:  req.ReportType,
-				ProjectID:   req.ProjectID,
-				Appearance:  req.Appearance,
+				NodeAddress:   addr,
+				Format:        format,
+				Template:      template,
+				LogRoot:       req.LogRoot,
+				ReportType:    req.ReportType,
+				ProjectID:     req.ProjectID,
+				ProjectNumber: projectNumber,
+				ShipName:      shipName,
+				OutputDir:     outputDir,
+				Appearance:    req.Appearance,
 			}
 			rpt, err := report.GenerateReport(cfg, s.store)
 			if err != nil {

@@ -81,7 +81,7 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 	case types.FormatPDF:
 		// PDF without log_root: generate from SQLite data
 		scanEntries := ioPointsToScanEntries(node, ioPoints)
-		filePath, err = generatePDF(reportID, "", scanEntries, cfg.Appearance)
+		filePath, err = generatePDF(&cfg, reportID, "", scanEntries, cfg.Appearance)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("report: generate %s: %w", cfg.Format, err)
@@ -114,9 +114,16 @@ func GenerateReport(cfg types.ReportConfig, s *store.Store) (*types.Report, erro
 // generateFromLogs scans the log_root directory for log files and generates
 // a PDF or DOCX report from their contents, depending on cfg.Format.
 func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, error) {
+	// Determine output directory — use project root if available
+	if cfg.OutputDir == "" && cfg.LogRoot != "" {
+		// Default: write reports to the log root's parent (project root)
+		cfg.OutputDir = filepath.Dir(cfg.LogRoot)
+	}
 	// Ensure output directory exists
-	if err := os.MkdirAll(DefaultOutputDir, 0755); err != nil {
-		return nil, fmt.Errorf("report: create output dir: %w", err)
+	if cfg.OutputDir != "" {
+		os.MkdirAll(cfg.OutputDir, 0755)
+	} else {
+		os.MkdirAll(DefaultOutputDir, 0755)
 	}
 
 	// Scan log files from log_root
@@ -161,15 +168,18 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 	case types.FormatDOCX:
 		filePath, err = generateDOCXFromLogs(cfg, scanEntries, reportID)
 	case types.FormatPDF:
-		filePath, err = generatePDF(reportID, cfg.LogRoot, scanEntries, cfg.Appearance)
+		filePath, err = generatePDF(&cfg, reportID, cfg.LogRoot, scanEntries, cfg.Appearance)
 	case types.FormatJSON:
 		filePath, err = generateJSONFromLogs(cfg, scanEntries, reportID)
 	default:
 		return nil, fmt.Errorf("report: unsupported log-root format %q", cfg.Format)
 	}
 	if err != nil {
+		log.Printf("report: generate %s failed: %v (entries=%d, logRoot=%s, outputDir=%s)",
+			cfg.Format, err, len(scanEntries), cfg.LogRoot, cfg.OutputDir)
 		return nil, fmt.Errorf("report: generate %s: %w", cfg.Format, err)
 	}
+	log.Printf("report: generated %s report → %s (%d entries)", cfg.Format, filePath, len(scanEntries))
 
 	// Build report record — use log_root or first node name as node address
 	nodeAddr := cfg.NodeAddress
@@ -211,7 +221,11 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 // - Body content in Courier New, wrapped to 80 chars
 // - Page breaks after each node section
 func generateDOCXFromLogs(cfg types.ReportConfig, scanEntries []ScanEntry, reportID string) (string, error) {
-	filePath := outputPath(reportID, ".docx")
+	filePath := outputPathForConfig(&cfg, reportID, ".docx")
+	// Ensure output directory exists
+	if dir := filepath.Dir(filePath); dir != "" {
+		os.MkdirAll(dir, 0755)
+	}
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
@@ -422,8 +436,43 @@ func docxPageBreak() string {
 }
 
 // outputPath builds the full output file path for a report.
+// If cfg.OutputDir is set, writes there with filename: {project_number}_{ship_name}_{date}.{ext}
+// Otherwise falls back to DefaultOutputDir with random ID.
 func outputPath(reportID string, ext string) string {
 	return filepath.Join(DefaultOutputDir, reportID+ext)
+}
+
+// outputPathForConfig builds a descriptive output path using project info.
+// Filename format: {project_number}_{ship_name}_{date}.{ext}
+// Falls back to random ID if project info is empty.
+func outputPathForConfig(cfg *types.ReportConfig, reportID, ext string) string {
+	dir := cfg.OutputDir
+	if dir == "" {
+		dir = DefaultOutputDir
+	}
+	// Build descriptive filename if project info available
+	if cfg.ProjectNumber != "" || cfg.ShipName != "" {
+		parts := []string{}
+		if cfg.ProjectNumber != "" {
+			parts = append(parts, cfg.ProjectNumber)
+		}
+		if cfg.ShipName != "" {
+			// Sanitize ship name: replace spaces with underscores, remove invalid chars
+			ship := strings.ReplaceAll(cfg.ShipName, " ", "_")
+			ship = strings.Map(func(r rune) rune {
+				if r == '\\' || r == '/' || r == ':' || r == '*' || r == '?' || r == '"' || r == '<' || r == '>' || r == '|' {
+					return '_'
+				}
+				return r
+			}, ship)
+			parts = append(parts, ship)
+		}
+		dateStr := time.Now().Format("2006-01-02")
+		parts = append(parts, dateStr)
+		filename := strings.Join(parts, "_") + ext
+		return filepath.Join(dir, filename)
+	}
+	return filepath.Join(dir, reportID+ext)
 }
 
 // newReportID generates a random hex report ID.
@@ -493,7 +542,7 @@ func generateJSONFromLogs(cfg types.ReportConfig, entries []ScanEntry, reportID 
 		return "", fmt.Errorf("report: marshal JSON: %w", err)
 	}
 
-	filePath := filepath.Join(DefaultOutputDir, reportID+".json")
+	filePath := outputPathForConfig(&cfg, reportID, ".json")
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		return "", fmt.Errorf("report: write JSON: %w", err)
 	}
