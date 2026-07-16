@@ -96,18 +96,23 @@ func (c *Client) Connect(timeout time.Duration) error {
 }
 
 // Close closes the connection gracefully.
-// LisDiag.exe (VS2005 C++ binary) CRASHES when sent the 'q' command —
-// the quit handler has a bug that triggers an access violation.
-// Instead of sending 'q', we simply close the TCP connection.
-// LisDiag.exe detects the closed socket via recv() returning 0/error
-// and cleans up the session internally — this is safe and does NOT crash.
-// Verified: closing without 'q' allows LisDiag.exe to accept new connections
-// immediately afterward.
+// Sends "quit" before closing the TCP connection so LisDiag.exe properly
+// cleans up its session and is ready to accept a new connection with the
+// password prompt. The "q" command crashes LisDiag.exe (VS2005 bug), but
+// "quit" is the safe exit command.
+//
+// We tolerate errors from sending "quit" — LisDiag may close the connection
+// immediately after receiving it, causing the write to fail. That's fine;
+// the TCP close still happens and LisDiag is freed.
 func (c *Client) Close() {
 	if c.conn != nil {
-		// Do NOT send 'q' — it crashes LisDiag.exe.
-		// Just close the TCP connection. LisDiag detects the closed
-		// socket and cleans up internally.
+		// Send "quit" to properly free LisDiag for the next connection.
+		// Use a short deadline — if LisDiag closes immediately after quit,
+		// the write will fail and that's OK.
+		_ = c.conn.SetWriteDeadline(time.Now().Add(2 * time.Second))
+		_, _ = fmt.Fprintf(c.conn, "quit\r\n")
+		// Brief pause to let LisDiag process the quit before we close
+		time.Sleep(100 * time.Millisecond)
 		c.conn.Close()
 		c.conn = nil
 	}
