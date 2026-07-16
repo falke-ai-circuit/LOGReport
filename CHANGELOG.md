@@ -1,10 +1,13 @@
 # Changelog
 
-## [v3.9.67] — 2026-07-16
+## [v3.9.68] — 2026-07-16
 
 ### Fixed
 
-- **Case-insensitive slot pattern in .sys parser** — Some .sys files use lowercase `slot 14` instead of `Slot 14`. The parser regex was case-sensitive (`^Slot\s+(\d+)$`), so lowercase `slot` lines were not detected as slot boundaries. This caused the previous slot's TITLE and PROGRAM to be overwritten by the lowercase slot's content, effectively hiding fieldbus slots (e.g. AP02_m3 with FBC_CODE was overwritten by AL02_Remote_monitor with LISDIAG_CODE). Fix: made regex case-insensitive (`(?i)^Slot\s+(\d+)$`). Impact: AP01-AP07 now correctly show 2 FBC files each (was 1). Configs went from 88 to 101 for the production BU backup. AP08/AP09 correctly show 1 FBC (only 1 fieldbus slot in their .sys files).
+- **Scroll stutter eliminated** — `fetchTree` had `tree` in its dependency array, causing a re-render loop: `setTree()` → `tree` changes → `fetchTree` gets new reference → `useEffect` fires again → second fetch. Fixed by using `treeRef` (useRef) instead of `tree` state in the dependency array.
+- **Collapsed state preserved across refreshes** — Previously, if user collapsed ALL nodes, the next tree refresh would re-expand everything (auto-expand checked `expandedNodesRef.size === 0`). Fixed with `hasAutoExpandedRef` boolean — auto-expand fires only once on initial load, never again.
+- **Queue-then-execute mode** — Removed auto-start from all 12 queue-add actions (fbc_print, rpc_print, rpc_clear, bstool_errlog, lisdiag_run, rsu_trace, rsu_status, lis_print_all, diaglis_import, print_all, fbc_print_all, rpc_print_all). Commands now go into queue without starting. User presses Start button to begin execution when ready. This allows queuing multiple commands across different nodes/tokens before executing.
+- **Case-insensitive slot pattern** — Some .sys files use lowercase `slot 14` instead of `Slot 14`. Fixed regex to be case-insensitive. AP01-AP07 now show 2 FBC files each (was 1).
 - **Commander tree scroll stutter eliminated** — Removed 17 unnecessary `setTreeReloadKey` calls from queue-add/control actions. Tree now refreshes only when queue finishes (running→done/idle), file operations, BsTool direct execution, or logRoot change. Removed per-command tree reload during execution.
 - **Settings page nav link restored** — Settings tab was removed from navigation in commit a3414c45. Added Settings NavLink back to Layout.tsx.
 

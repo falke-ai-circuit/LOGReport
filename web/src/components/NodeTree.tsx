@@ -112,6 +112,8 @@ export default function NodeTree({
   const menuRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const expandedNodesRef = useRef<Set<string>>(new Set());
+  const treeRef = useRef<TreeNodeData | null>(null);
+  const hasAutoExpandedRef = useRef<boolean>(false);
   const { activeLogRoot } = useActiveProject();
 
   // Fetch lis_mode from settings for context menu adaptation
@@ -126,13 +128,14 @@ export default function NodeTree({
   const fetchTree = useCallback(async () => {
     if (!projectId) {
       setTree(null);
+      treeRef.current = null;
       setLoading(false);
       return;
     }
     // Save scroll position before re-fetching tree
     const savedScroll = scrollRef.current?.scrollTop ?? 0;
-    // Only show loading spinner on first load (tree === null), not on subsequent refreshes
-    if (tree === null) setLoading(true);
+    // Only show loading spinner on first load (treeRef.current === null), not on subsequent refreshes
+    if (treeRef.current === null) setLoading(true);
     setError(null);
     try {
       // Use activeLogRoot from hook instead of reading localStorage directly
@@ -153,9 +156,10 @@ export default function NodeTree({
       }
       const data = await res.json();
       setTree(data.tree);
-      // Auto-expand root children ONLY on first load (when expandedNodes is empty)
+      treeRef.current = data.tree;
+      // Auto-expand root children ONLY on first load (hasAutoExpandedRef.current === false)
       // Don't reset expansion state on subsequent fetches (prevents scroll jump)
-      if (data.tree?.children && expandedNodesRef.current.size === 0) {
+      if (data.tree?.children && !hasAutoExpandedRef.current) {
         const ids = new Set<string>(data.tree.children.map((c: TreeNodeData) => c.name));
         // Also auto-expand sections within each node
         for (const child of data.tree.children) {
@@ -167,6 +171,7 @@ export default function NodeTree({
         }
         expandedNodesRef.current = ids;
         setExpandedNodes(ids);
+        hasAutoExpandedRef.current = true;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load node tree');
@@ -179,7 +184,7 @@ export default function NodeTree({
         }
       });
     }
-  }, [projectId, context, activeLogRoot, tree]);
+  }, [projectId, context, activeLogRoot]);
 
   useEffect(() => {
     fetchTree();

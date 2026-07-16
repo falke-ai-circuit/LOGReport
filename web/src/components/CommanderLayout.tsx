@@ -173,17 +173,14 @@ export default function CommanderLayout() {
     switch (action) {
       case 'print_all':
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName }) })
-          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('batch error:', err));
         break;
       case 'fbc_print_all':
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'FBC' }) })
-          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('fbc batch error:', err));
         break;
       case 'rpc_print_all':
         fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'RPC' }) })
-          .then(() => fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))
           .catch(err => console.error('rpc batch error:', err));
         break;
       case 'fbc_print': {
@@ -197,8 +194,6 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${cleanTokenId}:fbc`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'fbc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
-          // Auto-start only — the backend handles "already running" gracefully
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
           // NOTE: No treeReloadKey bump — tree refreshes when queue finishes (running→done in NodeTree polling)
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
@@ -213,7 +208,6 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${cleanTokenId}:rpc`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rpc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -227,7 +221,6 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${cleanTokenId}:rpc`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rpc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
          } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -238,7 +231,6 @@ export default function CommanderLayout() {
         setPendingNodeIp(nodeIp);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'bstool', node_name: stripNodeSuffix(nodeName), token_id: '', command: 'errlog', ip_address: nodeIp }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       case 'lisdiag_run': {
@@ -275,7 +267,6 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenIDWithExe}:lisdiag`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp, lisdiag_pwd: lisdiagPwd }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -295,7 +286,6 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: rxCmd, ip_address: nodeIp, extra_data: txCmd }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -308,7 +298,6 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenId}:rsu`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -318,7 +307,6 @@ export default function CommanderLayout() {
         setTerminalLog(prev => [...prev, `> Batch LIS print all for ${nodeName}`]);
         try {
           await fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -331,7 +319,6 @@ export default function CommanderLayout() {
         setTerminalLog(prev => [...prev, `> ${cmd} (queued)`]);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'diaglis', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
-          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
