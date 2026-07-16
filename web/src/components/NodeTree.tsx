@@ -871,7 +871,11 @@ function TreeBranch({
 
     // Queue-based execution check — override with active command status
     if (activeCommand) {
-      const nodeMatch = node.token_id === activeCommand.token_id && stationMatch(activeCommand);
+      const tokenMatch = node.token_id === activeCommand.token_id ||
+        node.token_id?.startsWith(activeCommand.token_id) ||
+        activeCommand.token_id?.startsWith(node.token_id || '') ||
+        (activeCommand.token_id === '' && node.section_type?.toLowerCase() === 'log');
+      const nodeMatch = tokenMatch && stationMatch(activeCommand);
       if (nodeMatch) {
         nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
         if (activeCommand.status === 'running') {
@@ -1023,14 +1027,14 @@ function TreeBranch({
             {showPulse && (
               <span
                 style={{
-                  width: '8px',
-                  height: '8px',
+                  width: '10px',
+                  height: '10px',
                   borderRadius: '50%',
-                  backgroundColor: '#008a00',
+                  backgroundColor: 'var(--accent)',
                   flexShrink: 0,
-                  marginLeft: '2px',
-                  animation: 'pulse 1s ease-in-out infinite',
-                  boxShadow: '0 0 6px #008a00',
+                  marginLeft: '4px',
+                  animation: 'pulse 0.8s ease-in-out infinite',
+                  boxShadow: '0 0 8px var(--accent)',
                 }}
               />
             )}
@@ -1048,14 +1052,14 @@ function TreeBranch({
         {showPulse && (
           <span
             style={{
-              width: '8px',
-              height: '8px',
+              width: '10px',
+              height: '10px',
               borderRadius: '50%',
-              backgroundColor: '#008a00',
+              backgroundColor: 'var(--accent)',
               flexShrink: 0,
-              marginLeft: '2px',
-              animation: 'pulse 1s ease-in-out infinite',
-              boxShadow: '0 0 6px #008a00',
+              marginLeft: '4px',
+              animation: 'pulse 0.8s ease-in-out infinite',
+              boxShadow: '0 0 8px var(--accent)',
             }}
           />
         )}
