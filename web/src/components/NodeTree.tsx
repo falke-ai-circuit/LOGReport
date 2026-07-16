@@ -224,10 +224,11 @@ export default function NodeTree({
   const prevQueueStateRef = useRef<string | null>(null);
   const prevCurrentRef = useRef<number>(-1);
 
-  // Poll queue status — always poll at 1s when queue has commands,
+  // Poll queue status — poll at 500ms when queue has commands,
   // so color changes and pulse markers update in real time.
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
+    let lastReloadedCurrent = -1;
 
     async function pollStatus() {
       try {
@@ -237,24 +238,20 @@ export default function NodeTree({
         setQueueStatus(data);
         onQueueStatusChange?.(data);
 
-        // Detect when a command completes and reload tree to show updated file colors
         const prevState = prevQueueStateRef.current;
-        const prevCurrent = prevCurrentRef.current;
-        const justFinished = (prevState === 'running' || prevState === null) && (data.state === 'done' || data.state === 'idle');
         
-        if (justFinished) {
-          // Queue just finished — reload tree to show new file colors
-          setTimeout(() => fetchTree(), 500);
-        }
-        // Reload tree whenever the command cursor advances — means a command
-        // just completed and we need to show its file color change (grey→green)
-        if (prevCurrent >= 0 && data.current > prevCurrent) {
+        // Reload tree whenever:
+        // 1. Queue just finished (running→done or running→idle or null→done)
+        // 2. Command cursor advanced (a command completed)
+        const justFinished = (prevState === 'running' || prevState === null) && 
+          (data.state === 'done' || data.state === 'idle');
+        const cursorAdvanced = data.current > lastReloadedCurrent && data.current > 0;
+        
+        if (justFinished || cursorAdvanced) {
+          lastReloadedCurrent = data.current;
           setTimeout(() => fetchTree(), 300);
         }
-        // Also reload on transition from running → idle (cancel)
-        if (prevState === 'running' && data.state === 'idle') {
-          setTimeout(() => fetchTree(), 500);
-        }
+        
         prevQueueStateRef.current = data.state;
         prevCurrentRef.current = data.current;
       } catch {
@@ -265,7 +262,7 @@ export default function NodeTree({
     // Always poll if there are commands in the queue or queue is active
     const hasActivity = queueStatus && (queueStatus.total > 0 || queueStatus.state === 'running' || queueStatus.state === 'paused');
     if (hasActivity) {
-      interval = setInterval(pollStatus, 1000);
+      interval = setInterval(pollStatus, 500);
     }
     // Also do an initial poll on mount
     pollStatus();
