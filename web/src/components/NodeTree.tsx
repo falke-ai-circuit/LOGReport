@@ -221,10 +221,8 @@ export default function NodeTree({
         if (prevState === 'running' && data.state === 'idle') {
           setTimeout(() => fetchTree(), 500);
         }
-        // Reload tree when current command index advances (each command completes)
-        if (data.state === 'running' && prevCurrentRef.current >= 0 && data.current > prevCurrentRef.current) {
-          setTimeout(() => fetchTree(), 300);
-        }
+        // NOTE: Removed per-command reload during execution to prevent scroll stutter.
+        // Tree now only refreshes when the entire queue finishes, not after each individual command.
         prevQueueStateRef.current = data.state;
         prevCurrentRef.current = data.current;
       } catch {

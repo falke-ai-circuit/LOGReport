@@ -199,7 +199,7 @@ export default function CommanderLayout() {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'fbc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
           // Auto-start only — the backend handles "already running" gracefully
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
+          // NOTE: No treeReloadKey bump — tree refreshes when queue finishes (running→done in NodeTree polling)
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -214,8 +214,7 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rpc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
       case 'rpc_clear': {
@@ -229,8 +228,7 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rpc', node_name: nodeName, token_id: cleanTokenId, command: cmd, ip_address: nodeIp }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
-        } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
+         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
       case 'bstool_errlog':
@@ -241,7 +239,6 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'bstool', node_name: stripNodeSuffix(nodeName), token_id: '', command: 'errlog', ip_address: nodeIp }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       case 'lisdiag_run': {
@@ -279,7 +276,6 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp, lisdiag_pwd: lisdiagPwd }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -300,7 +296,6 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: rxCmd, ip_address: nodeIp, extra_data: txCmd }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -314,7 +309,6 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rsu', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -325,7 +319,6 @@ export default function CommanderLayout() {
         try {
           await fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -339,7 +332,6 @@ export default function CommanderLayout() {
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'diaglis', node_name: nodeName, token_id: tokenId, command: cmd, ip_address: nodeIp }) });
           fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-          setTreeReloadKey((k) => k + 1);
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -354,12 +346,10 @@ export default function CommanderLayout() {
         break;
       case 'queue_restart':
         fetch('/api/v1/commandqueue/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-          .then(() => setTreeReloadKey((k) => k + 1))
           .catch(err => console.error('queue restart error:', err));
         break;
       case 'queue_clear':
         fetch('/api/v1/commandqueue/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-          .then(() => setTreeReloadKey((k) => k + 1))
           .catch(err => console.error('queue clear error:', err));
         break;
       case 'erase_file': {
@@ -399,7 +389,6 @@ export default function CommanderLayout() {
       }
       const batchData = await batchRes.json();
       setTerminalLog(prev => [...prev, `[Queue: ${batchData.total} commands queued]`]);
-      setTreeReloadKey((k) => k + 1);
     } catch (err) {
       setTerminalLog(prev => [...prev, 'Queue All Error: ' + (err instanceof Error ? err.message : String(err))]);
     } finally {
@@ -408,9 +397,10 @@ export default function CommanderLayout() {
   }, [activeProjectId]);
 
   // Queue controls (inline in top bar)
+  // NOTE: No treeReloadKey bumps on queue control actions — tree refreshes
+  // automatically when queue transitions from running→done/idle via NodeTree polling.
   const handleQueueStart = useCallback(async () => {
     await fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    setTreeReloadKey((k) => k + 1);
   }, []);
   const handleQueuePause = useCallback(async () => {
     await fetch('/api/v1/commandqueue/pause', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
@@ -420,19 +410,15 @@ export default function CommanderLayout() {
   }, []);
   const handleQueueStop = useCallback(async () => {
     await fetch('/api/v1/commandqueue/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    setTreeReloadKey((k) => k + 1);
   }, []);
   const handleQueueClear = useCallback(async () => {
     await fetch('/api/v1/commandqueue/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    setTreeReloadKey((k) => k + 1);
   }, []);
   const handleQueueRestart = useCallback(async () => {
     await fetch('/api/v1/commandqueue/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    setTreeReloadKey((k) => k + 1);
   }, []);
   const handleQueueRetryFailed = useCallback(async () => {
     await fetch('/api/v1/commandqueue/retry-failed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    setTreeReloadKey((k) => k + 1);
   }, []);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [

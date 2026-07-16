@@ -1,11 +1,11 @@
 # Changelog
 
-## [v3.9.65] — 2026-07-16
+## [v3.9.66] — 2026-07-16
 
 ### Fixed
 
+- **Commander tree scroll stutter eliminated** — Tree no longer refreshes on every queue-add action. Removed 17 unnecessary `setTreeReloadKey` calls from queue-add, queue-start, queue-stop, queue-clear, queue-restart, retry-failed, and batch-queue actions. Tree now refreshes only when: (1) queue finishes (running→done/idle transition detected by NodeTree polling), (2) file operations (erase, save), (3) BsTool direct execution, (4) logRoot change. Also removed per-command tree reload during execution — tree was being refreshed on every command index advance, causing constant re-renders. Scroll position is now fully preserved during manual scrolling.
 - **Settings page nav link restored** — Settings tab was removed from navigation in commit a3414c45 (v3.9.55 era). The /settings route still existed but was unreachable from the UI. Added Settings NavLink back to Layout.tsx.
-- **Commander node tree scroll preservation** — Tree no longer scrolls to top when commands execute and files change color. Root cause: `key={treeReloadKey}` prop on `<NodeTree>` component caused full unmount/remount on every queue action (~25 call sites), destroying scroll position and expansion state. Fix: replaced `key` remount with `reloadKey` prop that triggers `fetchTree()` via useEffect without unmounting. Also: (1) loading spinner only shows on first load (`tree === null`), not on subsequent refreshes, (2) `expandedNodes` stale closure fixed with ref, (3) scroll save/restore in `requestAnimationFrame` now works because component survives the refresh.
 
 ## [v3.9.58] — 2026-07-15
 
