@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings } from 'lucide-react';
+import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings, Activity, Zap, FileCheck, AlertCircle, Clock } from 'lucide-react';
 import { useActiveProject, type Project } from '../hooks/useActiveProject';
 
 interface ProjectsResponse {
@@ -14,6 +14,33 @@ interface HealthStatus {
   uptime: string;
   db_status: string;
   node_count: number;
+}
+
+interface ReportItem {
+  id: string;
+  node_address: string;
+  title: string;
+  status: string;
+  format: string;
+  created_at: string;
+  completed_at: string;
+  file_path: string;
+  project_id: number;
+}
+
+interface ReportsResponse {
+  reports: ReportItem[];
+  total: number;
+}
+
+interface SettingsData {
+  dia_host: string;
+  dia_port: number;
+  bstool_host: string;
+  bstool_port: number;
+  communication_line: string;
+  lis_mode: string;
+  lisdiag_password: string;
 }
 
 export default function Dashboard() {
@@ -35,6 +62,8 @@ export default function Dashboard() {
   });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [settings, setSettings] = useState<SettingsData | null>(null);
   const { activeProjectId, selectProject } = useActiveProject();
   const navigate = useNavigate();
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -59,7 +88,6 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/v1/health');
       if (!res.ok) {
-        // try /health
         const r2 = await fetch('/health');
         if (r2.ok) setHealth(await r2.json());
         return;
@@ -70,10 +98,34 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchReports = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/reports');
+      if (!res.ok) return;
+      const data: ReportsResponse = await res.json();
+      setReports(data.reports || []);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/settings');
+      if (!res.ok) return;
+      const data = await res.json();
+      setSettings(data.settings);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchProjects();
     fetchHealth();
-  }, [fetchProjects, fetchHealth]);
+    fetchReports();
+    fetchSettings();
+  }, [fetchProjects, fetchHealth, fetchReports, fetchSettings]);
 
   async function handleCreateProject() {
     if (!newProject.project_number || !newProject.ship_name) {
@@ -216,11 +268,30 @@ export default function Dashboard() {
         />
         <StatCard
           icon={<FileText size={20} />}
+          label="Reports"
+          value={reports.length}
+          color="#f59e0b"
+        />
+        <StatCard
+          icon={<Activity size={20} />}
           label="DB Status"
           value={health?.db_status || 'unknown'}
           color="var(--text-secondary)"
         />
       </div>
+
+      {/* Active Project Panel */}
+      {activeProjectId && projects.find(p => p.id === activeProjectId) && (
+        <ActiveProjectPanel
+          project={projects.find(p => p.id === activeProjectId)!}
+          nodeCount={health?.node_count || 0}
+          reportCount={reports.filter(r => r.project_id === activeProjectId).length}
+          settings={settings}
+          onCommander={() => navigate('/commander')}
+          onNodes={() => navigate('/nodes')}
+          onReports={() => navigate('/reports')}
+        />
+      )}
 
       {/* Latest Ships & Projects */}
       <div style={{ marginBottom: '24px' }}>
@@ -407,7 +478,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick actions */}
-      <div>
+      <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>Quick Actions</h2>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <QuickAction
@@ -429,6 +500,40 @@ export default function Dashboard() {
             href="/reports"
           />
         </div>
+      </div>
+
+      {/* Recent Reports */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <FileCheck size={18} color="#f59e0b" />
+          <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Recent Reports</h2>
+          {reports.length > 0 && (
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+              {reports.length} total
+            </span>
+          )}
+        </div>
+        {reports.length === 0 ? (
+          <div
+            style={{
+              padding: '20px',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontSize: '12px',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+            }}
+          >
+            No reports generated yet.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {reports.slice(0, 5).map((r) => (
+              <ReportRow key={r.id} report={r} projectName={projects.find(p => p.id === r.project_id)?.project_number} />
+            ))}
+          </div>
+        )}
       </div>
       {/* Edit Project Dialog */}
       {editingProject && (
@@ -539,8 +644,13 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: { projec
           {project.project_number} — {project.ship_name}
           {isActive && <span style={{ fontSize: '10px', color: 'var(--accent)', marginLeft: '8px' }}>ACTIVE</span>}
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-          {project.log_root || 'No log root set'} · {project.status} · {new Date(project.created_at).toLocaleDateString()}
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {project.log_root || 'No log root set'} · {project.status}
+          {project.updated_at && project.updated_at !== project.created_at && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              · <Clock size={10} /> {new Date(project.updated_at).toLocaleDateString()}
+            </span>
+          )}
         </div>
       </div>
       <span
@@ -626,6 +736,149 @@ function FormField({ label, required, children }: { label: string; required?: bo
         {label}{required && <span style={{ color: 'var(--error)' }}> *</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+// ─── Active Project Panel ────────────────────────────────────────────
+
+function ActiveProjectPanel({ project, nodeCount, reportCount, settings, onCommander, onNodes, onReports }: {
+  project: Project;
+  nodeCount: number;
+  reportCount: number;
+  settings: SettingsData | null;
+  onCommander: () => void;
+  onNodes: () => void;
+  onReports: () => void;
+}) {
+  const lisModeLabel = settings?.lis_mode === 'rsu' ? 'RSU6' : settings?.lis_mode === 'lisdiag' ? 'LisDiag' : settings?.lis_mode === 'diaglis' ? 'DiagLis' : '—';
+  const diaConfigured = settings?.dia_host && settings.dia_host !== '';
+  const buConfigured = settings?.bstool_host && settings.bstool_host !== '';
+  const lisConfigured = settings?.lis_mode && settings.lis_mode !== '';
+
+  return (
+    <div
+      style={{
+        backgroundColor: 'rgba(99,102,241,0.06)',
+        border: '1px solid var(--accent)',
+        borderRadius: '8px',
+        padding: '16px 20px',
+        marginBottom: '24px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <CheckCircle size={18} color="var(--accent)" />
+        <span style={{ fontSize: '16px', fontWeight: 700 }}>
+          {project.project_number} — {project.ship_name}
+        </span>
+        <span style={{ fontSize: '10px', color: 'var(--accent)', backgroundColor: 'rgba(99,102,241,0.15)', padding: '2px 8px', borderRadius: '4px' }}>
+          ACTIVE
+        </span>
+      </div>
+
+      {/* Info row */}
+      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '12px' }}>
+        <InfoItem label="Log Root" value={project.log_root || '—'} mono />
+        <InfoItem label="Nodes" value={String(nodeCount)} />
+        <InfoItem label="Reports" value={String(reportCount)} />
+        <InfoItem label="Status" value={project.status} />
+      </div>
+
+      {/* Connection summary */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
+        <ConnectionBadge label="DIA" host={settings?.dia_host || '—'} port={settings?.dia_port} configured={!!diaConfigured} />
+        <ConnectionBadge label="BU" host={settings?.bstool_host || '—'} port={settings?.bstool_port} configured={!!buConfigured} />
+        <ConnectionBadge label="LIS" host={lisModeLabel} port={undefined} configured={!!lisConfigured} />
+      </div>
+
+      {/* Quick jump buttons */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={onCommander}>
+          <Zap size={14} /> Commander
+        </button>
+        <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={onNodes}>
+          Nodes
+        </button>
+        <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={onReports}>
+          Reports
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InfoItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>{label}</div>
+      <div style={{ fontSize: '12px', fontWeight: 500, fontFamily: mono ? 'var(--font-mono)' : 'inherit' }}>{value}</div>
+    </div>
+  );
+}
+
+function ConnectionBadge({ label, host, port, configured }: { label: string; host: string; port?: number; configured: boolean }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '4px 10px',
+        backgroundColor: configured ? 'rgba(0,138,0,0.1)' : 'rgba(120,120,120,0.1)',
+        border: `1px solid ${configured ? '#008a00' : 'var(--border)'}`,
+        borderRadius: '4px',
+        fontSize: '11px',
+      }}
+    >
+      <span
+        style={{
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          backgroundColor: configured ? '#008a00' : 'var(--text-muted)',
+        }}
+      />
+      <span style={{ fontWeight: 600, color: configured ? '#008a00' : 'var(--text-muted)' }}>{label}</span>
+      <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+        {host}{port ? `:${port}` : ''}
+      </span>
+    </div>
+  );
+}
+
+// ─── Report Row ──────────────────────────────────────────────────────
+
+function ReportRow({ report, projectName }: { report: ReportItem; projectName?: string }) {
+  const statusColor = report.status === 'completed' ? '#008a00' : report.status === 'generating' ? '#f59e0b' : report.status === 'failed' ? 'var(--error)' : 'var(--text-muted)';
+  const statusIcon = report.status === 'completed' ? <FileCheck size={12} /> : report.status === 'generating' ? <Loader2 size={12} className="spin" /> : report.status === 'failed' ? <AlertCircle size={12} /> : <FileText size={12} />;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '10px 14px',
+        backgroundColor: 'var(--bg-secondary)',
+        borderRadius: '6px',
+        border: '1px solid var(--border)',
+        transition: 'border-color 0.15s ease',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+      onClick={() => { /* navigate to reports page */ window.location.hash = '#/reports'; }}
+    >
+      <div style={{ color: statusColor, display: 'flex', alignItems: 'center' }}>{statusIcon}</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: '12px', fontWeight: 500 }}>
+          {report.title || report.format || 'Untitled'} {projectName && <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>· {projectName}</span>}
+        </div>
+        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+          {report.node_address} · {new Date(report.created_at).toLocaleDateString()}
+        </div>
+      </div>
+      <span style={{ fontSize: '10px', color: statusColor, fontWeight: 600, textTransform: 'uppercase' }}>{report.status}</span>
     </div>
   );
 }

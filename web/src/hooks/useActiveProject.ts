@@ -8,6 +8,7 @@ export interface Project {
   status: string;
   created_at: string;
   updated_at: string;
+  settings_json?: string;
 }
 
 const STORAGE_KEY = 'activeProjectId';
