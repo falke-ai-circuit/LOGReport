@@ -237,18 +237,25 @@ export default function NodeTree({
         setQueueStatus(data);
         onQueueStatusChange?.(data);
 
-        // Detect transition to 'done' → reload tree to pick up new files
+        // Detect transition to 'done' or 'idle' → reload tree to pick up new files
         const prevState = prevQueueStateRef.current;
-        if (prevState === 'running' && data.state === 'done') {
+        const prevCurrent = prevCurrentRef.current;
+        const isRunning = data.state === 'running';
+        const justFinished = (prevState === 'running' || prevState === null) && (data.state === 'done' || data.state === 'idle');
+        
+        if (justFinished) {
           // Queue just finished — reload tree to show new file colors
+          setTimeout(() => fetchTree(), 500);
+        }
+        // Also reload when current command advances (prev was running, now current moved forward)
+        // This catches single-command queues that go pending→running→completed between polls
+        if (!isRunning && prevCurrent !== data.current && data.current > 0) {
           setTimeout(() => fetchTree(), 500);
         }
         // Also reload on transition from running → idle (cancel)
         if (prevState === 'running' && data.state === 'idle') {
           setTimeout(() => fetchTree(), 500);
         }
-        // NOTE: Removed per-command reload during execution to prevent scroll stutter.
-        // Tree now only refreshes when the entire queue finishes, not after each individual command.
         prevQueueStateRef.current = data.state;
         prevCurrentRef.current = data.current;
       } catch {

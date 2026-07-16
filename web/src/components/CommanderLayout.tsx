@@ -281,7 +281,10 @@ export default function CommanderLayout() {
         setActiveExecFile(`${nodeName}:${tokenIDWithExe}:lisdiag`);
         try {
           await fetch('/api/v1/commandqueue/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'lisdiag', node_name: nodeName, token_id: tokenIDWithExe, command: exeCmd, ip_address: nodeIp, lisdiag_pwd: lisdiagPwd }) });
-          maybeAutoStart();
+          // LisDiag commands always auto-start the queue — the LisDiag tab is a
+          // visual terminal, not a queue management page. The user expects the
+          // command to execute immediately when they right-click → Run LisDiag.
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }
@@ -324,7 +327,8 @@ export default function CommanderLayout() {
         setTerminalLog(prev => [...prev, `> Batch LIS print all for ${nodeName}`]);
         try {
           await fetch(`/api/v1/commandqueue/batch-node?project_id=${activeProjectId || ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ node_name: nodeName, token_type: 'LIS' }) });
-          maybeAutoStart();
+          // LIS batch commands always auto-start — same rationale as lisdiag_run
+          fetch('/api/v1/commandqueue/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
         } catch (err) { setTerminalLog(prev => [...prev, 'Error: ' + (err instanceof Error ? err.message : String(err))]); }
         break;
       }

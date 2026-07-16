@@ -163,7 +163,27 @@ export default function LisDiagTab({
     setConnState('connecting');
     appendLog(`[${timestamp()}] Connecting to ${ipAddress}:${port}...`);
     try {
-      // Test connection by sending a harmless command through the queue
+      // Check if there are already pending lisdiag commands in the queue
+      // (from right-click → Run LisDiag). If so, just start the queue.
+      const statusRes = await fetch('/api/v1/commandqueue/status');
+      if (statusRes.ok) {
+        const statusData: QueueStatusResponse = await statusRes.json();
+        const hasPendingLisdiag = (statusData.commands || []).some(
+          (c) => c.type === 'lisdiag' && c.status === 'pending'
+        );
+        if (hasPendingLisdiag) {
+          // Commands already queued — start the queue to execute them
+          await fetch('/api/v1/commandqueue/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          setConnState('connected');
+          appendLog(`[${timestamp()}] Connected to ${ipAddress}:${port} — executing queued commands`);
+          return;
+        }
+      }
+      // No pending commands — add a test command to verify connection
       const res = await fetch('/api/v1/commandqueue/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
