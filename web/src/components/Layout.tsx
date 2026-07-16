@@ -44,8 +44,8 @@ export default function Layout() {
             gap: '6px',
           }}
         >
-          <span style={{ fontSize: 16 }}>📋</span>
-          LOGReport
+          <img src="/valmet-logo.png" alt="Valmet" style={{ height: 18, width: 'auto' }} />
+          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>LOGReport</span>
         </div>
 
         <NavLink to="/" end style={({ isActive }) => tabStyle(isActive)}>

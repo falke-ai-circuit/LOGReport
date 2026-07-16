@@ -1,6 +1,8 @@
 package report
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +14,9 @@ import (
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 	"github.com/jung-kurt/gofpdf"
 )
+
+//go:embed assets/valmet-logo.png
+var valmetLogoPNG []byte
 
 // fileTypeOrder defines the processing order for file types within each node,
 // matching the Python generator's TYPE_ORDER.
@@ -41,22 +46,20 @@ var (
 	pdfFileHeadingColor = "#008a00" // File subheading: Valmet green
 )
 
-// valmetLogoSVG is a simple Valmet-style logo drawn as PDF vector commands.
-// Draws "VALMET" text in green with a decorative line — no external image dependency.
+// drawValmetLogo renders the real Valmet logo PNG on the PDF title page.
+// The image is embedded in the binary via go:embed — no external file dependency.
 func drawValmetLogo(pdf *gofpdf.Fpdf, x, y, w float64) {
-	// Green horizontal bar
-	pdf.SetFillColor(0, 138, 0)
-	pdf.Rect(x, y, w, 2, "F")
-	// "VALMET" text in green
-	pdf.SetFont("Helvetica", "B", 22)
-	pdf.SetTextColor(0, 138, 0)
-	pdf.SetXY(x, y+4)
-	pdf.Cell(w, 12, "VALMET")
-	pdf.SetTextColor(0, 0, 0)
-	// Subtitle
+	// Register the embedded PNG image from byte slice (gofpdf caches by name)
+	imgName := "valmet-logo"
+	pdf.RegisterImageReader(imgName, "PNG", bytes.NewReader(valmetLogoPNG))
+	// Calculate image dimensions: maintain aspect ratio of the logo (1540x392 ≈ 3.93:1)
+	imgH := w / 3.93
+	// Draw the logo image
+	pdf.Image(imgName, x, y, w, imgH, false, "PNG", 0, "")
+	// Subtitle below the logo
 	pdf.SetFont("Helvetica", "", 8)
 	pdf.SetTextColor(120, 120, 120)
-	pdf.SetXY(x, y+16)
+	pdf.SetXY(x, y+imgH+2)
 	pdf.Cell(w, 5, "DNA Automation System Report")
 	pdf.SetTextColor(0, 0, 0)
 }
