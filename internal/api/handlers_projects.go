@@ -246,9 +246,9 @@ func (s *Server) generateProjectReportHandler(w http.ResponseWriter, r *http.Req
 	}
 	if req.Format != "" {
 		f := types.ReportFormat(req.Format)
-		if f != types.FormatPDF && f != types.FormatDOCX {
+		if f != types.FormatPDF && f != types.FormatDOCX && f != types.FormatJSON {
 			writeErrorDetails(w, http.StatusBadRequest, "validation_error",
-				fmt.Sprintf("unsupported format: '%s'. Supported: pdf, docx", req.Format),
+				fmt.Sprintf("unsupported format: '%s'. Supported: pdf, docx, json", req.Format),
 				map[string]string{"requested_format": req.Format})
 			return
 		}
