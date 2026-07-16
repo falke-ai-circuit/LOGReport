@@ -131,6 +131,12 @@ func generateFromLogs(cfg types.ReportConfig, s *store.Store) (*types.Report, er
 	if err != nil {
 		return nil, fmt.Errorf("report: scan log root %s: %w", cfg.LogRoot, err)
 	}
+	log.Printf("report: ScanFiles found %d files in %s", len(allFiles), cfg.LogRoot)
+	for i, f := range allFiles {
+		if i < 10 {
+			log.Printf("report:   file[%d]: %s (%s, %d bytes, node=%s)", i, f.FileName, f.Extension, f.Size, f.NodeName)
+		}
+	}
 
 	// If node_address specified, filter files by node name
 	if cfg.NodeAddress != "" && cfg.NodeAddress != "*" {

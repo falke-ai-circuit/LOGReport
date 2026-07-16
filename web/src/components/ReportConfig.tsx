@@ -386,7 +386,7 @@ export default function ReportConfig({ onSuccess, onCancel, projectId: propProje
               placeholder="/path/to/log/files"
             />
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              When set with PDF format, reports are generated from .fbc/.rpc/.log/.lis files in this directory.
+              When set with PDF format, reports are generated from .fbc/.rpc/.log/.lis/.rsu/.dia files in this directory.
             </div>
           </div>
 

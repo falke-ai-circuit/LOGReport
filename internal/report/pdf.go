@@ -118,7 +118,7 @@ func shouldIncludeType(fileType string, a *types.ReportAppearance) bool {
 		return *a.IncludeRPC
 	case "log":
 		return *a.IncludeLOG
-	case "lis":
+	case "lis", "rsu", "dia":
 		return *a.IncludeLIS
 	default:
 		return true // include unknown types

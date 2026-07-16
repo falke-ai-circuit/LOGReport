@@ -17,7 +17,8 @@ import (
 )
 
 // SupportedExtensions are the file extensions scanned from the log root.
-var SupportedExtensions = []string{".fbc", ".rpc", ".log", ".lis"}
+// Includes .rsu (RSU6 mode) and .dia (DiagLis mode) for LIS files.
+var SupportedExtensions = []string{".fbc", ".rpc", ".log", ".lis", ".rsu", ".dia"}
 
 // FileEntry represents a log file found during scanning.
 type FileEntry struct {

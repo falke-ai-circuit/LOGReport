@@ -847,9 +847,25 @@ function TreeBranch({
       // completed command has a node_name that starts with or matches the station
       const parentName = parentNode?.name || '';
       for (const ptype of possibleTypes) {
+        // Exact match: station:token_id:type
         const fileCmdKey = `${parentName}:${node.token_id}:${ptype}`;
         if (completedCommands.has(fileCmdKey)) {
           nodeColor = 'var(--success)';
+        }
+        // For LOG files: token_id in tree may be empty, but queue has a token_id.
+        // Match by station + type only (ignore token_id) for LOG/bstool.
+        if (nodeColor !== 'var(--success)' && (sectionLower === 'log' || ptype === 'bstool')) {
+          completedCommands.forEach((key: string) => {
+            const parts = key.split(':');
+            if (parts.length >= 3 && parts[2] === 'bstool') {
+              const cmdNodeName = parts[0];
+              if (parentName === cmdNodeName ||
+                  parentName.startsWith(cmdNodeName) ||
+                  cmdNodeName.startsWith(parentName)) {
+                nodeColor = 'var(--success)';
+              }
+            }
+          });
         }
       }
       // Also try prefix matching — queue node_name might be "AP01_m2" while
@@ -871,10 +887,11 @@ function TreeBranch({
 
     // Queue-based execution check — override with active command status
     if (activeCommand) {
-      const tokenMatch = node.token_id === activeCommand.token_id ||
+      const isLogType = node.section_type?.toLowerCase() === 'log' || activeCommand.type === 'bstool';
+      const tokenMatch = isLogType ||
+        node.token_id === activeCommand.token_id ||
         node.token_id?.startsWith(activeCommand.token_id) ||
-        activeCommand.token_id?.startsWith(node.token_id || '') ||
-        (activeCommand.token_id === '' && node.section_type?.toLowerCase() === 'log');
+        activeCommand.token_id?.startsWith(node.token_id || '');
       const nodeMatch = tokenMatch && stationMatch(activeCommand);
       if (nodeMatch) {
         nodeColor = CMD_STATUS_COLORS[activeCommand.status] || 'var(--accent)';
