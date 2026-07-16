@@ -374,48 +374,60 @@ export default function Dashboard() {
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>Connection Settings (auto-saved to Settings)</div>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <FormField label="DIA Host">
-                  <select
+                  <input
+                    type="text"
+                    list="dia-host-options"
                     value={newProject.dia_host}
                     onChange={(e) => setNewProject({ ...newProject, dia_host: e.target.value })}
                     style={inputStyle}
-                  >
-                    <option value="AB01">AB01</option>
-                    <option value="AB02">AB02</option>
-                    <option value="AB03">AB03</option>
-                    <option value="127.0.0.1">127.0.0.1 (local)</option>
-                  </select>
+                  />
+                  <datalist id="dia-host-options">
+                    <option value="AB01" />
+                    <option value="AB02" />
+                    <option value="AB03" />
+                    <option value="127.0.0.1" />
+                  </datalist>
                 </FormField>
                 <FormField label="DIA Port">
-                  <select
+                  <input
+                    type="number"
+                    list="dia-port-options"
                     value={newProject.dia_port}
-                    onChange={(e) => setNewProject({ ...newProject, dia_port: Number(e.target.value) })}
+                    onChange={(e) => setNewProject({ ...newProject, dia_port: Number(e.target.value) || 1234 })}
                     style={inputStyle}
-                  >
-                    <option value={1234}>1234</option>
-                    <option value={1235}>1235</option>
-                  </select>
+                  />
+                  <datalist id="dia-port-options">
+                    <option value={1234} />
+                    <option value={1235} />
+                  </datalist>
                 </FormField>
                 <FormField label="BU Host (BsTool)">
-                  <select
+                  <input
+                    type="text"
+                    list="bu-host-options"
                     value={newProject.bu_host}
                     onChange={(e) => setNewProject({ ...newProject, bu_host: e.target.value })}
                     style={inputStyle}
-                  >
-                    <option value="AB01">AB01</option>
-                    <option value="AB02">AB02</option>
-                    <option value="AB03">AB03</option>
-                    <option value="127.0.0.1">127.0.0.1 (local)</option>
-                  </select>
+                  />
+                  <datalist id="bu-host-options">
+                    <option value="AB01" />
+                    <option value="AB02" />
+                    <option value="AB03" />
+                    <option value="127.0.0.1" />
+                  </datalist>
                 </FormField>
                 <FormField label="BU Port">
-                  <select
+                  <input
+                    type="number"
+                    list="bu-port-options"
                     value={newProject.bu_port}
-                    onChange={(e) => setNewProject({ ...newProject, bu_port: Number(e.target.value) })}
+                    onChange={(e) => setNewProject({ ...newProject, bu_port: Number(e.target.value) || 1516 })}
                     style={inputStyle}
-                  >
-                    <option value={1516}>1516</option>
-                    <option value={1517}>1517</option>
-                  </select>
+                  />
+                  <datalist id="bu-port-options">
+                    <option value={1516} />
+                    <option value={1517} />
+                  </datalist>
                 </FormField>
                 <FormField label="LIS Mode">
                   <select
@@ -429,14 +441,17 @@ export default function Dashboard() {
                   </select>
                 </FormField>
                 <FormField label="LISDiag Port">
-                  <select
+                  <input
+                    type="number"
+                    list="lisdiag-port-options"
                     value={newProject.lisdiag_port}
-                    onChange={(e) => setNewProject({ ...newProject, lisdiag_port: Number(e.target.value) })}
+                    onChange={(e) => setNewProject({ ...newProject, lisdiag_port: Number(e.target.value) || 4321 })}
                     style={inputStyle}
-                  >
-                    <option value={4321}>4321</option>
-                    <option value={14321}>14321</option>
-                  </select>
+                  />
+                  <datalist id="lisdiag-port-options">
+                    <option value={4321} />
+                    <option value={14321} />
+                  </datalist>
                 </FormField>
                 <FormField label="LISDiag Password">
                   <input

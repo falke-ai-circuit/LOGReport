@@ -20,6 +20,7 @@ import (
 	"github.com/falke-ai-circuit/LOGReport/internal/bstool"
 	"github.com/falke-ai-circuit/LOGReport/internal/commandqueue"
 	"github.com/falke-ai-circuit/LOGReport/internal/lisdiag"
+	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
 	"github.com/falke-ai-circuit/LOGReport/internal/logwriter"
 	"github.com/falke-ai-circuit/LOGReport/internal/nodesconfig"
 	"github.com/falke-ai-circuit/LOGReport/internal/parser"
@@ -924,6 +925,23 @@ func (s *Server) generateReportHandler(w http.ResponseWriter, r *http.Request) {
 		lr := s.logRoot()
 		if lr != "" && lr != "logs" {
 			req.LogRoot = lr
+		}
+	}
+
+	// If log_root was provided but has no log files, try the server's logRoot
+	// (user may have changed log root in Commander dropdown to a different path)
+	if req.LogRoot != "" {
+		testFiles, _ := logfile.ScanFiles(req.LogRoot)
+		if len(testFiles) == 0 {
+			lr := s.logRoot()
+			if lr != "" && lr != "logs" && lr != req.LogRoot {
+				altFiles, _ := logfile.ScanFiles(lr)
+				if len(altFiles) > 0 {
+					log.Printf("report: log_root %s has 0 files, falling back to server logRoot %s (%d files)",
+						req.LogRoot, lr, len(altFiles))
+					req.LogRoot = lr
+				}
+			}
 		}
 	}
 

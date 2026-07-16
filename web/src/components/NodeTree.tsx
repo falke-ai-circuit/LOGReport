@@ -733,6 +733,7 @@ interface TreeBranchProps {
   onContextMenu: (e: React.MouseEvent, node: TreeNodeData, parentNode?: TreeNodeData) => void;
   onDoubleClickFile: (node: TreeNodeData) => void;
   parentNode?: TreeNodeData;
+  stationName?: string;
   activeCommand?: { node_name: string; token_id: string; type: string; status: string } | null;
   completedCommands?: Set<string>;
   selectedFileKey?: string | null;
@@ -755,6 +756,7 @@ function TreeBranch({
   onContextMenu,
   onDoubleClickFile,
   parentNode,
+  stationName,
   activeCommand,
   completedCommands,
   selectedFileKey,
@@ -831,10 +833,13 @@ function TreeBranch({
   // Check if this file/token matches the active command (from queue or single exec)
   if (node.type === 'file' || node.type === 'token') {
     // Build the command key for this specific file/token node
+    // Use stationName prop (passed down from station node) instead of
+    // parentNode?.name (which is the section node like "FBC", not "AP01m")
+    const station = stationName || parentNode?.name || '';
     const stationMatch = (cmd: { node_name: string; token_id: string; type: string }) => {
-      return parentNode?.name === cmd.node_name ||
-        parentNode?.name?.startsWith(cmd.node_name) ||
-        cmd.node_name.startsWith(parentNode?.name || '');
+      return station === cmd.node_name ||
+        station.startsWith(cmd.node_name) ||
+        cmd.node_name.startsWith(station);
     };
 
     // Check if this file matches any completed command → green
@@ -843,12 +848,11 @@ function TreeBranch({
       // Queue stores type as "fbc", "rpc", "bstool" — map bstool → log section
       const sectionLower = node.section_type?.toLowerCase() || '';
       const possibleTypes = sectionLower === 'log' ? ['bstool', 'log'] : [sectionLower];
-      // Try matching with parentNode name (station) and also check if any
-      // completed command has a node_name that starts with or matches the station
-      const parentName = parentNode?.name || '';
+      // Use station name (from prop) for matching, not section name (parentNode)
+      const station = stationName || parentNode?.name || '';
       for (const ptype of possibleTypes) {
         // Exact match: station:token_id:type
-        const fileCmdKey = `${parentName}:${node.token_id}:${ptype}`;
+        const fileCmdKey = `${station}:${node.token_id}:${ptype}`;
         if (completedCommands.has(fileCmdKey)) {
           nodeColor = 'var(--success)';
         }
@@ -859,9 +863,9 @@ function TreeBranch({
             const parts = key.split(':');
             if (parts.length >= 3 && parts[2] === 'bstool') {
               const cmdNodeName = parts[0];
-              if (parentName === cmdNodeName ||
-                  parentName.startsWith(cmdNodeName) ||
-                  cmdNodeName.startsWith(parentName)) {
+              if (station === cmdNodeName ||
+                  station.startsWith(cmdNodeName) ||
+                  cmdNodeName.startsWith(station)) {
                 nodeColor = 'var(--success)';
               }
             }
@@ -875,9 +879,9 @@ function TreeBranch({
           const parts = key.split(':');
           if (parts.length >= 3 && parts[1] === node.token_id && parts[2] === possibleTypes[0]) {
             const cmdNodeName = parts[0];
-            if (parentName === cmdNodeName ||
-                parentName.startsWith(cmdNodeName) ||
-                cmdNodeName.startsWith(parentName)) {
+            if (station === cmdNodeName ||
+                station.startsWith(cmdNodeName) ||
+                cmdNodeName.startsWith(station)) {
               nodeColor = 'var(--success)';
             }
           }
@@ -902,9 +906,10 @@ function TreeBranch({
     }
     // Single-command execution check (from CommanderLayout)
     if (activeExecFile) {
-      const execKey = `${parentNode?.name || ''}:${node.token_id}:${node.section_type?.toLowerCase() || ''}`;
-      const fbcKey = `${parentNode?.name || ''}:${node.token_id}:fbc`;
-      const rpcKey = `${parentNode?.name || ''}:${node.token_id}:rpc`;
+      const station = stationName || parentNode?.name || '';
+      const execKey = `${station}:${node.token_id}:${node.section_type?.toLowerCase() || ''}`;
+      const fbcKey = `${station}:${node.token_id}:fbc`;
+      const rpcKey = `${station}:${node.token_id}:rpc`;
       if (activeExecFile === execKey || activeExecFile === fbcKey || activeExecFile === rpcKey) {
         isActive = true;
         nodeColor = 'var(--accent)';
@@ -1120,6 +1125,7 @@ function TreeBranch({
               onContextMenu={onContextMenu}
               onDoubleClickFile={onDoubleClickFile}
               parentNode={node}
+              stationName={node.type === 'node' ? node.name : (stationName || node.name)}
               activeCommand={activeCommand}
               completedCommands={completedCommands}
               selectedFileKey={selectedFileKey}

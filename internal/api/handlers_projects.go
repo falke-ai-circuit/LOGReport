@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/falke-ai-circuit/LOGReport/internal/logfile"
 	"github.com/falke-ai-circuit/LOGReport/internal/report"
 	"github.com/falke-ai-circuit/LOGReport/internal/types"
 )
@@ -260,12 +261,29 @@ func (s *Server) generateProjectReportHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// If project's log_root has no log files, try the server's logRoot
+	// (user may have changed log root in Commander dropdown)
+	logRootToUse := p.LogRoot
+	testFiles, _ := logfile.ScanFiles(logRootToUse)
+	if len(testFiles) == 0 {
+		lr := s.logRoot()
+		if lr != "" && lr != "logs" && lr != logRootToUse {
+			altFiles, _ := logfile.ScanFiles(lr)
+			if len(altFiles) > 0 {
+				log.Printf("api: project %d log_root %s has 0 files, falling back to server logRoot %s (%d files)",
+					id, logRootToUse, lr, len(altFiles))
+				logRootToUse = lr
+			}
+		}
+	}
+
 	cfg := types.ReportConfig{
 		NodeAddress: "*",
 		Format:      format,
-		LogRoot:     p.LogRoot,
+		LogRoot:     logRootToUse,
 		Title:       fmt.Sprintf("%s_%s — Log Report", p.ProjectNumber, p.ShipName),
 		Appearance:  req.Appearance,
+		ProjectID:   id,
 	}
 
 	rpt, err := report.GenerateReport(cfg, s.store)

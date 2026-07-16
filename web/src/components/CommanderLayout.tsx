@@ -451,6 +451,9 @@ export default function CommanderLayout() {
         }
       }
       maybeAutoStart();
+      // Always switch to queue tab after batch — even if LIS files were added
+      // (handleContextAction('lisdiag_run') sets tab to 'lisdiag', override here)
+      setActiveTab('queue');
     } else {
       // Legacy: strip batch_ prefix and call single action for each node
       const singleAction = action.replace('batch_', '');
@@ -458,6 +461,7 @@ export default function CommanderLayout() {
         await handleContextAction(singleAction, node);
       }
       maybeAutoStart();
+      setActiveTab('queue');
     }
   }, [handleContextAction, maybeAutoStart]);
 
