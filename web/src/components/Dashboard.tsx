@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings, Activity, Zap, FileCheck, AlertCircle, Clock } from 'lucide-react';
+import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings, Activity, Zap, FileCheck, AlertCircle, Clock, Download } from 'lucide-react';
 import { useActiveProject, type Project } from '../hooks/useActiveProject';
 
 interface ProjectsResponse {
@@ -197,6 +197,27 @@ export default function Dashboard() {
       fetchProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete project');
+    }
+  }
+
+  async function handleExportProject(id: number, projectNumber: string, shipName: string) {
+    try {
+      const res = await fetch(`/api/v1/projects/${id}/export`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Export failed' }));
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectNumber}_${shipName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export project');
     }
   }
 
@@ -471,6 +492,7 @@ export default function Dashboard() {
                 onSelect={() => { selectProject(p.id, p.log_root || ''); navigate('/nodes'); }}
                 onDelete={() => handleDeleteProject(p.id, `${p.project_number} — ${p.ship_name}`)}
                 onEdit={() => handleEditProject(p)}
+                onExport={() => handleExportProject(p.id, p.project_number, p.ship_name)}
               />
             ))}
           </div>
@@ -620,7 +642,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
-function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: { project: Project; isActive: boolean; onSelect: () => void; onDelete: () => void; onEdit: () => void }) {
+function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onExport }: { project: Project; isActive: boolean; onSelect: () => void; onDelete: () => void; onEdit: () => void; onExport: () => void }) {
   return (
     <div
       style={{
@@ -679,6 +701,22 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: { projec
       >
         <Settings size={14} />
         Edit
+      </button>
+      <button
+        className="btn btn-ghost"
+        style={{
+          fontSize: '12px',
+          padding: '4px 8px',
+          color: 'var(--accent)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+        onClick={(e) => { e.stopPropagation(); onExport(); }}
+        title="Export project folder as zip"
+      >
+        <Download size={14} />
+        Export
       </button>
       <button
         className="btn btn-ghost"
