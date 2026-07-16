@@ -385,6 +385,7 @@ export default function NodeTree({
     const typeSummary = typeLabels.join(', ') || `${count} files`;
     return [
       { icon: <Printer size={14} />, label: `Queue Print for ${count} selected (${typeSummary})`, action: 'batch_auto_print' },
+      { icon: <Trash2 size={14} />, label: `Erase ${count} selected file contents`, action: 'batch_erase_file' },
     ];
   }
 
