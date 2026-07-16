@@ -34,6 +34,7 @@ export interface NodeTreeProps {
   context?: 'nodes' | 'commander';
   colorMode?: 'nodes' | 'commander';
   onFileMove?: (sourcePath: string, targetPath: string) => Promise<void>;
+  reloadKey?: number;
 }
 
 // Command status colors for file nodes during queue execution
@@ -94,6 +95,7 @@ export default function NodeTree({
   context = 'commander',
   colorMode,
   onFileMove,
+  reloadKey,
 }: NodeTreeProps) {
   const [tree, setTree] = useState<TreeNodeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,6 +111,7 @@ export default function NodeTree({
   const [lisMode, setLisMode] = useState<string>('rsu');
   const menuRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const expandedNodesRef = useRef<Set<string>>(new Set());
   const { activeLogRoot } = useActiveProject();
 
   // Fetch lis_mode from settings for context menu adaptation
@@ -128,7 +131,8 @@ export default function NodeTree({
     }
     // Save scroll position before re-fetching tree
     const savedScroll = scrollRef.current?.scrollTop ?? 0;
-    setLoading(true);
+    // Only show loading spinner on first load (tree === null), not on subsequent refreshes
+    if (tree === null) setLoading(true);
     setError(null);
     try {
       // Use activeLogRoot from hook instead of reading localStorage directly
@@ -151,7 +155,7 @@ export default function NodeTree({
       setTree(data.tree);
       // Auto-expand root children ONLY on first load (when expandedNodes is empty)
       // Don't reset expansion state on subsequent fetches (prevents scroll jump)
-      if (data.tree?.children && expandedNodes.size === 0) {
+      if (data.tree?.children && expandedNodesRef.current.size === 0) {
         const ids = new Set<string>(data.tree.children.map((c: TreeNodeData) => c.name));
         // Also auto-expand sections within each node
         for (const child of data.tree.children) {
@@ -161,6 +165,7 @@ export default function NodeTree({
             }
           }
         }
+        expandedNodesRef.current = ids;
         setExpandedNodes(ids);
       }
     } catch (err) {
@@ -174,11 +179,20 @@ export default function NodeTree({
         }
       });
     }
-  }, [projectId, context, activeLogRoot]);
+  }, [projectId, context, activeLogRoot, tree]);
 
   useEffect(() => {
     fetchTree();
   }, [fetchTree]);
+
+  // Reload tree when reloadKey prop changes (replaces key remount)
+  const prevReloadKeyRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (prevReloadKeyRef.current !== undefined && reloadKey !== prevReloadKeyRef.current) {
+      fetchTree();
+    }
+    prevReloadKeyRef.current = reloadKey;
+  }, [reloadKey, fetchTree]);
 
   // Track previous queue state to detect transitions (e.g. running → done)
   const prevQueueStateRef = useRef<string | null>(null);
@@ -253,6 +267,7 @@ export default function NodeTree({
       } else {
         next.add(id);
       }
+      expandedNodesRef.current = next;
       return next;
     });
   }

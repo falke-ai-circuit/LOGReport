@@ -450,7 +450,7 @@ export default function NodesPage() {
       <>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ width: '40%', minWidth: '250px', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          <NodeTree key={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} onDeleteStructure={handleDeleteStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
+          <NodeTree reloadKey={treeReloadKey} projectId={activeProjectId} onSelectNode={handleSelectNode} onSelectToken={handleSelectToken} onContextAction={handleContextAction} onDoubleClickFile={handleDoubleClickFile} onQueueStatusChange={setQueueStatus} selectedFileKey={selectedFileKey} onCreateStructure={handleCreateStructure} onDeleteStructure={handleDeleteStructure} context="nodes" colorMode="nodes" onFileMove={handleFileMove} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>

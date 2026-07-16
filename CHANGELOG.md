@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.9.64] — 2026-07-16
+
+### Fixed
+
+- **Commander node tree scroll preservation** — Tree no longer scrolls to top when commands execute and files change color. Root cause: `key={treeReloadKey}` prop on `<NodeTree>` component caused full unmount/remount on every queue action (~25 call sites), destroying scroll position and expansion state. Fix: replaced `key` remount with `reloadKey` prop that triggers `fetchTree()` via useEffect without unmounting. Also: (1) loading spinner only shows on first load (`tree === null`), not on subsequent refreshes, (2) `expandedNodes` stale closure fixed with ref, (3) scroll save/restore in `requestAnimationFrame` now works because component survives the refresh.
+
 ## [v3.9.58] — 2026-07-15
 
 ### Added
