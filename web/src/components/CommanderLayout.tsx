@@ -439,8 +439,15 @@ export default function CommanderLayout() {
           await handleContextAction('rpc_print', node);
         } else if (sectionType === 'LOG') {
           await handleContextAction('bstool_errlog', node);
-        } else if (sectionType === 'LIS' || sectionType === 'RSU' || sectionType === 'DIA') {
+        } else if (sectionType === 'LIS') {
+          // .lis files → LisDiag exe+io command
+          await handleContextAction('lisdiag_run', node);
+        } else if (sectionType === 'RSU') {
+          // .rsu files → RSU rx+tx trace
           await handleContextAction('rsu_trace', node);
+        } else if (sectionType === 'DIA') {
+          // .dia files → DiagLis import
+          await handleContextAction('diaglis_import', node);
         }
       }
       maybeAutoStart();
