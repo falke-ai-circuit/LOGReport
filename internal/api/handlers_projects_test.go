@@ -413,7 +413,7 @@ func TestProjectHandlers(t *testing.T) {
 	})
 
 	// ─── Generate project report no log_root (400) ───────────────
-	t.Run("generate project report without log_root returns 400", func(t *testing.T) {
+	t.Run("generate project report without log_root returns 200 with empty report", func(t *testing.T) {
 		body := jsonBody(map[string]interface{}{
 			"project_number": "T6014",
 			"ship_name":      "NO_LOGROOT_SHIP",
@@ -431,8 +431,10 @@ func TestProjectHandlers(t *testing.T) {
 		rec2 := doRequest(mux, "POST", "/api/v1/projects/"+id+"/report", genBody, map[string]string{
 			"Content-Type": "application/json",
 		})
-		if rec2.Code != http.StatusBadRequest {
-			t.Errorf("expected 400, got %d: %s", rec2.Code, rec2.Body.String())
+		// Project gets a default log_root (./T6014_NO_LOGROOT_SHIP) so report
+		// generation succeeds. The report will be empty (no log files) but valid.
+		if rec2.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d: %s", rec2.Code, rec2.Body.String())
 		}
 	})
 }
