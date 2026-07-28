@@ -352,7 +352,7 @@ export default function ReportList() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ color: 'var(--accent)', display: 'flex' }}>{formatIcon}</span>
                     <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font-mono)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {report.file_path ? report.file_path.split('\\').pop().split('/').pop() : report.report_id}
+                    {report.file_path ? report.file_path.split('\\\\').pop()?.split('/').pop() || report.report_id : report.report_id}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '22px' }}>
@@ -382,7 +382,7 @@ export default function ReportList() {
                 {/* Preview header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                   <FileText size={14} color="var(--accent)" />
-                  <span style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{selectedReport.file_path ? selectedReport.file_path.split('\\').pop().split('/').pop() : selectedReport.report_id}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{selectedReport.file_path ? selectedReport.file_path.split('\\\\').pop()?.split('/').pop() || selectedReport.report_id : selectedReport.report_id}</span>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>( {selectedReport.format?.toUpperCase()} )</span>
                   <div style={{ flex: 1 }} />
                   <span style={{ fontSize: '11px', color: STATUS_COLORS[selectedReport.status] || 'var(--text-muted)' }}>

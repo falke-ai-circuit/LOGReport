@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ship, FolderPlus, FileText, Server, Loader2, Plus, ArrowRight, Trash2, CheckCircle, Settings, Activity, Zap, FileCheck, AlertCircle, Clock, Download, Upload } from 'lucide-react';
 import { useActiveProject, type Project } from '../hooks/useActiveProject';
@@ -66,6 +66,7 @@ export default function Dashboard() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const { activeProjectId, selectProject } = useActiveProject();
   const navigate = useNavigate();
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editLogRoot, setEditLogRoot] = useState('');
   const [editMoving, setEditMoving] = useState(false);
@@ -567,6 +568,12 @@ export default function Dashboard() {
             href="/nodes"
           />
           <QuickAction
+            icon={<Upload size={18} />}
+            label="Import ZIP as Project"
+            description="Import a project from a zip file"
+            onClick={() => importFileRef.current?.click()}
+          />
+          <QuickAction
             icon={<Server size={18} />}
             label="Commander"
             description="Interactive command center"
@@ -580,6 +587,18 @@ export default function Dashboard() {
           />
         </div>
       </div>
+      {/* Hidden file input for Import ZIP quick action */}
+      <input
+        ref={importFileRef}
+        type="file"
+        accept=".zip"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleImportProject(file);
+          e.target.value = '';
+        }}
+      />
 
       {/* Recent Reports */}
       <div>
@@ -795,26 +814,37 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onExport }
   );
 }
 
-function QuickAction({ icon, label, description, href }: { icon: React.ReactNode; label: string; description: string; href: string }) {
+function QuickAction({ icon, label, description, href, onClick }: { icon: React.ReactNode; label: string; description: string; href?: string; onClick?: () => void }) {
+  const style: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '16px 20px',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    textDecoration: 'none',
+    color: 'var(--text-primary)',
+    minWidth: '200px',
+    transition: 'border-color 0.15s ease',
+    cursor: onClick ? 'pointer' : undefined,
+  };
+  const handleEnter = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.borderColor = 'var(--accent)'; };
+  const handleLeave = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.borderColor = 'var(--border)'; };
+
+  if (onClick) {
+    return (
+      <button style={style} onMouseEnter={handleEnter} onMouseLeave={handleLeave} onClick={onClick}>
+        <div style={{ color: 'var(--accent)' }}>{icon}</div>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 600 }}>{label}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{description}</div>
+        </div>
+      </button>
+    );
+  }
   return (
-    <a
-      href={href}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '16px 20px',
-        backgroundColor: 'var(--bg-secondary)',
-        borderRadius: '8px',
-        border: '1px solid var(--border)',
-        textDecoration: 'none',
-        color: 'var(--text-primary)',
-        minWidth: '200px',
-        transition: 'border-color 0.15s ease',
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
-    >
+    <a href={href || '#'} style={style} onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <div style={{ color: 'var(--accent)' }}>{icon}</div>
       <div>
         <div style={{ fontSize: '13px', fontWeight: 600 }}>{label}</div>
@@ -947,6 +977,11 @@ function ReportRow({ report, projectName }: { report: ReportItem; projectName?: 
   const statusColor = report.status === 'completed' ? '#008a00' : report.status === 'generating' ? '#f59e0b' : report.status === 'failed' ? 'var(--error)' : 'var(--text-muted)';
   const statusIcon = report.status === 'completed' ? <FileCheck size={12} /> : report.status === 'generating' ? <Loader2 size={12} className="spin" /> : report.status === 'failed' ? <AlertCircle size={12} /> : <FileText size={12} />;
 
+  // Extract actual filename from file_path (e.g. "C:\...\reports\G0001_GORIZIA_TEST_20260726_1430.pdf" → "G0001_GORIZIA_TEST_20260726_1430.pdf")
+  const reportFilename = report.file_path
+    ? report.file_path.split('\\').pop()?.split('/').pop() || report.title || report.format || 'Untitled'
+    : report.title || report.format || 'Untitled';
+
   return (
     <div
       style={{
@@ -962,12 +997,12 @@ function ReportRow({ report, projectName }: { report: ReportItem; projectName?: 
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
-      onClick={() => { /* navigate to reports page */ window.location.hash = '#/reports'; }}
+      onClick={() => { window.location.hash = '#/reports'; }}
     >
       <div style={{ color: statusColor, display: 'flex', alignItems: 'center' }}>{statusIcon}</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '12px', fontWeight: 500 }}>
-          {report.title || report.format || 'Untitled'} {projectName && <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>· {projectName}</span>}
+        <div style={{ fontSize: '12px', fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
+          {reportFilename} {projectName && <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'inherit' }}>· {projectName}</span>}
         </div>
         <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
           {report.node_address} · {new Date(report.created_at).toLocaleDateString()}
