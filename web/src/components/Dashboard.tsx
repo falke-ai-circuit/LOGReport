@@ -628,7 +628,7 @@ export default function Dashboard() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {reports.slice(0, 5).map((r) => (
-              <ReportRow key={r.id} report={r} projectName={projects.find(p => p.id === r.project_id)?.project_number} />
+              <ReportRow key={r.id} report={r} projectName={projects.find(p => p.id === r.project_id)?.project_number} onNavigate={() => navigate('/reports')} />
             ))}
           </div>
         )}
@@ -973,7 +973,7 @@ function ConnectionBadge({ label, host, port, configured }: { label: string; hos
 
 // ─── Report Row ──────────────────────────────────────────────────────
 
-function ReportRow({ report, projectName }: { report: ReportItem; projectName?: string }) {
+function ReportRow({ report, projectName, onNavigate }: { report: ReportItem; projectName?: string; onNavigate: () => void }) {
   const statusColor = report.status === 'completed' ? '#008a00' : report.status === 'generating' ? '#f59e0b' : report.status === 'failed' ? 'var(--error)' : 'var(--text-muted)';
   const statusIcon = report.status === 'completed' ? <FileCheck size={12} /> : report.status === 'generating' ? <Loader2 size={12} className="spin" /> : report.status === 'failed' ? <AlertCircle size={12} /> : <FileText size={12} />;
 
@@ -997,7 +997,7 @@ function ReportRow({ report, projectName }: { report: ReportItem; projectName?: 
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
-      onClick={() => { window.location.hash = '#/reports'; }}
+      onClick={() => { onNavigate(); }}
     >
       <div style={{ color: statusColor, display: 'flex', alignItems: 'center' }}>{statusIcon}</div>
       <div style={{ flex: 1 }}>
