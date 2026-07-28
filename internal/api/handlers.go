@@ -229,7 +229,15 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 		h.Version = s.version
 	}
 	// Override node_count with nodesconfig count (actual configured nodes, not SQLite scan nodes)
-	if configs, err := nodesconfig.LoadFromFile(s.nodesConfigPath()); err == nil {
+	// If project_id is provided, count from the project-specific nodes.json
+	projectID := r.URL.Query().Get("project_id")
+	var nodesPath string
+	if projectID != "" {
+		nodesPath = s.nodesConfigPathForProject(projectID)
+	} else {
+		nodesPath = s.nodesConfigPath()
+	}
+	if configs, err := nodesconfig.LoadFromFile(nodesPath); err == nil {
 		h.NodeCount = len(configs)
 	}
 	writeJSON(w, http.StatusOK, h)

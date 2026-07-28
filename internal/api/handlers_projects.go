@@ -35,15 +35,23 @@ func (s *Server) createProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the project folder path: {logRoot}/{project_number}_{ship_name}/
-	// If user provided a log_root, we create a subfolder for this project inside it.
-	// If no log_root provided, we use a default base (cwd or data dir).
+	// Build the project folder path.
+	// If the user-provided log_root already ends with {project_number}_{ship_name},
+	// use it directly (don't double the folder). Otherwise, create a subfolder.
 	baseDir := req.LogRoot
 	if baseDir == "" {
 		baseDir = "."
 	}
 	projectFolderName := fmt.Sprintf("%s_%s", req.ProjectNumber, req.ShipName)
-	projectDir := filepath.Join(baseDir, projectFolderName)
+	// Check if baseDir already ends with the project folder name
+	var projectDir string
+	if strings.HasSuffix(filepath.ToSlash(baseDir), "/"+projectFolderName) ||
+		filepath.Base(baseDir) == projectFolderName {
+		// User already specified the project folder as log_root — use it directly
+		projectDir = baseDir
+	} else {
+		projectDir = filepath.Join(baseDir, projectFolderName)
+	}
 
 	// Create the project folder structure:
 	// {projectDir}/
@@ -278,12 +286,15 @@ func (s *Server) generateProjectReportHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	cfg := types.ReportConfig{
-		NodeAddress: "*",
-		Format:      format,
-		LogRoot:     logRootToUse,
-		Title:       fmt.Sprintf("%s_%s — Log Report", p.ProjectNumber, p.ShipName),
-		Appearance:  req.Appearance,
-		ProjectID:   id,
+		NodeAddress:   "*",
+		Format:        format,
+		LogRoot:       logRootToUse,
+		Title:         fmt.Sprintf("%s_%s — Log Report", p.ProjectNumber, p.ShipName),
+		Appearance:    req.Appearance,
+		ProjectID:     id,
+		ProjectNumber: p.ProjectNumber,
+		ShipName:      p.ShipName,
+		OutputDir:     filepath.Join(p.LogRoot, "reports"),
 	}
 
 	rpt, err := report.GenerateReport(cfg, s.store)

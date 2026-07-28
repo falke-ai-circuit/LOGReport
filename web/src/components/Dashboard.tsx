@@ -86,9 +86,11 @@ export default function Dashboard() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/health');
+      const url = activeProjectId ? `/api/v1/health?project_id=${activeProjectId}` : '/api/v1/health';
+      const res = await fetch(url);
       if (!res.ok) {
-        const r2 = await fetch('/health');
+        const url2 = activeProjectId ? `/health?project_id=${activeProjectId}` : '/health';
+        const r2 = await fetch(url2);
         if (r2.ok) setHealth(await r2.json());
         return;
       }
@@ -96,7 +98,7 @@ export default function Dashboard() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [activeProjectId]);
 
   const fetchReports = useCallback(async () => {
     try {

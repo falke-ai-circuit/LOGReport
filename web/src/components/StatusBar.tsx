@@ -25,7 +25,8 @@ export default function StatusBar() {
 
     async function check() {
       try {
-        const res = await fetch('/health');
+        const url = activeProjectId ? `/health?project_id=${activeProjectId}` : '/health';
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted) {
@@ -47,7 +48,7 @@ export default function StatusBar() {
       mounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [activeProjectId]);
 
   // Poll queue status to show currently running command in the status bar
   // Faster when active (1s), slower when idle (5s) to reduce requests
@@ -160,6 +161,11 @@ export default function StatusBar() {
             <FolderOpen size={12} />
             {activeProject.project_number} — {activeProject.ship_name}
             {activeLogRoot && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px', fontFamily: 'var(--font-mono)' }}>{activeLogRoot}</span>}
+          </span>
+        ) : activeProjectId ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent)' }}>
+            <FolderOpen size={12} />
+            Project #{activeProjectId}
           </span>
         ) : (
           <span style={{ color: 'var(--text-muted)' }}>
