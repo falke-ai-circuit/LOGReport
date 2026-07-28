@@ -1,67 +1,88 @@
 ---
-applyTo: 'Dockerfile,docker-compose*.yml,**/*.sh,**/Dockerfile'
-description: 'Docker build and deployment commands for NOP project.'
+applyTo: '**/*.go,Makefile,**/*.sh,go.mod,go.sum'
+description: 'Build and deployment commands for LOGReport Go+React application.'
 ---
 
 # Build
 
-Setup and validation commands for NOP project.
+Build and validation commands for LOGReport.
 
 ## When This Applies
-- Starting or stopping services
-- Rebuilding after code changes
-- Debugging container issues
+- Building the binary
+- Running tests
+- Deploying to target machines
 
-## Setup
+## Prerequisites
+
+- Go 1.22+ (tested with Go 1.23.12)
+- Node.js 18+ and npm (for frontend build)
+
+## Build Steps
 
 ```bash
-docker-compose up -d          # Start all services
-docker-compose logs -f        # View logs
+# 1. Build frontend (Vite → web/dist-new-flat/)
+cd web && npm install && npm run build
+
+# 2. Build backend with version injection
+go build -ldflags "-X main.version=v3.9.84" -o logreport ./cmd/logreport/
+
+# Cross-compile for Windows:
+GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=v3.9.84" -o logreport-x64.exe ./cmd/logreport/
+```
+
+The React frontend is embedded into the Go binary via `embed.go` (`//go:embed all:web/dist-new-flat`).
+
+## Run
+
+```bash
+./logreport --port 8642 --db-path logreport-data
+```
+
+Open `http://localhost:8642` in a browser.
+
+## Testing
+
+```bash
+# Go tests (all 15 internal packages)
+go test ./internal/...
+
+# Frontend tests
+cd web && npm test
 ```
 
 ## Common Tasks
 
 | Task | Command |
 |------|---------|
-| Start | `docker-compose up -d` |
-| Stop | `docker-compose down` |
-| Rebuild | `docker-compose build --no-cache` |
-| Backend logs | `docker-compose logs -f backend` |
-| Frontend logs | `docker-compose logs -f frontend` |
+| Build frontend | `cd web && npm run build` |
+| Build backend | `go build -ldflags "-X main.version=v3.9.84" -o logreport ./cmd/logreport/` |
+| Run | `./logreport --port 8642` |
+| Go tests | `go test ./internal/...` |
+| Frontend tests | `cd web && npm test` |
+| Cross-compile Windows | `GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=v3.9.84" -o logreport-x64.exe ./cmd/logreport/` |
 
 ## ⚡ Command Batching (Reduce API Calls)
 
 **Batch independent commands with `&&`:**
 ```bash
 # ❌ Bad: 3 separate terminal calls
-docker-compose down
-docker-compose build
-docker-compose up -d
+cd web && npm run build
+go build -o logreport ./cmd/logreport/
+./logreport
 
 # ✅ Good: 1 terminal call
-docker-compose down && docker-compose build && docker-compose up -d
+cd web && npm run build && cd .. && go build -ldflags "-X main.version=v3.9.84" -o logreport ./cmd/logreport/ && ./logreport
 ```
-
-**Batch file operations:**
-```bash
-# ❌ Bad: Multiple greps
-grep -r "pattern1" src/
-grep -r "pattern2" src/
-
-# ✅ Good: Single grep with alternation
-grep -rE "pattern1|pattern2" src/
-```
-
-**Target:** Reduce terminal API calls by 30% through batching
 
 ## ⛔ MANDATORY Before Finishing
 
-1. **Check logs** for errors: `docker-compose logs backend`
-2. **Verify services** running: `docker-compose ps`
-3. **Test changes** in browser if UI modified
+1. **Run tests** for all packages: `go test ./internal/...`
+2. **Build passes**: `go build ./cmd/logreport/`
+3. **Frontend builds** (if UI modified): `cd web && npm run build`
 
 ## ⚠️ Critical Gotchas
 
-- **Restart ≠ Rebuild** - Code changes need `docker-compose build`
-- **Volume mounts** - Source code reflects live, dependencies need rebuild
-- **Port conflicts** - Check 3000, 8000 not in use
+- **Version string** — Must inject via ldflags: `-X main.version=v3.9.84`. Without it, version shows "dev".
+- **Frontend must build before Go** — `web/dist-new-flat/` must exist before `go build` (embedded via `//go:embed`).
+- **Go 1.22+ required** — go.mod specifies `go 1.22`. Tested with Go 1.23.12.
+- **Windows cross-compile** — Use `GOOS=windows GOARCH=amd64` for target VMs.

@@ -1,54 +1,54 @@
 ---
-applyTo: 'frontend/**,backend/**'
-description: 'Coordination patterns for fullstack changes spanning frontend and backend.'
+applyTo: 'web/src/**,internal/**,cmd/**'
+description: 'Coordination patterns for fullstack changes spanning Go backend and React frontend.'
 ---
 
 # Fullstack Sessions
 
-> Based on 100k simulation: 65.6% of sessions are fullstack
+> LOGReport is Go backend + React frontend in a single binary. Fullstack changes touch both `internal/` and `web/src/`.
 
 ## When This Applies
-- Editing both frontend and backend in same session
+- Editing both Go backend and React frontend in same session
 - Adding new API endpoints with UI
 - Debugging cross-layer issues
 
 ## Pre-Load Skills
-When editing both frontend + backend:
+When editing both backend + frontend:
 ```
 frontend-react ⭐ + backend-api ⭐
 ```
 
 ## Coordination Checklist
-1. **API Changes** → Update types → Update UI → Test
-2. **Database Schema** → Run migration → Update models → Update API → Update frontend
-3. **New Feature** → Plan → Backend service → API endpoint → Frontend component → Integration test
+1. **API Changes** → Update Go handler → Update TS types → Update React UI → Test
+2. **New Feature** → Plan → Go handler/service → API endpoint → React component → Integration test
+3. **Bug Fix** → Debug → Fix → Test (Go test + frontend test)
 
 ## Common Patterns
 
-| Change Type | Order | Skills |
-|-------------|-------|--------|
-| New endpoint | Backend → Frontend | backend-api, frontend-react |
-| UI update | Frontend → Backend (if API needed) | frontend-react, backend-api |
-| Bug fix | Debug → Fix → Test | debugging, testing |
-| Schema change | Migration → Model → API → UI | backend-api, frontend-react |
+| Change Type | Order | Files |
+|-------------|-------|-------|
+| New endpoint | `internal/api/handlers*.go` → `web/src/api/*.ts` → `web/src/components/*.tsx` |
+| UI update | `web/src/components/*.tsx` → `internal/api/handlers*.go` (if API needed) |
+| Bug fix | Debug → Fix source → Run `go test ./internal/...` → Run `cd web && npm test` |
+| Report gen | `internal/report/generator.go` → `internal/api/handlers_projects.go` → `web/src/components/ReportList.tsx` |
 
 ## Gotchas
 
 | Issue | Solution |
 |-------|----------|
-| 307 redirect on POST | Add trailing slash to URL: `/api/endpoint/` |
-| CORS errors | Check FastAPI CORS origins in `app/main.py` |
-| State not syncing | Use WebSocket or polling with `useEffect` |
-| Type mismatch | Regenerate types: `npm run generate-types` |
-| 401 Unauthorized | Check token expiry, refresh if needed |
-| Create button not working | Verify onClick handler is connected |
+| Frontend not updating | Rebuild: `cd web && npm run build` (embedded in Go binary) |
+| Version shows "dev" | Inject via ldflags: `-X main.version=v3.9.84` |
+| CORS errors | Use `--cors-origin` flag or same-origin (embedded UI) |
+| Type mismatch | Check `web/src/types/api.ts` matches Go struct JSON tags |
+| Report path doubled | If log_root ends with {project}_{ship}, use directly (Bug #1, v3.9.84) |
+| Node count shows 0 | Pass `?project_id=` to `/health` endpoint (Bug #7, v3.9.84) |
 
 ## Verification
 After fullstack changes:
-1. Check API response (backend logs): `docker compose logs -f backend`
-2. Check network tab (frontend): DevTools → Network
-3. Test end-to-end flow
-4. Verify state persistence: Check localStorage/sessionStorage
+1. Run Go tests: `go test ./internal/...`
+2. Run frontend tests: `cd web && npm test`
+3. Build: `cd web && npm run build && cd .. && go build -ldflags "-X main.version=v3.9.84" -o logreport ./cmd/logreport/`
+4. Test end-to-end: run binary and test in browser
 
 ## Token Optimization
 - Use domain_index for O(1) file lookup
